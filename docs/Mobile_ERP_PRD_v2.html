@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mobile ERP — Product Requirements Document v2.0</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F3F4F6;
+    --sidebar: #111827;
+    --accent: #10B981;
+    --accent-dim: rgba(16,185,129,0.12);
+    --text: #1F2937;
+    --text-lighter: #9CA3AF;
+    --border: #E5E7EB;
+    --heading1: #111827;
+    --heading2: #065F46;
+    --heading3: #374151;
+    --req-border: #10B981;
+    --req-bg: #F0FDF9;
+    --table-header: #111827;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.7; font-size: 14.5px;
+  }
+
+  /* ── Hamburger ── */
+  .hamburger {
+    position: fixed; top: 18px; left: 18px; z-index: 1000;
+    width: 48px; height: 48px; background: var(--sidebar); border: none; border-radius: 14px;
+    cursor: pointer; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 5px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25); transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
+  .hamburger:hover { background: #1F2937; transform: scale(1.05); }
+  .hamburger span {
+    display: block; width: 22px; height: 2.5px; background: #fff; border-radius: 2px;
+    transition: all 0.3s cubic-bezier(0.4,0,0.2,1); transform-origin: center;
+  }
+  .hamburger.open span:nth-child(1) { transform: translateY(7.5px) rotate(45deg); }
+  .hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+  .hamburger.open span:nth-child(3) { transform: translateY(-7.5px) rotate(-45deg); }
+
+  /* ── Overlay ── */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 500;
+    opacity: 0; pointer-events: none; backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px); transition: opacity 0.3s ease;
+  }
+  .overlay.open { opacity: 1; pointer-events: auto; }
+
+  /* ── Sidebar Drawer ── */
+  .sidebar {
+    position: fixed; top: 0; left: 0; width: 300px; height: 100vh;
+    background: var(--sidebar); color: #fff; display: flex; flex-direction: column;
+    z-index: 600; transform: translateX(-100%);
+    transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+    box-shadow: 4px 0 30px rgba(0,0,0,0.3);
+  }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-brand { padding: 32px 24px 24px; border-bottom: 1px solid rgba(255,255,255,0.07); }
+  .sidebar-brand .label { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+  .sidebar-brand h1 { font-family: 'DM Serif Display', serif; font-size: 22px; font-weight: 400; }
+  .sidebar-brand p { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 4px; }
+  .sidebar-nav { flex: 1; overflow-y: auto; padding: 14px 0; }
+  .sidebar-nav::-webkit-scrollbar { width: 3px; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+  .nav-link {
+    display: flex; align-items: center; gap: 12px; padding: 11px 24px; font-size: 13.5px;
+    color: rgba(255,255,255,0.5); text-decoration: none; border-left: 3px solid transparent;
+    transition: all 0.15s ease; cursor: pointer;
+  }
+  .nav-link:hover { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.06); }
+  .nav-link.active { color: #fff; font-weight: 600; background: var(--accent-dim); border-left-color: var(--accent); }
+  .nav-link .num { font-size: 11px; color: rgba(255,255,255,0.25); width: 20px; text-align: right; flex-shrink: 0; }
+  .sidebar-footer { padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.07); font-size: 11px; color: rgba(255,255,255,0.25); }
+
+  /* ── Main ── */
+  .main { padding: 40px 56px 100px; }
+  .content { max-width: 860px; margin: 0 auto; }
+
+  /* ── Cover ── */
+  .cover {
+    background: linear-gradient(135deg, #111827 0%, #1E3A5F 50%, #065F46 100%);
+    border-radius: 20px; padding: 56px 48px; color: #fff; margin-bottom: 48px;
+    position: relative; overflow: hidden;
+  }
+  .cover::before { content: ''; position: absolute; top: -60%; right: -20%; width: 500px; height: 500px; background: radial-gradient(circle, rgba(16,185,129,0.15) 0%, transparent 70%); border-radius: 50%; }
+  .cover .label { font-size: 11px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; position: relative; }
+  .cover h1 { font-family: 'DM Serif Display', serif; font-size: 40px; font-weight: 400; letter-spacing: -0.5px; line-height: 1.15; position: relative; }
+  .cover .subtitle { font-size: 17px; color: rgba(255,255,255,0.55); margin-top: 10px; position: relative; }
+  .cover-meta { display: flex; gap: 28px; margin-top: 28px; font-size: 13px; color: rgba(255,255,255,0.4); position: relative; flex-wrap: wrap; }
+
+  /* ── Typography ── */
+  .h1 { font-family: 'DM Serif Display', serif; font-size: 28px; font-weight: 400; color: var(--heading1); margin: 56px 0 12px; padding-bottom: 12px; border-bottom: 2px solid var(--border); scroll-margin-top: 32px; }
+  .h2 { font-size: 19px; font-weight: 700; color: var(--heading2); margin: 36px 0 10px; }
+  .h3 { font-size: 15.5px; font-weight: 700; color: var(--heading3); margin: 26px 0 8px; }
+  p { margin: 8px 0; color: #444; line-height: 1.75; }
+
+  .bl { display: flex; gap: 12px; margin: 5px 0; line-height: 1.7; color: #444; }
+  .bl::before { content: ''; width: 6px; height: 6px; background: var(--accent); border-radius: 50%; flex-shrink: 0; margin-top: 9px; }
+
+  .req { margin: 20px 0; padding: 20px 24px; background: var(--req-bg); border-left: 3px solid var(--req-border); border-radius: 0 10px 10px 0; }
+  .req-title { font-size: 15.5px; font-weight: 700; color: var(--heading1); margin-bottom: 10px; }
+
+  .table-wrap { overflow-x: auto; margin: 20px 0; border-radius: 10px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; line-height: 1.65; }
+  thead th { background: var(--table-header); color: #fff; padding: 11px 16px; text-align: left; font-weight: 600; white-space: nowrap; }
+  tbody td { padding: 11px 16px; border-bottom: 1px solid var(--border); color: #374151; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:nth-child(even) { background: #F9FAFB; }
+
+  .callout { background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px; padding: 16px 20px; margin: 16px 0; font-size: 14px; color: #92400E; }
+  .end-mark { text-align: center; padding: 56px 0 24px; color: var(--text-lighter); font-size: 13px; border-top: 1px solid var(--border); margin-top: 56px; }
+
+  @media (max-width: 700px) {
+    .main { padding: 24px 18px 80px; }
+    .cover { padding: 36px 24px; }
+    .cover h1 { font-size: 26px; }
+    .req { padding: 16px 18px; }
+    .sidebar { width: 280px; }
+  }
+  @media print {
+    .hamburger, .sidebar, .overlay { display: none !important; }
+    .main { padding: 0; }
+    .cover { break-after: page; }
+    .h1 { break-before: page; }
+  }
+</style>
+</head>
+<body>
+
+<button class="hamburger" id="menuBtn" onclick="toggleMenu()" aria-label="Toggle navigation"><span></span><span></span><span></span></button>
+<div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="label">PRD v2.0</div>
+    <h1>Mobile ERP</h1>
+    <p>Manufacturing ERP for SMEs</p>
+  </div>
+  <nav class="sidebar-nav">
+    <a class="nav-link active" data-target="exec" onclick="navigateTo('exec')"><span class="num">01</span> Executive Summary</a>
+    <a class="nav-link" data-target="overview" onclick="navigateTo('overview')"><span class="num">02</span> Product Overview</a>
+    <a class="nav-link" data-target="sales" onclick="navigateTo('sales')"><span class="num">03</span> Sales & Invoicing</a>
+    <a class="nav-link" data-target="inventory" onclick="navigateTo('inventory')"><span class="num">04</span> Inventory</a>
+    <a class="nav-link" data-target="security" onclick="navigateTo('security')"><span class="num">05</span> Security</a>
+    <a class="nav-link" data-target="vendor" onclick="navigateTo('vendor')"><span class="num">06</span> Vendor Management</a>
+    <a class="nav-link" data-target="finance" onclick="navigateTo('finance')"><span class="num">07</span> Finance</a>
+    <a class="nav-link" data-target="maintenance" onclick="navigateTo('maintenance')"><span class="num">08</span> Machine Maintenance</a>
+    <a class="nav-link" data-target="hr" onclick="navigateTo('hr')"><span class="num">09</span> HR Management</a>
+    <a class="nav-link" data-target="production" onclick="navigateTo('production')"><span class="num">10</span> Production</a>
+    <a class="nav-link" data-target="masters" onclick="navigateTo('masters')"><span class="num">11</span> Masters Module</a>
+    <a class="nav-link" data-target="home" onclick="navigateTo('home')"><span class="num">12</span> Home Screen</a>
+    <a class="nav-link" data-target="roles" onclick="navigateTo('roles')"><span class="num">13</span> Roles & Permissions</a>
+    <a class="nav-link" data-target="deps" onclick="navigateTo('deps')"><span class="num">14</span> Dependencies</a>
+    <a class="nav-link" data-target="glossary" onclick="navigateTo('glossary')"><span class="num">15</span> Glossary</a>
+  </nav>
+  <div class="sidebar-footer">Feb 2026 &middot; Draft for Review</div>
+</aside>
+
+<div class="main">
+<div class="content">
+
+<div class="cover">
+  <div class="label">Product Requirements Document</div>
+  <h1>Mobile ERP Application</h1>
+  <p class="subtitle">Comprehensive Manufacturing ERP Solution for SMEs</p>
+  <div class="cover-meta"><span>Version 2.0</span><span>February 2026</span><span>Status: Draft</span><span>Internal / Confidential</span></div>
+</div>
+
+<!-- 1 -->
+<h2 class="h1" id="exec">1. Executive Summary</h2>
+<p>This Product Requirements Document defines the functional requirements for the Mobile ERP application — a comprehensive enterprise resource planning solution designed for small and medium-sized manufacturing enterprises (SMEs). The application runs on mobile devices and provides end-to-end operational management spanning sales, inventory, vendor relations, finance, production, human resources, machine maintenance, and security.</p>
+<h3 class="h2">1.1 Purpose</h3>
+<p>This PRD serves as the single source of truth for all stakeholders including product owners, designers, developers, and quality assurance teams. It outlines what the application must do from a user and business perspective.</p>
+<h3 class="h2">1.2 Scope</h3>
+<div class="bl"><strong>Sales & Invoicing</strong> — Quote-to-cash lifecycle with GST-compliant invoicing and payment tracking</div>
+<div class="bl"><strong>Inventory Management</strong> — Stock tracking, goods receipt, material requests, and warehouse management</div>
+<div class="bl"><strong>Security</strong> — Gate operations including employee attendance, goods verification, and visitor management</div>
+<div class="bl"><strong>Vendor Management</strong> — Purchase orders, ASN, GRN, and vendor performance tracking</div>
+<div class="bl"><strong>Finance</strong> — Receivables, payables, payment recording, and financial reporting</div>
+<div class="bl"><strong>Machine Maintenance</strong> — Preventive scheduling, breakdown tracking, and spare parts management</div>
+<div class="bl"><strong>HR Management</strong> — Employee records, attendance, leave, payroll, incentive configuration, and working hours rules</div>
+<div class="bl"><strong>Production</strong> — OEE tracking, shift-wise production logging, scrap/NC management, and incentive computation</div>
+<div class="bl"><strong>Masters</strong> — Centralised configuration for items, shifts, machines, operations, and parts</div>
+<div class="bl"><strong>Visitor Management</strong> — Pre-registration, check-in/out, and QR-based self-registration</div>
+<h3 class="h2">1.3 Target Users</h3>
+<div class="bl"><strong>Business Owner / Admin</strong> — Full dashboard visibility across all modules</div>
+<div class="bl"><strong>Sales Team</strong> — Quote creation, invoice management, customer ledger</div>
+<div class="bl"><strong>Operations / Production Manager</strong> — Production logging, OEE monitoring, shift management</div>
+<div class="bl"><strong>HR Personnel</strong> — Employee management, attendance, payroll processing</div>
+<div class="bl"><strong>Finance Team</strong> — Payment tracking, receivables/payables management</div>
+<div class="bl"><strong>Security Personnel</strong> — Gate attendance, goods verification, visitor management</div>
+<div class="bl"><strong>Maintenance Team</strong> — Preventive and breakdown maintenance operations</div>
+<div class="bl"><strong>Vendors (External)</strong> — ASN creation and delivery coordination</div>
+
+<!-- 2 -->
+<h2 class="h1" id="overview">2. Product Overview</h2>
+<p>The Mobile ERP is a mobile-first application providing end-to-end manufacturing operations management. It is accessible through a bottom navigation bar for frequently used modules (Home, Sales, Inventory, HR) and a side drawer menu for all modules. The application features role-based view filtering on the home dashboard.</p>
+<h3 class="h2">2.1 Application Structure</h3>
+<div class="bl"><strong>Dashboard (Home)</strong> — KPI cards, role-based filtering, sales trend chart, quick-access module grid, and recent activity feed</div>
+<div class="bl"><strong>Module Screens</strong> — Dedicated screen per module with tab-based sub-navigation</div>
+<div class="bl"><strong>Modal Forms</strong> — Bottom-sheet modals for quick data entry actions</div>
+<div class="bl"><strong>Detail Views</strong> — Tapping any list item opens full record with contextual actions</div>
+<div class="bl"><strong>Search</strong> — Contextual search within each module</div>
+<h3 class="h2">2.2 Module Summary</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Module</th><th>Primary Function</th><th>Key Sub-sections</th></tr></thead>
+<tbody>
+<tr><td>Sales & Invoicing</td><td>Quote-to-cash management</td><td>Sales Home, Invoices, Customer Ledger</td></tr>
+<tr><td>Inventory</td><td>Stock and material management</td><td>Stock, Goods Receipt, Requests, Issues</td></tr>
+<tr><td>Security</td><td>Gate operations</td><td>Attendance, Goods Verification, Visitor Verification</td></tr>
+<tr><td>Vendor Management</td><td>Procurement lifecycle</td><td>Vendors, POs, ASN/GRN</td></tr>
+<tr><td>Finance</td><td>Receivables & payables</td><td>Payables, Receivables, Payment In/Made, Reports</td></tr>
+<tr><td>Machine Maintenance</td><td>Equipment upkeep</td><td>Schedule, Breakdowns, Spares, Machine Master</td></tr>
+<tr><td>HR Management</td><td>People management</td><td>Employees, Attendance, Leaves, Payroll, Incentive Config</td></tr>
+<tr><td>Production</td><td>Shop-floor management</td><td>OEE Dashboard, Production Input, Scrap/NC Entry</td></tr>
+<tr><td>Masters</td><td>Centralised configuration</td><td>Item, Shift, Machine, Operation, Part Masters</td></tr>
+<tr><td>Visitor Management</td><td>Visitor lifecycle</td><td>Today, Pre-Register, History, QR Self-Registration</td></tr>
+</tbody></table></div>
+
+<!-- 3 -->
+<h2 class="h1" id="sales">3. Sales & Invoicing</h2>
+<p>The Sales & Invoicing module manages the complete sales lifecycle from lead capture through quotation, invoicing, payment collection, and customer ledger management. It supports both PO-referenced and general (ad-hoc) transactions with full GST compliance based on customer location.</p>
+<h3 class="h2">3.1 Sales Home</h3>
+<p>The landing tab is titled <strong>"Sales Home"</strong>. It provides summary statistics — current month sales, outstanding amount, and active quote count — along with the sales pipeline and quick-action buttons.</p>
+<h4 class="h3">Sales Pipeline</h4>
+<div class="bl">Active deals with customer name, product/service, pipeline stage, and deal value</div>
+<div class="bl">Stages: Quote Sent, Negotiation, Order Confirmed</div>
+<div class="bl">Tappable for full customer detail, contact info, and actions (Call, Create Quote)</div>
+<h4 class="h3">Quick Actions</h4>
+<div class="bl">New Quote</div><div class="bl">Create Invoice</div><div class="bl">Add Customer</div><div class="bl">Inward PO (Customer PO Entry)</div>
+
+<h3 class="h2">3.2 Invoicing</h3>
+<h4 class="h3">Invoice List</h4>
+<div class="bl">All invoices with status: <strong>Paid</strong>, <strong>Partially Paid</strong>, <strong>Pending</strong>, <strong>Overdue</strong></div>
+<div class="bl">Each shows: invoice number, customer, due date, amount, and status</div>
+<h4 class="h3">Invoice Detail</h4>
+<div class="bl">Full breakdown: number, customer, dates, amount, line items, payment status</div>
+<div class="bl">Actions: Download, Send Reminder, <strong>Payment In</strong></div>
+<div class="req"><div class="req-title">Invoice Creation (PO / General Reference)</div>
+<p>When creating an invoice, the user selects the type:</p>
+<div class="bl"><strong>PO Reference</strong> — Select a customer PO; all line items auto-populate. User can edit quantities/prices and remove items.</div>
+<div class="bl"><strong>General</strong> — Full manual entry: customer, dates, line items, and totals.</div></div>
+<div class="req"><div class="req-title">Payment In (Against Invoices)</div>
+<p>Record incoming payments against invoices. The form captures:</p>
+<div class="bl">Amount received, payment date, payment mode (Bank Transfer, Cheque, Cash, UPI), transaction reference</div>
+<p>The system tracks partial payments and displays balance remaining. Status auto-updates to Paid, Partially Paid, or Overdue.</p></div>
+
+<h3 class="h2">3.3 Quote Creation</h3>
+<div class="req"><div class="req-title">Line Item–Based Quotes</div>
+<p>The New Quote form supports individual line items in two modes:</p>
+<div class="bl"><strong>From Item Master</strong> — Select from centralised list; details auto-populate (description, unit, rate, HSN, GST).</div>
+<div class="bl"><strong>General / Manual</strong> — Enter all fields manually: description, quantity, unit, rate, and tax.</div>
+<p>Quote includes: customer, validity date, line items, applicable GST, and total.</p></div>
+
+<h3 class="h2">3.4 Customer Management</h3>
+<div class="req"><div class="req-title">Add Customer</div>
+<p>Form captures: company name, contact person, phone, email, and address. <strong>City</strong> and <strong>State</strong> are mandatory for GST determination:</p>
+<div class="bl">Same state as seller → <strong>CGST + SGST</strong></div>
+<div class="bl">Different state → <strong>IGST</strong></div>
+<p>GST type is auto-applied on all invoices and quotes for that customer.</p></div>
+
+<h3 class="h2">3.5 Customer Ledger</h3>
+<div class="bl">Searchable directory: total business value and outstanding per customer</div>
+<div class="bl">Detail view with contact info, transaction history, and balance summary</div>
+
+<h3 class="h2">3.6 Inward PO (Customer Purchase Orders)</h3>
+<div class="req"><div class="req-title">Customer PO Entry</div>
+<p>Record Purchase Orders received from customers:</p>
+<div class="bl">PO number, PO date, customer name, expected delivery date</div>
+<div class="bl">Line items: part, description, quantity, unit price, line total</div>
+<p>These POs are available as references when creating PO-based invoices.</p></div>
+
+<!-- 4 -->
+<h2 class="h1" id="inventory">4. Inventory Management</h2>
+<p>Tracks all physical stock (raw materials, WIP, spare parts, finished goods) across multiple warehouses. Manages receipts, requests, and issues.</p>
+<h3 class="h2">4.1 Stock View</h3>
+<div class="bl">Search by name or SKU; stats: total items, low-stock alerts, warehouse count</div>
+<div class="bl">Low-stock alerts: <strong>Critical</strong> and <strong>Low</strong> severity</div>
+<div class="bl">Detail: item name, SKU, qty, reorder level, warehouse, quick PO action</div>
+<h3 class="h2">4.2 Goods Receipt</h3>
+<div class="req"><div class="req-title">Goods Receipt Screen</div>
+<p>Inward material into inventory via three reference types:</p>
+<div class="bl"><strong>PO Reference</strong> — Select PO; pending items displayed for receipt confirmation</div>
+<div class="bl"><strong>ASN Reference</strong> — Select ASN; shipment details and items pre-populated</div>
+<div class="bl"><strong>Security Check Reference</strong> — Link to gate verification record from Security module</div>
+<p>User confirms quantities, notes discrepancies/damages; inventory updates on confirmation.</p></div>
+<h3 class="h2">4.3 Material Requests</h3>
+<div class="bl">Internal requests: department, item, quantity, date, reason</div>
+<div class="bl">Approval workflow: Pending → Approved/Rejected</div>
+<h3 class="h2">4.4 Material Issues</h3>
+<div class="bl">Tracks materials issued to departments with issue number, department, items, and status</div>
+
+<!-- 5 -->
+<h2 class="h1" id="security">5. Security</h2>
+<p>Gate-level operations: employee attendance, goods verification, and visitor management. Used by security personnel at the facility entrance.</p>
+<h3 class="h2">5.1 Attendance Screen</h3>
+<div class="req"><div class="req-title">Employee Attendance at Gate</div>
+<p>Two capture methods:</p>
+<div class="bl"><strong>Manual Entry</strong> — Enter employee code; system records punch (in/out) with timestamp and shows name confirmation.</div>
+<div class="bl"><strong>Auto Attendance via Face Scanning</strong> — Camera identifies employee; auto-records punch with name/photo confirmation.</div>
+<p>Real-time checked-in count for current shift. Quick search by name/code. Data flows to HR module.</p></div>
+<h3 class="h2">5.2 Goods Verification Screen</h3>
+<div class="req"><div class="req-title">Gate-Level Goods Verification</div>
+<p>Two methods:</p>
+<div class="bl"><strong>ASN-Based</strong> — Enter/scan ASN number; auto-displays vendor, PO, items, vehicle, driver. Security confirms.</div>
+<div class="bl"><strong>Manual Invoice</strong> — Enter invoice number and vendor name. Goods marked "verified at gate."</div>
+<p>Record becomes available in Inventory module for formal goods receipt.</p></div>
+<h3 class="h2">5.3 Visitor Verification Screen</h3>
+<div class="req"><div class="req-title">Visitor Gate Management</div>
+<p>Displays today's expected visitors from pre-registration. Security can:</p>
+<div class="bl">View details: name, company, purpose, host employee</div>
+<div class="bl">Verify and approve — triggers notification to host</div>
+<div class="bl">Handle walk-in visitors</div></div>
+<h3 class="h2">5.4 QR Code–Based Visitor Self-Registration</h3>
+<div class="req"><div class="req-title">Visitor Self-Registration via QR</div>
+<p>Security displays/prints a QR code. Visitor scans it and fills a web form:</p>
+<div class="bl">Name, company, phone, purpose of visit, person to meet</div>
+<p>Submitted info goes to host for approval. On approval, security is notified to allow access.</p></div>
+
+<!-- 6 -->
+<h2 class="h1" id="vendor">6. Vendor Management</h2>
+<p>Handles procurement: vendor records, PO creation, ASN, and GRN.</p>
+<h3 class="h2">6.1 Vendor Directory</h3>
+<div class="bl">Vendors with star ratings and on-time delivery percentages</div>
+<div class="bl">Detail: contacts, total orders, monthly spend, quick PO action</div>
+<h3 class="h2">6.2 Purchase Orders</h3>
+<div class="req"><div class="req-title">PO Creation with Item Master Integration</div>
+<p>Line items pull from the <strong>Item Master</strong>. Only Purchase/Both items appear. On selection: description, UOM, HSN, and GST auto-populate. PO form: vendor, delivery date, line items, quantities, rates, total. Status tracking: Confirmed, In Transit, Partially Received, Completed.</p></div>
+<h3 class="h2">6.3 Advance Shipping Notice (ASN)</h3>
+<div class="req"><div class="req-title">ASN Creation</div>
+<p>References a PO; line items pre-populate. User confirms quantities being shipped. Includes: vehicle number, driver name, expected arrival. ASNs feed into Security (goods verification) and Inventory (goods receipt).</p></div>
+<h3 class="h2">6.4 Goods Receipt Note (GRN)</h3>
+<div class="bl">References ASN. Captures: received qty, condition (Good/Damaged/Partial), remarks</div>
+<div class="bl">Detail: GRN number, vendor, items, completion status</div>
+<h3 class="h2">6.5 ASN Verification</h3>
+<div class="bl">Pending verifications with vendor, vehicle, status; linked to Security workflow</div>
+
+<!-- 7 -->
+<h2 class="h1" id="finance">7. Finance</h2>
+<p>Tracks receivables and payables, records payments, and generates financial reports.</p>
+<h3 class="h2">7.1 Dashboard</h3>
+<div class="bl">Summary: total payables, total receivables, payment progress, paid vs. pending</div>
+<h3 class="h2">7.2 Payables</h3>
+<div class="bl">Dedicated list: vendor, invoice, amount, due date, ageing (Current, Due Soon, Overdue)</div>
+<div class="req"><div class="req-title">Payment Made (Vendor Payments)</div>
+<p>Record outgoing payments: vendor, invoice, amount, mode, date, reference. System updates payable balance.</p></div>
+<h3 class="h2">7.3 Receivables</h3>
+<div class="bl">Dedicated list: customer, invoice, amount, due date, ageing. Actions: Send Reminder, Record Payment</div>
+<div class="req"><div class="req-title">Payment In</div>
+<p>Record payments received against invoices: select invoice, enter amount, mode, date, reference. System updates balance and status.</p></div>
+<h3 class="h2">7.4 Separate Receivables & Payables</h3>
+<p>Distinct tabs/sections for independent management. Overdue items prominently highlighted in both.</p>
+<h3 class="h2">7.5 Financial Reports</h3>
+<div class="bl">Profit & Loss Report</div><div class="bl">Balance Sheet</div><div class="bl">Cash Flow Statement</div>
+
+<!-- 8 -->
+<h2 class="h1" id="maintenance">8. Machine Maintenance</h2>
+<p>Preventive maintenance scheduling, breakdown tracking, and spare parts management for maximum uptime.</p>
+<h3 class="h2">8.1 Machine Master</h3>
+<div class="req"><div class="req-title">Machine Registration & PM Scheduling</div>
+<p>Register machines and configure preventive maintenance:</p>
+<div class="bl">Machine name, code, location, manufacturer, model</div>
+<div class="bl">Frequency: daily, weekly, monthly, quarterly, annually</div>
+<div class="bl">Tasks per interval with estimated duration and required spare parts</div></div>
+<h3 class="h2">8.2 Maintenance Schedule</h3>
+<div class="req"><div class="req-title">Preventive Maintenance Execution</div>
+<p>Due tasks in two views:</p>
+<div class="bl"><strong>List View</strong> — Sortable/filterable: machine, task, date, status (Pending, In Progress, Completed, Overdue)</div>
+<div class="bl"><strong>Calendar View</strong> — Monthly view with task density indicators; tap date for details</div>
+<p>Start maintenance, record observations, mark completion, log replacement parts.</p></div>
+<h3 class="h2">8.3 Breakdown Management</h3>
+<div class="bl">Report: machine, issue type, description, priority (Critical/High/Medium/Low)</div>
+<div class="bl">Active breakdowns with downtime tracking and assigned team</div>
+<div class="bl">Detail: machine, issue, reported time, downtime, team, resolution</div>
+<h3 class="h2">8.4 Spare Parts Inventory</h3>
+<div class="bl">Spare parts with SKU, applicable machines, stock qty, and low-stock alerts</div>
+
+<!-- 9 -->
+<h2 class="h1" id="hr">9. HR Management</h2>
+<p>Employee records, attendance, leave, payroll, incentive configuration, and working hours rules.</p>
+<h3 class="h2">9.1 Employee Directory</h3>
+<div class="bl">Searchable list: name, department, designation, employee ID</div>
+<div class="bl">Stats: total staff, present, on leave</div>
+<div class="bl">Detail: full info with Call/Email actions. Add new employee form.</div>
+<h3 class="h2">9.2 Attendance</h3>
+<div class="bl">Daily dashboard: present, absent, on-leave counts</div>
+<div class="bl">Data sourced from Security module's gate attendance</div>
+<div class="req"><div class="req-title">Working Hours Configuration</div>
+<p>Define minimum hours: <strong>Full Day</strong> (e.g., 8 hrs) and <strong>Half Day</strong> (e.g., 4 hrs). System auto-categorises attendance for payroll. Below half-day threshold = absent.</p></div>
+<h3 class="h2">9.3 Leave Management</h3>
+<div class="bl">Pending requests with approve/reject workflow and employee notifications</div>
+<div class="bl">Detail: employee, type, dates, days, reason</div>
+<h3 class="h2">9.4 Payroll</h3>
+<div class="bl">Monthly summary: employees, gross salary, deductions, net payable</div>
+<div class="req"><div class="req-title">Payroll Master Configuration</div>
+<p>Per-employee salary structure:</p>
+<div class="bl"><strong>Basic Salary</strong>, <strong>Allowances</strong> (HRA, Conveyance, Special, etc.), <strong>Deductions</strong> (PF, ESI, Tax, TDS, Loan EMI), <strong>Bank Details</strong></div>
+<p>Basis for automated monthly payroll calculation.</p></div>
+<h3 class="h2">9.5 Incentive Configuration</h3>
+<div class="req"><div class="req-title">Production-Based Incentive Rules</div>
+<div class="bl"><strong>Part Selection (Multiple)</strong> — One or more finished goods</div>
+<div class="bl"><strong>Operation Selection (Multiple)</strong> — One or more operations</div>
+<div class="bl"><strong>Machine Selection (Multiple)</strong> — One or more machines</div>
+<div class="bl"><strong>Target Production Quantity</strong> — Base target before incentives apply</div>
+<div class="bl"><strong>Range-Based Slabs</strong> — E.g., 101–120 = ₹5/pc, 121–150 = ₹8/pc, 150+ = ₹12/pc</div>
+<p>Auto-calculated from Production module data.</p></div>
+
+<!-- 10 -->
+<h2 class="h1" id="production">10. Production</h2>
+<p>Shop-floor management: OEE monitoring, shift-wise production entry, incentive computation, and scrap/NC tracking.</p>
+<h3 class="h2">10.1 Machine OEE Dashboard</h3>
+<div class="req"><div class="req-title">OEE Monitoring</div>
+<p>All machines with OEE metrics:</p>
+<div class="bl"><strong>Availability</strong> — Running time vs. planned time</div>
+<div class="bl"><strong>Performance</strong> — Actual vs. ideal production rate</div>
+<div class="bl"><strong>Quality</strong> — Good units vs. total (scrap/NC deducted)</div>
+<p>Colour indicators: <strong>Green</strong> (≥85%), <strong>Amber</strong> (60–84%), <strong>Red</strong> (&lt;60%).</p></div>
+<h3 class="h2">10.2 Production Input</h3>
+<div class="req"><div class="req-title">Production Data Entry</div>
+<p>Each entry captures:</p>
+<div class="bl"><strong>Shift</strong> (from Shift Master), <strong>Employee</strong>, <strong>Part</strong> (multiple), <strong>Operation</strong> (multiple), <strong>Machine</strong>, <strong>Quantity</strong></div>
+<p>Feeds: shift/machine reports, OEE, and incentives. Supports batch entry.</p></div>
+<h3 class="h2">10.3 Performance Summaries</h3>
+<div class="bl"><strong>Daily</strong> — Production vs. target, top performers, incentive earnings</div>
+<div class="bl"><strong>Weekly</strong> — Aggregate units, target, total incentives</div>
+<div class="bl"><strong>Monthly</strong> — Aggregate units, target, total incentives</div>
+<h3 class="h2">10.4 Scrap & NC Entry</h3>
+<div class="req"><div class="req-title">Scrap and Non-Conformance Recording</div>
+<p>Per day or shift:</p>
+<div class="bl">Date, shift, machine, part, operation, quantity, rejection reason, reworkable/scrap</div>
+<p>Feeds into OEE Quality component.</p></div>
+
+<!-- 11 -->
+<h2 class="h1" id="masters">11. Masters Module</h2>
+<p>Centralised configuration hub for all reference data. Ensures consistency across modules.</p>
+<h3 class="h2">11.1 Item Master</h3>
+<div class="bl">All items: code, name, description, UOM, HSN/SAC, GST rates, category</div>
+<div class="bl">Classification: <strong>Purchase</strong>, <strong>Sales</strong>, or <strong>Both</strong> — controls item visibility across modules</div>
+<h3 class="h2">11.2 Shift Master</h3>
+<div class="bl">Shifts: name, start/end times, planned downtime, net production time</div>
+<div class="bl">Assignable to production lines or entire facility</div>
+<h3 class="h2">11.3 Machine Master</h3>
+<div class="bl">All machines: code, name, location, manufacturer, model, specs</div>
+<div class="bl">Linked to PM schedules; referenced in Production and OEE</div>
+<h3 class="h2">11.4 Operation Master</h3>
+<div class="bl">Manufacturing operations (turning, milling, grinding, assembly, etc.)</div>
+<div class="bl">Linked to parts for production tracking and incentive calculation</div>
+<h3 class="h2">11.5 Part Master</h3>
+<div class="bl">Per-part configuration of which operation = <strong>"Finished Good"</strong></div>
+<div class="bl">Drives <strong>Finished Goods Available</strong> KPI on Home Screen</div>
+
+<!-- 12 -->
+<h2 class="h1" id="home">12. Home Screen</h2>
+<p>Central dashboard with at-a-glance KPIs, quick module access, and activity feed.</p>
+<h3 class="h2">12.1 KPI Cards</h3>
+<div class="bl"><strong>Today's Sales</strong> — Daily sales value with % change</div>
+<div class="bl"><strong>Finished Goods Available</strong> — Parts completed final operation minus dispatched/invoiced</div>
+<div class="bl"><strong>Pending Payments</strong> — Outstanding payables with invoice count</div>
+<div class="bl"><strong>Pending POs</strong> — Open POs with ASN verification count</div>
+<div class="callout"><strong>Finished Goods Calculation:</strong> When a production slip records the configured final operation for a part as completed, that quantity is added to Finished Goods. Displayed value = completed final operations − dispatched/invoiced quantities.</div>
+<h3 class="h2">12.2 Role-Based Views</h3>
+<p>Role selector: All, Owner, Sales, Operations, HR, Security. Adjusts visible KPIs, modules, and feed.</p>
+<h3 class="h2">12.3 Quick Access</h3>
+<p>Eight module icons: Sales, Inventory, Vendors, Finance, Maintenance, HR, Production, Visitors.</p>
+<h3 class="h2">12.4 Sales Trend</h3>
+<p>7-day bar chart of daily sales values.</p>
+<h3 class="h2">12.5 Recent Activities</h3>
+<p>Chronological feed of events across modules. Each activity tappable for detail view.</p>
+
+<!-- 13 -->
+<h2 class="h1" id="roles">13. User Roles & Permissions</h2>
+<p>Role-based access ensures users see only relevant modules and data.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Role</th><th>Accessible Modules & Capabilities</th></tr></thead>
+<tbody>
+<tr><td>Admin / Owner</td><td>Full access to all modules, Masters, user management, all dashboards</td></tr>
+<tr><td>Sales</td><td>Sales & Invoicing, Customers, Inward POs, limited Finance (receivables)</td></tr>
+<tr><td>Operations</td><td>Production, Inventory, Machine Maintenance, Vendor Management (POs/GRN)</td></tr>
+<tr><td>HR</td><td>HR Management (all), Incentive Configuration, Payroll, Attendance</td></tr>
+<tr><td>Finance</td><td>Finance (all), Payroll review, Invoice review</td></tr>
+<tr><td>Security</td><td>Security: Attendance, Goods Verification, Visitor Verification, QR</td></tr>
+<tr><td>Maintenance</td><td>Machine Maintenance: Schedule, Breakdowns, Spare Parts</td></tr>
+</tbody></table></div>
+
+<!-- 14 -->
+<h2 class="h1" id="deps">14. Cross-Module Dependencies</h2>
+<p>Key data flows between modules:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Source</th><th>Target</th><th>Data Flow</th></tr></thead>
+<tbody>
+<tr><td>Sales (Inward PO)</td><td>Sales (Invoice)</td><td>Customer PO line items populate invoice creation</td></tr>
+<tr><td>Masters (Item Master)</td><td>Sales, Vendor Mgmt</td><td>Item details auto-populate in quotes, invoices, POs, ASNs</td></tr>
+<tr><td>Masters (Part Config)</td><td>Home Screen</td><td>Finished Goods operation config drives KPI</td></tr>
+<tr><td>Vendor Mgmt (ASN)</td><td>Security</td><td>ASN details pre-populate gate goods verification</td></tr>
+<tr><td>Security (Goods Verify)</td><td>Inventory</td><td>Gate verification available as goods receipt reference</td></tr>
+<tr><td>Production (Slips)</td><td>Home Screen</td><td>Completed final operations → Finished Goods count</td></tr>
+<tr><td>Production (Slips)</td><td>HR (Incentives)</td><td>Production quantities feed incentive calculations</td></tr>
+<tr><td>Masters (Shift)</td><td>Production</td><td>Shift definitions used in production entry and OEE</td></tr>
+<tr><td>HR (Incentive Config)</td><td>Production</td><td>Incentive slabs applied to output for payout</td></tr>
+<tr><td>Security (Attendance)</td><td>HR (Attendance)</td><td>Gate attendance flows into HR records</td></tr>
+<tr><td>Visitor Mgmt (Pre-Reg)</td><td>Security (Visitors)</td><td>Pre-registered visitors appear in verification list</td></tr>
+<tr><td>Finance (Invoices)</td><td>Sales (Payment In)</td><td>Invoices referenced for payment recording</td></tr>
+</tbody></table></div>
+
+<!-- 15 -->
+<h2 class="h1" id="glossary">15. Glossary</h2>
+<div class="table-wrap"><table>
+<thead><tr><th style="width:120px">Term</th><th>Definition</th></tr></thead>
+<tbody>
+<tr><td><strong>ASN</strong></td><td>Advance Shipping Notice — Vendor notification of upcoming delivery with contents and logistics</td></tr>
+<tr><td><strong>CGST</strong></td><td>Central Goods and Services Tax — Central government tax on intra-state transactions</td></tr>
+<tr><td><strong>GRN</strong></td><td>Goods Receipt Note — Confirms physical receipt and inspection of goods</td></tr>
+<tr><td><strong>GST</strong></td><td>Goods and Services Tax — India's unified indirect tax (CGST + SGST + IGST)</td></tr>
+<tr><td><strong>HSN</strong></td><td>Harmonised System of Nomenclature — Code to classify goods for taxation</td></tr>
+<tr><td><strong>IGST</strong></td><td>Integrated Goods and Services Tax — Tax on inter-state transactions</td></tr>
+<tr><td><strong>KPI</strong></td><td>Key Performance Indicator — Measurable metric for performance evaluation</td></tr>
+<tr><td><strong>MR</strong></td><td>Material Request — Internal request for materials from stores/inventory</td></tr>
+<tr><td><strong>NC</strong></td><td>Non-Conformance — Output not meeting quality specifications</td></tr>
+<tr><td><strong>OEE</strong></td><td>Overall Equipment Effectiveness — Availability × Performance × Quality</td></tr>
+<tr><td><strong>PO</strong></td><td>Purchase Order — Buyer-to-seller document for items, quantities, and prices</td></tr>
+<tr><td><strong>SGST</strong></td><td>State Goods and Services Tax — State government tax on intra-state transactions</td></tr>
+<tr><td><strong>SME</strong></td><td>Small and Medium-sized Enterprise</td></tr>
+</tbody></table></div>
+
+<div class="end-mark">— End of Document —</div>
+
+</div></div>
+
+<script>
+const sidebar=document.getElementById('sidebar'),overlay=document.getElementById('overlay'),menuBtn=document.getElementById('menuBtn'),navLinks=document.querySelectorAll('.nav-link'),sectionIds=Array.from(navLinks).map(a=>a.getAttribute('data-target'));
+function toggleMenu(){const o=sidebar.classList.contains('open');sidebar.classList.toggle('open');overlay.classList.toggle('open');menuBtn.classList.toggle('open');document.body.style.overflow=o?'':'hidden'}
+function navigateTo(id){sidebar.classList.remove('open');overlay.classList.remove('open');menuBtn.classList.remove('open');document.body.style.overflow='';setTimeout(()=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'})},120)}
+function updateNav(){let c=sectionIds[0];for(const id of sectionIds){const el=document.getElementById(id);if(el&&el.getBoundingClientRect().top<=100)c=id}navLinks.forEach(l=>l.classList.toggle('active',l.getAttribute('data-target')===c))}
+window.addEventListener('scroll',updateNav,{passive:true});updateNav();
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sidebar.classList.contains('open'))toggleMenu()});
+</script>
+</body>
+</html>
