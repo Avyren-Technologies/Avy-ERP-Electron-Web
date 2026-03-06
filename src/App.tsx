@@ -1,74 +1,77 @@
-import { useState } from 'react'
-import './App.css'
-import { Dashboard } from './modules/dashboard/Dashboard'
-import { HRModule } from './modules/hr/HRModule'
-import { MachineModule } from './modules/machine/MachineModule'
-import { VisitorModule } from './modules/visitor/VisitorModule'
+import React from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { AuthLayout } from "./layouts/AuthLayout";
+import { DashboardLayout } from "./layouts/DashboardLayout";
+import { useAuthStore } from "./store/useAuthStore";
+
+// Screens (Implemented)
+import { LandingScreen } from "./features/auth/LandingScreen";
+import { LoginScreen } from "./features/auth/LoginScreen";
+import { DashboardScreen } from "./features/super-admin/DashboardScreen";
+import { CompanyListScreen } from "./features/super-admin/CompanyListScreen";
+import { CompanyDetailScreen } from "./features/super-admin/CompanyDetailScreen";
+import { AddCompanyWizard } from "./features/super-admin/AddCompanyWizard";
+import { BillingOverviewScreen } from "./features/super-admin/BillingOverviewScreen";
+import { PlatformMonitorScreen } from "./features/super-admin/PlatformMonitorScreen";
+import { ModuleCatalogueScreen } from "./features/super-admin/ModuleCatalogueScreen";
+import { ModuleAssignmentScreen } from "./features/super-admin/ModuleAssignmentScreen";
+
+// Placeholder components to prevent router crashes before we build them
+const Placeholder = ({ name }: { name: string }) => (
+  <div className="flex items-center justify-center p-12 h-full">
+    <div className="text-center">
+      <h2 className="text-2xl font-bold text-neutral-400 mb-2">{name}</h2>
+      <p className="text-neutral-500">Screen pending implementation</p>
+    </div>
+  </div>
+);
+
+// Private Route Wrapper
+const RequireAuth = ({ children }: { children: React.ReactNode }) => {
+  const status = useAuthStore((s) => s.status);
+
+  if (status === 'signOut') {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+};
 
 function App() {
-  const [activeModule, setActiveModule] = useState('dashboard')
-
   return (
-    <div className="app-layout">
-      {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="brand">
-          <div className="brand-label">Avyren ERP</div>
-          <h1>Avy-ERP</h1>
-        </div>
+    <Routes>
+      {/* Public Auth Routes */}
+      <Route element={<AuthLayout />}>
+        <Route path="/" element={<LandingScreen />} />
+        <Route path="/login" element={<LoginScreen />} />
+      </Route>
 
-        <nav className="nav-menu">
-          <button
-            className={`nav-item ${activeModule === 'dashboard' ? 'active' : ''}`}
-            onClick={() => setActiveModule('dashboard')}
-          >
-            📊 Dashboard
-          </button>
+      {/* Protected App Routes */}
+      <Route
+        path="/app"
+        element={
+          <RequireAuth>
+            <DashboardLayout />
+          </RequireAuth>
+        }
+      >
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<DashboardScreen />} />
+        <Route path="companies" element={<CompanyListScreen />} />
+        <Route path="companies/add" element={<AddCompanyWizard />} />
+        <Route path="companies/:id" element={<CompanyDetailScreen />} />
+        <Route path="companies/:id/modules" element={<ModuleAssignmentScreen />} />
+        <Route path="billing" element={<BillingOverviewScreen />} />
+        <Route path="modules" element={<ModuleCatalogueScreen />} />
+        <Route path="monitor" element={<PlatformMonitorScreen />} />
+        <Route path="notifications" element={<Placeholder name="Notifications" />} />
+        <Route path="settings" element={<Placeholder name="Settings" />} />
+      </Route>
 
-          <div className="brand-label" style={{ marginTop: '16px', fontSize: '9px' }}>Modules</div>
-
-          <button
-            className={`nav-item ${activeModule === 'hr' ? 'active-hr' : ''}`}
-            onClick={() => setActiveModule('hr')}
-          >
-            👥 HR Management
-          </button>
-          <button
-            className={`nav-item ${activeModule === 'machine' ? 'active-mach' : ''}`}
-            onClick={() => setActiveModule('machine')}
-          >
-            ⚙️ Machine Config
-          </button>
-          <button
-            className={`nav-item ${activeModule === 'visitor' ? 'active-vis' : ''}`}
-            onClick={() => setActiveModule('visitor')}
-          >
-            🚪 Visitor Board
-          </button>
-        </nav>
-      </aside>
-
-      {/* Main Content */}
-      <main className="main-wrapper">
-        <header className="topbar">
-          <div className="topbar-title">
-            {activeModule === 'dashboard' && 'Dashboard Overview'}
-            {activeModule === 'hr' && 'HR Management'}
-            {activeModule === 'machine' && 'Machine Master & PM'}
-            {activeModule === 'visitor' && 'Visitor Logistics'}
-          </div>
-        </header>
-
-        <section className="content-area">
-          {activeModule === 'dashboard' && <Dashboard />}
-          {activeModule === 'hr' && <HRModule />}
-          {activeModule === 'machine' && <MachineModule />}
-          {activeModule === 'visitor' && <VisitorModule />}
-        </section>
-      </main>
-    </div>
-  )
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
 }
 
-export default App
-
+export default App;

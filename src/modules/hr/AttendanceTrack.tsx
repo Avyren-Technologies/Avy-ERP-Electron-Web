@@ -22,7 +22,7 @@ export const AttendanceTrack: React.FC = () => {
         };
     });
 
-    const handleStatusChange = (empId: string, newStatus: any) => {
+    const handleStatusChange = (empId: string, newStatus: "Present" | "Absent" | "Half Day" | "On Leave") => {
         const id = `${selectedDate}-${empId}`;
         markAttendance({
             id,
@@ -46,7 +46,7 @@ export const AttendanceTrack: React.FC = () => {
             render: (row) => (
                 <select
                     value={row.status}
-                    onChange={(e) => handleStatusChange(row.empId, e.target.value)}
+                    onChange={(e) => handleStatusChange(row.empId, e.target.value as "Present" | "Absent" | "Half Day" | "On Leave")}
                     style={{
                         padding: '4px 8px',
                         borderRadius: '6px',

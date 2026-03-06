@@ -126,7 +126,7 @@ export const EmployeeDirectory: React.FC = () => {
                             <input
                                 type="text"
                                 value={formData.role}
-                                onChange={e => setFormData({ ...formData, role: e.target.value })}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, role: e.target.value })}
                                 style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-strong)', color: 'white' }}
                             />
                         </div>
@@ -168,9 +168,7 @@ export const EmployeeDirectory: React.FC = () => {
                         <div>
                             <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Status</label>
                             <select
-                                value={formData.status}
-                                onChange={e => setFormData({ ...formData, status: e.target.value as any })}
-                                style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-strong)', color: 'white' }}
+                                onChange={e => setFormData({ ...formData, status: e.target.value as Employee["status"] })}
                             >
                                 <option value="Active">Active</option>
                                 <option value="On Leave">On Leave</option>
