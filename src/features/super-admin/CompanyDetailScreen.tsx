@@ -1,300 +1,842 @@
-import { useParams, Link } from "react-router-dom";
+// ============================================================
+// Company Detail Screen — Comprehensive Tenant View
+// Shows all 15 wizard sections in a rich, read-only detail page
+// ============================================================
+import { useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 import {
-    Building2,
-    ArrowLeft,
-    Server,
-    Users,
-    CreditCard,
-    AlertTriangle,
-    Blocks,
-    PowerOff,
-    Trash2,
-    Calendar,
-    Plus,
-    ArrowRight
-} from "lucide-react";
+    Building2, ArrowLeft, Server, Users, AlertTriangle,
+    Blocks, PowerOff, Trash2, Calendar, MapPin, Mail, Phone,
+    ChevronDown, ChevronUp, Star, Shield, Clock, Settings,
+    Landmark, CheckCircle2, XCircle, ExternalLink, Edit3, RefreshCw,
+} from 'lucide-react';
 
-// Mock Data (matches mobile)
+// ============================================================
+// MOCK DATA — Replace with API call in production
+// ============================================================
 const TENANT = {
-    id: 1,
-    name: "Apex Manufacturing Pvt. Ltd.",
-    status: "Active",
-    industry: "Automotive",
-    adminEmail: "admin@apex.com",
-    adminPhone: "+91 98765 43210",
-    address: "Plot 45, MIDC, Pune, Maharashtra",
-    gst: "27AABCA1234H1Z5",
-    createdAt: "Jan 12, 2026",
-    serverType: "custom",
-    customUrl: "https://erp.apex.com/api",
-    users: 156,
+    id: 'APEX-001',
+    displayName: 'Apex Manufacturing Pvt. Ltd.',
+    legalName: 'Apex Manufacturing Private Limited',
+    status: 'Active' as const,
+    industry: 'Automotive',
+    businessType: 'Private Limited',
+    companyCode: 'APEX',
+    cin: 'U28999MH2018PTC305678',
+    incorporationDate: '15 Jan 2018',
+    employees: '500-1000',
+    website: 'https://apexmfg.com',
+    emailDomain: 'apex.com',
+    logoUrl: null,
+
+    // Statutory
+    pan: 'AABCA1234H',
+    tan: 'PNEA12345E',
+    gstin: '27AABCA1234H1Z5',
+    pfRegNo: 'MH/PUN/0012345',
+    esiCode: '31-00-123456-000-0001',
+    rocState: 'Maharashtra',
+
+    // Address
+    hqAddress: 'Plot 45, MIDC Industrial Area, Bhosari',
+    hqCity: 'Pune',
+    hqState: 'Maharashtra',
+    hqPin: '411026',
+
+    // Fiscal
+    fy: 'April – March',
+    payrollFreq: 'Monthly',
+    timezone: 'IST UTC+5:30',
+    workingDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+
+    // Preferences
+    currency: 'INR — ₹',
+    language: 'English',
+    dateFormat: 'DD/MM/YYYY',
+    mfa: true,
+    ess: true,
+    mobileApp: true,
+    biometric: true,
+    razorpayEnabled: true,
+
+    // Endpoint
+    endpointType: 'custom' as 'default' | 'custom',
+    customUrl: 'https://erp.apex.com/api',
+    endpointStatus: 'healthy' as 'healthy' | 'degraded' | 'unreachable',
+    region: '',
+
+    // Modules
+    modules: [
+        { id: 'masters', name: 'Masters & Config', icon: '⚙️', price: 0 },
+        { id: 'security', name: 'Security & RBAC', icon: '🔐', price: 2000 },
+        { id: 'hr', name: 'HR & Payroll', icon: '👥', price: 8000 },
+        { id: 'production', name: 'Production', icon: '🏭', price: 6000 },
+        { id: 'machine', name: 'Machine Maintenance', icon: '🔧', price: 4000 },
+        { id: 'inventory', name: 'Inventory', icon: '📦', price: 5000 },
+        { id: 'vendor', name: 'Vendor Management', icon: '🤝', price: 3000 },
+        { id: 'sales', name: 'Sales & Invoicing', icon: '💰', price: 4500 },
+    ],
+
+    // User Tier
+    tier: 'Growth',
+    tierRange: '51–200 users',
+    tierBasePrice: 15000,
+    perUserPrice: 150,
+    billingCycle: 'Annual',
+    trialDays: 14,
+    renewalDate: 'Apr 12, 2027',
+
+    // Users
+    activeUsers: 156,
     maxUsers: 200,
-    modules: 8,
-    tier: "Growth",
-    amount: "₹18,500/mo",
-    renewalDate: "Apr 12, 2026",
-    customPricing: false,
+
+    // Contacts
+    contacts: [
+        { name: 'Priya Sharma', role: 'HR Manager', email: 'priya@apex.com', phone: '+91 99821 43210', type: 'Primary' },
+        { name: 'Vikram Nair', role: 'IT Admin', email: 'vikram@apex.com', phone: '+91 98765 12345', type: 'IT' },
+    ],
+
+    // Locations
+    locations: [
+        { name: 'Pune HQ', type: 'Headquarters', city: 'Pune', state: 'Maharashtra', isHQ: true, status: 'Active', geoEnabled: true },
+        { name: 'Mumbai Branch', type: 'Branch Office', city: 'Mumbai', state: 'Maharashtra', isHQ: false, status: 'Active', geoEnabled: false },
+        { name: 'Nashik Plant', type: 'Manufacturing Plant', city: 'Nashik', state: 'Maharashtra', isHQ: false, status: 'Active', geoEnabled: true },
+    ],
+
+    // Shifts
+    shifts: [
+        { name: 'Morning Shift', time: '06:00 – 14:00', breaks: 1 },
+        { name: 'Afternoon Shift', time: '14:00 – 22:00', breaks: 1 },
+        { name: 'Night Shift', time: '22:00 – 06:00', breaks: 1 },
+    ],
+
+    // Controls
+    controls: {
+        ncEditMode: false, loadUnload: true, cycleTime: true,
+        payrollLock: true, leaveCarryForward: true, overtimeApproval: true,
+        mfa: true, backdatedEntry: false, docNumberLock: true,
+    },
+
+    createdAt: 'Jan 12, 2026',
+    createdBy: 'super.admin',
 };
 
-const ACTIVE_MODULES = [
-    "Masters", "Security", "HR Management", "Production",
-    "Machine Maintenance", "Inventory", "Vendor Management", "Sales & Invoicing"
-];
+// ============================================================
+// Reusable detail primitives
+// ============================================================
+
+function DetailField({ label, value, mono = false }: { label: string; value?: string | null; mono?: boolean }) {
+    return (
+        <div>
+            <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">{label}</p>
+            <p className={cn(
+                'text-sm font-semibold text-primary-950',
+                mono && 'font-mono bg-neutral-50 px-2 py-1 rounded-lg border border-neutral-100 text-xs inline-block',
+                !value && 'text-neutral-300 italic font-normal'
+            )}>
+                {value || '—'}
+            </p>
+        </div>
+    );
+}
+
+function StatusPill({ status }: { status: string }) {
+    const config: Record<string, { bg: string; text: string; dot: string }> = {
+        Active: { bg: 'bg-success-50 border-success-200', text: 'text-success-700', dot: 'bg-success-500' },
+        Draft: { bg: 'bg-warning-50 border-warning-200', text: 'text-warning-700', dot: 'bg-warning-500' },
+        Pilot: { bg: 'bg-info-50 border-info-200', text: 'text-info-700', dot: 'bg-info-500' },
+        Suspended: { bg: 'bg-danger-50 border-danger-200', text: 'text-danger-700', dot: 'bg-danger-500' },
+    };
+    const cfg = config[status] ?? config.Draft;
+    return (
+        <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border', cfg.bg, cfg.text)}>
+            <span className={cn('w-1.5 h-1.5 rounded-full', cfg.dot)} />
+            {status}
+        </span>
+    );
+}
+
+function ControlBadge({ label, value }: { label: string; value: boolean }) {
+    return (
+        <div className={cn(
+            'flex items-center gap-2.5 px-4 py-3 rounded-xl border',
+            value ? 'bg-success-50 border-success-100' : 'bg-neutral-50 border-neutral-100'
+        )}>
+            {value
+                ? <CheckCircle2 size={14} className="text-success-500 flex-shrink-0" />
+                : <XCircle size={14} className="text-neutral-300 flex-shrink-0" />}
+            <span className={cn('text-xs font-semibold', value ? 'text-success-800' : 'text-neutral-400')}>
+                {label}
+            </span>
+        </div>
+    );
+}
+
+function SectionHeader({
+    icon: Icon,
+    title,
+    subtitle,
+    action,
+    expanded,
+    onToggle,
+}: {
+    icon: React.ComponentType<{ className?: string; size?: number }>;
+    title: string;
+    subtitle?: string;
+    action?: React.ReactNode;
+    expanded?: boolean;
+    onToggle?: () => void;
+}) {
+    return (
+        <div
+            className={cn(
+                'flex items-center justify-between',
+                onToggle && 'cursor-pointer'
+            )}
+            onClick={onToggle}
+        >
+            <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary-50 flex items-center justify-center flex-shrink-0">
+                    <Icon size={16} className="text-primary-600" />
+                </div>
+                <div>
+                    <h3 className="text-sm font-bold text-primary-950">{title}</h3>
+                    {subtitle && <p className="text-xs text-neutral-400 mt-0.5">{subtitle}</p>}
+                </div>
+            </div>
+            <div className="flex items-center gap-2">
+                {action}
+                {onToggle !== undefined && (
+                    expanded
+                        ? <ChevronUp size={15} className="text-neutral-400" />
+                        : <ChevronDown size={15} className="text-neutral-400" />
+                )}
+            </div>
+        </div>
+    );
+}
+
+function Card({
+    children,
+    className,
+}: {
+    children: React.ReactNode;
+    className?: string;
+}) {
+    return (
+        <div className={cn('bg-white rounded-2xl border border-neutral-100 shadow-sm overflow-hidden', className)}>
+            {children}
+        </div>
+    );
+}
+
+function CardBody({ children, className }: { children: React.ReactNode; className?: string }) {
+    return <div className={cn('p-6', className)}>{children}</div>;
+}
+
+function EditButton({ label = 'Edit' }: { label?: string }) {
+    return (
+        <button
+            type="button"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-primary-600
+                bg-primary-50 hover:bg-primary-100 border border-primary-100 transition-colors"
+        >
+            <Edit3 size={11} />
+            {label}
+        </button>
+    );
+}
+
+// ============================================================
+// Main Screen
+// ============================================================
 
 export function CompanyDetailScreen() {
-    useParams(); // Kept for future use if needed, but avoiding the unused destructured variable error
+    useParams();
+
+    const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+        statutory: false,
+        fiscal: false,
+        preferences: false,
+        controls: false,
+        shifts: false,
+    });
+
+    const toggle = (key: string) =>
+        setExpandedSections((prev) => ({ ...prev, [key]: !prev[key] }));
+
+    const totalMonthlyModules = TENANT.modules.reduce((s, m) => s + m.price, 0);
+    const totalMonthly = totalMonthlyModules + TENANT.tierBasePrice;
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 pb-12">
+        <div className="space-y-5 animate-in fade-in duration-300 pb-16">
 
-            {/* Breadcrumbs & Actions */}
+            {/* ===== BREADCRUMB ===== */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <Link to="/app/companies" className="p-2 -ml-2 rounded-lg hover:bg-neutral-100 text-neutral-500 transition-colors">
-                        <ArrowLeft className="w-5 h-5" />
+                    <Link
+                        to="/app/companies"
+                        className="p-2 -ml-2 rounded-xl hover:bg-neutral-100 text-neutral-500 transition-colors"
+                    >
+                        <ArrowLeft size={18} />
                     </Link>
-                    <div className="flex items-center gap-2 text-sm text-neutral-500 font-medium">
-                        <Link to="/app/companies" className="hover:text-primary-600">Companies</Link>
+                    <div className="flex items-center gap-2 text-sm text-neutral-400 font-medium">
+                        <Link to="/app/companies" className="hover:text-primary-600 transition-colors">Companies</Link>
                         <span>/</span>
-                        <span className="text-neutral-900">Tenant Details</span>
+                        <span className="text-neutral-800 font-semibold">{TENANT.displayName}</span>
                     </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-neutral-200 text-sm font-bold text-neutral-600 hover:bg-neutral-50 transition-colors">
+                        <RefreshCw size={13} />
+                        Sync Status
+                    </button>
                 </div>
             </div>
 
-            {/* Main Header Card */}
-            <div className="bg-white rounded-2xl border border-neutral-100 shadow-xl shadow-neutral-200/40 overflow-hidden">
-                {/* Gradient Top */}
-                <div className="h-24 w-full bg-gradient-to-r from-primary-600 via-primary-500 to-accent-500" />
-
-                {/* Profile Info */}
-                <div className="px-8 pb-8 relative">
-                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                        <div className="flex items-end gap-5 -mt-10">
-                            <div className="w-24 h-24 rounded-2xl bg-white p-1.5 shadow-lg shadow-neutral-900/10">
-                                <div className="w-full h-full rounded-xl bg-gradient-to-tr from-primary-100 to-accent-100 border border-primary-200/50 flex items-center justify-center">
-                                    <Building2 className="w-10 h-10 text-primary-600" />
-                                </div>
-                            </div>
-                            <div className="mb-1">
-                                <div className="flex items-center gap-3 mb-1">
-                                    <h1 className="text-2xl font-bold text-neutral-900">{TENANT.name}</h1>
-                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border bg-success-50 text-success-700 border-success-200">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-success-500" />
-                                        {TENANT.status}
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-4 text-sm text-neutral-500 font-medium">
-                                    <span className="bg-neutral-100 px-2 py-0.5 rounded text-neutral-700">{TENANT.industry}</span>
-                                    <span>ID: {TENANT.id}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Quick Stats Header */}
-                        <div className="flex gap-6 border-t md:border-t-0 border-neutral-100 pt-4 md:pt-0">
-                            <div>
-                                <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1">Users</p>
-                                <p className="text-lg font-bold text-neutral-900">{TENANT.users} <span className="text-sm text-neutral-400 font-medium">/ {TENANT.maxUsers}</span></p>
-                            </div>
-                            <div className="w-px h-10 bg-neutral-200 hidden md:block" />
-                            <div>
-                                <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1">Modules</p>
-                                <p className="text-lg font-bold text-neutral-900">{TENANT.modules} <span className="text-sm text-neutral-400 font-medium active">active</span></p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Grid Layout for Detailed Sections */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-                {/* LEFT COLUMN */}
-                <div className="lg:col-span-2 space-y-6">
-
-                    {/* Company & Admin Info */}
-                    <div className="bg-white rounded-2xl border border-neutral-100 p-6 shadow-sm">
-                        <h2 className="text-lg font-bold text-neutral-900 mb-6 flex items-center gap-2">
-                            <Building2 className="w-5 h-5 text-neutral-400" />
-                            Company Information
-                        </h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12">
-                            <div>
-                                <p className="text-sm text-neutral-400 mb-1">Admin Email</p>
-                                <p className="text-base font-semibold text-neutral-900">{TENANT.adminEmail}</p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-neutral-400 mb-1">Admin Phone</p>
-                                <p className="text-base font-semibold text-neutral-900">{TENANT.adminPhone}</p>
-                            </div>
-                            <div className="md:col-span-2">
-                                <p className="text-sm text-neutral-400 mb-1">HQ Address</p>
-                                <p className="text-base font-medium text-neutral-900">{TENANT.address}</p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-neutral-400 mb-1">GST Number</p>
-                                <p className="text-base font-medium text-neutral-900">{TENANT.gst}</p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-neutral-400 mb-1">Created Date</p>
-                                <p className="text-base font-medium text-neutral-900">{TENANT.createdAt}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* User Limits & Capacity */}
-                    <div className="bg-white rounded-2xl border border-neutral-100 p-6 shadow-sm">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-lg font-bold text-neutral-900 flex items-center gap-2">
-                                <Users className="w-5 h-5 text-neutral-400" />
-                                User Limits
-                            </h2>
-                            <button className="text-sm font-semibold text-primary-600 hover:text-primary-700 bg-primary-50 hover:bg-primary-100 px-3 py-1.5 rounded-lg transition-colors">
-                                Edit Limit
-                            </button>
-                        </div>
-
-                        <div className="flex items-center gap-8 mb-4">
-                            <div className="flex-1">
-                                <div className="flex justify-between items-end mb-2">
-                                    <span className="text-3xl font-extrabold text-neutral-900">
-                                        {TENANT.users}
-                                        <span className="text-lg text-neutral-400 font-medium ml-1 block sm:inline">active users</span>
-                                    </span>
-                                    <span className="text-sm font-bold text-neutral-500">Max Cap: {TENANT.maxUsers}</span>
-                                </div>
-                                <div className="h-3 w-full bg-neutral-100 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-gradient-to-r from-primary-500 to-accent-500 rounded-full"
-                                        style={{ width: `${(TENANT.users / TENANT.maxUsers) * 100}%` }}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                        <p className="text-sm text-neutral-500">
-                            This limit overrides standard tier thresholds. System blocks new registrations when reached.
-                        </p>
-                    </div>
-
-                    {/* Server Endpoint */}
-                    <div className="bg-white rounded-2xl border border-neutral-100 p-6 shadow-sm">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-lg font-bold text-neutral-900 flex items-center gap-2">
-                                <Server className="w-5 h-5 text-neutral-400" />
-                                Server Endpoint
-                            </h2>
-                            <button className="text-sm font-semibold text-neutral-600 border border-neutral-200 hover:bg-neutral-50 px-3 py-1.5 rounded-lg transition-colors">
-                                Configure
-                            </button>
-                        </div>
-
-                        <div className="flex items-start gap-4 p-4 rounded-xl border-2 border-primary-100 bg-primary-50">
-                            <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
-                                <Server className="w-5 h-5 text-primary-600" />
-                            </div>
-                            <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                    <p className="font-bold text-primary-950">Custom Self-Hosted Server</p>
-                                    <span className="px-2 py-0.5 text-[10px] uppercase font-bold text-success-700 bg-success-100 rounded-full">Connected</span>
-                                </div>
-                                <p className="text-sm text-primary-700 font-mono bg-white inline-block px-2 py-1 rounded border border-primary-200 mt-1">{TENANT.customUrl}</p>
-                                <p className="text-xs text-primary-600 mt-2">All mobile and web clients for this tenant will route traffic to this base URL.</p>
-                            </div>
-                        </div>
+            {/* ===== HERO HEADER CARD ===== */}
+            <Card>
+                {/* Gradient banner */}
+                <div className="h-28 bg-gradient-to-r from-primary-700 via-primary-500 to-accent-500 relative overflow-hidden">
+                    <div className="absolute inset-0 opacity-20" style={{
+                        backgroundImage: 'radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 50%, white 1px, transparent 1px)',
+                        backgroundSize: '40px 40px',
+                    }} />
+                    <div className="absolute bottom-4 right-6 text-white/20 font-black text-5xl tracking-tighter select-none">
+                        {TENANT.companyCode}
                     </div>
                 </div>
 
-                {/* RIGHT COLUMN */}
-                <div className="space-y-6">
-
-                    {/* Subscription Info */}
-                    <div className="bg-white rounded-2xl border border-neutral-100 p-6 shadow-sm relative overflow-hidden">
-                        {/* Decor */}
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-success-100 to-transparent rounded-bl-full opacity-50 pointer-events-none" />
-
-                        <h2 className="text-lg font-bold text-neutral-900 mb-6 flex items-center gap-2">
-                            <CreditCard className="w-5 h-5 text-neutral-400" />
-                            Subscription
-                        </h2>
-
-                        <div className="mb-6">
-                            <p className="text-sm text-neutral-500 font-medium mb-1">Current Plan</p>
-                            <div className="flex items-center gap-2">
-                                <span className="text-2xl font-bold text-neutral-900">{TENANT.tier}</span>
-                                {TENANT.customPricing && (
-                                    <span className="px-2 py-1 text-xs font-bold text-accent-700 bg-accent-50 rounded-md">Custom Price</span>
+                <CardBody>
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 -mt-14">
+                        {/* Logo + Name */}
+                        <div className="flex items-end gap-5">
+                            <div className="w-24 h-24 rounded-2xl bg-white border-4 border-white shadow-xl shadow-neutral-900/10 flex-shrink-0 overflow-hidden">
+                                {TENANT.logoUrl ? (
+                                    <img src={TENANT.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                                ) : (
+                                    <div className="w-full h-full bg-gradient-to-tr from-primary-100 to-accent-100 flex items-center justify-center">
+                                        <Building2 size={32} className="text-primary-500" />
+                                    </div>
                                 )}
                             </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div className="flex justify-between items-center border-b border-neutral-100 pb-4">
-                                <span className="text-sm text-neutral-500">Monthly Amount</span>
-                                <span className="font-bold text-neutral-900">{TENANT.amount}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm text-neutral-500">Next Renewal</span>
-                                <span className="font-bold text-neutral-900 flex items-center gap-1.5">
-                                    <Calendar className="w-4 h-4 text-neutral-400" />
-                                    {TENANT.renewalDate}
-                                </span>
-                            </div>
-                        </div>
-
-                        <button className="w-full mt-6 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-900 font-semibold rounded-xl text-sm transition-colors">
-                            View Billing History
-                        </button>
-                    </div>
-
-                    {/* Active Modules */}
-                    <div className="bg-white rounded-2xl border border-neutral-100 p-6 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-lg font-bold text-neutral-900 flex items-center gap-2">
-                                <Blocks className="w-5 h-5 text-neutral-400" />
-                                Active Modules
-                            </h2>
-                            <button className="text-sm text-primary-600 font-semibold hover:text-primary-700">Manage</button>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                            {ACTIVE_MODULES.map(m => (
-                                <div key={m} className="px-3 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-700 font-medium whitespace-nowrap">
-                                    {m}
+                            <div className="mb-1">
+                                <div className="flex items-center gap-3 flex-wrap mb-1">
+                                    <h1 className="text-2xl font-bold text-primary-950">{TENANT.displayName}</h1>
+                                    <StatusPill status={TENANT.status} />
                                 </div>
-                            ))}
-                            <div className="px-3 py-1.5 border border-dashed border-neutral-300 rounded-lg text-sm text-neutral-400 font-medium flex items-center gap-1 cursor-pointer hover:bg-neutral-50">
-                                <Plus className="w-4 h-4" />
-                                Assign More
+                                <p className="text-sm text-neutral-500 font-medium">{TENANT.legalName}</p>
+                                <div className="flex items-center gap-3 mt-2 text-xs text-neutral-400 flex-wrap">
+                                    <span className="bg-neutral-100 px-2.5 py-1 rounded-lg font-semibold text-neutral-600">{TENANT.industry}</span>
+                                    <span className="bg-neutral-100 px-2.5 py-1 rounded-lg font-semibold text-neutral-600">{TENANT.businessType}</span>
+                                    <span className="font-mono text-neutral-400">ID: {TENANT.id}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Quick Stats */}
+                        <div className="flex gap-6 border-t md:border-t-0 border-neutral-100 pt-4 md:pt-0 flex-wrap">
+                            <div>
+                                <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1">Users</p>
+                                <p className="text-xl font-bold text-primary-950">
+                                    {TENANT.activeUsers}
+                                    <span className="text-sm text-neutral-400 font-medium"> / {TENANT.maxUsers}</span>
+                                </p>
+                            </div>
+                            <div className="w-px h-10 bg-neutral-200 hidden md:block self-center" />
+                            <div>
+                                <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1">Modules</p>
+                                <p className="text-xl font-bold text-primary-950">
+                                    {TENANT.modules.length}
+                                    <span className="text-sm text-neutral-400 font-medium"> active</span>
+                                </p>
+                            </div>
+                            <div className="w-px h-10 bg-neutral-200 hidden md:block self-center" />
+                            <div>
+                                <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1">Locations</p>
+                                <p className="text-xl font-bold text-primary-950">
+                                    {TENANT.locations.length}
+                                </p>
+                            </div>
+                            <div className="w-px h-10 bg-neutral-200 hidden md:block self-center" />
+                            <div>
+                                <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1">Created</p>
+                                <p className="text-sm font-bold text-primary-950">{TENANT.createdAt}</p>
+                                <p className="text-[10px] text-neutral-400">by {TENANT.createdBy}</p>
                             </div>
                         </div>
                     </div>
+                </CardBody>
+            </Card>
 
-                    {/* Danger Zone */}
-                    <div className="bg-white rounded-2xl border border-danger-200 p-6 shadow-sm relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-danger-50 to-transparent rounded-bl-full opacity-50 pointer-events-none" />
+            {/* ===== MAIN GRID ===== */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-                        <h2 className="text-lg font-bold text-danger-900 mb-4 flex items-center gap-2">
-                            <AlertTriangle className="w-5 h-5 text-danger-500" />
-                            Tenant Actions
-                        </h2>
+                {/* ========= LEFT COLUMN (col-span-2) ========= */}
+                <div className="lg:col-span-2 space-y-5">
 
-                        <div className="space-y-3">
-                            <button className="w-full flex items-center justify-between px-4 py-3 bg-white border border-danger-100 hover:bg-danger-50 text-danger-700 rounded-xl transition-colors text-sm font-semibold group">
+                    {/* --- Company Identity --- */}
+                    <Card>
+                        <CardBody>
+                            <SectionHeader icon={Building2} title="Company Identity" action={<EditButton />} />
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-5 mt-5">
+                                <DetailField label="Display Name" value={TENANT.displayName} />
+                                <DetailField label="Legal Name" value={TENANT.legalName} />
+                                <DetailField label="Company Code" value={TENANT.companyCode} mono />
+                                <DetailField label="CIN" value={TENANT.cin} mono />
+                                <DetailField label="Incorporation Date" value={TENANT.incorporationDate} />
+                                <DetailField label="Employee Count" value={TENANT.employees} />
                                 <div className="flex items-center gap-2">
-                                    <PowerOff className="w-4 h-4" />
+                                    <div>
+                                        <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">Website</p>
+                                        {TENANT.website ? (
+                                            <a href={TENANT.website} target="_blank" rel="noopener noreferrer"
+                                                className="text-sm font-semibold text-primary-600 hover:text-primary-700 flex items-center gap-1">
+                                                {TENANT.website} <ExternalLink size={11} />
+                                            </a>
+                                        ) : <p className="text-neutral-300 text-sm italic">—</p>}
+                                    </div>
+                                </div>
+                                <DetailField label="Email Domain" value={`@${TENANT.emailDomain}`} mono />
+                            </div>
+                        </CardBody>
+                    </Card>
+
+                    {/* --- Statutory & Tax (collapsible) --- */}
+                    <Card>
+                        <CardBody>
+                            <SectionHeader
+                                icon={Landmark}
+                                title="Statutory & Tax"
+                                action={<EditButton />}
+                                expanded={expandedSections.statutory}
+                                onToggle={() => toggle('statutory')}
+                            />
+                            {expandedSections.statutory && (
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-5 mt-5 animate-in fade-in duration-200">
+                                    <DetailField label="PAN" value={TENANT.pan} mono />
+                                    <DetailField label="TAN" value={TENANT.tan} mono />
+                                    <DetailField label="GSTIN (Primary)" value={TENANT.gstin} mono />
+                                    <DetailField label="PF Reg. No." value={TENANT.pfRegNo} mono />
+                                    <DetailField label="ESI Code" value={TENANT.esiCode} mono />
+                                    <DetailField label="ROC Filing State" value={TENANT.rocState} />
+                                </div>
+                            )}
+                            {!expandedSections.statutory && (
+                                <div className="flex items-center gap-2 mt-4">
+                                    {[TENANT.pan, TENANT.gstin, TENANT.pfRegNo].map((val, i) => (
+                                        <span key={i} className="font-mono text-xs bg-neutral-50 border border-neutral-100 px-2.5 py-1 rounded-lg text-neutral-600">
+                                            {val}
+                                        </span>
+                                    ))}
+                                    <span className="text-xs text-neutral-400">+ more…</span>
+                                </div>
+                            )}
+                        </CardBody>
+                    </Card>
+
+                    {/* --- HQ Address --- */}
+                    <Card>
+                        <CardBody>
+                            <SectionHeader icon={MapPin} title="Registered & HQ Address" action={<EditButton />} />
+                            <div className="mt-4 flex items-start gap-4 bg-neutral-50 rounded-xl px-5 py-4 border border-neutral-100">
+                                <MapPin size={16} className="text-primary-500 flex-shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="text-sm font-bold text-primary-950">{TENANT.hqAddress}</p>
+                                    <p className="text-sm text-neutral-600">
+                                        {TENANT.hqCity}, {TENANT.hqState} – {TENANT.hqPin}
+                                    </p>
+                                    <p className="text-xs text-primary-500 mt-1 font-semibold">Headquarters</p>
+                                </div>
+                            </div>
+                        </CardBody>
+                    </Card>
+
+                    {/* --- Fiscal & Calendar (collapsible) --- */}
+                    <Card>
+                        <CardBody>
+                            <SectionHeader
+                                icon={Calendar}
+                                title="Fiscal & Calendar"
+                                action={<EditButton />}
+                                expanded={expandedSections.fiscal}
+                                onToggle={() => toggle('fiscal')}
+                            />
+                            {expandedSections.fiscal ? (
+                                <div className="mt-5 space-y-4 animate-in fade-in duration-200">
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-5">
+                                        <DetailField label="Financial Year" value={TENANT.fy} />
+                                        <DetailField label="Payroll Frequency" value={TENANT.payrollFreq} />
+                                        <DetailField label="Timezone" value={TENANT.timezone} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">Working Days</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((d) => (
+                                                <span key={d} className={cn(
+                                                    'px-3 py-1 rounded-lg text-xs font-semibold border',
+                                                    TENANT.workingDays.includes(d)
+                                                        ? 'bg-primary-50 text-primary-700 border-primary-200'
+                                                        : 'bg-neutral-50 text-neutral-400 border-neutral-100 line-through'
+                                                )}>
+                                                    {d.slice(0, 3)}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-4 mt-4 text-xs text-neutral-500">
+                                    <span className="font-semibold">{TENANT.fy}</span>
+                                    <span>·</span>
+                                    <span>{TENANT.payrollFreq}</span>
+                                    <span>·</span>
+                                    <span>{TENANT.timezone}</span>
+                                </div>
+                            )}
+                        </CardBody>
+                    </Card>
+
+                    {/* --- Backend Endpoint --- */}
+                    <Card>
+                        <CardBody>
+                            <SectionHeader icon={Server} title="Backend Endpoint" action={<EditButton label="Configure" />} />
+                            <div className={cn(
+                                'mt-4 flex items-start gap-4 p-5 rounded-2xl border-2',
+                                TENANT.endpointType === 'custom'
+                                    ? 'border-primary-200 bg-primary-50'
+                                    : 'border-success-200 bg-success-50'
+                            )}>
+                                <div className={cn(
+                                    'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0',
+                                    TENANT.endpointType === 'custom' ? 'bg-primary-100' : 'bg-success-100'
+                                )}>
+                                    <Server size={18} className={TENANT.endpointType === 'custom' ? 'text-primary-600' : 'text-success-600'} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                                        <p className="font-bold text-primary-950">
+                                            {TENANT.endpointType === 'custom' ? 'Custom Self-Hosted Server' : 'Avyren Default Cloud'}
+                                        </p>
+                                        <span className={cn(
+                                            'px-2 py-0.5 text-[10px] font-bold rounded-full',
+                                            TENANT.endpointStatus === 'healthy'
+                                                ? 'bg-success-100 text-success-700'
+                                                : TENANT.endpointStatus === 'degraded'
+                                                    ? 'bg-warning-100 text-warning-700'
+                                                    : 'bg-danger-100 text-danger-700'
+                                        )}>
+                                            {TENANT.endpointStatus === 'healthy' ? '✓ Healthy' :
+                                                TENANT.endpointStatus === 'degraded' ? '⚠ Degraded' : '✗ Unreachable'}
+                                        </span>
+                                    </div>
+                                    {TENANT.customUrl && (
+                                        <p className="text-xs font-mono bg-white border border-primary-100 text-primary-700 px-3 py-1.5 rounded-lg inline-block">
+                                            {TENANT.customUrl}
+                                        </p>
+                                    )}
+                                    {TENANT.region && (
+                                        <p className="text-xs text-neutral-500 mt-1">Region: {TENANT.region}</p>
+                                    )}
+                                </div>
+                            </div>
+                        </CardBody>
+                    </Card>
+
+                    {/* --- Active Modules --- */}
+                    <Card>
+                        <CardBody>
+                            <SectionHeader icon={Blocks} title="Active Modules" subtitle={`${TENANT.modules.length} modules enabled`} action={<EditButton label="Manage" />} />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
+                                {TENANT.modules.map((mod) => (
+                                    <div key={mod.id} className="flex items-center justify-between bg-neutral-50 border border-neutral-100 rounded-xl px-4 py-3">
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-lg">{mod.icon}</span>
+                                            <p className="text-sm font-semibold text-primary-950">{mod.name}</p>
+                                        </div>
+                                        <span className="text-xs font-bold text-primary-600">
+                                            {mod.price === 0 ? 'Free' : `₹${mod.price.toLocaleString('en-IN')}`}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex items-center justify-between bg-primary-50 rounded-xl px-4 py-3 mt-4 border border-primary-100">
+                                <p className="text-sm font-bold text-primary-800">Module Cost Subtotal</p>
+                                <p className="text-lg font-bold text-primary-700">₹{totalMonthlyModules.toLocaleString('en-IN')}<span className="text-xs font-normal text-primary-500">/mo</span></p>
+                            </div>
+                        </CardBody>
+                    </Card>
+
+                    {/* --- Locations / Plants --- */}
+                    <Card>
+                        <CardBody>
+                            <SectionHeader icon={MapPin} title="Plants & Locations" subtitle={`${TENANT.locations.length} locations`} action={<EditButton label="Manage" />} />
+                            <div className="space-y-3 mt-5">
+                                {TENANT.locations.map((loc, i) => (
+                                    <div key={i} className="flex items-center justify-between bg-neutral-50 rounded-xl px-5 py-4 border border-neutral-100">
+                                        <div className="flex items-center gap-4">
+                                            {loc.isHQ && <Star size={14} className="text-warning-500 fill-warning-400 flex-shrink-0" />}
+                                            <div>
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <p className="text-sm font-bold text-primary-950">{loc.name}</p>
+                                                    {loc.isHQ && (
+                                                        <span className="text-[10px] font-bold bg-warning-100 text-warning-700 px-1.5 py-0.5 rounded">HQ</span>
+                                                    )}
+                                                </div>
+                                                <p className="text-xs text-neutral-500">{loc.type} · {loc.city}, {loc.state}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 flex-wrap justify-end">
+                                            <StatusPill status={loc.status} />
+                                            {loc.geoEnabled && (
+                                                <span className="text-[10px] font-bold bg-info-50 text-info-700 border border-info-100 px-2 py-0.5 rounded-full">
+                                                    📍 Geo-fenced
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardBody>
+                    </Card>
+
+                    {/* --- Shifts (collapsible) --- */}
+                    <Card>
+                        <CardBody>
+                            <SectionHeader
+                                icon={Clock}
+                                title="Shifts"
+                                subtitle={`${TENANT.shifts.length} shifts configured`}
+                                action={<EditButton label="Manage" />}
+                                expanded={expandedSections.shifts}
+                                onToggle={() => toggle('shifts')}
+                            />
+                            {expandedSections.shifts && (
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 animate-in fade-in duration-200">
+                                    {TENANT.shifts.map((sh, i) => (
+                                        <div key={i} className="bg-neutral-50 border border-neutral-100 rounded-xl px-4 py-4">
+                                            <p className="text-sm font-bold text-primary-950 mb-1">{sh.name}</p>
+                                            <p className="text-xs font-mono text-neutral-600">{sh.time}</p>
+                                            <p className="text-[10px] text-neutral-400 mt-1">{sh.breaks} break slot</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {!expandedSections.shifts && (
+                                <p className="text-xs text-neutral-400 mt-3">{TENANT.shifts.map(s => s.name).join(' · ')}</p>
+                            )}
+                        </CardBody>
+                    </Card>
+
+                    {/* --- System Controls (collapsible) --- */}
+                    <Card>
+                        <CardBody>
+                            <SectionHeader
+                                icon={Settings}
+                                title="System Controls"
+                                action={<EditButton label="Configure" />}
+                                expanded={expandedSections.controls}
+                                onToggle={() => toggle('controls')}
+                            />
+                            {expandedSections.controls && (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-5 animate-in fade-in duration-200">
+                                    <ControlBadge label="NC Edit Mode" value={TENANT.controls.ncEditMode} />
+                                    <ControlBadge label="Load/Unload Tracking" value={TENANT.controls.loadUnload} />
+                                    <ControlBadge label="Cycle Time Capture" value={TENANT.controls.cycleTime} />
+                                    <ControlBadge label="Payroll Lock" value={TENANT.controls.payrollLock} />
+                                    <ControlBadge label="Leave Carry Forward" value={TENANT.controls.leaveCarryForward} />
+                                    <ControlBadge label="Overtime Approval" value={TENANT.controls.overtimeApproval} />
+                                    <ControlBadge label="MFA Required" value={TENANT.controls.mfa} />
+                                    <ControlBadge label="Backdated Entry Control" value={TENANT.controls.backdatedEntry} />
+                                    <ControlBadge label="Doc Number Lock" value={TENANT.controls.docNumberLock} />
+                                </div>
+                            )}
+                            {!expandedSections.controls && (
+                                <div className="flex items-center gap-2 mt-3 flex-wrap">
+                                    {Object.entries(TENANT.controls).filter(([, v]) => v).length} of {Object.keys(TENANT.controls).length}
+                                    <span className="text-xs text-neutral-400">controls enabled</span>
+                                    <div className="flex gap-1.5">
+                                        {Object.values(TENANT.controls).map((v, i) => (
+                                            <div key={i} className={cn('w-2 h-2 rounded-full', v ? 'bg-success-400' : 'bg-neutral-200')} />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </CardBody>
+                    </Card>
+
+                </div>
+
+                {/* ========= RIGHT COLUMN ========= */}
+                <div className="space-y-5">
+
+                    {/* --- Subscription Summary --- */}
+                    <Card>
+                        <div className="p-5 bg-gradient-to-br from-primary-600 to-accent-600 relative overflow-hidden">
+                            <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white/5" />
+                            <div className="absolute -bottom-8 -left-6 w-20 h-20 rounded-full bg-white/5" />
+                            <div className="relative">
+                                <p className="text-[10px] font-bold text-primary-200 uppercase tracking-wider mb-1">Current Plan</p>
+                                <div className="flex items-baseline gap-2">
+                                    <p className="text-2xl font-black text-white">{TENANT.tier}</p>
+                                    <p className="text-xs text-primary-200">{TENANT.tierRange}</p>
+                                </div>
+                                <p className="text-3xl font-bold text-white mt-3">
+                                    ₹{totalMonthly.toLocaleString('en-IN')}
+                                    <span className="text-base font-normal text-primary-200">/mo</span>
+                                </p>
+                                <p className="text-xs text-primary-200 mt-1">{TENANT.billingCycle} billing · {TENANT.trialDays}d trial</p>
+                            </div>
+                        </div>
+                        <CardBody className="space-y-3">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-neutral-500">Tier Base</span>
+                                <span className="font-semibold text-primary-950">₹{TENANT.tierBasePrice.toLocaleString('en-IN')}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-neutral-500">Per-User Rate</span>
+                                <span className="font-semibold text-primary-950">₹{TENANT.perUserPrice}/user</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-neutral-500">Modules ({TENANT.modules.length})</span>
+                                <span className="font-semibold text-primary-950">₹{totalMonthlyModules.toLocaleString('en-IN')}</span>
+                            </div>
+                            <div className="pt-3 border-t border-neutral-100 flex items-center gap-2">
+                                <Calendar size={13} className="text-neutral-400" />
+                                <span className="text-xs text-neutral-500">Renewal: <strong className="text-primary-950">{TENANT.renewalDate}</strong></span>
+                            </div>
+                            <button className="w-full py-2.5 mt-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-sm font-bold rounded-xl transition-colors">
+                                View Billing History
+                            </button>
+                            <button className="w-full py-2.5 bg-primary-50 hover:bg-primary-100 text-primary-700 text-sm font-bold rounded-xl transition-colors border border-primary-100">
+                                Change Plan
+                            </button>
+                        </CardBody>
+                    </Card>
+
+                    {/* --- User Capacity --- */}
+                    <Card>
+                        <CardBody>
+                            <SectionHeader icon={Users} title="User Capacity" action={<EditButton label="Edit Limit" />} />
+                            <div className="mt-5">
+                                <div className="flex justify-between items-end mb-2">
+                                    <span className="text-3xl font-black text-primary-950">{TENANT.activeUsers}</span>
+                                    <span className="text-sm text-neutral-400">/ {TENANT.maxUsers} max</span>
+                                </div>
+                                <div className="h-3 w-full bg-neutral-100 rounded-full overflow-hidden mb-2">
+                                    <div
+                                        className={cn(
+                                            'h-full rounded-full transition-all duration-700',
+                                            TENANT.activeUsers / TENANT.maxUsers > 0.9
+                                                ? 'bg-danger-500'
+                                                : TENANT.activeUsers / TENANT.maxUsers > 0.7
+                                                    ? 'bg-warning-500'
+                                                    : 'bg-gradient-to-r from-primary-500 to-accent-500'
+                                        )}
+                                        style={{ width: `${(TENANT.activeUsers / TENANT.maxUsers) * 100}%` }}
+                                    />
+                                </div>
+                                <p className="text-xs text-neutral-400">
+                                    {Math.round((TENANT.activeUsers / TENANT.maxUsers) * 100)}% capacity used
+                                    · {TENANT.maxUsers - TENANT.activeUsers} slots available
+                                </p>
+                            </div>
+                        </CardBody>
+                    </Card>
+
+                    {/* --- Key Contacts --- */}
+                    <Card>
+                        <CardBody>
+                            <SectionHeader icon={Phone} title="Key Contacts" action={<EditButton label="Manage" />} />
+                            <div className="space-y-3 mt-5">
+                                {TENANT.contacts.map((c, i) => (
+                                    <div key={i} className="flex items-start gap-3 bg-neutral-50 rounded-xl px-4 py-3 border border-neutral-100">
+                                        <div className="w-9 h-9 rounded-lg bg-primary-100 flex items-center justify-center flex-shrink-0 text-sm font-bold text-primary-700">
+                                            {c.name.charAt(0)}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-bold text-primary-950">{c.name}</p>
+                                            <p className="text-xs text-neutral-500">{c.role}</p>
+                                            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                                                <a href={`mailto:${c.email}`} className="text-xs text-primary-600 flex items-center gap-1 hover:underline">
+                                                    <Mail size={10} /> {c.email}
+                                                </a>
+                                            </div>
+                                        </div>
+                                        {i === 0 && (
+                                            <span className="text-[10px] font-bold bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full flex-shrink-0">
+                                                Primary
+                                            </span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </CardBody>
+                    </Card>
+
+                    {/* --- Preferences Summary (collapsible) --- */}
+                    <Card>
+                        <CardBody>
+                            <SectionHeader
+                                icon={Shield}
+                                title="Preferences & Security"
+                                expanded={expandedSections.preferences}
+                                onToggle={() => toggle('preferences')}
+                            />
+                            {expandedSections.preferences && (
+                                <div className="space-y-2 mt-4 animate-in fade-in duration-200">
+                                    <ControlBadge label="MFA" value={TENANT.mfa} />
+                                    <ControlBadge label="ESS Portal" value={TENANT.ess} />
+                                    <ControlBadge label="Mobile App" value={TENANT.mobileApp} />
+                                    <ControlBadge label="Biometric" value={TENANT.biometric} />
+                                    <ControlBadge label="RazorpayX Payout" value={TENANT.razorpayEnabled} />
+                                    <div className="grid grid-cols-2 gap-x-8 gap-y-3 mt-4">
+                                        <DetailField label="Currency" value={TENANT.currency} />
+                                        <DetailField label="Language" value={TENANT.language} />
+                                        <DetailField label="Date Format" value={TENANT.dateFormat} />
+                                    </div>
+                                </div>
+                            )}
+                            {!expandedSections.preferences && (
+                                <p className="text-xs text-neutral-400 mt-2">
+                                    {TENANT.currency} · {TENANT.language} · {[
+                                        TENANT.mfa && 'MFA',
+                                        TENANT.ess && 'ESS',
+                                        TENANT.biometric && 'Biometric',
+                                    ].filter(Boolean).join(' · ')}
+                                </p>
+                            )}
+                        </CardBody>
+                    </Card>
+
+                    {/* --- Danger Zone --- */}
+                    <Card className="border-danger-200">
+                        <div className="px-5 pt-4 pb-2">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-danger-50 flex items-center justify-center">
+                                    <AlertTriangle size={15} className="text-danger-500" />
+                                </div>
+                                <h3 className="text-sm font-bold text-danger-900">Tenant Actions</h3>
+                            </div>
+                        </div>
+                        <CardBody className="pt-3 space-y-2">
+                            <button className="w-full flex items-center justify-between px-4 py-3 bg-white border border-danger-100 hover:bg-danger-50 text-danger-700 rounded-xl transition-colors text-sm font-bold group">
+                                <div className="flex items-center gap-2">
+                                    <PowerOff size={14} />
                                     Suspend Access
                                 </div>
-                                <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+                                <span className="text-[10px] bg-warning-100 text-warning-700 px-2 py-0.5 rounded font-bold">Reversible</span>
                             </button>
-                            <button className="w-full flex items-center justify-between px-4 py-3 bg-danger-600 hover:bg-danger-700 text-white rounded-xl transition-colors text-sm font-bold shadow-md shadow-danger-500/20 group">
+                            <button className="w-full flex items-center justify-between px-4 py-3 bg-danger-600 hover:bg-danger-700 text-white rounded-xl transition-colors text-sm font-bold shadow-md shadow-danger-500/20">
                                 <div className="flex items-center gap-2">
-                                    <Trash2 className="w-4 h-4" />
+                                    <Trash2 size={14} />
                                     Delete Tenant
                                 </div>
-                                <span className="text-xs font-medium bg-danger-800/50 px-2 py-0.5 rounded text-danger-50">No Recovery</span>
+                                <span className="text-[10px] bg-danger-800/50 px-2 py-0.5 rounded text-danger-200">No Recovery</span>
                             </button>
-                        </div>
-                    </div>
+                        </CardBody>
+                    </Card>
 
                 </div>
             </div>
