@@ -1,122 +1,67 @@
 // Step 12 — No. Series (Document Numbering)
+import React from 'react';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import {
     SectionCard, FormInput, FormSelect, AddButton, ItemCard, TwoCol, ThreeCol, InfoBanner
 } from '../atoms';
 import { NO_SERIES_SCREENS } from '../constants';
 import { useTenantOnboardingStore } from '../store';
-import type { NoSeriesItem } from '../types';
 
-function NoSeriesForm({
-    item,
-    onUpdate,
-    onRemove,
-}: {
-    item: NoSeriesItem;
-    onUpdate: (u: Partial<NoSeriesItem>) => void;
-    onRemove: () => void;
-}) {
-    const preview = [
-        item.prefix,
-        '#'.repeat(parseInt(item.numberCount) || 4).replace(/#/g, (_, i) =>
-            i === (parseInt(item.numberCount) || 4) - 1
-                ? String(parseInt(item.startNumber) || 1)
-                : '0'
-        ),
-        item.suffix,
-    ]
-        .filter(Boolean)
-        .join('');
+const noSeriesItemSchema = z.object({
+    id: z.string(),
+    code: z.string().min(1, 'Required'),
+    linkedScreen: z.string().min(1, 'Required'),
+    description: z.string().optional(),
+    prefix: z.string().optional(),
+    suffix: z.string().optional(),
+    numberCount: z.string().optional(),
+    startNumber: z.string().optional(),
+});
 
-    return (
-        <div className="space-y-4">
-            <TwoCol>
-                <FormInput
-                    label="Series Code"
-                    placeholder="e.g. INV, EMP, WO"
-                    value={item.code}
-                    onChange={(v) => onUpdate({ code: v.toUpperCase() })}
-                    required
-                    monospace
-                    hint="Unique identifier for this series (used in API + reports)"
-                />
-                <FormSelect
-                    label="Linked Screen / Document Type"
-                    value={item.linkedScreen}
-                    onChange={(v) => onUpdate({ linkedScreen: v })}
-                    options={NO_SERIES_SCREENS}
-                    placeholder="Select document type"
-                    required
-                />
-            </TwoCol>
+const schema = z.object({
+    noSeries: z.array(noSeriesItemSchema),
+});
 
-            <FormInput
-                label="Description"
-                placeholder="e.g. Sales Invoice Numbering"
-                value={item.description}
-                onChange={(v) => onUpdate({ description: v })}
-            />
-
-            <ThreeCol>
-                <FormInput
-                    label="Prefix"
-                    placeholder="INV-"
-                    value={item.prefix}
-                    onChange={(v) => onUpdate({ prefix: v })}
-                    monospace
-                    hint="Text before the number"
-                />
-                <FormInput
-                    label="Suffix"
-                    placeholder="-FY25"
-                    value={item.suffix}
-                    onChange={(v) => onUpdate({ suffix: v })}
-                    monospace
-                    hint="Text after the number"
-                />
-                <FormInput
-                    label="Number Count (Digits)"
-                    placeholder="6"
-                    value={item.numberCount}
-                    onChange={(v) => onUpdate({ numberCount: v })}
-                    type="number"
-                    hint="Zero-padded length"
-                />
-            </ThreeCol>
-
-            <TwoCol>
-                <FormInput
-                    label="Start Number"
-                    placeholder="1"
-                    value={item.startNumber}
-                    onChange={(v) => onUpdate({ startNumber: v })}
-                    type="number"
-                    hint="First document number generated"
-                />
-                <div>
-                    <label className="block text-xs font-bold text-primary-900 mb-1.5 dark:text-white">Preview</label>
-                    <div className="flex items-center h-[46px] px-4 bg-neutral-900 text-green-400 rounded-xl font-mono text-sm border border-neutral-700">
-                        {preview || <span className="text-neutral-500 dark:text-neutral-400">e.g. INV-000001-FY25</span>}
-                    </div>
-                    <p className="text-xs text-neutral-400 mt-1 dark:text-neutral-500">Live preview of the first generated number</p>
-                </div>
-            </TwoCol>
-
-            <button
-                type="button"
-                onClick={onRemove}
-                className="text-xs font-semibold text-danger-500 hover:text-danger-700 transition-colors dark:text-danger-400"
-            >
-                🗑 Remove this series
-            </button>
-        </div>
-    );
-}
+type FormData = z.infer<typeof schema>;
 
 export function Step12NoSeries() {
-    const { step12, addNoSeriesItem, updateNoSeriesItem, removeNoSeriesItem } = useTenantOnboardingStore();
+    const { step12, setStep12, goNext } = useTenantOnboardingStore();
+
+    const { control, handleSubmit } = useForm<FormData>({
+        resolver: zodResolver(schema),
+        defaultValues: {
+            noSeries: step12.noSeries,
+        }
+    });
+
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: 'noSeries',
+    });
+
+    const onSubmit = (data: FormData) => {
+        // Sanitize data (ensure no undefined strings)
+        const sanitizedData = {
+            noSeries: data.noSeries.map(item => ({
+                id: item.id,
+                code: item.code,
+                linkedScreen: item.linkedScreen,
+                description: item.description || '',
+                prefix: item.prefix || '',
+                suffix: item.suffix || '',
+                numberCount: item.numberCount || '4',
+                startNumber: item.startNumber || '1',
+            }))
+        };
+        setStep12(sanitizedData);
+        goNext();
+        document.getElementById('wizard-content')?.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
     return (
-        <div className="space-y-0 animate-in fade-in slide-in-from-right-3 duration-300">
+        <form id="wizard-step-form" onSubmit={handleSubmit(onSubmit)} className="space-y-0 animate-in fade-in slide-in-from-right-3 duration-300 pb-10">
 
             <InfoBanner variant="info" className="mb-5">
                 <strong>Document Numbering</strong> — No. Series defines how documents are auto-numbered across the ERP.
@@ -124,7 +69,7 @@ export function Step12NoSeries() {
             </InfoBanner>
 
             <SectionCard title="Number Series Configuration" subtitle="Define auto-numbering sequences for each document type used in this company">
-                {step12.noSeries.length === 0 ? (
+                {fields.length === 0 ? (
                     <div className="bg-neutral-50 border border-dashed border-neutral-200 rounded-xl py-10 text-center mb-4 dark:bg-neutral-800 dark:border-neutral-700">
                         <p className="text-2xl mb-3">🔢</p>
                         <p className="text-sm font-semibold text-neutral-600 dark:text-neutral-300">No number series configured</p>
@@ -133,24 +78,98 @@ export function Step12NoSeries() {
                         </p>
                     </div>
                 ) : (
-                    step12.noSeries.map((item, idx) => (
-                        <ItemCard
-                            key={item.id}
-                            title={item.code || `Series ${idx + 1}`}
-                            subtitle={item.linkedScreen || 'No document type selected'}
-                            badge={`${idx + 1}`}
-                            defaultOpen={idx === 0}
-                        >
-                            <NoSeriesForm
-                                item={item}
-                                onUpdate={(u) => updateNoSeriesItem(item.id, u)}
-                                onRemove={() => removeNoSeriesItem(item.id)}
-                            />
-                        </ItemCard>
+                    fields.map((field, idx) => (
+                        <Controller
+                            key={field.id}
+                            name={`noSeries.${idx}`}
+                            control={control}
+                            render={({ field: controllerField, formState }) => {
+                                const item = controllerField.value;
+                                const errors = formState.errors.noSeries?.[idx];
+
+                                const preview = [
+                                    item.prefix,
+                                    '#'.repeat(parseInt(item.numberCount || '4') || 4).replace(/#/g, (_, i) =>
+                                        i === (parseInt(item.numberCount || '4') || 4) - 1
+                                            ? String(parseInt(item.startNumber || '1') || 1)
+                                            : '0'
+                                    ),
+                                    item.suffix,
+                                ]
+                                    .filter(Boolean)
+                                    .join('');
+
+                                return (
+                                    <ItemCard
+                                        title={item.code || `Series ${idx + 1}`}
+                                        subtitle={item.linkedScreen || 'No document type selected'}
+                                        badge={`${idx + 1}`}
+                                        defaultOpen={idx === 0}
+                                    >
+                                        <div className="space-y-4">
+                                            <TwoCol>
+                                                <Controller name={`noSeries.${idx}.code`} control={control} render={({ field: subField }) => (
+                                                    <FormInput label="Series Code" placeholder="e.g. INV, EMP, WO" {...subField} value={subField.value || ''} onChange={(e) => subField.onChange(e.toUpperCase())} required monospace hint="Unique identifier for this series (used in API + reports)" error={errors?.code?.message} />
+                                                )} />
+                                                <Controller name={`noSeries.${idx}.linkedScreen`} control={control} render={({ field: subField }) => (
+                                                    <FormSelect label="Linked Screen / Document Type" {...subField} value={subField.value || ''} options={NO_SERIES_SCREENS} placeholder="Select document type" required />
+                                                )} />
+                                            </TwoCol>
+
+                                            <Controller name={`noSeries.${idx}.description`} control={control} render={({ field: subField }) => (
+                                                <FormInput label="Description" placeholder="e.g. Sales Invoice Numbering" {...subField} value={subField.value || ''} error={errors?.description?.message} />
+                                            )} />
+
+                                            <ThreeCol>
+                                                <Controller name={`noSeries.${idx}.prefix`} control={control} render={({ field: subField }) => (
+                                                    <FormInput label="Prefix" placeholder="INV-" {...subField} value={subField.value || ''} monospace hint="Text before the number" error={errors?.prefix?.message} />
+                                                )} />
+                                                <Controller name={`noSeries.${idx}.suffix`} control={control} render={({ field: subField }) => (
+                                                    <FormInput label="Suffix" placeholder="-FY25" {...subField} value={subField.value || ''} monospace hint="Text after the number" error={errors?.suffix?.message} />
+                                                )} />
+                                                <Controller name={`noSeries.${idx}.numberCount`} control={control} render={({ field: subField }) => (
+                                                    <FormInput label="Number Count (Digits)" placeholder="6" type="number" {...subField} value={subField.value || ''} hint="Zero-padded length" error={errors?.numberCount?.message} />
+                                                )} />
+                                            </ThreeCol>
+
+                                            <TwoCol>
+                                                <Controller name={`noSeries.${idx}.startNumber`} control={control} render={({ field: subField }) => (
+                                                    <FormInput label="Start Number" placeholder="1" type="number" {...subField} value={subField.value || ''} hint="First document number generated" error={errors?.startNumber?.message} />
+                                                )} />
+                                                <div>
+                                                    <label className="block text-xs font-bold text-primary-900 mb-1.5 dark:text-white">Preview</label>
+                                                    <div className="flex items-center h-[46px] px-4 bg-neutral-900 text-green-400 rounded-xl font-mono text-sm border border-neutral-700">
+                                                        {preview || <span className="text-neutral-500 dark:text-neutral-400">e.g. INV-000001-FY25</span>}
+                                                    </div>
+                                                    <p className="text-xs text-neutral-400 mt-1 dark:text-neutral-500">Live preview of the first generated number</p>
+                                                </div>
+                                            </TwoCol>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => remove(idx)}
+                                                className="text-xs font-semibold text-danger-500 hover:text-danger-700 transition-colors dark:text-danger-400"
+                                            >
+                                                🗑 Remove this series
+                                            </button>
+                                        </div>
+                                    </ItemCard>
+                                );
+                            }}
+                        />
                     ))
                 )}
 
-                <AddButton label="Add Number Series" onClick={addNoSeriesItem} />
+                <AddButton label="Add Number Series" onClick={() => append({
+                    id: Date.now().toString(),
+                    code: '',
+                    linkedScreen: '',
+                    description: '',
+                    prefix: '',
+                    suffix: '',
+                    numberCount: '4',
+                    startNumber: '1',
+                })} />
             </SectionCard>
 
             {/* Quick reference */}
@@ -173,6 +192,6 @@ export function Step12NoSeries() {
                     ))}
                 </div>
             </SectionCard>
-        </div>
+        </form>
     );
 }

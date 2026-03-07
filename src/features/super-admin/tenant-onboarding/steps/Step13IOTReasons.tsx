@@ -1,99 +1,75 @@
 // Step 13 — IOT Reasons (Machine Downtime & Idle Reasons)
+import React from 'react';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import {
     SectionCard, FormInput, FormSelect, FormTextarea, ToggleRow,
     ChipSelector, AddButton, ItemCard, TwoCol, InfoBanner
 } from '../atoms';
 import { IOT_REASON_TYPES } from '../constants';
 import { useTenantOnboardingStore } from '../store';
-import type { IOTReason } from '../types';
 
 const DEPARTMENTS = [
     'Production', 'Maintenance', 'Quality', 'Stores', 'Admin',
     'HR', 'Finance', 'IT', 'Engineering', 'All',
 ];
 
-function IOTReasonForm({
-    reason,
-    onUpdate,
-    onRemove,
-}: {
-    reason: IOTReason;
-    onUpdate: (u: Partial<IOTReason>) => void;
-    onRemove: () => void;
-}) {
-    return (
-        <div className="space-y-4">
-            <TwoCol>
-                <ChipSelector
-                    label="Reason Type"
-                    options={IOT_REASON_TYPES}
-                    selected={reason.reasonType}
-                    onSelect={(v) => onUpdate({ reasonType: v })}
-                    required
-                />
-                <FormSelect
-                    label="Department"
-                    value={reason.department}
-                    onChange={(v) => onUpdate({ department: v })}
-                    options={DEPARTMENTS}
-                />
-            </TwoCol>
+const iotReasonSchema = z.object({
+    id: z.string(),
+    reasonType: z.string().min(1, 'Required'),
+    department: z.string().optional(),
+    reason: z.string().min(1, 'Required'),
+    description: z.string().optional(),
+    duration: z.string().optional(),
+    planned: z.boolean().optional(),
+});
 
-            <FormInput
-                label="Reason (Short Label)"
-                placeholder="e.g. Tool Breakage, Power Failure, Raw Material Shortage"
-                value={reason.reason}
-                onChange={(v) => onUpdate({ reason: v })}
-                required
-                hint="This label appears in the Andon board, reports, and OEE Dashboard"
-            />
+const schema = z.object({
+    reasons: z.array(iotReasonSchema),
+});
 
-            <FormTextarea
-                label="Description"
-                placeholder="Optional detailed description of when this reason applies..."
-                value={reason.description}
-                onChange={(v) => onUpdate({ description: v })}
-                rows={2}
-            />
-
-            <TwoCol>
-                <FormInput
-                    label="Threshold Duration (min)"
-                    placeholder="15"
-                    value={reason.duration}
-                    onChange={(v) => onUpdate({ duration: v })}
-                    type="number"
-                    hint="Minimum downtime duration before this reason must be logged"
-                />
-                <div className="flex items-center pt-5">
-                    <ToggleRow
-                        label="Planned Downtime"
-                        subtitle="Planned losses don't count against OEE Availability"
-                        value={reason.planned}
-                        onToggle={(v) => onUpdate({ planned: v })}
-                    />
-                </div>
-            </TwoCol>
-
-            <button
-                type="button"
-                onClick={onRemove}
-                className="text-xs font-semibold text-danger-500 hover:text-danger-700 transition-colors dark:text-danger-400"
-            >
-                🗑 Remove this reason
-            </button>
-        </div>
-    );
-}
+type FormData = z.infer<typeof schema>;
 
 export function Step13IOTReasons() {
-    const { step13, addIOTReason, updateIOTReason, removeIOTReason } = useTenantOnboardingStore();
+    const { step13, setStep13, goNext } = useTenantOnboardingStore();
 
-    const idle = step13.reasons.filter((r) => r.reasonType === 'Machine Idle');
-    const alarm = step13.reasons.filter((r) => r.reasonType === 'Machine Alarm');
+    const { control, handleSubmit, watch } = useForm<FormData>({
+        resolver: zodResolver(schema),
+        defaultValues: {
+            reasons: step13.reasons,
+        }
+    });
+
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: 'reasons',
+    });
+
+    const watchedReasons = watch('reasons');
+    const idle = watchedReasons.filter((r) => r.reasonType === 'Machine Idle');
+    const alarm = watchedReasons.filter((r) => r.reasonType === 'Machine Alarm');
+
+    const onSubmit = (data: FormData) => {
+        // Sanitize data (ensure no undefined values)
+        const sanitizedData = {
+            reasons: data.reasons.map(r => ({
+                id: r.id,
+                reasonType: r.reasonType,
+                reason: r.reason,
+                department: r.department || '',
+                description: r.description || '',
+                duration: r.duration || '',
+                planned: !!r.planned,
+            }))
+        };
+        setStep13(sanitizedData);
+        goNext();
+        document.getElementById('wizard-content')?.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
     return (
-        <div className="space-y-0 animate-in fade-in slide-in-from-right-3 duration-300">
+        <form id="wizard-step-form" onSubmit={handleSubmit(onSubmit)} className="space-y-0 animate-in fade-in slide-in-from-right-3 duration-300 pb-10">
 
             <InfoBanner variant="info" className="mb-5">
                 <strong>IOT Reason Configuration</strong> — Machine Idle and Alarm reasons are used by the Andon
@@ -116,7 +92,7 @@ export function Step13IOTReasons() {
             </div>
 
             <SectionCard title="IOT Reason List" subtitle="Add all reasons that operators will use to classify machine downtime on the shop floor">
-                {step13.reasons.length === 0 ? (
+                {fields.length === 0 ? (
                     <div className="bg-neutral-50 border border-dashed border-neutral-200 rounded-xl py-10 text-center mb-4 dark:bg-neutral-800 dark:border-neutral-700">
                         <p className="text-2xl mb-3">📡</p>
                         <p className="text-sm font-semibold text-neutral-600 dark:text-neutral-300">No IOT reasons defined</p>
@@ -125,25 +101,82 @@ export function Step13IOTReasons() {
                         </p>
                     </div>
                 ) : (
-                    step13.reasons.map((r, idx) => (
-                        <ItemCard
-                            key={r.id}
-                            title={r.reason || `Reason ${idx + 1}`}
-                            subtitle={[r.reasonType, r.department].filter(Boolean).join(' · ')}
-                            badge={r.reasonType === 'Machine Idle' ? '⚡ Idle' : '🚨 Alarm'}
-                            badgeVariant={r.reasonType === 'Machine Idle' ? 'warning' : 'info'}
-                            defaultOpen={idx === 0}
-                        >
-                            <IOTReasonForm
-                                reason={r}
-                                onUpdate={(u) => updateIOTReason(r.id, u)}
-                                onRemove={() => removeIOTReason(r.id)}
-                            />
-                        </ItemCard>
+                    fields.map((field, idx) => (
+                        <Controller
+                            key={field.id}
+                            name={`reasons.${idx}`}
+                            control={control}
+                            render={({ field: controllerField, formState }) => {
+                                const r = controllerField.value;
+                                const errors = formState.errors.reasons?.[idx];
+
+                                return (
+                                    <ItemCard
+                                        title={r.reason || `Reason ${idx + 1}`}
+                                        subtitle={[r.reasonType, r.department].filter(Boolean).join(' · ')}
+                                        badge={r.reasonType === 'Machine Idle' ? '⚡ Idle' : '🚨 Alarm'}
+                                        badgeVariant={r.reasonType === 'Machine Idle' ? 'warning' : 'info'}
+                                        defaultOpen={idx === 0}
+                                    >
+                                        <div className="space-y-4">
+                                            <TwoCol>
+                                                <Controller name={`reasons.${idx}.reasonType`} control={control} render={({ field: subField }) => (
+                                                    <ChipSelector
+                                                        label="Reason Type"
+                                                        options={IOT_REASON_TYPES}
+                                                        selected={subField.value || ''}
+                                                        onSelect={subField.onChange}
+                                                        required
+                                                    />
+                                                )} />
+                                                <Controller name={`reasons.${idx}.department`} control={control} render={({ field: subField }) => (
+                                                    <FormSelect label="Department" {...subField} value={subField.value || ''} options={DEPARTMENTS} />
+                                                )} />
+                                            </TwoCol>
+
+                                            <Controller name={`reasons.${idx}.reason`} control={control} render={({ field: subField }) => (
+                                                <FormInput label="Reason (Short Label)" placeholder="e.g. Tool Breakage, Power Failure, Raw Material Shortage" {...subField} value={subField.value || ''} required hint="This label appears in the Andon board, reports, and OEE Dashboard" error={errors?.reason?.message} />
+                                            )} />
+
+                                            <Controller name={`reasons.${idx}.description`} control={control} render={({ field: subField }) => (
+                                                <FormTextarea label="Description" placeholder="Optional detailed description of when this reason applies..." {...subField} value={subField.value || ''} rows={2} error={errors?.description?.message} />
+                                            )} />
+
+                                            <TwoCol>
+                                                <Controller name={`reasons.${idx}.duration`} control={control} render={({ field: subField }) => (
+                                                    <FormInput label="Threshold Duration (min)" placeholder="15" type="number" {...subField} value={subField.value || ''} hint="Minimum downtime duration before this reason must be logged" error={errors?.duration?.message} />
+                                                )} />
+                                                <div className="flex items-center pt-5">
+                                                    <Controller name={`reasons.${idx}.planned`} control={control} render={({ field: subField }) => (
+                                                        <ToggleRow label="Planned Downtime" subtitle="Planned losses don't count against OEE Availability" value={!!subField.value} onToggle={subField.onChange} />
+                                                    )} />
+                                                </div>
+                                            </TwoCol>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => remove(idx)}
+                                                className="text-xs font-semibold text-danger-500 hover:text-danger-700 transition-colors dark:text-danger-400"
+                                            >
+                                                🗑 Remove this reason
+                                            </button>
+                                        </div>
+                                    </ItemCard>
+                                );
+                            }}
+                        />
                     ))
                 )}
 
-                <AddButton label="Add IOT Reason" onClick={addIOTReason} />
+                <AddButton label="Add IOT Reason" onClick={() => append({
+                    id: Date.now().toString(),
+                    reasonType: 'Machine Idle',
+                    department: 'Production',
+                    reason: '',
+                    description: '',
+                    duration: '0',
+                    planned: false,
+                })} />
             </SectionCard>
 
             {/* Quick populate reference */}
@@ -179,6 +212,6 @@ export function Step13IOTReasons() {
                     </div>
                 </div>
             </SectionCard>
-        </div>
+        </form>
     );
 }

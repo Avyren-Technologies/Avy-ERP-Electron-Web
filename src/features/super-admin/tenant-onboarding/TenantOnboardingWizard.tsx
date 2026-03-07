@@ -222,16 +222,6 @@ export function TenantOnboardingWizard({ onClose, onSuccess }: TenantOnboardingW
     // ---- Handlers ----
     const handlePrev = () => goPrev();
 
-    const handleNext = () => {
-        if (isLastStep) {
-            setShowConfirm(true);
-        } else {
-            goNext();
-            // scroll top
-            document.getElementById('wizard-content')?.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    };
-
     const handleConfirm = async () => {
         setIsSubmitting(true);
         try {
@@ -351,10 +341,11 @@ export function TenantOnboardingWizard({ onClose, onSuccess }: TenantOnboardingW
                     {/* Content scroll area */}
                     <main
                         id="wizard-content"
-                        className="flex-1 overflow-y-auto px-6 py-6 lg:px-8 lg:py-7"
+                        className="flex-1 overflow-y-auto px-6 py-6 lg:px-8 lg:py-7 bg-neutral-50/30 dark:bg-neutral-900/10"
                     >
                         <div className="max-w-4xl mx-auto">
-                            {StepComponent && <StepComponent />}
+                            {/* @ts-ignore generic passing */}
+                            {StepComponent && <StepComponent onConfirmSubmit={() => setShowConfirm(true)} />}
                         </div>
                     </main>
 
@@ -407,8 +398,8 @@ export function TenantOnboardingWizard({ onClose, onSuccess }: TenantOnboardingW
 
                             {/* Next / Submit button */}
                             <button
-                                type="button"
-                                onClick={handleNext}
+                                type="submit"
+                                form="wizard-step-form"
                                 className={cn(
                                     'flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all duration-150 shadow-sm',
                                     isLastStep

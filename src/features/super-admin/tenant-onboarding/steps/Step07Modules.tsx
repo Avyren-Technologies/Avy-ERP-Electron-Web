@@ -1,5 +1,7 @@
 // Step 07 — Module Selection (WEB EXCLUSIVE — MISSING FROM MOBILE)
 // Full module catalogue with dependency auto-resolution and custom pricing
+import React from 'react';
+import { useForm } from 'react-hook-form';
 import { cn } from '@/lib/utils';
 import { Check, Plus, Minus, AlertTriangle, Lock } from 'lucide-react';
 import { SectionCard, InfoBanner } from '../atoms';
@@ -7,7 +9,7 @@ import { MODULE_CATALOGUE, resolveModuleDependencies } from '../constants';
 import { useTenantOnboardingStore } from '../store';
 
 export function Step07Modules() {
-    const { step7, toggleModule, setModuleCustomPrice } = useTenantOnboardingStore();
+    const { step7, toggleModule, setModuleCustomPrice, goNext } = useTenantOnboardingStore();
 
     const { resolved, auto } = resolveModuleDependencies(step7.selectedModuleIds, MODULE_CATALOGUE);
 
@@ -25,9 +27,15 @@ export function Step07Modules() {
 
     const isAutoAdded = (id: string) => auto.includes(id) && !step7.selectedModuleIds.includes(id);
     const isSelected = (id: string) => resolved.includes(id);
-  
+
+    const { handleSubmit } = useForm();
+    const onSubmit = () => {
+        goNext();
+        document.getElementById('wizard-content')?.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     return (
-        <div className="space-y-0 animate-in fade-in slide-in-from-right-3 duration-300">
+        <form id="wizard-step-form" onSubmit={handleSubmit(onSubmit)} className="space-y-0 animate-in fade-in slide-in-from-right-3 duration-300 pb-10">
 
             <InfoBanner variant="info" className="mb-5">
                 Select the modules this company will use. Dependencies are resolved automatically and shown below each module.
@@ -226,6 +234,6 @@ export function Step07Modules() {
                     </div>
                 </SectionCard>
             )}
-        </div>
+        </form>
     );
 }

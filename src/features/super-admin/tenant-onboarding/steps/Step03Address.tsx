@@ -1,77 +1,102 @@
 // Step 03 — Address (Registered & Corporate)
+import React from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { SectionCard, FormInput, FormSelect, ToggleRow, TwoCol, ThreeCol } from '../atoms';
 import { INDIAN_STATES } from '../constants';
 import { useTenantOnboardingStore } from '../store';
 
+const schema = z.object({
+    regLine1: z.string().min(1, 'Required'),
+    regLine2: z.string().optional(),
+    regCity: z.string().min(1, 'Required'),
+    regDistrict: z.string().optional(),
+    regPin: z.string().min(1, 'Required'),
+    regState: z.string().min(1, 'Required'),
+    regCountry: z.string().min(1, 'Required'),
+    regStdCode: z.string().optional(),
+    sameAsRegistered: z.boolean(),
+    corpLine1: z.string().optional(),
+    corpLine2: z.string().optional(),
+    corpCity: z.string().optional(),
+    corpState: z.string().optional(),
+    corpPin: z.string().optional(),
+}).superRefine((data, ctx) => {
+    if (!data.sameAsRegistered) {
+        if (!data.corpLine1) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['corpLine1'], message: 'Required' });
+        if (!data.corpCity) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['corpCity'], message: 'Required' });
+        if (!data.corpState) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['corpState'], message: 'Required' });
+        if (!data.corpPin) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['corpPin'], message: 'Required' });
+    }
+});
+
+type FormData = z.infer<typeof schema>;
+
 export function Step03Address() {
-    const { step3, setStep3 } = useTenantOnboardingStore();
+    const { step3, setStep3, goNext } = useTenantOnboardingStore();
+
+    const { control, handleSubmit, watch } = useForm<FormData>({
+        resolver: zodResolver(schema),
+        defaultValues: {
+            regLine1: step3.regLine1,
+            regLine2: step3.regLine2,
+            regCity: step3.regCity,
+            regDistrict: step3.regDistrict,
+            regPin: step3.regPin,
+            regState: step3.regState,
+            regCountry: step3.regCountry || 'India',
+            regStdCode: step3.regStdCode,
+            sameAsRegistered: step3.sameAsRegistered,
+            corpLine1: step3.corpLine1,
+            corpLine2: step3.corpLine2,
+            corpCity: step3.corpCity,
+            corpState: step3.corpState,
+            corpPin: step3.corpPin,
+        }
+    });
+
+    const sameAsReg = watch('sameAsRegistered');
+
+    const onSubmit = (data: FormData) => {
+        setStep3(data);
+        goNext();
+        document.getElementById('wizard-content')?.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
     return (
-        <div className="space-y-0 animate-in fade-in slide-in-from-right-3 duration-300">
+        <form id="wizard-step-form" onSubmit={handleSubmit(onSubmit)} className="space-y-0 animate-in fade-in slide-in-from-right-3 duration-300 pb-10">
 
             {/* Registered Address */}
             <SectionCard title="Registered Address" subtitle="Official address as per incorporation documents — used in all statutory filings">
-                <FormInput
-                    label="Address Line 1"
-                    placeholder="Plot no., Street, Building, Floor"
-                    value={step3.regLine1}
-                    onChange={(v) => setStep3({ regLine1: v })}
-                    required
-                />
-                <FormInput
-                    label="Address Line 2"
-                    placeholder="Area, Landmark, Locality"
-                    value={step3.regLine2}
-                    onChange={(v) => setStep3({ regLine2: v })}
-                />
+                <Controller name="regLine1" control={control} render={({ field, fieldState }) => (
+                    <FormInput label="Address Line 1" placeholder="Plot no., Street, Building, Floor" {...field} value={field.value || ''} required error={fieldState.error?.message} />
+                )} />
+                <Controller name="regLine2" control={control} render={({ field, fieldState }) => (
+                    <FormInput label="Address Line 2" placeholder="Area, Landmark, Locality" {...field} value={field.value || ''} error={fieldState.error?.message} />
+                )} />
                 <ThreeCol>
-                    <FormInput
-                        label="City / Town"
-                        placeholder="Bengaluru"
-                        value={step3.regCity}
-                        onChange={(v) => setStep3({ regCity: v })}
-                        required
-                    />
-                    <FormInput
-                        label="District"
-                        placeholder="Bengaluru Urban"
-                        value={step3.regDistrict}
-                        onChange={(v) => setStep3({ regDistrict: v })}
-                    />
-                    <FormInput
-                        label="PIN Code"
-                        placeholder="560001"
-                        value={step3.regPin}
-                        onChange={(v) => setStep3({ regPin: v })}
-                        type="text"
-                        required
-                    />
+                    <Controller name="regCity" control={control} render={({ field, fieldState }) => (
+                        <FormInput label="City / Town" placeholder="Bengaluru" {...field} value={field.value || ''} required error={fieldState.error?.message} />
+                    )} />
+                    <Controller name="regDistrict" control={control} render={({ field, fieldState }) => (
+                        <FormInput label="District" placeholder="Bengaluru Urban" {...field} value={field.value || ''} error={fieldState.error?.message} />
+                    )} />
+                    <Controller name="regPin" control={control} render={({ field, fieldState }) => (
+                        <FormInput label="PIN Code" placeholder="560001" type="text" {...field} value={field.value || ''} required error={fieldState.error?.message} />
+                    )} />
                 </ThreeCol>
                 <TwoCol>
-                    <FormSelect
-                        label="State"
-                        value={step3.regState}
-                        onChange={(v) => setStep3({ regState: v })}
-                        options={INDIAN_STATES}
-                        placeholder="Select state"
-                        required
-                        hint="Determines CGST+SGST vs. IGST applicability"
-                    />
-                    <FormInput
-                        label="Country"
-                        placeholder="India"
-                        value={step3.regCountry}
-                        onChange={(v) => setStep3({ regCountry: v })}
-                        required
-                    />
+                    <Controller name="regState" control={control} render={({ field, fieldState }) => (
+                        <FormSelect label="State" options={INDIAN_STATES} placeholder="Select state" {...field} value={field.value || ''} required hint="Determines CGST+SGST vs. IGST applicability" error={fieldState.error?.message} />
+                    )} />
+                    <Controller name="regCountry" control={control} render={({ field, fieldState }) => (
+                        <FormInput label="Country" placeholder="India" {...field} value={field.value || ''} required error={fieldState.error?.message} />
+                    )} />
                 </TwoCol>
-                <FormInput
-                    label="STD Code (Telephone)"
-                    placeholder="080"
-                    value={step3.regStdCode}
-                    onChange={(v) => setStep3({ regStdCode: v })}
-                    hint="Area/STD code for the registered location's landline"
-                />
+                <Controller name="regStdCode" control={control} render={({ field, fieldState }) => (
+                    <FormInput label="STD Code (Telephone)" placeholder="080" {...field} value={field.value || ''} hint="Area/STD code for the registered location's landline" error={fieldState.error?.message} />
+                )} />
             </SectionCard>
 
             {/* Corporate / HQ Address */}
@@ -79,56 +104,38 @@ export function Step03Address() {
                 title="Corporate / HQ Address"
                 subtitle="Primary operational address — may differ from registered address"
             >
-                <ToggleRow
-                    label="Same as Registered Address"
-                    subtitle="Check if corporate HQ is at the same location as the registered office"
-                    value={step3.sameAsRegistered}
-                    onToggle={(v) => setStep3({ sameAsRegistered: v })}
-                />
+                <Controller name="sameAsRegistered" control={control} render={({ field }) => (
+                    <ToggleRow
+                        label="Same as Registered Address"
+                        subtitle="Check if corporate HQ is at the same location as the registered office"
+                        value={field.value}
+                        onToggle={field.onChange}
+                    />
+                )} />
 
-                {!step3.sameAsRegistered && (
+                {!sameAsReg && (
                     <div className="space-y-4 pt-2 animate-in fade-in duration-200">
-                        <FormInput
-                            label="Address Line 1"
-                            placeholder="Plot no., Street, Building, Floor"
-                            value={step3.corpLine1}
-                            onChange={(v) => setStep3({ corpLine1: v })}
-                            required
-                        />
-                        <FormInput
-                            label="Address Line 2"
-                            placeholder="Area, Landmark, Locality"
-                            value={step3.corpLine2}
-                            onChange={(v) => setStep3({ corpLine2: v })}
-                        />
+                        <Controller name="corpLine1" control={control} render={({ field, fieldState }) => (
+                            <FormInput label="Address Line 1" placeholder="Plot no., Street, Building, Floor" {...field} value={field.value || ''} required error={fieldState.error?.message} />
+                        )} />
+                        <Controller name="corpLine2" control={control} render={({ field, fieldState }) => (
+                            <FormInput label="Address Line 2" placeholder="Area, Landmark, Locality" {...field} value={field.value || ''} error={fieldState.error?.message} />
+                        )} />
                         <ThreeCol>
-                            <FormInput
-                                label="City / Town"
-                                placeholder="Mumbai"
-                                value={step3.corpCity}
-                                onChange={(v) => setStep3({ corpCity: v })}
-                                required
-                            />
-                            <FormInput
-                                label="PIN Code"
-                                placeholder="400001"
-                                value={step3.corpPin}
-                                onChange={(v) => setStep3({ corpPin: v })}
-                                required
-                            />
-                            <FormSelect
-                                label="State"
-                                value={step3.corpState}
-                                onChange={(v) => setStep3({ corpState: v })}
-                                options={INDIAN_STATES}
-                                placeholder="Select state"
-                                required
-                            />
+                            <Controller name="corpCity" control={control} render={({ field, fieldState }) => (
+                                <FormInput label="City / Town" placeholder="Mumbai" {...field} value={field.value || ''} required error={fieldState.error?.message} />
+                            )} />
+                            <Controller name="corpPin" control={control} render={({ field, fieldState }) => (
+                                <FormInput label="PIN Code" placeholder="400001" {...field} value={field.value || ''} required error={fieldState.error?.message} />
+                            )} />
+                            <Controller name="corpState" control={control} render={({ field, fieldState }) => (
+                                <FormSelect label="State" options={INDIAN_STATES} placeholder="Select state" {...field} value={field.value || ''} required error={fieldState.error?.message} />
+                            )} />
                         </ThreeCol>
                     </div>
                 )}
 
-                {step3.sameAsRegistered && (
+                {sameAsReg && (
                     <div className="bg-success-50 rounded-xl border border-success-200 px-4 py-3 mt-2 dark:bg-success-900/20 dark:border-success-800/50">
                         <p className="text-xs font-semibold text-success-700 dark:text-success-400">
                             ✅ Corporate address will mirror the registered address above.
@@ -136,6 +143,6 @@ export function Step03Address() {
                     </div>
                 )}
             </SectionCard>
-        </div>
+        </form>
     );
 }

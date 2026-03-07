@@ -58,6 +58,7 @@ export function FormInput({
     readOnly,
     prefix,
     monospace,
+    error,
 }: {
     label: string;
     placeholder?: string;
@@ -70,16 +71,17 @@ export function FormInput({
     readOnly?: boolean;
     prefix?: string;
     monospace?: boolean;
+    error?: string;
 }) {
     return (
-        <div className={cn('space-y-1.5', className)}>
+        <div className={cn('space-y-1.5 w-full', className)}>
             <label className="block text-xs font-bold text-primary-900 dark:text-white">
                 {label}
                 {required && <span className="text-danger-500 ml-0.5">*</span>}
             </label>
             <div className="relative flex items-center">
                 {prefix && (
-                    <span className="absolute left-3 text-xs font-semibold text-neutral-400 select-none dark:text-neutral-500">
+                    <span className="absolute left-4 text-sm font-semibold text-neutral-400 select-none dark:text-neutral-500">
                         {prefix}
                     </span>
                 )}
@@ -90,17 +92,22 @@ export function FormInput({
                     placeholder={placeholder}
                     readOnly={readOnly}
                     className={cn(
-                        'w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-4 py-3 text-sm text-neutral-800 dark:text-neutral-200',
+                        'w-full rounded-2xl border border-neutral-200/60 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/50 px-4 py-3 text-sm text-neutral-800 dark:text-neutral-200',
                         'placeholder:text-neutral-400 dark:text-neutral-500',
                         'focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400',
                         'transition-all duration-150',
+                        error && 'border-danger-400 focus:ring-danger-500/20 focus:border-danger-400 bg-danger-50/30 dark:bg-danger-900/10',
                         readOnly && 'cursor-not-allowed opacity-60',
-                        prefix && 'pl-8',
+                        prefix && 'pl-9',
                         monospace && 'font-mono text-xs',
                     )}
                 />
             </div>
-            {hint && <p className="text-xs text-neutral-400 leading-4 dark:text-neutral-500">{hint}</p>}
+            {error ? (
+                <p className="text-xs text-danger-500 font-medium leading-4">{error}</p>
+            ) : hint ? (
+                <p className="text-xs text-neutral-400 leading-4 dark:text-neutral-500">{hint}</p>
+            ) : null}
         </div>
     );
 }
@@ -113,17 +120,19 @@ export function SecretInput({
     value,
     onChange,
     hint,
+    error,
 }: {
     label: string;
     placeholder?: string;
     value: string;
     onChange: (v: string) => void;
     hint?: string;
+    error?: string;
 }) {
     const [show, setShow] = useState(false);
 
     return (
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 w-full">
             <label className="block text-xs font-bold text-primary-900 dark:text-white">{label}</label>
             <div className="relative flex items-center">
                 <input
@@ -131,20 +140,27 @@ export function SecretInput({
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder={placeholder}
-                    className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-4 py-3 pr-11 text-sm text-neutral-800 dark:text-neutral-200
-            placeholder:text-neutral-400 dark:text-neutral-500 font-mono
-            focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400
-            transition-all duration-150"
+                    className={cn(
+                        'w-full rounded-2xl border border-neutral-200/60 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/50 px-4 py-3 pr-11 text-sm text-neutral-800 dark:text-neutral-200',
+                        'placeholder:text-neutral-400 dark:text-neutral-500 font-mono',
+                        'focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400',
+                        'transition-all duration-150',
+                        error && 'border-danger-400 focus:ring-danger-500/20 focus:border-danger-400 bg-danger-50/30 dark:bg-danger-900/10'
+                    )}
                 />
                 <button
                     type="button"
                     onClick={() => setShow((v) => !v)}
-                    className="absolute right-3 text-neutral-400 hover:text-neutral-600 transition-colors dark:text-neutral-300"
+                    className="absolute right-4 text-neutral-400 hover:text-neutral-600 transition-colors dark:text-neutral-300"
                 >
-                    {show ? <EyeOff size={15} /> : <Eye size={15} />}
+                    {show ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
             </div>
-            {hint && <p className="text-xs text-neutral-400 leading-4 dark:text-neutral-500">{hint}</p>}
+            {error ? (
+                <p className="text-xs text-danger-500 font-medium leading-4">{error}</p>
+            ) : hint ? (
+                <p className="text-xs text-neutral-400 leading-4 dark:text-neutral-500">{hint}</p>
+            ) : null}
         </div>
     );
 }
@@ -158,6 +174,7 @@ export function FormTextarea({
     onChange,
     hint,
     rows = 3,
+    error,
 }: {
     label: string;
     placeholder?: string;
@@ -165,21 +182,29 @@ export function FormTextarea({
     onChange: (v: string) => void;
     hint?: string;
     rows?: number;
+    error?: string;
 }) {
     return (
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 w-full">
             <label className="block text-xs font-bold text-primary-900 dark:text-white">{label}</label>
             <textarea
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder}
                 rows={rows}
-                className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-4 py-3 text-sm text-neutral-800 dark:text-neutral-200
-          placeholder:text-neutral-400 dark:text-neutral-500 resize-none
-          focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400
-          transition-all duration-150"
+                className={cn(
+                    'w-full rounded-2xl border border-neutral-200/60 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/50 px-4 py-3 text-sm text-neutral-800 dark:text-neutral-200',
+                    'placeholder:text-neutral-400 dark:text-neutral-500 resize-none',
+                    'focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400',
+                    'transition-all duration-150',
+                    error && 'border-danger-400 focus:ring-danger-500/20 focus:border-danger-400 bg-danger-50/30 dark:bg-danger-900/10'
+                )}
             />
-            {hint && <p className="text-xs text-neutral-400 leading-4 dark:text-neutral-500">{hint}</p>}
+            {error ? (
+                <p className="text-xs text-danger-500 font-medium leading-4">{error}</p>
+            ) : hint ? (
+                <p className="text-xs text-neutral-400 leading-4 dark:text-neutral-500">{hint}</p>
+            ) : null}
         </div>
     );
 }
@@ -194,6 +219,7 @@ export function FormSelect({
     placeholder,
     hint,
     required,
+    error,
 }: {
     label: string;
     value: string;
@@ -202,13 +228,14 @@ export function FormSelect({
     placeholder?: string;
     hint?: string;
     required?: boolean;
+    error?: string;
 }) {
     const normalized = options.map((o) =>
         typeof o === 'string' ? { value: o, label: o } : o
     );
 
     return (
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 w-full">
             <label className="block text-xs font-bold text-primary-900 dark:text-white">
                 {label}
                 {required && <span className="text-danger-500 ml-0.5">*</span>}
@@ -217,9 +244,12 @@ export function FormSelect({
                 <select
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
-                    className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-4 py-3 pr-10 text-sm text-neutral-800 dark:text-neutral-200
-            focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400
-            transition-all duration-150 appearance-none cursor-pointer"
+                    className={cn(
+                        'w-full rounded-2xl border border-neutral-200/60 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/50 px-4 py-3 pr-10 text-sm text-neutral-800 dark:text-neutral-200',
+                        'focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400',
+                        'transition-all duration-150 appearance-none cursor-pointer',
+                        error && 'border-danger-400 focus:ring-danger-500/20 focus:border-danger-400 bg-danger-50/30 dark:bg-danger-900/10'
+                    )}
                 >
                     {placeholder && (
                         <option value="" disabled>
@@ -232,9 +262,13 @@ export function FormSelect({
                         </option>
                     ))}
                 </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none dark:text-neutral-500" />
+                <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none dark:text-neutral-500" />
             </div>
-            {hint && <p className="text-xs text-neutral-400 leading-4 dark:text-neutral-500">{hint}</p>}
+            {error ? (
+                <p className="text-xs text-danger-500 font-medium leading-4">{error}</p>
+            ) : hint ? (
+                <p className="text-xs text-neutral-400 leading-4 dark:text-neutral-500">{hint}</p>
+            ) : null}
         </div>
     );
 }

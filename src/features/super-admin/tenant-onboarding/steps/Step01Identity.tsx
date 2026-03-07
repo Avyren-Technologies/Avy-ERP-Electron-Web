@@ -1,5 +1,8 @@
 // Step 01 — Company Identity
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Building2, Upload, X, Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -8,9 +11,55 @@ import {
 import { BUSINESS_TYPES, INDUSTRIES, COMPANY_STATUSES } from '../constants';
 import { useTenantOnboardingStore } from '../store';
 
-export function Step01Identity() {
-    const { step1, setStep1 } = useTenantOnboardingStore();
+const schema = z.object({
+    displayName: z.string().min(1, 'Display Name is required'),
+    legalName: z.string().min(1, 'Legal / Registered Name is required'),
+    businessType: z.string().min(1, 'Business Type is required'),
+    industry: z.string().min(1, 'Industry is required'),
+    companyCode: z.string().min(1, 'Company Code is required'),
+    shortName: z.string().optional(),
+    incorporationDate: z.string().min(1, 'Date of Incorporation is required'),
+    employees: z.string().optional(),
+    cin: z.string().optional(),
+    website: z.string().url('Invalid URL, include https://').optional().or(z.literal('')),
+    emailDomain: z.string().min(1, 'Corporate Email Domain is required'),
+    status: z.string().min(1, 'Company Status is required'),
+});
+
+type FormData = z.infer<typeof schema>;
+
+export function Step01Identity({ onConfirmSubmit }: { onConfirmSubmit?: () => void }) {
+    const { step1, setStep1, goNext } = useTenantOnboardingStore();
     const fileRef = useRef<HTMLInputElement>(null);
+
+    const { control, handleSubmit, setValue, watch } = useForm<FormData>({
+        resolver: zodResolver(schema),
+        defaultValues: {
+            displayName: step1.displayName,
+            legalName: step1.legalName,
+            businessType: step1.businessType || 'Private Limited (Pvt. Ltd.)',
+            industry: step1.industry || 'IT',
+            companyCode: step1.companyCode,
+            shortName: step1.shortName,
+            incorporationDate: step1.incorporationDate,
+            employees: step1.employees,
+            cin: step1.cin,
+            website: step1.website,
+            emailDomain: step1.emailDomain,
+            status: step1.status || 'Draft',
+        }
+    });
+
+    const watchedDisplayName = watch('displayName');
+
+    // Auto-generate company code from display name if empty or starts with AUTO-
+    useEffect(() => {
+        const currentCode = watch('companyCode');
+        if (watchedDisplayName && (!currentCode || currentCode.startsWith('AUTO-'))) {
+            const code = 'AUTO-' + watchedDisplayName.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 6);
+            setValue('companyCode', code, { shouldValidate: true });
+        }
+    }, [watchedDisplayName, setValue, watch]);
 
     const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -24,17 +73,14 @@ export function Step01Identity() {
         if (fileRef.current) fileRef.current.value = '';
     };
 
-    // Auto-generate company code from display name
-    const handleDisplayNameChange = (v: string) => {
-        setStep1({ displayName: v });
-        if (!step1.companyCode || step1.companyCode.startsWith('AUTO-')) {
-            const code = 'AUTO-' + v.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 6);
-            setStep1({ companyCode: code });
-        }
+    const onSubmit = (data: FormData) => {
+        setStep1(data);
+        goNext();
+        document.getElementById('wizard-content')?.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     return (
-        <div className="space-y-0 animate-in fade-in slide-in-from-right-3 duration-300">
+        <form id="wizard-step-form" onSubmit={handleSubmit(onSubmit)} className="space-y-0 animate-in fade-in slide-in-from-right-3 duration-300 pb-10">
 
             {/* Company Logo */}
             <SectionCard title="Company Logo" subtitle="Upload your brand logo (PNG/JPG, max 2 MB, 200×200px recommended)">
@@ -113,129 +159,77 @@ export function Step01Identity() {
             {/* Core Identity */}
             <SectionCard title="Core Identity" subtitle="Primary identifiers displayed across the ERP platform">
                 <TwoCol>
-                    <FormInput
-                        label="Display Name"
-                        placeholder="e.g. Apex Manufacturing"
-                        value={step1.displayName}
-                        onChange={handleDisplayNameChange}
-                        required
-                        hint="Shown in the app header, portal, and all dashboards"
-                    />
-                    <FormInput
-                        label="Legal / Registered Name"
-                        placeholder="Full name as per incorporation documents"
-                        value={step1.legalName}
-                        onChange={(v) => setStep1({ legalName: v })}
-                        required
-                        hint="Used in GST invoices, P&L statement, statutory forms"
-                    />
+                    <Controller name="displayName" control={control} render={({ field, fieldState }) => (
+                        <FormInput label="Display Name" placeholder="e.g. Apex Manufacturing" {...field} value={field.value || ''} required hint="Shown in the app header, portal, and all dashboards" error={fieldState.error?.message} />
+                    )} />
+                    <Controller name="legalName" control={control} render={({ field, fieldState }) => (
+                        <FormInput label="Legal / Registered Name" placeholder="Full name as per incorporation documents" {...field} value={field.value || ''} required hint="Used in GST invoices, P&L statement, statutory forms" error={fieldState.error?.message} />
+                    )} />
                 </TwoCol>
 
                 <TwoCol>
-                    <div>
-                        <ChipSelector
-                            label="Business Type"
-                            options={BUSINESS_TYPES}
-                            selected={step1.businessType}
-                            onSelect={(v) => setStep1({ businessType: v })}
-                            required
-                        />
-                    </div>
-                    <div>
-                        <ChipSelector
-                            label="Nature of Industry"
-                            options={INDUSTRIES}
-                            selected={step1.industry}
-                            onSelect={(v) => setStep1({ industry: v })}
-                            required
-                        />
-                    </div>
+                    <Controller name="businessType" control={control} render={({ field, fieldState }) => (
+                        <ChipSelector label="Business Type" options={BUSINESS_TYPES} selected={field.value} onSelect={field.onChange} required hint={fieldState.error?.message} />
+                    )} />
+                    <Controller name="industry" control={control} render={({ field, fieldState }) => (
+                        <ChipSelector label="Nature of Industry" options={INDUSTRIES} selected={field.value} onSelect={field.onChange} required hint={fieldState.error?.message} />
+                    )} />
                 </TwoCol>
 
                 <ThreeCol>
-                    <FormInput
-                        label="Company Code"
-                        placeholder="ABC-IN-001"
-                        value={step1.companyCode}
-                        onChange={(v) => setStep1({ companyCode: v.toUpperCase() })}
-                        required
-                        hint="Auto-generated. Override if needed."
-                    />
-                    <FormInput
-                        label="Short Name"
-                        placeholder="APEX"
-                        value={step1.shortName}
-                        onChange={(v) => setStep1({ shortName: v })}
-                        hint="Abbreviated for headers and reports"
-                    />
-                    <FormInput
-                        label="Date of Incorporation"
-                        placeholder=""
-                        value={step1.incorporationDate}
-                        onChange={(v) => setStep1({ incorporationDate: v })}
-                        type="date"
-                        required
-                    />
+                    <Controller name="companyCode" control={control} render={({ field, fieldState }) => (
+                        <FormInput label="Company Code" placeholder="ABC-IN-001" {...field} value={field.value || ''} onChange={v => field.onChange(v.toUpperCase())} required hint="Auto-generated. Override if needed." error={fieldState.error?.message} />
+                    )} />
+                    <Controller name="shortName" control={control} render={({ field, fieldState }) => (
+                        <FormInput label="Short Name" placeholder="APEX" {...field} value={field.value || ''} hint="Abbreviated for headers and reports" error={fieldState.error?.message} />
+                    )} />
+                    <Controller name="incorporationDate" control={control} render={({ field, fieldState }) => (
+                        <FormInput label="Date of Incorporation" type="date" {...field} value={field.value || ''} required error={fieldState.error?.message} />
+                    )} />
                 </ThreeCol>
 
                 <TwoCol>
-                    <FormInput
-                        label="Number of Employees (approx.)"
-                        placeholder="e.g. 250"
-                        value={step1.employees}
-                        onChange={(v) => setStep1({ employees: v })}
-                        type="number"
-                        hint="Used for PF, ESI, PT compliance threshold checks"
-                    />
-                    <FormInput
-                        label="CIN Number"
-                        placeholder="U72900KA2019PTC312847"
-                        value={step1.cin}
-                        onChange={(v) => setStep1({ cin: v.toUpperCase() })}
-                        hint="Company Identification Number from MCA"
-                    />
+                    <Controller name="employees" control={control} render={({ field, fieldState }) => (
+                        <FormInput label="Number of Employees (approx.)" placeholder="e.g. 250" type="number" {...field} value={field.value || ''} hint="Used for PF, ESI, PT compliance threshold checks" error={fieldState.error?.message} />
+                    )} />
+                    <Controller name="cin" control={control} render={({ field, fieldState }) => (
+                        <FormInput label="CIN Number" placeholder="U72900KA2019PTC312847" {...field} value={field.value || ''} onChange={v => field.onChange(v.toUpperCase())} hint="Company Identification Number from MCA" error={fieldState.error?.message} />
+                    )} />
                 </TwoCol>
 
                 <TwoCol>
-                    <FormInput
-                        label="Official Website"
-                        placeholder="https://company.com"
-                        value={step1.website}
-                        onChange={(v) => setStep1({ website: v })}
-                        type="url"
-                    />
-                    <FormInput
-                        label="Corporate Email Domain"
-                        placeholder="company.com"
-                        value={step1.emailDomain}
-                        onChange={(v) => setStep1({ emailDomain: v.toLowerCase() })}
-                        required
-                        hint="Used for auto-provisioning employee email IDs"
-                    />
+                    <Controller name="website" control={control} render={({ field, fieldState }) => (
+                        <FormInput label="Official Website" placeholder="https://company.com" type="url" {...field} value={field.value || ''} error={fieldState.error?.message} />
+                    )} />
+                    <Controller name="emailDomain" control={control} render={({ field, fieldState }) => (
+                        <FormInput label="Corporate Email Domain" placeholder="company.com" {...field} value={field.value || ''} onChange={v => field.onChange(v.toLowerCase())} required hint="Used for auto-provisioning employee email IDs" error={fieldState.error?.message} />
+                    )} />
                 </TwoCol>
             </SectionCard>
 
             {/* Company Status */}
             <SectionCard title="Company Status" subtitle="Controls tenant visibility and access lifecycle on the platform">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {COMPANY_STATUSES.map((s) => (
-                        <RadioOption
-                            key={s.value}
-                            label={s.label}
-                            subtitle={s.subtitle}
-                            selected={step1.status === s.value}
-                            onSelect={() => setStep1({ status: s.value })}
-                            badge={s.value === 'Draft' ? 'DEFAULT' : undefined}
-                            color={
-                                s.color === 'warning' ? '#F59E0B' :
-                                    s.color === 'info' ? '#3B82F6' :
-                                        s.color === 'success' ? '#10B981' :
-                                            '#EF4444'
-                            }
-                        />
-                    ))}
-                </div>
+                <Controller name="status" control={control} render={({ field }) => (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {COMPANY_STATUSES.map((s) => (
+                            <RadioOption
+                                key={s.value}
+                                label={s.label}
+                                subtitle={s.subtitle}
+                                selected={field.value === s.value}
+                                onSelect={() => field.onChange(s.value)}
+                                badge={s.value === 'Draft' ? 'DEFAULT' : undefined}
+                                color={
+                                    s.color === 'warning' ? '#F59E0B' :
+                                        s.color === 'info' ? '#3B82F6' :
+                                            s.color === 'success' ? '#10B981' :
+                                                '#EF4444'
+                                }
+                            />
+                        ))}
+                    </div>
+                )} />
             </SectionCard>
-        </div>
+        </form>
     );
 }

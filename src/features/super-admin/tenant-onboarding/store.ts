@@ -129,12 +129,16 @@ interface TenantOnboardingStore extends TenantOnboardingState {
     setStep6: (u: Partial<Step6Form>) => void;
     setStep7: (u: Partial<Step7ModulesForm>) => void;
     setStep8: (u: Partial<Step8TierForm>) => void;
+    setStep9: (u: { contacts: Contact[] }) => void;
     setContacts: (contacts: Contact[]) => void;
     setStep10: (u: Partial<Step10PlantsForm>) => void;
     setStep11: (u: Partial<Step11ShiftsForm>) => void;
+    setStep12: (u: { noSeries: NoSeriesItem[] }) => void;
     setNoSeries: (list: NoSeriesItem[]) => void;
+    setStep13: (u: { reasons: IOTReason[] }) => void;
     setIOTReasons: (list: IOTReason[]) => void;
     setStep14: (u: Partial<Step14ControlsForm>) => void;
+    setStep15: (u: { users: UserItem[] }) => void;
     setUsers: (users: UserItem[]) => void;
 
     // Helpers
@@ -204,12 +208,16 @@ export const useTenantOnboardingStore = create<TenantOnboardingStore>((set) => (
     setStep6: (u) => set((s) => ({ step6: { ...s.step6, ...u }, isDirty: true })),
     setStep7: (u) => set((s) => ({ step7: { ...s.step7, ...u }, isDirty: true })),
     setStep8: (u) => set((s) => ({ step8: { ...s.step8, ...u }, isDirty: true })),
-    setContacts: (contacts) => set((s) => ({ step9: { ...s.step9, contacts }, isDirty: true })),
+    setStep9: (u) => set((s) => ({ step9: { ...s.step9, ...u }, isDirty: true })),
     setStep10: (u) => set((s) => ({ step10: { ...s.step10, ...u }, isDirty: true })),
     setStep11: (u) => set((s) => ({ step11: { ...s.step11, ...u }, isDirty: true })),
+    setStep12: (u) => set((s) => ({ step12: { ...s.step12, ...u }, isDirty: true })),
+    setStep13: (u) => set((s) => ({ step13: { ...s.step13, ...u }, isDirty: true })),
+    setStep14: (u) => set((s) => ({ step14: { ...s.step14, ...u }, isDirty: true })),
+    setStep15: (u) => set((s) => ({ step15: { ...s.step15, ...u }, isDirty: true })),
+    setContacts: (contacts) => set((s) => ({ step9: { ...s.step9, contacts }, isDirty: true })),
     setNoSeries: (list) => set(() => ({ step12: { noSeries: list }, isDirty: true })),
     setIOTReasons: (list) => set(() => ({ step13: { reasons: list }, isDirty: true })),
-    setStep14: (u) => set((s) => ({ step14: { ...s.step14, ...u }, isDirty: true })),
     setUsers: (users) => set(() => ({ step15: { users }, isDirty: true })),
 
     // Helpers

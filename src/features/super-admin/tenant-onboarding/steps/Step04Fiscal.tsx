@@ -1,4 +1,8 @@
 // Step 04 — Fiscal & Calendar
+import React from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { cn } from '@/lib/utils';
 import {
     SectionCard, FormSelect, ChipSelector, RadioOption, TwoCol, ThreeCol, InfoBanner, SectionDivider
@@ -9,49 +13,88 @@ import {
 } from '../constants';
 import { useTenantOnboardingStore } from '../store';
 
+const schema = z.object({
+    fyType: z.string().min(1, 'Required'),
+    fyCustomStartMonth: z.string().optional(),
+    fyCustomEndMonth: z.string().optional(),
+    payrollFreq: z.string().min(1, 'Required'),
+    cutoffDay: z.string().optional(),
+    disbursementDay: z.string().optional(),
+    weekStart: z.string().min(1, 'Required'),
+    timezone: z.string().min(1, 'Required'),
+}).superRefine((data, ctx) => {
+    if (data.fyType === 'custom') {
+        if (!data.fyCustomStartMonth) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['fyCustomStartMonth'], message: 'Required' });
+        if (!data.fyCustomEndMonth) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['fyCustomEndMonth'], message: 'Required' });
+    }
+});
+
+type FormData = z.infer<typeof schema>;
+
 export function Step04Fiscal() {
-    const { step4, setStep4, toggleWorkingDay } = useTenantOnboardingStore();
+    const { step4, setStep4, toggleWorkingDay, goNext } = useTenantOnboardingStore();
+
+    const { control, handleSubmit, watch } = useForm<FormData>({
+        resolver: zodResolver(schema),
+        defaultValues: {
+            fyType: step4.fyType || 'apr-mar',
+            fyCustomStartMonth: step4.fyCustomStartMonth,
+            fyCustomEndMonth: step4.fyCustomEndMonth,
+            payrollFreq: step4.payrollFreq || 'Monthly',
+            cutoffDay: step4.cutoffDay,
+            disbursementDay: step4.disbursementDay,
+            weekStart: step4.weekStart || 'Monday',
+            timezone: step4.timezone || 'IST UTC+5:30',
+        }
+    });
+
+    const fyType = watch('fyType');
+
+    const onSubmit = (data: FormData) => {
+        // Validation for working days (since it's an array toggled directly in store, we check here)
+        if (step4.workingDays.length === 0) {
+            // Cannot proceed if no working days
+            // We can just return or show an error. The UI already shows the error visually below.
+            return;
+        }
+
+        setStep4(data);
+        goNext();
+        document.getElementById('wizard-content')?.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
     return (
-        <div className="space-y-0 animate-in fade-in slide-in-from-right-3 duration-300">
+        <form id="wizard-step-form" onSubmit={handleSubmit(onSubmit)} className="space-y-0 animate-in fade-in slide-in-from-right-3 duration-300 pb-10">
 
             {/* Financial Year */}
             <SectionCard title="Financial Year Period" subtitle="Controls fiscal reporting, P&L, balance sheet, and budget cycles">
-                <div className="space-y-3">
-                    {FY_OPTIONS.map((fy) => (
-                        <RadioOption
-                            key={fy.key}
-                            label={fy.label}
-                            subtitle={fy.subtitle}
-                            selected={step4.fyType === fy.key}
-                            onSelect={() => setStep4({ fyType: fy.key })}
-                            badge={fy.key === 'apr-mar' ? 'INDIA DEFAULT' : undefined}
-                        />
-                    ))}
-                </div>
+                <Controller name="fyType" control={control} render={({ field }) => (
+                    <div className="space-y-3">
+                        {FY_OPTIONS.map((fy) => (
+                            <RadioOption
+                                key={fy.key}
+                                label={fy.label}
+                                subtitle={fy.subtitle}
+                                selected={field.value === fy.key}
+                                onSelect={() => field.onChange(fy.key)}
+                                badge={fy.key === 'apr-mar' ? 'INDIA DEFAULT' : undefined}
+                            />
+                        ))}
+                    </div>
+                )} />
 
-                {step4.fyType === 'custom' && (
+                {fyType === 'custom' && (
                     <div className="mt-4 space-y-3 animate-in fade-in duration-200">
                         <InfoBanner variant="info">
                             Define your custom financial year start and end months below.
                         </InfoBanner>
                         <TwoCol>
-                            <FormSelect
-                                label="FY Start Month"
-                                value={step4.fyCustomStartMonth}
-                                onChange={(v) => setStep4({ fyCustomStartMonth: v })}
-                                options={MONTHS.map((m) => ({ value: m.key, label: m.label }))}
-                                placeholder="Select start month"
-                                required
-                            />
-                            <FormSelect
-                                label="FY End Month"
-                                value={step4.fyCustomEndMonth}
-                                onChange={(v) => setStep4({ fyCustomEndMonth: v })}
-                                options={MONTHS.map((m) => ({ value: m.key, label: m.label }))}
-                                placeholder="Select end month"
-                                required
-                            />
+                            <Controller name="fyCustomStartMonth" control={control} render={({ field, fieldState }) => (
+                                <FormSelect label="FY Start Month" options={MONTHS.map((m) => ({ value: m.key, label: m.label }))} placeholder="Select start month" {...field} value={field.value || ''} required error={fieldState.error?.message} />
+                            )} />
+                            <Controller name="fyCustomEndMonth" control={control} render={({ field, fieldState }) => (
+                                <FormSelect label="FY End Month" options={MONTHS.map((m) => ({ value: m.key, label: m.label }))} placeholder="Select end month" {...field} value={field.value || ''} required error={fieldState.error?.message} />
+                            )} />
                         </TwoCol>
                     </div>
                 )}
@@ -59,47 +102,28 @@ export function Step04Fiscal() {
 
             {/* Payroll Cycle */}
             <SectionCard title="Payroll Cycle" subtitle="Controls when salaries are computed, locked, and disbursed">
-                <ChipSelector
-                    label="Payroll Frequency"
-                    options={PAYROLL_FREQ}
-                    selected={step4.payrollFreq}
-                    onSelect={(v) => setStep4({ payrollFreq: v })}
-                    required
-                />
+                <Controller name="payrollFreq" control={control} render={({ field, fieldState }) => (
+                    <ChipSelector label="Payroll Frequency" options={PAYROLL_FREQ} selected={field.value} onSelect={field.onChange} required hint={fieldState.error?.message} />
+                )} />
                 <TwoCol>
-                    <ChipSelector
-                        label="Salary Cutoff Day"
-                        options={CUTOFF_DAYS}
-                        selected={step4.cutoffDay}
-                        onSelect={(v) => setStep4({ cutoffDay: v })}
-                        hint="Attendance data is locked after this day for payroll processing"
-                    />
-                    <ChipSelector
-                        label="Disbursement Day"
-                        options={DISBURSEMENT_DAYS}
-                        selected={step4.disbursementDay}
-                        onSelect={(v) => setStep4({ disbursementDay: v })}
-                        hint="Day when salary is transferred to employee bank accounts"
-                    />
+                    <Controller name="cutoffDay" control={control} render={({ field }) => (
+                        <ChipSelector label="Salary Cutoff Day" options={CUTOFF_DAYS} selected={field.value || ''} onSelect={field.onChange} hint="Attendance data is locked after this day for payroll processing" />
+                    )} />
+                    <Controller name="disbursementDay" control={control} render={({ field }) => (
+                        <ChipSelector label="Disbursement Day" options={DISBURSEMENT_DAYS} selected={field.value || ''} onSelect={field.onChange} hint="Day when salary is transferred to employee bank accounts" />
+                    )} />
                 </TwoCol>
             </SectionCard>
 
             {/* Calendar & Timezone */}
             <SectionCard title="Calendar & Timezone" subtitle="Controls scheduling, shift allocation, and time-based operations">
                 <ThreeCol>
-                    <ChipSelector
-                        label="Week Starts On"
-                        options={WEEK_STARTS}
-                        selected={step4.weekStart}
-                        onSelect={(v) => setStep4({ weekStart: v })}
-                    />
-                    <FormSelect
-                        label="Timezone"
-                        value={step4.timezone}
-                        onChange={(v) => setStep4({ timezone: v })}
-                        options={TIMEZONES}
-                        hint="Used for all timestamp calculations and reports"
-                    />
+                    <Controller name="weekStart" control={control} render={({ field }) => (
+                        <ChipSelector label="Week Starts On" options={WEEK_STARTS} selected={field.value} onSelect={field.onChange} />
+                    )} />
+                    <Controller name="timezone" control={control} render={({ field, fieldState }) => (
+                        <FormSelect label="Timezone" options={TIMEZONES} {...field} value={field.value || ''} hint="Used for all timestamp calculations and reports" error={fieldState.error?.message} />
+                    )} />
                     <div />
                 </ThreeCol>
 
@@ -133,8 +157,11 @@ export function Step04Fiscal() {
                     <p className="text-xs text-neutral-400 mt-2 dark:text-neutral-500">
                         {step4.workingDays.length} working day{step4.workingDays.length !== 1 ? 's' : ''} selected
                     </p>
+                    {step4.workingDays.length === 0 && (
+                        <p className="text-xs text-danger-500 mt-1">Please select at least one working day.</p>
+                    )}
                 </div>
             </SectionCard>
-        </div>
+        </form>
     );
 }

@@ -1,4 +1,8 @@
 // Step 15 — User Setup + Activation & Review
+import React from 'react';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { cn } from '@/lib/utils';
 import { CheckCircle2 } from 'lucide-react';
 import {
@@ -6,7 +10,6 @@ import {
     AddButton, ItemCard, TwoCol, InfoBanner
 } from '../atoms';
 import { useTenantOnboardingStore } from '../store';
-import type { UserItem } from '../types';
 
 const USER_ROLES = [
     'Company Admin', 'HR Manager', 'Payroll Manager', 'Plant Manager',
@@ -68,98 +71,69 @@ const CHECKLIST_PHASES = [
     },
 ];
 
-function UserForm({
-    user,
-    onUpdate,
-    onRemove,
-}: {
-    user: UserItem;
-    onUpdate: (u: Partial<UserItem>) => void;
-    onRemove?: () => void;
-}) {
-    return (
-        <div className="space-y-4">
-            <TwoCol>
-                <FormInput
-                    label="Full Name"
-                    placeholder="e.g. Rahul Mehta"
-                    value={user.fullName}
-                    onChange={(v) => onUpdate({ fullName: v })}
-                    required
-                />
-                <FormSelect
-                    label="Role / Access Level"
-                    value={user.role}
-                    onChange={(v) => onUpdate({ role: v })}
-                    options={USER_ROLES}
-                    required
-                />
-            </TwoCol>
+const userSchema = z.object({
+    id: z.string(),
+    fullName: z.string().min(1, 'Required'),
+    role: z.string().min(1, 'Required'),
+    username: z.string().min(1, 'Required').regex(/^[a-z0-9._]+$/, 'Lowercase alphanumeric, dots, and underscores only'),
+    password: z.string().optional(),
+    email: z.string().email('Invalid email').min(1, 'Required'),
+    mobile: z.string().optional(),
+    department: z.string().optional(),
+});
 
-            <TwoCol>
-                <FormInput
-                    label="Username"
-                    placeholder="e.g. rahul.mehta"
-                    value={user.username}
-                    onChange={(v) => onUpdate({ username: v.toLowerCase() })}
-                    required
-                    monospace
-                    hint="Used for login. Alphanumeric, dots and underscores allowed."
-                />
-                <SecretInput
-                    label="Initial Password"
-                    placeholder="Minimum 8 characters"
-                    value={user.password}
-                    onChange={(v) => onUpdate({ password: v })}
-                    hint="User will be prompted to change on first login"
-                />
-            </TwoCol>
+const schema = z.object({
+    users: z.array(userSchema).min(1, 'At least one user is required'),
+});
 
-            <TwoCol>
-                <FormInput
-                    label="Email Address"
-                    placeholder="rahul@company.com"
-                    value={user.email}
-                    onChange={(v) => onUpdate({ email: v })}
-                    type="email"
-                    required
-                />
-                <FormInput
-                    label="Mobile Number"
-                    placeholder="9876543210"
-                    value={user.mobile}
-                    onChange={(v) => onUpdate({ mobile: v })}
-                    type="tel"
-                    hint="Used for MFA / OTP authentication"
-                />
-            </TwoCol>
+type FormData = z.infer<typeof schema>;
 
-            <FormSelect
-                label="Department"
-                value={user.department}
-                onChange={(v) => onUpdate({ department: v })}
-                options={DEPARTMENTS}
-            />
+export function Step15Activation({ onConfirmSubmit }: { onConfirmSubmit?: () => void }) {
+    const { step1, step15, setStep15, setStep1, goNext } = useTenantOnboardingStore();
 
-            {onRemove && (
-                <button
-                    type="button"
-                    onClick={onRemove}
-                    className="text-xs font-semibold text-danger-500 hover:text-danger-700 transition-colors dark:text-danger-400"
-                >
-                    🗑 Remove this user
-                </button>
-            )}
-        </div>
-    );
-}
+    const { control, handleSubmit } = useForm<FormData>({
+        resolver: zodResolver(schema),
+        defaultValues: {
+            users: step15.users.length > 0 ? step15.users : [{
+                id: Date.now().toString(),
+                fullName: '',
+                role: 'Company Admin',
+                username: '',
+                password: '',
+                email: '',
+                department: '',
+                mobile: ''
+            }],
+        }
+    });
 
-export function Step15Activation() {
-    const state = useTenantOnboardingStore();
-    const { step1, step15, addUser, removeUser, updateUser, setStep1 } = state;
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: 'users',
+    });
+
+    const onSubmit = (data: FormData) => {
+        // Sanitize data (ensure no undefined strings)
+        const sanitizedData = {
+            users: data.users.map(u => ({
+                id: u.id,
+                fullName: u.fullName,
+                username: u.username,
+                password: u.password || '',
+                role: u.role,
+                email: u.email,
+                mobile: u.mobile || '',
+                department: u.department || '',
+            }))
+        };
+        setStep15(sanitizedData);
+        if (onConfirmSubmit) {
+            onConfirmSubmit();
+        }
+    };
 
     return (
-        <div className="space-y-0 animate-in fade-in slide-in-from-right-3 duration-300">
+        <form id="wizard-step-form" onSubmit={handleSubmit(onSubmit)} className="space-y-0 animate-in fade-in slide-in-from-right-3 duration-300 pb-10">
 
             {/* Hero Banner */}
             <div className="relative overflow-hidden rounded-3xl mb-5 bg-gradient-to-br from-primary-600 via-primary-700 to-accent-600 px-8 py-10 text-white">
@@ -191,25 +165,82 @@ export function Step15Activation() {
                     by the Company Admin from within the ERP.
                 </InfoBanner>
 
-                {step15.users.map((user, idx) => (
-                    <ItemCard
-                        key={user.id}
-                        title={user.fullName || `User ${idx + 1}`}
-                        subtitle={[user.role, user.department].filter(Boolean).join(' · ')}
-                        badge={idx === 0 ? 'Primary Admin' : `User ${idx + 1}`}
-                        badgeVariant={idx === 0 ? 'primary' : 'info'}
-                        onRemove={step15.users.length > 1 ? () => removeUser(user.id) : undefined}
-                        defaultOpen={idx === 0}
-                    >
-                        <UserForm
-                            user={user}
-                            onUpdate={(u) => updateUser(user.id, u)}
-                            onRemove={step15.users.length > 1 ? () => removeUser(user.id) : undefined}
-                        />
-                    </ItemCard>
+                {fields.map((field, idx) => (
+                    <Controller
+                        key={field.id}
+                        name={`users.${idx}`}
+                        control={control}
+                        render={({ field: controllerField, formState }) => {
+                            const user = controllerField.value;
+                            const errors = formState.errors.users?.[idx];
+
+                            return (
+                                <ItemCard
+                                    title={user.fullName || `User ${idx + 1}`}
+                                    subtitle={[user.role, user.department].filter(Boolean).join(' · ')}
+                                    badge={idx === 0 ? 'Primary Admin' : `User ${idx + 1}`}
+                                    badgeVariant={idx === 0 ? 'primary' : 'info'}
+                                    onRemove={fields.length > 1 ? () => remove(idx) : undefined}
+                                    defaultOpen={idx === 0}
+                                >
+                                    <div className="space-y-4">
+                                        <TwoCol>
+                                            <Controller name={`users.${idx}.fullName`} control={control} render={({ field: subField }) => (
+                                                <FormInput label="Full Name" placeholder="e.g. Rahul Mehta" {...subField} value={subField.value || ''} required error={errors?.fullName?.message} />
+                                            )} />
+                                            <Controller name={`users.${idx}.role`} control={control} render={({ field: subField }) => (
+                                                <FormSelect label="Role / Access Level" {...subField} value={subField.value || ''} options={USER_ROLES} required />
+                                            )} />
+                                        </TwoCol>
+
+                                        <TwoCol>
+                                            <Controller name={`users.${idx}.username`} control={control} render={({ field: subField }) => (
+                                                <FormInput label="Username" placeholder="e.g. rahul.mehta" {...subField} value={subField.value || ''} onChange={(e) => subField.onChange(e.toLowerCase())} required monospace hint="Used for login. Alphanumeric, dots and underscores allowed." error={errors?.username?.message} />
+                                            )} />
+                                            <Controller name={`users.${idx}.password`} control={control} render={({ field: subField }) => (
+                                                <SecretInput label="Initial Password" placeholder="Minimum 8 characters" {...subField} value={subField.value || ''} hint="User will be prompted to change on first login" error={errors?.password?.message} />
+                                            )} />
+                                        </TwoCol>
+
+                                        <TwoCol>
+                                            <Controller name={`users.${idx}.email`} control={control} render={({ field: subField }) => (
+                                                <FormInput label="Email Address" placeholder="rahul@company.com" {...subField} value={subField.value || ''} type="email" required error={errors?.email?.message} />
+                                            )} />
+                                            <Controller name={`users.${idx}.mobile`} control={control} render={({ field: subField }) => (
+                                                <FormInput label="Mobile Number" placeholder="9876543210" {...subField} value={subField.value || ''} type="tel" hint="Used for MFA / OTP authentication" error={errors?.mobile?.message} />
+                                            )} />
+                                        </TwoCol>
+
+                                        <Controller name={`users.${idx}.department`} control={control} render={({ field: subField }) => (
+                                            <FormSelect label="Department" {...subField} value={subField.value || ''} options={DEPARTMENTS} />
+                                        )} />
+
+                                        {fields.length > 1 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => remove(idx)}
+                                                className="text-xs font-semibold text-danger-500 hover:text-danger-700 transition-colors dark:text-danger-400"
+                                            >
+                                                🗑 Remove this user
+                                            </button>
+                                        )}
+                                    </div>
+                                </ItemCard>
+                            );
+                        }}
+                    />
                 ))}
 
-                <AddButton label="Add Another User" onClick={addUser} />
+                <AddButton label="Add Another User" onClick={() => append({
+                    id: Date.now().toString(),
+                    fullName: '',
+                    role: 'Viewer',
+                    username: '',
+                    password: '',
+                    email: '',
+                    department: '',
+                    mobile: ''
+                })} />
             </SectionCard>
 
             {/* Activation Status */}
@@ -222,7 +253,7 @@ export function Step15Activation() {
                         <button
                             key={opt.status}
                             type="button"
-                            onClick={() => setStep1({ status: opt.status })}
+                            onClick={() => setStep1({ status: opt.status as any })}
                             className={cn(
                                 'w-full flex items-center gap-4 px-5 py-4 rounded-2xl border-2 text-left transition-all duration-150',
                                 step1.status === opt.status
@@ -280,6 +311,6 @@ export function Step15Activation() {
                 identifiers (PAN, TAN, GSTIN) cannot be changed without Super-Admin override and audit trail.
                 User credentials will be sent to the email addresses configured for each user.
             </InfoBanner>
-        </div>
+        </form>
     );
 }
