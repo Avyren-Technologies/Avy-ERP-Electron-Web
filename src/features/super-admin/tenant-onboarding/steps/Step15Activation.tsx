@@ -145,7 +145,7 @@ function UserForm({
                 <button
                     type="button"
                     onClick={onRemove}
-                    className="text-xs font-semibold text-danger-500 hover:text-danger-700 transition-colors"
+                    className="text-xs font-semibold text-danger-500 hover:text-danger-700 transition-colors dark:text-danger-400"
                 >
                     🗑 Remove this user
                 </button>
@@ -226,25 +226,25 @@ export function Step15Activation() {
                             className={cn(
                                 'w-full flex items-center gap-4 px-5 py-4 rounded-2xl border-2 text-left transition-all duration-150',
                                 step1.status === opt.status
-                                    ? 'border-primary-400 bg-primary-50 shadow-sm'
-                                    : 'border-neutral-200 bg-white hover:border-neutral-300'
+                                    ? 'border-primary-400 bg-primary-50 dark:bg-primary-900/30 shadow-sm'
+                                    : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 hover:border-neutral-300'
                             )}
                         >
                             <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: opt.color }} />
                             <div className="flex-1">
                                 <p className={cn(
                                     'text-sm font-bold',
-                                    step1.status === opt.status ? 'text-primary-800' : 'text-primary-950'
+                                    step1.status === opt.status ? 'text-primary-800 dark:text-primary-300' : 'text-primary-950 dark:text-white'
                                 )}>
                                     {opt.status}
                                 </p>
-                                <p className="text-xs text-neutral-500 mt-0.5">{opt.subtitle}</p>
+                                <p className="text-xs text-neutral-500 mt-0.5 dark:text-neutral-400">{opt.subtitle}</p>
                             </div>
                             <div className={cn(
                                 'w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0',
-                                step1.status === opt.status ? 'border-primary-600 bg-primary-600' : 'border-neutral-300'
+                                step1.status === opt.status ? 'border-primary-600 dark:border-primary-500 bg-primary-600' : 'border-neutral-300'
                             )}>
-                                {step1.status === opt.status && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                {step1.status === opt.status && <div className="w-1.5 h-1.5 rounded-full bg-white dark:bg-neutral-900" />}
                             </div>
                         </button>
                     ))}
@@ -259,13 +259,13 @@ export function Step15Activation() {
             >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {CHECKLIST_PHASES.map((phase) => (
-                        <div key={phase.phase} className="bg-neutral-50 rounded-xl border border-neutral-100 px-5 py-4">
-                            <p className="text-xs font-bold text-primary-900 mb-2">{phase.phase}</p>
+                        <div key={phase.phase} className="bg-neutral-50 rounded-xl border border-neutral-100 px-5 py-4 dark:bg-neutral-800 dark:border-neutral-800">
+                            <p className="text-xs font-bold text-primary-900 mb-2 dark:text-white">{phase.phase}</p>
                             <div className="space-y-1.5">
                                 {phase.items.map((item) => (
                                     <div key={item} className="flex items-start gap-2">
                                         <CheckCircle2 size={13} className="text-success-500 flex-shrink-0 mt-0.5" />
-                                        <p className="text-xs text-neutral-600 leading-4">{item}</p>
+                                        <p className="text-xs text-neutral-600 leading-4 dark:text-neutral-300">{item}</p>
                                     </div>
                                 ))}
                             </div>

@@ -44,8 +44,8 @@ export function Step01Identity() {
                         className={cn(
                             'w-24 h-24 rounded-2xl flex items-center justify-center flex-shrink-0 overflow-hidden',
                             step1.logoPreviewUrl
-                                ? 'border-2 border-primary-200'
-                                : 'border-2 border-dashed border-neutral-200 bg-neutral-50'
+                                ? 'border-2 border-primary-200 dark:border-primary-800/50'
+                                : 'border-2 border-dashed border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800'
                         )}
                     >
                         {step1.logoPreviewUrl ? (
@@ -55,7 +55,7 @@ export function Step01Identity() {
                                 className="w-full h-full object-cover"
                             />
                         ) : (
-                            <Building2 size={32} className="text-neutral-300" />
+                            <Building2 size={32} className="text-neutral-300 dark:text-neutral-500" />
                         )}
                     </div>
 
@@ -67,8 +67,8 @@ export function Step01Identity() {
                                     type="button"
                                     onClick={() => fileRef.current?.click()}
                                     className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold
-                    bg-primary-50 text-primary-700 border border-primary-200
-                    hover:bg-primary-100 transition-colors"
+                    bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 border border-primary-200 dark:border-primary-800/50
+                    hover:bg-primary-100 dark:bg-primary-900/40 transition-colors"
                                 >
                                     <Camera size={13} />
                                     Change Logo
@@ -77,8 +77,8 @@ export function Step01Identity() {
                                     type="button"
                                     onClick={removeLogo}
                                     className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold
-                    bg-danger-50 text-danger-600 border border-danger-200
-                    hover:bg-danger-100 transition-colors"
+                    bg-danger-50 dark:bg-danger-900/20 text-danger-600 border border-danger-200 dark:border-danger-800/50
+                    hover:bg-danger-100 dark:bg-danger-900/30 transition-colors"
                                 >
                                     <X size={13} />
                                     Remove
@@ -96,7 +96,7 @@ export function Step01Identity() {
                                 Upload Logo
                             </button>
                         )}
-                        <p className="text-xs text-neutral-400">
+                        <p className="text-xs text-neutral-400 dark:text-neutral-500">
                             Appears in documents, portal header, and tenant dashboard.
                         </p>
                     </div>

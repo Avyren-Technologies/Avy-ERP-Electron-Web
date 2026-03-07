@@ -78,7 +78,7 @@ function IOTReasonForm({
             <button
                 type="button"
                 onClick={onRemove}
-                className="text-xs font-semibold text-danger-500 hover:text-danger-700 transition-colors"
+                className="text-xs font-semibold text-danger-500 hover:text-danger-700 transition-colors dark:text-danger-400"
             >
                 🗑 Remove this reason
             </button>
@@ -103,24 +103,24 @@ export function Step13IOTReasons() {
 
             {/* Summary Cards */}
             <div className="grid grid-cols-2 gap-4 mb-5">
-                <div className="bg-warning-50 border border-warning-200 rounded-2xl px-5 py-4">
-                    <p className="text-2xl font-bold text-warning-700">{idle.length}</p>
-                    <p className="text-sm font-semibold text-warning-800">Machine Idle Reasons</p>
+                <div className="bg-warning-50 border border-warning-200 rounded-2xl px-5 py-4 dark:bg-warning-900/20 dark:border-warning-800/50">
+                    <p className="text-2xl font-bold text-warning-700 dark:text-warning-400">{idle.length}</p>
+                    <p className="text-sm font-semibold text-warning-800 dark:text-warning-400">Machine Idle Reasons</p>
                     <p className="text-xs text-warning-600 mt-1">Material shortage, changeover, operator absence...</p>
                 </div>
-                <div className="bg-danger-50 border border-danger-200 rounded-2xl px-5 py-4">
-                    <p className="text-2xl font-bold text-danger-700">{alarm.length}</p>
-                    <p className="text-sm font-semibold text-danger-800">Machine Alarm Reasons</p>
+                <div className="bg-danger-50 border border-danger-200 rounded-2xl px-5 py-4 dark:bg-danger-900/20 dark:border-danger-800/50">
+                    <p className="text-2xl font-bold text-danger-700 dark:text-danger-400">{alarm.length}</p>
+                    <p className="text-sm font-semibold text-danger-800 dark:text-danger-400">Machine Alarm Reasons</p>
                     <p className="text-xs text-danger-600 mt-1">Breakdown, hydraulic failure, spindle error...</p>
                 </div>
             </div>
 
             <SectionCard title="IOT Reason List" subtitle="Add all reasons that operators will use to classify machine downtime on the shop floor">
                 {step13.reasons.length === 0 ? (
-                    <div className="bg-neutral-50 border border-dashed border-neutral-200 rounded-xl py-10 text-center mb-4">
+                    <div className="bg-neutral-50 border border-dashed border-neutral-200 rounded-xl py-10 text-center mb-4 dark:bg-neutral-800 dark:border-neutral-700">
                         <p className="text-2xl mb-3">📡</p>
-                        <p className="text-sm font-semibold text-neutral-600">No IOT reasons defined</p>
-                        <p className="text-xs text-neutral-400 mt-1">
+                        <p className="text-sm font-semibold text-neutral-600 dark:text-neutral-300">No IOT reasons defined</p>
+                        <p className="text-xs text-neutral-400 mt-1 dark:text-neutral-500">
                             Add reasons for machine idle time and alarms. Operators select these during downtime logging.
                         </p>
                     </div>
@@ -157,7 +157,7 @@ export function Step13IOTReasons() {
                                 'Quality Hold', 'Tool Change', 'Scheduled Break',
                                 'Power Fluctuation', 'No Job Order',
                             ].map((s) => (
-                                <p key={s} className="text-xs text-neutral-600 bg-warning-50 rounded-lg px-3 py-1.5 border border-warning-100">
+                                <p key={s} className="text-xs text-neutral-600 bg-warning-50 rounded-lg px-3 py-1.5 border border-warning-100 dark:text-neutral-300 dark:bg-warning-900/20">
                                     • {s}
                                 </p>
                             ))}
@@ -171,7 +171,7 @@ export function Step13IOTReasons() {
                                 'Coolant System Fault', 'Electrical Fault', 'Servo Alarm',
                                 'Chuck Pressure Low', 'Emergency Stop Triggered',
                             ].map((s) => (
-                                <p key={s} className="text-xs text-neutral-600 bg-danger-50 rounded-lg px-3 py-1.5 border border-danger-100">
+                                <p key={s} className="text-xs text-neutral-600 bg-danger-50 rounded-lg px-3 py-1.5 border border-danger-100 dark:text-neutral-300 dark:bg-danger-900/20 dark:border-danger-800/50">
                                     • {s}
                                 </p>
                             ))}

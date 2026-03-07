@@ -129,8 +129,8 @@ export function Step03Address() {
                 )}
 
                 {step3.sameAsRegistered && (
-                    <div className="bg-success-50 rounded-xl border border-success-200 px-4 py-3 mt-2">
-                        <p className="text-xs font-semibold text-success-700">
+                    <div className="bg-success-50 rounded-xl border border-success-200 px-4 py-3 mt-2 dark:bg-success-900/20 dark:border-success-800/50">
+                        <p className="text-xs font-semibold text-success-700 dark:text-success-400">
                             ✅ Corporate address will mirror the registered address above.
                         </p>
                     </div>

@@ -31,26 +31,26 @@ export function Step06Endpoint() {
                         className={cn(
                             'relative flex flex-col items-start gap-3 p-5 rounded-2xl border-2 text-left transition-all duration-200',
                             step6.endpointType === 'default'
-                                ? 'border-primary-500 bg-primary-50 shadow-md shadow-primary-500/10'
-                                : 'border-neutral-200 bg-white hover:border-primary-200'
+                                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 shadow-md shadow-primary-500/10'
+                                : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 hover:border-primary-200 dark:border-primary-800/50'
                         )}
                     >
                         {step6.endpointType === 'default' && (
                             <CheckCircle2 size={18} className="absolute top-4 right-4 text-primary-600" />
                         )}
-                        <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center dark:bg-primary-900/40">
                             <Globe size={20} className="text-primary-600" />
                         </div>
                         <div>
-                            <p className="text-sm font-bold text-primary-950">Avyren Default Cloud</p>
-                            <p className="text-xs text-neutral-500 mt-1 leading-5">
+                            <p className="text-sm font-bold text-primary-950 dark:text-white">Avyren Default Cloud</p>
+                            <p className="text-xs text-neutral-500 mt-1 leading-5 dark:text-neutral-400">
                                 Hosted on Avyren's managed infrastructure. Automatic scaling, backups, and SLA.
                                 Recommended for most tenants.
                             </p>
                         </div>
                         <div className="flex flex-wrap gap-1.5 mt-1">
                             {['Auto-managed', 'Multi-region CDN', '99.9% Uptime SLA'].map(f => (
-                                <span key={f} className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary-100 text-primary-700">
+                                <span key={f} className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-400">
                                     {f}
                                 </span>
                             ))}
@@ -65,7 +65,7 @@ export function Step06Endpoint() {
                             'relative flex flex-col items-start gap-3 p-5 rounded-2xl border-2 text-left transition-all duration-200',
                             step6.endpointType === 'custom'
                                 ? 'border-accent-500 bg-accent-50 shadow-md shadow-accent-500/10'
-                                : 'border-neutral-200 bg-white hover:border-accent-200'
+                                : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 hover:border-accent-200'
                         )}
                     >
                         {step6.endpointType === 'custom' && (
@@ -75,8 +75,8 @@ export function Step06Endpoint() {
                             <Server size={20} className="text-accent-600" />
                         </div>
                         <div>
-                            <p className="text-sm font-bold text-primary-950">Custom / On-Premise Endpoint</p>
-                            <p className="text-xs text-neutral-500 mt-1 leading-5">
+                            <p className="text-sm font-bold text-primary-950 dark:text-white">Custom / On-Premise Endpoint</p>
+                            <p className="text-xs text-neutral-500 mt-1 leading-5 dark:text-neutral-400">
                                 Point to a dedicated server, private cloud, or on-premise Avy ERP backend deployment.
                                 Enterprise use only.
                             </p>
@@ -110,9 +110,9 @@ export function Step06Endpoint() {
                         ))}
                     </div>
 
-                    <div className="mt-4 bg-success-50 border border-success-200 rounded-xl px-5 py-4">
-                        <p className="text-xs font-bold text-success-800 mb-1">✅ Default Endpoint Active</p>
-                        <p className="text-xs text-success-700">
+                    <div className="mt-4 bg-success-50 border border-success-200 rounded-xl px-5 py-4 dark:bg-success-900/20 dark:border-success-800/50">
+                        <p className="text-xs font-bold text-success-800 mb-1 dark:text-success-400">✅ Default Endpoint Active</p>
+                        <p className="text-xs text-success-700 dark:text-success-400">
                             Tenant will be provisioned on <strong>api.avy-erp.com</strong> with your selected region as the
                             preferred shard. SSL/TLS, backups, and monitoring are fully managed by Avyren.
                         </p>
@@ -176,11 +176,11 @@ export function Step06Endpoint() {
                     </SectionCard>
 
                     <SectionCard title="Endpoint Health" subtitle="Validation status of the custom backend connection">
-                        <div className="flex items-center gap-3 bg-warning-50 border border-warning-200 rounded-xl px-5 py-4">
+                        <div className="flex items-center gap-3 bg-warning-50 border border-warning-200 rounded-xl px-5 py-4 dark:bg-warning-900/20 dark:border-warning-800/50">
                             <AlertCircle size={20} className="text-warning-600 flex-shrink-0" />
                             <div>
-                                <p className="text-sm font-semibold text-warning-800">Endpoint Not Validated</p>
-                                <p className="text-xs text-warning-700 mt-0.5">
+                                <p className="text-sm font-semibold text-warning-800 dark:text-warning-400">Endpoint Not Validated</p>
+                                <p className="text-xs text-warning-700 mt-0.5 dark:text-warning-400">
                                     The connection test runs automatically after company creation. Ensure the URL is accessible
                                     from Avyren's platform IP range before going live.
                                 </p>
@@ -188,9 +188,9 @@ export function Step06Endpoint() {
                         </div>
                         {step6.customBaseUrl && (
                             <div className="mt-3 font-mono text-xs bg-neutral-900 text-green-400 px-5 py-4 rounded-xl overflow-x-auto">
-                                <p className="text-neutral-500">{'# Pending validation test:'}</p>
+                                <p className="text-neutral-500 dark:text-neutral-400">{'# Pending validation test:'}</p>
                                 <p>{'GET '}{step6.customBaseUrl}{'/health'}</p>
-                                <p className="text-neutral-500 mt-1">{'# Expected: 200 OK { "status": "healthy" }'}</p>
+                                <p className="text-neutral-500 mt-1 dark:text-neutral-400">{'# Expected: 200 OK { "status": "healthy" }'}</p>
                             </div>
                         )}
                     </SectionCard>

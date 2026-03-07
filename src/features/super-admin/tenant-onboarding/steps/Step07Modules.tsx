@@ -70,10 +70,10 @@ export function Step07Modules() {
                                 className={cn(
                                     'relative rounded-2xl border-2 transition-all duration-200 overflow-hidden',
                                     selected && !depAutoAdded
-                                        ? 'border-primary-500 bg-primary-50'
+                                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30'
                                         : selected && depAutoAdded
                                             ? 'border-accent-400 bg-accent-50/50'
-                                            : 'border-neutral-200 bg-white hover:border-primary-200'
+                                            : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 hover:border-primary-200 dark:border-primary-800/50'
                                 )}
                             >
                                 <div className="p-4">
@@ -95,19 +95,19 @@ export function Step07Modules() {
                                     <div className="flex items-start gap-3 mb-3">
                                         <span className="text-2xl">{mod.icon}</span>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-bold text-primary-950">{mod.name}</p>
-                                            <p className="text-xs text-neutral-500 leading-4 mt-0.5">{mod.description}</p>
+                                            <p className="text-sm font-bold text-primary-950 dark:text-white">{mod.name}</p>
+                                            <p className="text-xs text-neutral-500 leading-4 mt-0.5 dark:text-neutral-400">{mod.description}</p>
                                         </div>
                                     </div>
 
                                     {/* Dependencies */}
                                     {mod.dependencies && mod.dependencies.length > 0 && (
                                         <div className="flex flex-wrap gap-1.5 mb-3">
-                                            <span className="text-[10px] text-neutral-400 mt-0.5">Requires:</span>
+                                            <span className="text-[10px] text-neutral-400 mt-0.5 dark:text-neutral-500">Requires:</span>
                                             {mod.dependencies.map((dep) => {
                                                 const depMod = MODULE_CATALOGUE.find((m) => m.id === dep);
                                                 return (
-                                                    <span key={dep} className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600">
+                                                    <span key={dep} className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
                                                         {depMod?.icon} {depMod?.name}
                                                     </span>
                                                 );
@@ -118,9 +118,9 @@ export function Step07Modules() {
                                     {/* Pricing row */}
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-sm font-bold text-primary-800">
+                                            <p className="text-sm font-bold text-primary-800 dark:text-primary-300">
                                                 ₹{(customPrice ?? mod.price).toLocaleString('en-IN')}
-                                                <span className="text-xs font-normal text-neutral-500">/month</span>
+                                                <span className="text-xs font-normal text-neutral-500 dark:text-neutral-400">/month</span>
                                             </p>
                                             {customPrice !== undefined && (
                                                 <p className="text-[10px] text-warning-600">Standard: ₹{mod.price.toLocaleString('en-IN')}</p>
@@ -134,8 +134,8 @@ export function Step07Modules() {
                                                 className={cn(
                                                     'flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold border transition-all duration-150',
                                                     userSelected
-                                                        ? 'bg-danger-50 text-danger-600 border-danger-200 hover:bg-danger-100'
-                                                        : 'bg-primary-600 text-white border-primary-600 hover:bg-primary-700 shadow-sm'
+                                                        ? 'bg-danger-50 dark:bg-danger-900/20 text-danger-600 border-danger-200 dark:border-danger-800/50 hover:bg-danger-100 dark:bg-danger-900/30'
+                                                        : 'bg-primary-600 text-white border-primary-600 dark:border-primary-500 hover:bg-primary-700 shadow-sm'
                                                 )}
                                             >
                                                 {userSelected ? <><Minus size={12} /> Remove</> : <><Plus size={12} /> Add</>}
@@ -151,11 +151,11 @@ export function Step07Modules() {
 
                                 {/* Custom pricing input (shows when selected) */}
                                 {selected && (
-                                    <div className="border-t border-neutral-100 px-4 py-3 bg-white/70">
+                                    <div className="border-t border-neutral-100 px-4 py-3 bg-white/70 dark:border-neutral-800">
                                         <div className="flex items-center gap-2">
-                                            <span className="text-xs text-neutral-500 whitespace-nowrap">Custom Price Override:</span>
+                                            <span className="text-xs text-neutral-500 whitespace-nowrap dark:text-neutral-400">Custom Price Override:</span>
                                             <div className="relative flex-1 max-w-[140px]">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400">₹</span>
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400 dark:text-neutral-500">₹</span>
                                                 <input
                                                     type="number"
                                                     placeholder={String(mod.price)}
@@ -169,12 +169,12 @@ export function Step07Modules() {
                                                             // reset — user cleared the override
                                                         }
                                                     }}
-                                                    className="w-full rounded-lg border border-neutral-200 bg-neutral-50 pl-7 pr-3 py-1.5 text-xs text-neutral-800
+                                                    className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 pl-7 pr-3 py-1.5 text-xs text-neutral-800 dark:text-neutral-200
                             focus:outline-none focus:ring-1 focus:ring-primary-400/40 focus:border-primary-400
                             [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
                                                 />
                                             </div>
-                                            <span className="text-xs text-neutral-400">/mo</span>
+                                            <span className="text-xs text-neutral-400 dark:text-neutral-500">/mo</span>
                                             {customPrice !== undefined && (
                                                 <button
                                                     type="button"
@@ -183,7 +183,7 @@ export function Step07Modules() {
                                                         delete next[mod.id];
                                                         useTenantOnboardingStore.getState().setStep7({ customModulePricing: next });
                                                     }}
-                                                    className="text-[10px] text-danger-500 hover:text-danger-700 font-bold"
+                                                    className="text-[10px] text-danger-500 hover:text-danger-700 font-bold dark:text-danger-400"
                                                 >
                                                     Reset
                                                 </button>
@@ -211,8 +211,8 @@ export function Step07Modules() {
                                 <div key={id} className="flex items-center gap-3 bg-accent-50 border border-accent-200 rounded-xl px-4 py-3">
                                     <span className="text-lg">{depMod.icon}</span>
                                     <div className="flex-1">
-                                        <p className="text-sm font-bold text-primary-950">{depMod.name}</p>
-                                        <p className="text-xs text-neutral-600">
+                                        <p className="text-sm font-bold text-primary-950 dark:text-white">{depMod.name}</p>
+                                        <p className="text-xs text-neutral-600 dark:text-neutral-300">
                                             Required by: {requiredBy.join(', ')}
                                         </p>
                                     </div>

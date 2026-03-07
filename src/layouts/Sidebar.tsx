@@ -2,6 +2,7 @@
 // Sidebar — Role-based, collapsible, sub-modules with dotted connector lines
 // ============================================================
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
@@ -57,10 +58,6 @@ const NAV_CONFIG: NavSection[] = [
                 icon: Building2,
                 label: 'Companies',
                 path: '/app/companies',
-                children: [
-                    { label: 'All Companies', path: '/app/companies' },
-                    { label: 'Module Assignment', path: '/app/companies/modules' },
-                ],
             },
             {
                 icon: CreditCard,
@@ -214,6 +211,24 @@ export function Sidebar({ collapsed, onCollapse, role = 'super_admin' }: Sidebar
         items: s.items.filter((i) => !i.roles || i.roles.includes(role)),
     })).filter((s) => s.items.length > 0);
 
+    // Global Tooltip State for Collapsed Mode
+    const [hoveredLabel, setHoveredLabel] = useState<string | null>(null);
+    const [hoveredRect, setHoveredRect] = useState<DOMRect | null>(null);
+
+    const handleMouseEnter = (e: React.MouseEvent<HTMLElement>, label: string) => {
+        if (collapsed) {
+            setHoveredLabel(label);
+            setHoveredRect(e.currentTarget.getBoundingClientRect());
+        }
+    };
+
+    const handleMouseLeave = () => {
+        if (collapsed) {
+            setHoveredLabel(null);
+            setHoveredRect(null);
+        }
+    };
+
     return (
         <aside
             className={cn(
@@ -261,7 +276,7 @@ export function Sidebar({ collapsed, onCollapse, role = 'super_admin' }: Sidebar
             )}
 
             {/* ---- Navigation ---- */}
-            <nav className="flex-1 py-3">
+            <nav className="flex-1 py-3 overflow-y-auto overflow-x-hidden custom-scrollbar">
                 {visibleSections.map((section) => (
                     <div key={section.group} className={cn('mb-1', collapsed ? 'px-2' : 'px-3')}>
                         {/* Section label */}
@@ -281,6 +296,8 @@ export function Sidebar({ collapsed, onCollapse, role = 'super_admin' }: Sidebar
                                 <div key={item.path}>
                                     {/* Main Nav Item */}
                                     <button
+                                        onMouseEnter={(e) => handleMouseEnter(e, item.label)}
+                                        onMouseLeave={handleMouseLeave}
                                         onClick={() => {
                                             if (hasChildren && !collapsed) {
                                                 toggleGroup(item.path);
@@ -288,7 +305,7 @@ export function Sidebar({ collapsed, onCollapse, role = 'super_admin' }: Sidebar
                                                 navigate(item.path);
                                             }
                                         }}
-                                        title={collapsed ? item.label : undefined}
+                                        title={undefined}
                                         className={cn(
                                             'w-full flex items-center gap-3 rounded-xl transition-all duration-150 group relative',
                                             collapsed ? 'px-2.5 py-2.5 justify-center' : 'px-3 py-2.5',
@@ -332,21 +349,13 @@ export function Sidebar({ collapsed, onCollapse, role = 'super_admin' }: Sidebar
                                                 )}
                                             </>
                                         )}
-
-                                        {/* Tooltip for collapsed */}
-                                        {collapsed && (
-                                            <span className="absolute left-full ml-3 px-3 py-1.5 bg-neutral-900 dark:bg-neutral-700 text-white text-xs font-semibold rounded-xl whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 shadow-xl">
-                                                {item.label}
-                                                <span className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-neutral-900 dark:border-r-neutral-700" />
-                                            </span>
-                                        )}
                                     </button>
 
                                     {/* Sub-items with dotted connector */}
                                     {hasChildren && !collapsed && isOpen && (
                                         <div className="relative mt-0.5 mb-1 animate-in fade-in slide-in-from-top-1 duration-150">
                                             {/* Vertical dotted line */}
-                                            <div className="absolute left-[21px] top-0 bottom-[18px] w-px border-l-2 border-dashed border-neutral-200 dark:border-neutral-700" />
+                                            <div className="absolute left-[21px] top-0 bottom-[18px] w-[2px] animated-dash-y text-neutral-200 dark:text-neutral-700 pointer-events-none" />
 
                                             <div className="space-y-0.5">
                                                 {item.children!.map((child, ci) => {
@@ -365,12 +374,12 @@ export function Sidebar({ collapsed, onCollapse, role = 'super_admin' }: Sidebar
                                                         >
                                                             {/* Horizontal connector dot-line */}
                                                             <span className={cn(
-                                                                'absolute left-[21px] top-1/2 -translate-y-1/2 w-[14px] border-t-2 border-dashed',
-                                                                childActive ? 'border-primary-400' : 'border-neutral-200 dark:border-neutral-700'
+                                                                'absolute left-[21px] top-1/2 -translate-y-1/2 w-[14px] h-[2px] pointer-events-none animated-dash-x',
+                                                                childActive ? 'text-primary-400 dark:text-primary-600' : 'text-neutral-200 dark:text-neutral-700'
                                                             )} />
                                                             {/* Dot at end of horizontal line */}
                                                             <span className={cn(
-                                                                'absolute left-[35px] top-1/2 -translate-y-1/2 w-[5px] h-[5px] rounded-full flex-shrink-0',
+                                                                'absolute left-[35px] top-1/2 -translate-y-1/2 w-[5px] h-[5px] rounded-full flex-shrink-0 pointer-events-none',
                                                                 childActive ? 'bg-primary-600 dark:bg-primary-400' : 'bg-neutral-300 dark:bg-neutral-600'
                                                             )} />
                                                             {child.label}
@@ -403,7 +412,9 @@ export function Sidebar({ collapsed, onCollapse, role = 'super_admin' }: Sidebar
                         <NavLink
                             key={item.path}
                             to={item.path}
-                            title={collapsed ? item.label : undefined}
+                            onMouseEnter={(e) => handleMouseEnter(e, item.label)}
+                            onMouseLeave={handleMouseLeave}
+                            title={undefined}
                             className={cn(
                                 'w-full flex items-center gap-3 rounded-xl transition-all duration-150 group relative mb-0.5',
                                 collapsed ? 'px-2.5 py-2.5 justify-center' : 'px-3 py-2.5',
@@ -435,12 +446,6 @@ export function Sidebar({ collapsed, onCollapse, role = 'super_admin' }: Sidebar
                                         </span>
                                     )}
                                 </>
-                            )}
-                            {collapsed && (
-                                <span className="absolute left-full ml-3 px-3 py-1.5 bg-neutral-900 dark:bg-neutral-700 text-white text-xs font-semibold rounded-xl whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 shadow-xl">
-                                    {item.label}
-                                    <span className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-neutral-900 dark:border-r-neutral-700" />
-                                </span>
                             )}
                         </NavLink>
                     );
@@ -479,6 +484,22 @@ export function Sidebar({ collapsed, onCollapse, role = 'super_admin' }: Sidebar
                     )}
                 </div>
             </div>
+
+            {/* Global Hover Tooltip for Collapsed Sidebar */}
+            {collapsed && hoveredLabel && hoveredRect && document.body && createPortal(
+                <span
+                    className="fixed z-[9999] px-3 py-1.5 bg-neutral-900 dark:bg-neutral-700 text-white text-xs font-semibold rounded-xl whitespace-nowrap pointer-events-none shadow-xl animate-in fade-in zoom-in-95 duration-100"
+                    style={{
+                        top: hoveredRect.top + hoveredRect.height / 2,
+                        left: hoveredRect.right + 12,
+                        transform: 'translateY(-50%)'
+                    }}
+                >
+                    {hoveredLabel}
+                    <span className="absolute right-full top-1/2 -translate-y-1/2 border-y-4 border-y-transparent border-r-4 border-r-neutral-900 dark:border-r-neutral-700" />
+                </span>,
+                document.body
+            )}
         </aside>
     );
 }

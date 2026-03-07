@@ -28,7 +28,7 @@ function FacilityTypeSelector({
 
     return (
         <div className="space-y-2">
-            <label className="block text-xs font-bold text-primary-900">
+            <label className="block text-xs font-bold text-primary-900 dark:text-white">
                 Facility Type <span className="text-danger-500">*</span>
             </label>
             <div className="flex flex-wrap gap-2">
@@ -52,8 +52,8 @@ function FacilityTypeSelector({
                             className={cn(
                                 'px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-150',
                                 isActive
-                                    ? 'bg-primary-600 text-white border-primary-600 shadow-sm'
-                                    : 'bg-white text-neutral-700 border-neutral-200 hover:border-primary-300 hover:text-primary-700'
+                                    ? 'bg-primary-600 text-white border-primary-600 dark:border-primary-500 shadow-sm'
+                                    : 'bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:border-primary-300 hover:text-primary-700 dark:text-primary-400'
                             )}
                         >
                             {opt}
@@ -69,7 +69,7 @@ function FacilityTypeSelector({
                         placeholder="Type your facility type (e.g. Cold Storage)"
                         value={custom}
                         onChange={(e) => setCustom(e.target.value)}
-                        className="flex-1 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm text-neutral-800
+                        className="flex-1 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-4 py-2.5 text-sm text-neutral-800 dark:text-neutral-200
               focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400"
                     />
                     <button
@@ -104,22 +104,22 @@ function PlantForm({
     return (
         <div className="space-y-5">
             {/* HQ toggle */}
-            <div className="flex items-center gap-3 bg-primary-50 rounded-xl px-4 py-3 border border-primary-100">
+            <div className="flex items-center gap-3 bg-primary-50 rounded-xl px-4 py-3 border border-primary-100 dark:bg-primary-900/30 dark:border-primary-800/50">
                 <Star
                     size={16}
-                    className={plant.isHQ ? 'text-warning-500 fill-warning-500' : 'text-neutral-300'}
+                    className={plant.isHQ ? 'text-warning-500 fill-warning-500' : 'text-neutral-300 dark:text-neutral-500'}
                 />
                 <div className="flex-1">
-                    <p className="text-sm font-semibold text-primary-950">
+                    <p className="text-sm font-semibold text-primary-950 dark:text-white">
                         {plant.isHQ ? 'This is the HQ / Headquarters' : 'Set as HQ / Headquarters?'}
                     </p>
-                    <p className="text-xs text-neutral-500">HQ data reflects in Company's General Information</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">HQ data reflects in Company's General Information</p>
                 </div>
                 {!plant.isHQ && (
                     <button
                         type="button"
                         onClick={onSetHQ}
-                        className="px-4 py-1.5 rounded-lg text-xs font-bold bg-primary-100 text-primary-700 hover:bg-primary-200 border border-primary-200"
+                        className="px-4 py-1.5 rounded-lg text-xs font-bold bg-primary-100 text-primary-700 hover:bg-primary-200 border border-primary-200 dark:bg-primary-900/40 dark:text-primary-400 dark:border-primary-800/50"
                     >
                         Set as HQ
                     </button>
@@ -259,7 +259,7 @@ function PlantForm({
             />
 
             {plant.geoEnabled && (
-                <div className="pl-4 border-l-2 border-primary-200 space-y-4 animate-in fade-in duration-150">
+                <div className="pl-4 border-l-2 border-primary-200 space-y-4 animate-in fade-in duration-150 dark:border-primary-800/50">
                     <TwoCol>
                         <FormInput
                             label="Location Name / Label"
@@ -291,7 +291,7 @@ function PlantForm({
                         />
                     </TwoCol>
                     <div className="space-y-2">
-                        <label className="block text-xs font-bold text-primary-900">Fence Shape</label>
+                        <label className="block text-xs font-bold text-primary-900 dark:text-white">Fence Shape</label>
                         <div className="flex gap-3">
                             {(['circle', 'freeform'] as const).map((shape) => (
                                 <RadioOption
@@ -304,8 +304,8 @@ function PlantForm({
                             ))}
                         </div>
                     </div>
-                    <div className="bg-info-50 border border-info-200 rounded-xl px-4 py-3">
-                        <p className="text-xs text-info-800">
+                    <div className="bg-info-50 border border-info-200 rounded-xl px-4 py-3 dark:bg-info-900/20 dark:border-info-800/50">
+                        <p className="text-xs text-info-800 dark:text-info-400">
                             💡 For precise boundary drawing on a map, use the <strong>Geo-Fence Configuration</strong> tool in
                             the tenant's admin panel after activation. Coordinates entered here will be used as the initial center point.
                         </p>
@@ -333,7 +333,7 @@ export function Step10Plants() {
 
                 {step10.multiLocationMode && (
                     <div className="pt-2 space-y-3 animate-in fade-in duration-200">
-                        <p className="text-xs font-bold text-neutral-500">Data Management Strategy</p>
+                        <p className="text-xs font-bold text-neutral-500 dark:text-neutral-400">Data Management Strategy</p>
                         <RadioOption
                             label="Common Configuration"
                             subtitle="All locations share the same shift schedules, No Series, and IOT Reason lists"
@@ -350,8 +350,8 @@ export function Step10Plants() {
                 )}
             </SectionCard>
 
-            <div className="bg-neutral-50 border border-neutral-100 rounded-xl px-4 py-3 mb-4">
-                <p className="text-xs text-neutral-600">
+            <div className="bg-neutral-50 border border-neutral-100 rounded-xl px-4 py-3 mb-4 dark:bg-neutral-800 dark:border-neutral-800">
+                <p className="text-xs text-neutral-600 dark:text-neutral-300">
                     Define all physical locations — plants, branches, offices, and warehouses. Each location can have
                     its own address, GSTIN, geo-fencing boundary, and contact person. The HQ location's data reflects
                     in the company's General Information.

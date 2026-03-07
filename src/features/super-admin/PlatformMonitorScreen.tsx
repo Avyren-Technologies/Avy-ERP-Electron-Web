@@ -27,33 +27,33 @@ export function PlatformMonitorScreen() {
         <div className="space-y-8 animate-in fade-in duration-500">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-neutral-900 tracking-tight">Platform Monitor</h1>
-                    <p className="text-neutral-500 mt-1">Real-time infrastructure health and system metrics</p>
+                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Platform Monitor</h1>
+                    <p className="text-neutral-500 dark:text-neutral-400 mt-1">Real-time infrastructure health and system metrics</p>
                 </div>
-                <div className="flex items-center gap-2 px-4 py-2 bg-success-50 border border-success-200 rounded-xl">
+                <div className="flex items-center gap-2 px-4 py-2 bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-800/50 rounded-xl">
                     <div className="w-2 h-2 rounded-full bg-success-500 animate-pulse" />
-                    <span className="text-sm font-bold text-success-700">All Systems Go</span>
+                    <span className="text-sm font-bold text-success-700 dark:text-success-400">All Systems Go</span>
                 </div>
             </div>
 
             {/* Global Health KPIs */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {SYSTEM_HEALTH.map((item, i) => (
-                    <div key={i} className="bg-white rounded-2xl border border-neutral-100 p-6 flex flex-col justify-between h-40 shadow-xl shadow-neutral-200/30">
+                    <div key={i} className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 p-6 flex flex-col justify-between h-40 shadow-xl shadow-neutral-900/5 transition-transform hover:-translate-y-1 duration-300">
                         <div className="flex justify-between items-start">
                             <div className={cn(
-                                "w-10 h-10 rounded-xl flex items-center justify-center",
-                                item.color === "success" && "bg-success-100 text-success-600",
-                                item.color === "primary" && "bg-primary-100 text-primary-600",
-                                item.color === "info" && "bg-info-100 text-info-600"
+                                "w-10 h-10 rounded-xl flex items-center justify-center dark:bg-opacity-10 dark:text-opacity-90",
+                                item.color === "success" && "bg-success-100 text-success-600 dark:bg-success-900/30 dark:text-success-500",
+                                item.color === "primary" && "bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-500",
+                                item.color === "info" && "bg-info-100 text-info-600 dark:bg-info-900/30 dark:text-info-500"
                             )}>
                                 <item.icon className="w-5 h-5" />
                             </div>
-                            <span className="text-xs font-bold text-neutral-500 bg-neutral-100 px-2 py-1 rounded-md">{item.stat}</span>
+                            <span className="text-xs font-bold text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-2 py-1 rounded-md">{item.stat}</span>
                         </div>
                         <div>
-                            <h3 className="text-3xl font-bold text-neutral-900 tracking-tight">{item.value}</h3>
-                            <p className="text-sm text-neutral-500 font-medium">{item.label}</p>
+                            <h3 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">{item.value}</h3>
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400 font-medium">{item.label}</p>
                         </div>
                     </div>
                 ))}
@@ -62,26 +62,26 @@ export function PlatformMonitorScreen() {
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
 
                 {/* Node Metrics */}
-                <div className="bg-white rounded-2xl border border-neutral-100 shadow-xl shadow-neutral-200/30 overflow-hidden">
-                    <div className="p-6 border-b border-neutral-100">
-                        <h2 className="text-lg font-bold text-neutral-900">Infrastructure Nodes</h2>
-                        <p className="text-sm text-neutral-500">Resource utilization across global regions</p>
+                <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-xl shadow-neutral-900/5 overflow-hidden transition-colors">
+                    <div className="p-6 border-b border-neutral-200/60 dark:border-neutral-800">
+                        <h2 className="text-lg font-bold text-primary-950 dark:text-white">Infrastructure Nodes</h2>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400">Resource utilization across global regions</p>
                     </div>
 
-                    <div className="divide-y divide-neutral-100">
+                    <div className="divide-y divide-neutral-200/60 dark:divide-neutral-800">
                         {SERVER_METRICS.map((node, i) => (
                             <div key={i} className="p-6">
                                 <div className="flex justify-between items-center mb-4">
                                     <div className="flex items-center gap-3">
-                                        <Server className={cn("w-5 h-5", node.status === 'Warning' ? "text-warning-500" : "text-neutral-400")} />
-                                        <span className="font-bold text-neutral-900">{node.name}</span>
+                                        <Server className={cn("w-5 h-5", node.status === 'Warning' ? "text-warning-500" : "text-neutral-400 dark:text-neutral-500")} />
+                                        <span className="font-bold text-primary-950 dark:text-white">{node.name}</span>
                                     </div>
                                     {node.status === "Warning" ? (
-                                        <span className="flex items-center gap-1 text-[10px] font-bold text-warning-700 bg-warning-50 px-2 py-0.5 rounded-full border border-warning-200 uppercase">
+                                        <span className="flex items-center gap-1 text-[10px] font-bold text-warning-700 dark:text-warning-400 bg-warning-50 dark:bg-warning-900/20 px-2 py-0.5 rounded-full border border-warning-200 dark:border-warning-800/50 uppercase tracking-widest">
                                             <AlertTriangle className="w-3 h-3" /> Warning
                                         </span>
                                     ) : (
-                                        <span className="flex items-center gap-1 text-[10px] font-bold text-success-700 bg-success-50 px-2 py-0.5 rounded-full border border-success-200 uppercase">
+                                        <span className="flex items-center gap-1 text-[10px] font-bold text-success-700 dark:text-success-400 bg-success-50 dark:bg-success-900/20 px-2 py-0.5 rounded-full border border-success-200 dark:border-success-800/50 uppercase tracking-widest">
                                             <CheckCircle2 className="w-3 h-3" /> Healthy
                                         </span>
                                     )}
@@ -91,33 +91,33 @@ export function PlatformMonitorScreen() {
                                     {/* CPU */}
                                     <div>
                                         <div className="flex justify-between text-xs mb-1">
-                                            <span className="font-semibold text-neutral-500 flex items-center gap-1"><Cpu className="w-3 h-3" /> CPU</span>
-                                            <span className="font-bold text-neutral-900">{node.cpu}%</span>
+                                            <span className="font-semibold text-neutral-500 dark:text-neutral-400 flex items-center gap-1"><Cpu className="w-3 h-3" /> CPU</span>
+                                            <span className="font-bold text-primary-950 dark:text-white">{node.cpu}%</span>
                                         </div>
-                                        <div className="h-1.5 w-full bg-neutral-100 rounded-full overflow-hidden">
-                                            <div className={cn("h-full rounded-full transition-all", node.cpu > 70 ? "bg-warning-500" : "bg-primary-500")} style={{ width: node.cpu + '%' }} />
+                                        <div className="h-1.5 w-full bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                                            <div className={cn("h-full rounded-full transition-all duration-500", node.cpu > 70 ? "bg-warning-500" : "bg-primary-500 dark:bg-primary-400")} style={{ width: node.cpu + '%' }} />
                                         </div>
                                     </div>
 
                                     {/* Mem */}
                                     <div>
                                         <div className="flex justify-between text-xs mb-1">
-                                            <span className="font-semibold text-neutral-500 flex items-center gap-1"><Activity className="w-3 h-3" /> MEM</span>
-                                            <span className="font-bold text-neutral-900">{node.mem}%</span>
+                                            <span className="font-semibold text-neutral-500 dark:text-neutral-400 flex items-center gap-1"><Activity className="w-3 h-3" /> MEM</span>
+                                            <span className="font-bold text-primary-950 dark:text-white">{node.mem}%</span>
                                         </div>
-                                        <div className="h-1.5 w-full bg-neutral-100 rounded-full overflow-hidden">
-                                            <div className={cn("h-full rounded-full transition-all", node.mem > 80 ? "bg-warning-500" : "bg-accent-500")} style={{ width: node.mem + '%' }} />
+                                        <div className="h-1.5 w-full bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                                            <div className={cn("h-full rounded-full transition-all duration-500", node.mem > 80 ? "bg-warning-500" : "bg-accent-500 dark:bg-accent-400")} style={{ width: node.mem + '%' }} />
                                         </div>
                                     </div>
 
                                     {/* Disk */}
                                     <div>
                                         <div className="flex justify-between text-xs mb-1">
-                                            <span className="font-semibold text-neutral-500 flex items-center gap-1"><HardDrive className="w-3 h-3" /> DSK</span>
-                                            <span className="font-bold text-neutral-900">{node.disk}%</span>
+                                            <span className="font-semibold text-neutral-500 dark:text-neutral-400 flex items-center gap-1"><HardDrive className="w-3 h-3" /> DSK</span>
+                                            <span className="font-bold text-primary-950 dark:text-white">{node.disk}%</span>
                                         </div>
-                                        <div className="h-1.5 w-full bg-neutral-100 rounded-full overflow-hidden">
-                                            <div className="h-full bg-info-500 rounded-full transition-all" style={{ width: node.disk + '%' }} />
+                                        <div className="h-1.5 w-full bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                                            <div className="h-full bg-info-500 dark:bg-info-400 rounded-full transition-all duration-500" style={{ width: node.disk + '%' }} />
                                         </div>
                                     </div>
                                 </div>

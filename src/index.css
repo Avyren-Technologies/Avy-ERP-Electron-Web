@@ -7,6 +7,7 @@
     --background: #F8F7FF;
     --foreground: #0F172A;
   }
+
   .dark {
     --background: #09090b;
     --foreground: #f8fafc;
@@ -35,4 +36,29 @@
 
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-neutral-400;
+}
+
+/* Animated Dashed Lines for Sidebar */
+.animated-dash-y {
+  background-image: repeating-linear-gradient(to bottom, currentColor, currentColor 4px, transparent 4px, transparent 8px);
+  background-size: 100% 8px;
+  animation: move-dash-y 800ms linear infinite reverse;
+}
+
+@keyframes move-dash-y {
+  to {
+    background-position: 0 8px;
+  }
+}
+
+.animated-dash-x {
+  background-image: repeating-linear-gradient(to right, currentColor, currentColor 4px, transparent 4px, transparent 8px);
+  background-size: 8px 100%;
+  animation: move-dash-x 800ms linear infinite;
+}
+
+@keyframes move-dash-x {
+  to {
+    background-position: 8px 0;
+  }
 }

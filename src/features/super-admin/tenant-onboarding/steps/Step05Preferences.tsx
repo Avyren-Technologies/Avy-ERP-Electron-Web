@@ -17,8 +17,8 @@ function RazorpaySection() {
                     💳
                 </div>
                 <div>
-                    <p className="text-sm font-bold text-primary-950">RazorpayX Payout API</p>
-                    <p className="text-xs text-neutral-500">One-click salary disbursement integration</p>
+                    <p className="text-sm font-bold text-primary-950 dark:text-white">RazorpayX Payout API</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">One-click salary disbursement integration</p>
                 </div>
             </div>
 
@@ -41,7 +41,7 @@ function RazorpaySection() {
                         <div className="w-5 h-5 rounded-full bg-[#3395FF] flex items-center justify-center flex-shrink-0 mt-0.5">
                             <span className="text-[10px] font-bold text-white">{i + 1}</span>
                         </div>
-                        <p className="text-xs text-neutral-700 leading-4">{step}</p>
+                        <p className="text-xs text-neutral-700 leading-4 dark:text-neutral-300">{step}</p>
                     </div>
                 ))}
             </div>
@@ -196,7 +196,7 @@ export function Step05Preferences() {
                 />
 
                 {step5.bankIntegration && (
-                    <div className="pl-4 border-l-2 border-primary-200">
+                    <div className="pl-4 border-l-2 border-primary-200 dark:border-primary-800/50">
                         <ToggleRow
                             label="RazorpayX Payout API"
                             subtitle="Enable direct one-click salary disbursement via RazorpayX — fully automated payroll"

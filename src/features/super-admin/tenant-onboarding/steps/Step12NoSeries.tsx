@@ -93,18 +93,18 @@ function NoSeriesForm({
                     hint="First document number generated"
                 />
                 <div>
-                    <label className="block text-xs font-bold text-primary-900 mb-1.5">Preview</label>
+                    <label className="block text-xs font-bold text-primary-900 mb-1.5 dark:text-white">Preview</label>
                     <div className="flex items-center h-[46px] px-4 bg-neutral-900 text-green-400 rounded-xl font-mono text-sm border border-neutral-700">
-                        {preview || <span className="text-neutral-500">e.g. INV-000001-FY25</span>}
+                        {preview || <span className="text-neutral-500 dark:text-neutral-400">e.g. INV-000001-FY25</span>}
                     </div>
-                    <p className="text-xs text-neutral-400 mt-1">Live preview of the first generated number</p>
+                    <p className="text-xs text-neutral-400 mt-1 dark:text-neutral-500">Live preview of the first generated number</p>
                 </div>
             </TwoCol>
 
             <button
                 type="button"
                 onClick={onRemove}
-                className="text-xs font-semibold text-danger-500 hover:text-danger-700 transition-colors"
+                className="text-xs font-semibold text-danger-500 hover:text-danger-700 transition-colors dark:text-danger-400"
             >
                 🗑 Remove this series
             </button>
@@ -125,10 +125,10 @@ export function Step12NoSeries() {
 
             <SectionCard title="Number Series Configuration" subtitle="Define auto-numbering sequences for each document type used in this company">
                 {step12.noSeries.length === 0 ? (
-                    <div className="bg-neutral-50 border border-dashed border-neutral-200 rounded-xl py-10 text-center mb-4">
+                    <div className="bg-neutral-50 border border-dashed border-neutral-200 rounded-xl py-10 text-center mb-4 dark:bg-neutral-800 dark:border-neutral-700">
                         <p className="text-2xl mb-3">🔢</p>
-                        <p className="text-sm font-semibold text-neutral-600">No number series configured</p>
-                        <p className="text-xs text-neutral-400 mt-1">
+                        <p className="text-sm font-semibold text-neutral-600 dark:text-neutral-300">No number series configured</p>
+                        <p className="text-xs text-neutral-400 mt-1 dark:text-neutral-500">
                             Add series for Sales Invoice, PO, Employee, Work Order, etc.
                         </p>
                     </div>
@@ -166,9 +166,9 @@ export function Step12NoSeries() {
                         { doc: 'Maintenance Ticket', example: 'MT-000001' },
                         { doc: 'Leave Management', example: 'LV-000001' },
                     ].map((s) => (
-                        <div key={s.doc} className="flex items-center justify-between bg-neutral-50 rounded-lg px-4 py-2.5">
-                            <span className="text-xs font-semibold text-neutral-700">{s.doc}</span>
-                            <span className="font-mono text-xs text-primary-600 bg-primary-50 px-2 py-0.5 rounded">{s.example}</span>
+                        <div key={s.doc} className="flex items-center justify-between bg-neutral-50 rounded-lg px-4 py-2.5 dark:bg-neutral-800">
+                            <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">{s.doc}</span>
+                            <span className="font-mono text-xs text-primary-600 bg-primary-50 px-2 py-0.5 rounded dark:bg-primary-900/30">{s.example}</span>
                         </div>
                     ))}
                 </div>

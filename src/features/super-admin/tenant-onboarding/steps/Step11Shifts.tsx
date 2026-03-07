@@ -20,7 +20,7 @@ function DowntimeSlotRow({
     onRemove: () => void;
 }) {
     return (
-        <div className="flex items-center gap-3 bg-neutral-50 rounded-xl px-4 py-3 border border-neutral-100">
+        <div className="flex items-center gap-3 bg-neutral-50 rounded-xl px-4 py-3 border border-neutral-100 dark:bg-neutral-800 dark:border-neutral-800">
             <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-3">
                 <FormSelect
                     label="Type"
@@ -40,7 +40,7 @@ function DowntimeSlotRow({
                 type="button"
                 onClick={onRemove}
                 className="flex-shrink-0 mt-5 w-8 h-8 flex items-center justify-center rounded-lg
-          text-danger-500 hover:bg-danger-50 hover:text-danger-600 transition-colors"
+          text-danger-500 hover:bg-danger-50 dark:bg-danger-900/20 hover:text-danger-600 transition-colors"
             >
                 <Trash2 size={14} />
             </button>
@@ -129,7 +129,7 @@ function ShiftForm({
                     ))}
                 </div>
             ) : (
-                <p className="text-xs text-neutral-400">
+                <p className="text-xs text-neutral-400 dark:text-neutral-500">
                     No downtime slots defined. Add breaks like Lunch, Tea Break, Changeover.
                 </p>
             )}
@@ -138,7 +138,7 @@ function ShiftForm({
                 type="button"
                 onClick={addDowntime}
                 className="flex items-center gap-2 text-xs font-semibold text-primary-600
-          hover:text-primary-700 transition-colors"
+          hover:text-primary-700 dark:text-primary-400 transition-colors"
             >
                 <Plus size={13} strokeWidth={2.5} />
                 Add Downtime Slot
@@ -149,7 +149,7 @@ function ShiftForm({
                     type="button"
                     onClick={onRemove}
                     className="flex items-center gap-1.5 text-xs font-semibold text-danger-500
-            hover:text-danger-700 transition-colors"
+            hover:text-danger-700 dark:text-danger-400 transition-colors"
                 >
                     <Trash2 size={13} />
                     Remove This Shift
@@ -193,7 +193,7 @@ export function Step11Shifts() {
                 </TwoCol>
 
                 <div className="space-y-2">
-                    <label className="block text-xs font-bold text-primary-900">Weekly Offs</label>
+                    <label className="block text-xs font-bold text-primary-900 dark:text-white">Weekly Offs</label>
                     <div className="flex flex-wrap gap-2">
                         {DAYS_OF_WEEK.map((day) => {
                             const selected = step11.weeklyOffs.includes(day);
@@ -209,7 +209,7 @@ export function Step11Shifts() {
                                     }}
                                     className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all duration-150 ${selected
                                             ? 'bg-danger-500 text-white border-danger-500 shadow-sm'
-                                            : 'bg-white text-neutral-600 border-neutral-200 hover:border-primary-300'
+                                            : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:border-primary-300'
                                         }`}
                                 >
                                     {day.slice(0, 3)}
@@ -217,16 +217,16 @@ export function Step11Shifts() {
                             );
                         })}
                     </div>
-                    <p className="text-xs text-neutral-400">{step11.weeklyOffs.length} off day(s) selected</p>
+                    <p className="text-xs text-neutral-400 dark:text-neutral-500">{step11.weeklyOffs.length} off day(s) selected</p>
                 </div>
             </SectionCard>
 
             {/* Shift Master */}
             <SectionCard title="Shift Master" subtitle="Define all working shifts. Each shift can have its own downtime slots.">
                 {step11.shifts.length === 0 && (
-                    <div className="bg-neutral-50 border border-dashed border-neutral-200 rounded-xl px-5 py-8 text-center mb-4">
-                        <p className="text-sm font-semibold text-neutral-500">No shifts defined</p>
-                        <p className="text-xs text-neutral-400 mt-1">Add your first shift below (e.g. Morning, Evening, Night)</p>
+                    <div className="bg-neutral-50 border border-dashed border-neutral-200 rounded-xl px-5 py-8 text-center mb-4 dark:bg-neutral-800 dark:border-neutral-700">
+                        <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">No shifts defined</p>
+                        <p className="text-xs text-neutral-400 mt-1 dark:text-neutral-500">Add your first shift below (e.g. Morning, Evening, Night)</p>
                     </div>
                 )}
 

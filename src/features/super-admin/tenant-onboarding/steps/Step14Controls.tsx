@@ -112,13 +112,13 @@ export function Step14Controls() {
                     ].map((ctrl) => (
                         <div
                             key={ctrl.label}
-                            className="flex items-center gap-3 bg-neutral-50 rounded-xl px-4 py-3 border border-neutral-100"
+                            className="flex items-center gap-3 bg-neutral-50 rounded-xl px-4 py-3 border border-neutral-100 dark:bg-neutral-800 dark:border-neutral-800"
                         >
                             <div
                                 className={`w-2 h-2 rounded-full flex-shrink-0 ${ctrl.value ? 'bg-success-500' : 'bg-neutral-300'}`}
                             />
-                            <span className="text-xs font-semibold text-primary-950 flex-1">{ctrl.label}</span>
-                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${ctrl.value ? 'bg-success-50 text-success-700' : 'bg-neutral-100 text-neutral-500'
+                            <span className="text-xs font-semibold text-primary-950 flex-1 dark:text-white">{ctrl.label}</span>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${ctrl.value ? 'bg-success-50 dark:bg-success-900/20 text-success-700 dark:text-success-400' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'
                                 }`}>
                                 {ctrl.value ? 'ON' : 'OFF'}
                             </span>

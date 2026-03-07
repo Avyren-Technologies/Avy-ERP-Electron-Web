@@ -17,8 +17,8 @@ export function Step09Contacts() {
                 title="Key Company Contacts"
                 subtitle="Contacts for HR, Finance, IT, Legal, and Operations — used for notifications and escalations"
             >
-                <div className="bg-info-50 border border-info-200 rounded-xl px-4 py-3 mb-4">
-                    <p className="text-xs text-info-800">
+                <div className="bg-info-50 border border-info-200 rounded-xl px-4 py-3 mb-4 dark:bg-info-900/20 dark:border-info-800/50">
+                    <p className="text-xs text-info-800 dark:text-info-400">
                         Add at least one primary contact. These contacts receive system alerts, billing notices, and
                         support communications. Unlike users, contacts don't have login access.
                     </p>

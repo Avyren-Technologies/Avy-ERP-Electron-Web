@@ -471,7 +471,7 @@ export function TopBar({ sidebarCollapsed }: TopBarProps) {
                         'bg-neutral-50 dark:bg-neutral-800',
                         'text-neutral-400 dark:text-neutral-500',
                         'hover:border-primary-300 dark:hover:border-primary-700 hover:bg-white dark:hover:bg-neutral-750',
-                        'min-w-[220px] max-w-xs'
+                        'min-w-[320px] max-w-xs'
                     )}
                 >
                     <Search size={14} className="flex-shrink-0" />

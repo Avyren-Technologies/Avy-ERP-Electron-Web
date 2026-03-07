@@ -69,8 +69,8 @@ function SidebarStep({
                 isActive
                     ? 'bg-primary-600 text-white shadow-lg shadow-primary-600/25'
                     : isDone
-                        ? 'bg-success-50 text-success-800 hover:bg-success-100 border border-success-100'
-                        : 'text-neutral-600 hover:bg-neutral-100'
+                        ? 'bg-success-50 dark:bg-success-900/20 text-success-800 dark:text-success-400 hover:bg-success-100 dark:bg-success-900/30 border border-success-100 dark:border-success-800/50'
+                        : 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:bg-neutral-800'
             )}
         >
             {/* Number / Done indicator */}
@@ -79,7 +79,7 @@ function SidebarStep({
                     'w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0',
                     isActive ? 'bg-white/20 text-white' :
                         isDone ? 'bg-success-500 text-white' :
-                            'bg-neutral-200 text-neutral-500 group-hover:bg-neutral-300'
+                            'bg-neutral-200 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 group-hover:bg-neutral-300'
                 )}
             >
                 {isDone ? <Check size={12} strokeWidth={3} /> : step.id}
@@ -89,13 +89,13 @@ function SidebarStep({
             <div className="flex-1 min-w-0">
                 <p className={cn(
                     'text-xs font-bold truncate',
-                    isActive ? 'text-white' : isDone ? 'text-success-800' : 'text-primary-950'
+                    isActive ? 'text-white' : isDone ? 'text-success-800 dark:text-success-400' : 'text-primary-950 dark:text-white'
                 )}>
                     {step.title}
                 </p>
                 <p className={cn(
                     'text-[10px] truncate mt-0.5',
-                    isActive ? 'text-primary-200' : isDone ? 'text-success-600' : 'text-neutral-400'
+                    isActive ? 'text-primary-200' : isDone ? 'text-success-600' : 'text-neutral-400 dark:text-neutral-500'
                 )}>
                     {step.subtitle}
                 </p>
@@ -122,21 +122,21 @@ function ConfirmSubmitModal({
 }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 animate-in fade-in zoom-in-95 duration-200">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 animate-in fade-in zoom-in-95 duration-200 dark:bg-neutral-900">
                 <div className="flex flex-col items-center text-center">
                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-accent-600 flex items-center justify-center mb-5">
                         <Building2 size={28} className="text-white" />
                     </div>
-                    <h2 className="text-xl font-bold text-primary-950">Create Company?</h2>
-                    <p className="text-neutral-500 text-sm mt-2">
+                    <h2 className="text-xl font-bold text-primary-950 dark:text-white">Create Company?</h2>
+                    <p className="text-neutral-500 text-sm mt-2 dark:text-neutral-400">
                         You're about to provision <strong>{companyName || 'this company'}</strong> on the Avy ERP platform.
                         This will create the tenant, users, and configure all selected modules.
                     </p>
 
-                    <div className="w-full mt-6 bg-warning-50 border border-warning-200 rounded-xl px-5 py-4 text-left">
+                    <div className="w-full mt-6 bg-warning-50 border border-warning-200 rounded-xl px-5 py-4 text-left dark:bg-warning-900/20 dark:border-warning-800/50">
                         <div className="flex items-start gap-3">
                             <AlertCircle size={16} className="text-warning-600 flex-shrink-0 mt-0.5" />
-                            <p className="text-xs text-warning-700">
+                            <p className="text-xs text-warning-700 dark:text-warning-400">
                                 Statutory identifiers (PAN, TAN, GSTIN) cannot be changed after creation without a
                                 Super-Admin override. Ensure all data is correct.
                             </p>
@@ -148,8 +148,8 @@ function ConfirmSubmitModal({
                             type="button"
                             onClick={onCancel}
                             disabled={isLoading}
-                            className="flex-1 px-6 py-3 rounded-xl border border-neutral-200 text-sm font-bold text-neutral-700
-                hover:bg-neutral-50 transition-colors disabled:opacity-50"
+                            className="flex-1 px-6 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300
+                hover:bg-neutral-50 dark:bg-neutral-800 transition-colors disabled:opacity-50"
                         >
                             Cancel
                         </button>
@@ -188,7 +188,7 @@ function ConfirmSubmitModal({
 function ProgressBar({ current, total }: { current: number; total: number }) {
     const pct = Math.round(((current - 1) / (total - 1)) * 100);
     return (
-        <div className="w-full h-1 bg-neutral-100 rounded-full overflow-hidden">
+        <div className="w-full h-1 bg-neutral-100 rounded-full overflow-hidden dark:bg-neutral-800">
             <div
                 className="h-1 bg-gradient-to-r from-primary-500 to-accent-500 rounded-full transition-all duration-500"
                 style={{ width: `${pct}%` }}
@@ -259,23 +259,23 @@ export function TenantOnboardingWizard({ onClose, onSuccess }: TenantOnboardingW
     return (
         <>
             {/* Wizard container */}
-            <div className="fixed inset-0 z-40 flex bg-neutral-50">
+            <div className="fixed inset-0 z-40 flex bg-neutral-50 dark:bg-neutral-800">
 
                 {/* ===== LEFT SIDEBAR ===== */}
-                <aside className="hidden lg:flex flex-col w-64 xl:w-72 flex-shrink-0 bg-white border-r border-neutral-100 shadow-sm">
+                <aside className="hidden lg:flex flex-col w-64 xl:w-72 flex-shrink-0 bg-white border-r border-neutral-100 shadow-sm dark:bg-neutral-900 dark:border-neutral-800">
                     {/* Header */}
-                    <div className="px-5 py-5 border-b border-neutral-100">
+                    <div className="px-5 py-5 border-b border-neutral-100 dark:border-neutral-800">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-accent-600 flex items-center justify-center">
                                 <Building2 size={18} className="text-white" />
                             </div>
                             <div>
-                                <p className="text-sm font-bold text-primary-950">New Company</p>
-                                <p className="text-xs text-neutral-500">Tenant Onboarding</p>
+                                <p className="text-sm font-bold text-primary-950 dark:text-white">New Company</p>
+                                <p className="text-xs text-neutral-500 dark:text-neutral-400">Tenant Onboarding</p>
                             </div>
                         </div>
                         <ProgressBar current={currentStep} total={TOTAL_STEPS} />
-                        <p className="text-xs text-neutral-500 mt-2">Step {currentStep} of {TOTAL_STEPS}</p>
+                        <p className="text-xs text-neutral-500 mt-2 dark:text-neutral-400">Step {currentStep} of {TOTAL_STEPS}</p>
                     </div>
 
                     {/* Step list */}
@@ -291,12 +291,12 @@ export function TenantOnboardingWizard({ onClose, onSuccess }: TenantOnboardingW
                     </nav>
 
                     {/* Bottom actions */}
-                    <div className="px-4 py-4 border-t border-neutral-100 space-y-2">
+                    <div className="px-4 py-4 border-t border-neutral-100 space-y-2 dark:border-neutral-800">
                         <button
                             type="button"
                             className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl
-                border border-neutral-200 text-sm font-semibold text-neutral-600
-                hover:bg-neutral-50 transition-colors"
+                border border-neutral-200 dark:border-neutral-700 text-sm font-semibold text-neutral-600 dark:text-neutral-300
+                hover:bg-neutral-50 dark:bg-neutral-800 transition-colors"
                         >
                             <Save size={14} />
                             Save Draft
@@ -308,15 +308,15 @@ export function TenantOnboardingWizard({ onClose, onSuccess }: TenantOnboardingW
                 <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
                     {/* Top bar */}
-                    <header className="flex-shrink-0 flex items-center justify-between bg-white border-b border-neutral-100 px-6 py-4 shadow-sm">
+                    <header className="flex-shrink-0 flex items-center justify-between bg-white border-b border-neutral-100 px-6 py-4 shadow-sm dark:bg-neutral-900 dark:border-neutral-800">
                         {/* Mobile progress */}
                         <div className="flex items-center gap-3 lg:hidden">
                             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-accent-600 flex items-center justify-center">
                                 <Building2 size={14} className="text-white" />
                             </div>
                             <div>
-                                <p className="text-xs font-bold text-primary-950">{stepMeta.title}</p>
-                                <p className="text-[10px] text-neutral-500">Step {currentStep}/{TOTAL_STEPS}</p>
+                                <p className="text-xs font-bold text-primary-950 dark:text-white">{stepMeta.title}</p>
+                                <p className="text-[10px] text-neutral-500 dark:text-neutral-400">Step {currentStep}/{TOTAL_STEPS}</p>
                             </div>
                         </div>
 
@@ -325,8 +325,8 @@ export function TenantOnboardingWizard({ onClose, onSuccess }: TenantOnboardingW
                             <div className="flex items-center gap-3">
                                 <span className="text-2xl">{stepMeta.icon}</span>
                                 <div>
-                                    <h1 className="text-lg font-bold text-primary-950">{stepMeta.title}</h1>
-                                    <p className="text-xs text-neutral-500">{stepMeta.subtitle}</p>
+                                    <h1 className="text-lg font-bold text-primary-950 dark:text-white">{stepMeta.title}</h1>
+                                    <p className="text-xs text-neutral-500 dark:text-neutral-400">{stepMeta.subtitle}</p>
                                 </div>
                             </div>
                         </div>
@@ -335,8 +335,8 @@ export function TenantOnboardingWizard({ onClose, onSuccess }: TenantOnboardingW
                         <button
                             type="button"
                             onClick={handleClose}
-                            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-neutral-200 text-sm font-semibold text-neutral-600
-                hover:bg-neutral-50 hover:border-neutral-300 transition-colors"
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-semibold text-neutral-600 dark:text-neutral-300
+                hover:bg-neutral-50 dark:bg-neutral-800 hover:border-neutral-300 transition-colors"
                         >
                             <X size={15} />
                             <span className="hidden sm:inline">Cancel</span>
@@ -344,7 +344,7 @@ export function TenantOnboardingWizard({ onClose, onSuccess }: TenantOnboardingW
                     </header>
 
                     {/* Mobile progress bar */}
-                    <div className="lg:hidden px-6 py-2 bg-white border-b border-neutral-100">
+                    <div className="lg:hidden px-6 py-2 bg-white border-b border-neutral-100 dark:bg-neutral-900 dark:border-neutral-800">
                         <ProgressBar current={currentStep} total={TOTAL_STEPS} />
                     </div>
 
@@ -359,7 +359,7 @@ export function TenantOnboardingWizard({ onClose, onSuccess }: TenantOnboardingW
                     </main>
 
                     {/* Bottom navigation bar */}
-                    <footer className="flex-shrink-0 bg-white border-t border-neutral-100 px-6 py-5 shadow-sm">
+                    <footer className="flex-shrink-0 bg-white border-t border-neutral-100 px-6 py-5 shadow-sm dark:bg-neutral-900 dark:border-neutral-800">
                         <div className="max-w-4xl mx-auto flex items-center justify-between">
 
                             {/* Back button */}
@@ -370,8 +370,8 @@ export function TenantOnboardingWizard({ onClose, onSuccess }: TenantOnboardingW
                                 className={cn(
                                     'flex items-center gap-2 px-6 py-3 rounded-xl border text-sm font-bold transition-all duration-150',
                                     isFirstStep
-                                        ? 'opacity-30 cursor-not-allowed border-neutral-200 text-neutral-400'
-                                        : 'border-neutral-200 text-neutral-700 hover:bg-neutral-50 hover:border-neutral-300'
+                                        ? 'opacity-30 cursor-not-allowed border-neutral-200 dark:border-neutral-700 text-neutral-400 dark:text-neutral-500'
+                                        : 'border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:bg-neutral-800 hover:border-neutral-300'
                                 )}
                             >
                                 <ChevronLeft size={16} strokeWidth={2.5} />
@@ -391,15 +391,15 @@ export function TenantOnboardingWizard({ onClose, onSuccess }: TenantOnboardingW
                                                 ? 'w-5 h-2 bg-primary-600'
                                                 : s.id < currentStep
                                                     ? 'w-2 h-2 bg-success-500'
-                                                    : 'w-2 h-2 bg-neutral-200'
+                                                    : 'w-2 h-2 bg-neutral-200 dark:bg-neutral-700'
                                         )}
                                     />
                                 ))}
                             </div>
 
                             {/* Desktop step counter */}
-                            <div className="hidden lg:flex items-center gap-2 text-xs text-neutral-400">
-                                <span className="font-semibold text-primary-700">{currentStep}</span>
+                            <div className="hidden lg:flex items-center gap-2 text-xs text-neutral-400 dark:text-neutral-500">
+                                <span className="font-semibold text-primary-700 dark:text-primary-400">{currentStep}</span>
                                 <span>/</span>
                                 <span>{TOTAL_STEPS}</span>
                                 <span className="ml-1">— {stepMeta.title}</span>
@@ -446,16 +446,16 @@ export function TenantOnboardingWizard({ onClose, onSuccess }: TenantOnboardingW
             {/* ===== DISCARD CONFIRM MODAL ===== */}
             {showDiscardConfirm && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200">
-                        <h2 className="text-lg font-bold text-primary-950 mb-2">Discard Changes?</h2>
-                        <p className="text-sm text-neutral-500">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200 dark:bg-neutral-900">
+                        <h2 className="text-lg font-bold text-primary-950 mb-2 dark:text-white">Discard Changes?</h2>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400">
                             All progress will be lost. Are you sure you want to cancel this onboarding?
                         </p>
                         <div className="flex gap-3 mt-6">
                             <button
                                 type="button"
                                 onClick={() => setShowDiscardConfirm(false)}
-                                className="flex-1 py-3 rounded-xl border border-neutral-200 text-sm font-bold text-neutral-700 hover:bg-neutral-50"
+                                className="flex-1 py-3 rounded-xl border border-neutral-200 text-sm font-bold text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-300 dark:bg-neutral-800"
                             >
                                 Keep Editing
                             </button>

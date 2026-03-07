@@ -106,8 +106,8 @@ export function Step04Fiscal() {
                 <SectionDivider label="Working Days" />
 
                 <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-primary-900">Working Days</label>
-                    <p className="text-xs text-neutral-500 mb-3">
+                    <label className="block text-xs font-bold text-primary-900 dark:text-white">Working Days</label>
+                    <p className="text-xs text-neutral-500 mb-3 dark:text-neutral-400">
                         Select the standard working days for this company. Weekend overrides are handled per-shift.
                     </p>
                     <div className="grid grid-cols-7 gap-2">
@@ -121,8 +121,8 @@ export function Step04Fiscal() {
                                     className={cn(
                                         'py-3 px-1 rounded-xl text-xs font-bold text-center border transition-all duration-150',
                                         selected
-                                            ? 'bg-primary-600 text-white border-primary-600 shadow-sm shadow-primary-500/20'
-                                            : 'bg-white text-neutral-600 border-neutral-200 hover:border-primary-300'
+                                            ? 'bg-primary-600 text-white border-primary-600 dark:border-primary-500 shadow-sm shadow-primary-500/20'
+                                            : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:border-primary-300'
                                     )}
                                 >
                                     {day.slice(0, 3)}
@@ -130,7 +130,7 @@ export function Step04Fiscal() {
                             );
                         })}
                     </div>
-                    <p className="text-xs text-neutral-400 mt-2">
+                    <p className="text-xs text-neutral-400 mt-2 dark:text-neutral-500">
                         {step4.workingDays.length} working day{step4.workingDays.length !== 1 ? 's' : ''} selected
                     </p>
                 </div>

@@ -40,12 +40,12 @@ export function CompanyListScreen() {
             {/* Header & Actions */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-neutral-900 tracking-tight">Companies</h1>
-                    <p className="text-neutral-500 mt-1">Manage tenant workspaces and subscriptions</p>
+                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Companies</h1>
+                    <p className="text-neutral-500 dark:text-neutral-400 mt-1">Manage tenant workspaces and subscriptions</p>
                 </div>
                 <button
                     onClick={() => navigate("/app/companies/add")}
-                    className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all"
+                    className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none"
                 >
                     <Plus className="w-5 h-5" />
                     Add Company
@@ -53,34 +53,34 @@ export function CompanyListScreen() {
             </div>
 
             {/* Toolbar */}
-            <div className="bg-white p-4 rounded-2xl border border-neutral-100 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-colors">
 
                 {/* Search */}
                 <div className="relative max-w-md w-full">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400 dark:text-neutral-500" />
                     <input
                         type="text"
                         placeholder="Search companies by name..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-11 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                        className="w-full pl-11 pr-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:focus:border-primary-500 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 transition-all"
                     />
                 </div>
 
                 {/* Filters */}
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0 hide-scrollbar">
-                    <div className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-100 mr-2">
-                        <Filter className="w-4 h-4 text-neutral-500" />
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0 custom-scrollbar">
+                    <div className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg bg-neutral-100 dark:bg-neutral-800 mr-2 shrink-0">
+                        <Filter className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
                     </div>
                     {FILTERS.map(f => (
                         <button
                             key={f}
                             onClick={() => setActiveFilter(f)}
                             className={cn(
-                                "px-4 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap transition-colors",
+                                "px-4 py-1.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-colors",
                                 activeFilter === f
-                                    ? "bg-primary-600 text-white shadow-sm shadow-primary-500/30"
-                                    : "bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-50"
+                                    ? "bg-primary-600 text-white shadow-sm shadow-primary-500/30 dark:shadow-none"
+                                    : "bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800"
                             )}
                         >
                             {f}
@@ -90,39 +90,39 @@ export function CompanyListScreen() {
             </div>
 
             {/* Data Table */}
-            <div className="bg-white rounded-2xl border border-neutral-100 shadow-xl shadow-neutral-200/30 overflow-hidden">
+            <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-xl shadow-neutral-900/5 overflow-hidden transition-colors">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[800px]">
                         <thead>
-                            <tr className="bg-neutral-50 border-b border-neutral-100 text-sm text-neutral-500">
-                                <th className="py-4 px-6 font-semibold w-1/3">Company</th>
-                                <th className="py-4 px-6 font-semibold">Status</th>
-                                <th className="py-4 px-6 font-semibold">Users</th>
-                                <th className="py-4 px-6 font-semibold">Modules</th>
-                                <th className="py-4 px-6 font-semibold text-right">Actions</th>
+                            <tr className="bg-neutral-50/50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
+                                <th className="py-4 px-6 font-bold w-1/3">Company</th>
+                                <th className="py-4 px-6 font-bold">Status</th>
+                                <th className="py-4 px-6 font-bold">Users</th>
+                                <th className="py-4 px-6 font-bold">Modules</th>
+                                <th className="py-4 px-6 font-bold text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="text-sm">
                             {filtered.map((company) => (
                                 <tr
                                     key={company.id}
-                                    className="border-b border-neutral-50 last:border-0 hover:bg-primary-50/30 transition-colors group"
+                                    className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors group"
                                 >
                                     <td className="py-4 px-6">
                                         <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary-100 to-accent-100 flex items-center justify-center shrink-0 border border-primary-200/50">
-                                                <Building2 className="w-5 h-5 text-primary-600" />
+                                            <div className="w-10 h-10 rounded-xl bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center shrink-0 border border-primary-100 dark:border-primary-800/50">
+                                                <Building2 className="w-5 h-5 text-primary-600 dark:text-primary-400" />
                                             </div>
                                             <div>
-                                                <Link to={`/app/companies/${company.id}`} className="font-bold text-neutral-900 text-base hover:text-primary-600 transition-colors">
+                                                <Link to={`/app/companies/${company.id}`} className="font-bold text-primary-950 dark:text-white text-base hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
                                                     {company.name}
                                                 </Link>
                                                 <div className="flex items-center gap-2 mt-1">
-                                                    <span className="text-xs text-neutral-500 font-medium">{company.industry}</span>
+                                                    <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">{company.industry}</span>
                                                     {company.selfHosted && (
                                                         <>
-                                                            <span className="w-1 h-1 rounded-full bg-neutral-300" />
-                                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-accent-700 bg-accent-50 px-1.5 py-0.5 rounded">
+                                                            <span className="w-1 h-1 rounded-full bg-neutral-300 dark:bg-neutral-600" />
+                                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-accent-700 dark:text-accent-400 bg-accent-50 dark:bg-accent-900/30 px-1.5 py-0.5 rounded">
                                                                 <Server className="w-3 h-3" />
                                                                 SELF-HOSTED
                                                             </span>
@@ -135,11 +135,11 @@ export function CompanyListScreen() {
 
                                     <td className="py-4 px-6">
                                         <span className={cn(
-                                            "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border",
-                                            company.status === "Active" ? "bg-success-50 text-success-700 border-success-200" :
-                                                company.status === "Trial" ? "bg-info-50 text-info-700 border-info-200" :
-                                                    company.status === "Suspended" ? "bg-warning-50 text-warning-700 border-warning-200" :
-                                                        "bg-danger-50 text-danger-700 border-danger-200"
+                                            "inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border",
+                                            company.status === "Active" ? "bg-success-50 text-success-700 border-success-200 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50" :
+                                                company.status === "Trial" ? "bg-info-50 text-info-700 border-info-200 dark:bg-info-900/20 dark:text-info-400 dark:border-info-800/50" :
+                                                    company.status === "Suspended" ? "bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50" :
+                                                        "bg-danger-50 text-danger-700 border-danger-200 dark:bg-danger-900/20 dark:text-danger-400 dark:border-danger-800/50"
                                         )}>
                                             <span className={cn(
                                                 "w-1.5 h-1.5 rounded-full",
@@ -155,16 +155,16 @@ export function CompanyListScreen() {
                                     <td className="py-4 px-6">
                                         <div className="flex flex-col gap-1">
                                             <div className="flex justify-between items-center text-xs">
-                                                <span className="font-bold text-neutral-900">{company.users}</span>
-                                                <span className="text-neutral-500">/ {company.maxUsers} max</span>
+                                                <span className="font-bold text-primary-950 dark:text-white">{company.users}</span>
+                                                <span className="text-neutral-500 dark:text-neutral-400">/ {company.maxUsers} max</span>
                                             </div>
-                                            <div className="h-1.5 w-full bg-neutral-100 rounded-full overflow-hidden">
+                                            <div className="h-1.5 w-full bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
                                                 <div
                                                     className={cn(
                                                         "h-full rounded-full transition-all duration-500",
                                                         (company.users / company.maxUsers) > 0.9 ? "bg-danger-500" :
                                                             (company.users / company.maxUsers) > 0.7 ? "bg-warning-500" :
-                                                                "bg-primary-500"
+                                                                "bg-primary-500 dark:bg-primary-400"
                                                     )}
                                                     style={{ width: `${Math.min((company.users / company.maxUsers) * 100, 100)}%` }}
                                                 />
@@ -174,10 +174,10 @@ export function CompanyListScreen() {
 
                                     <td className="py-4 px-6">
                                         <div>
-                                            <span className="font-bold text-neutral-900">{company.modules}</span>
-                                            <span className="text-neutral-500 text-xs ml-1">active</span>
+                                            <span className="font-bold text-primary-950 dark:text-white">{company.modules}</span>
+                                            <span className="text-neutral-500 dark:text-neutral-400 text-xs ml-1">active</span>
                                         </div>
-                                        <span className="text-xs text-neutral-400 font-medium inline-block mt-0.5 bg-neutral-100 px-2 rounded-sm">
+                                        <span className="text-xs text-neutral-500 dark:text-neutral-400 font-bold inline-block mt-1 bg-neutral-100 dark:bg-neutral-800 px-2.5 py-0.5 rounded-md">
                                             {company.tier} Tier
                                         </span>
                                     </td>
@@ -186,11 +186,11 @@ export function CompanyListScreen() {
                                         <div className="flex items-center justify-end gap-2">
                                             <Link
                                                 to={`/app/companies/${company.id}`}
-                                                className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors group-hover:bg-white"
+                                                className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors"
                                             >
                                                 <ArrowRight className="w-4 h-4" />
                                             </Link>
-                                            <button className="p-2 text-neutral-400 hover:bg-neutral-100 rounded-lg transition-colors group-hover:bg-white">
+                                            <button className="p-2 text-neutral-400 dark:text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white rounded-lg transition-colors">
                                                 <MoreVertical className="w-4 h-4" />
                                             </button>
                                         </div>
@@ -200,7 +200,7 @@ export function CompanyListScreen() {
 
                             {filtered.length === 0 && (
                                 <tr>
-                                    <td colSpan={5} className="py-12 text-center text-neutral-500">
+                                    <td colSpan={5} className="py-12 text-center text-neutral-500 dark:text-neutral-400 font-medium">
                                         No companies found matching your criteria.
                                     </td>
                                 </tr>
@@ -209,12 +209,12 @@ export function CompanyListScreen() {
                     </table>
                 </div>
 
-                {/* Pagination placeholder */}
-                <div className="px-6 py-4 border-t border-neutral-100 flex items-center justify-between text-sm text-neutral-500 bg-neutral-50/50">
-                    <span>Showing 1 to {filtered.length} of {COMPANIES.length} entries</span>
-                    <div className="flex gap-1">
-                        <button className="px-3 py-1 bg-white border border-neutral-200 rounded text-neutral-400 disabled:opacity-50" disabled>Previous</button>
-                        <button className="px-3 py-1 bg-white border border-neutral-200 rounded text-neutral-700 hover:bg-neutral-50">Next</button>
+                {/* Pagination */}
+                <div className="px-6 py-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between text-sm text-neutral-500 dark:text-neutral-400 bg-neutral-50/50 dark:bg-neutral-900/50">
+                    <span className="font-medium">Showing 1 to {filtered.length} of {COMPANIES.length} entries</span>
+                    <div className="flex gap-2">
+                        <button className="px-3 py-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg font-medium hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors disabled:opacity-50" disabled>Previous</button>
+                        <button className="px-3 py-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg font-medium hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors">Next</button>
                     </div>
                 </div>
             </div>

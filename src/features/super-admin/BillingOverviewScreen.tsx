@@ -42,10 +42,10 @@ export function BillingOverviewScreen() {
             {/* Header */}
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-3xl font-bold text-neutral-900 tracking-tight">Billing & Revenue</h1>
-                    <p className="text-neutral-500 mt-1">Platform-wide financial metrics and invoices</p>
+                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Billing & Revenue</h1>
+                    <p className="text-neutral-500 dark:text-neutral-400 mt-1">Platform-wide financial metrics and invoices</p>
                 </div>
-                <button className="flex items-center gap-2 bg-white border border-neutral-200 hover:bg-neutral-50 text-neutral-700 px-4 py-2 rounded-xl font-bold text-sm shadow-sm transition-all">
+                <button className="flex items-center gap-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 px-4 py-2 rounded-xl font-bold text-sm shadow-sm transition-all">
                     <Download className="w-4 h-4" />
                     Export Report
                 </button>
@@ -54,28 +54,28 @@ export function BillingOverviewScreen() {
             {/* KPI Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {KPIS.map((kpi, i) => (
-                    <div key={i} className="bg-white rounded-2xl p-6 border border-neutral-100 shadow-xl shadow-neutral-200/30">
+                    <div key={i} className="bg-white dark:bg-neutral-900 rounded-2xl p-6 border border-neutral-200/60 dark:border-neutral-800 shadow-xl shadow-neutral-900/5 transition-transform hover:-translate-y-1 duration-300">
                         <div className="flex justify-between items-start mb-4">
                             <div className={cn(
-                                "w-12 h-12 rounded-xl flex items-center justify-center",
-                                kpi.color === "success" ? "bg-success-50 text-success-600" :
-                                    kpi.color === "primary" ? "bg-primary-50 text-primary-600" :
-                                        kpi.color === "danger" ? "bg-danger-50 text-danger-600" :
-                                            "bg-warning-50 text-warning-600"
+                                "w-12 h-12 rounded-xl flex items-center justify-center dark:bg-opacity-10",
+                                kpi.color === "success" ? "bg-success-50 text-success-600 dark:text-success-500" :
+                                    kpi.color === "primary" ? "bg-primary-50 text-primary-600 dark:text-primary-500" :
+                                        kpi.color === "danger" ? "bg-danger-50 text-danger-600 dark:text-danger-500" :
+                                            "bg-warning-50 text-warning-600 dark:text-warning-500"
                             )}>
                                 <kpi.icon className="w-6 h-6" />
                             </div>
                             <span className={cn(
-                                "text-xs font-bold px-2 py-1 rounded-full",
-                                kpi.isUp === true ? "bg-success-50 text-success-700" :
-                                    kpi.isUp === false ? "bg-danger-50 text-danger-700" :
-                                        "bg-neutral-100 text-neutral-600"
+                                "text-[11px] font-bold px-2 py-1 rounded-lg uppercase tracking-wider",
+                                kpi.isUp === true ? "bg-success-50 text-success-700 dark:bg-success-900/30 dark:text-success-400" :
+                                    kpi.isUp === false ? "bg-danger-50 text-danger-700 dark:bg-danger-900/30 dark:text-danger-400" :
+                                        "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
                             )}>
                                 {kpi.trend}
                             </span>
                         </div>
-                        <h3 className="text-3xl font-bold text-neutral-900 tracking-tight">{kpi.value}</h3>
-                        <p className="text-sm text-neutral-500 font-medium mt-1">{kpi.title}</p>
+                        <h3 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">{kpi.value}</h3>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400 font-medium mt-1">{kpi.title}</p>
                     </div>
                 ))}
             </div>
@@ -83,10 +83,10 @@ export function BillingOverviewScreen() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
                 {/* Revenue Chart (CSS Based) */}
-                <div className="lg:col-span-2 bg-white rounded-2xl border border-neutral-100 p-6 shadow-xl shadow-neutral-200/30">
+                <div className="lg:col-span-2 bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 p-6 shadow-xl shadow-neutral-900/5">
                     <div className="flex justify-between items-center mb-8">
-                        <h2 className="text-lg font-bold text-neutral-900">Revenue Trend (Last 6 Months)</h2>
-                        <select className="bg-neutral-50 border border-neutral-200 text-sm font-medium rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-primary-500/20">
+                        <h2 className="text-lg font-bold text-primary-950 dark:text-white">Revenue Trend (Last 6 Months)</h2>
+                        <select className="bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-white text-sm font-medium rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-primary-500/20">
                             <option>MRR</option>
                             <option>ARR</option>
                             <option>Collections</option>
@@ -95,16 +95,16 @@ export function BillingOverviewScreen() {
 
                     <div className="h-64 flex items-end gap-4 sm:gap-8 justify-between px-2 sm:px-6 relative">
                         {/* Grid Lines */}
-                        <div className="absolute inset-x-0 bottom-0 top-0 flex flex-col justify-between pointer-events-none opacity-20 z-0">
+                        <div className="absolute inset-x-0 bottom-0 top-0 flex flex-col justify-between pointer-events-none opacity-20 dark:opacity-40 z-0">
                             {[...Array(5)].map((_, i) => (
-                                <div key={i} className="border-b border-dashed border-neutral-400 w-full" />
+                                <div key={i} className="border-b border-dashed border-neutral-400 dark:border-neutral-600 w-full" />
                             ))}
                         </div>
 
                         {CHART_DATA.map((data, i) => (
                             <div key={i} className="relative z-10 flex flex-col items-center flex-1 group">
                                 {/* Tooltip */}
-                                <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity bg-neutral-900 text-white text-xs font-bold py-1 px-2 rounded whitespace-nowrap">
+                                <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity bg-neutral-900 dark:bg-neutral-800 text-white text-xs font-bold py-1 px-2 rounded whitespace-nowrap">
                                     ₹{data.rev * 5000}
                                 </div>
                                 {/* Bar */}
@@ -114,7 +114,7 @@ export function BillingOverviewScreen() {
                                         style={{ height: data.rev + '%' }}
                                     />
                                 </div>
-                                <span className="text-xs font-semibold text-neutral-500 mt-4">{data.month}</span>
+                                <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 mt-4">{data.month}</span>
                             </div>
                         ))}
                     </div>
@@ -122,44 +122,44 @@ export function BillingOverviewScreen() {
 
                 {/* Small Action Cards */}
                 <div className="space-y-6">
-                    <div className="bg-gradient-to-br from-primary-600 to-accent-600 rounded-2xl p-6 text-white shadow-xl shadow-primary-500/20 relative overflow-hidden">
+                    <div className="bg-gradient-to-br from-primary-600 to-accent-600 rounded-2xl p-6 text-white shadow-xl shadow-primary-500/20 dark:shadow-none relative overflow-hidden">
                         <div className="absolute -top-12 -right-12 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
-                        <h3 className="text-lg font-bold mb-2">Generate Invoice</h3>
-                        <p className="text-primary-100 text-sm mb-6">Create a manual ad-hoc invoice for custom enterprise feature development.</p>
+                        <h3 className="text-lg font-bold mb-2 pt-2">Generate Invoice</h3>
+                        <p className="text-primary-100 text-sm mb-6 max-w-[90%]">Create a manual ad-hoc invoice for custom enterprise feature development.</p>
                         <button className="w-full py-2.5 bg-white text-primary-700 font-bold rounded-xl shadow-sm hover:bg-primary-50 transition-colors">
                             Create New
                         </button>
                     </div>
 
-                    <div className="bg-white rounded-2xl border border-neutral-100 p-6 shadow-sm">
-                        <h3 className="text-lg font-bold text-neutral-900 mb-4">Payment Gateways</h3>
-                        <div className="flex items-center justify-between p-3 rounded-xl border border-neutral-200 mb-3">
+                    <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 p-6 shadow-sm">
+                        <h3 className="text-lg font-bold text-primary-950 dark:text-white mb-4">Payment Gateways</h3>
+                        <div className="flex items-center justify-between p-3 rounded-xl border border-neutral-200 dark:border-neutral-800 mb-3 bg-neutral-50/50 dark:bg-neutral-800/30">
                             <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-lg bg-[#635BFF]/10 flex items-center justify-center">
                                     <span className="text-[#635BFF] font-bold text-xs">ST</span>
                                 </div>
-                                <span className="font-semibold text-neutral-800">Stripe</span>
+                                <span className="font-semibold text-neutral-800 dark:text-neutral-200">Stripe</span>
                             </div>
-                            <span className="text-[10px] font-bold text-success-700 bg-success-50 px-2 py-0.5 rounded-full">ACTIVE</span>
+                            <span className="text-[10px] font-bold text-success-700 dark:text-success-400 bg-success-50 dark:bg-success-900/20 px-2 py-0.5 rounded-full">ACTIVE</span>
                         </div>
-                        <div className="flex items-center justify-between p-3 rounded-xl border border-neutral-200">
+                        <div className="flex items-center justify-between p-3 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/30">
                             <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                                    <span className="text-blue-600 font-bold text-xs">RP</span>
+                                <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                                    <span className="text-blue-600 dark:text-blue-400 font-bold text-xs">RP</span>
                                 </div>
-                                <span className="font-semibold text-neutral-800">Razorpay</span>
+                                <span className="font-semibold text-neutral-800 dark:text-neutral-200">Razorpay</span>
                             </div>
-                            <span className="text-[10px] font-bold text-success-700 bg-success-50 px-2 py-0.5 rounded-full">ACTIVE</span>
+                            <span className="text-[10px] font-bold text-success-700 dark:text-success-400 bg-success-50 dark:bg-success-900/20 px-2 py-0.5 rounded-full">ACTIVE</span>
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* Recent Invoices Table */}
-            <div className="bg-white rounded-2xl border border-neutral-100 shadow-xl shadow-neutral-200/30 overflow-hidden">
-                <div className="flex px-6 py-5 items-center justify-between border-b border-neutral-100">
-                    <h2 className="text-lg font-bold text-neutral-900">Recent Invoices</h2>
-                    <button className="text-sm font-semibold text-primary-600 hover:text-primary-700 flex items-center gap-1">
+            <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-xl shadow-neutral-900/5 overflow-hidden transition-colors">
+                <div className="flex px-6 py-5 items-center justify-between border-b border-neutral-200 dark:border-neutral-800">
+                    <h2 className="text-lg font-bold text-primary-950 dark:text-white">Recent Invoices</h2>
+                    <button className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 flex items-center gap-1">
                         View All <ArrowUpRight className="w-4 h-4" />
                     </button>
                 </div>
@@ -167,37 +167,37 @@ export function BillingOverviewScreen() {
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[600px]">
                         <thead>
-                            <tr className="bg-neutral-50 border-b border-neutral-100 text-xs text-neutral-500 uppercase tracking-wider font-semibold">
-                                <th className="py-3 px-6">Invoice ID</th>
-                                <th className="py-3 px-6">Company</th>
-                                <th className="py-3 px-6">Date</th>
-                                <th className="py-3 px-6">Amount</th>
-                                <th className="py-3 px-6">Status</th>
-                                <th className="py-3 px-6 text-right">Actions</th>
+                            <tr className="bg-neutral-50/50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
+                                <th className="py-4 px-6 font-bold">Invoice ID</th>
+                                <th className="py-4 px-6 font-bold">Company</th>
+                                <th className="py-4 px-6 font-bold">Date</th>
+                                <th className="py-4 px-6 font-bold">Amount</th>
+                                <th className="py-4 px-6 font-bold">Status</th>
+                                <th className="py-4 px-6 font-bold text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="text-sm">
                             {RECENT_INVOICES.map((inv) => (
-                                <tr key={inv.id} className="border-b border-neutral-50 last:border-0 hover:bg-neutral-50/50 transition-colors">
-                                    <td className="py-4 px-6 font-bold text-neutral-900">{inv.id}</td>
-                                    <td className="py-4 px-6 font-semibold text-neutral-700">{inv.company}</td>
-                                    <td className="py-4 px-6 text-neutral-500">{inv.date}</td>
-                                    <td className="py-4 px-6 font-bold text-neutral-900">{inv.amount}</td>
+                                <tr key={inv.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
+                                    <td className="py-4 px-6 font-bold text-primary-950 dark:text-white">{inv.id}</td>
+                                    <td className="py-4 px-6 font-semibold text-neutral-700 dark:text-neutral-300">{inv.company}</td>
+                                    <td className="py-4 px-6 text-neutral-500 dark:text-neutral-400">{inv.date}</td>
+                                    <td className="py-4 px-6 font-bold text-primary-950 dark:text-white">{inv.amount}</td>
                                     <td className="py-4 px-6">
                                         <span className={cn(
-                                            "inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
-                                            inv.status === "Paid" ? "bg-success-50 text-success-700 border-success-200" :
-                                                inv.status === "Pending" ? "bg-warning-50 text-warning-700 border-warning-200" :
-                                                    "bg-danger-50 text-danger-700 border-danger-200"
+                                            "inline-flex px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border",
+                                            inv.status === "Paid" ? "bg-success-50 text-success-700 border-success-200 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50" :
+                                                inv.status === "Pending" ? "bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50" :
+                                                    "bg-danger-50 text-danger-700 border-danger-200 dark:bg-danger-900/20 dark:text-danger-400 dark:border-danger-800/50"
                                         )}>
                                             {inv.status}
                                         </span>
                                     </td>
                                     <td className="py-4 px-6 text-right">
-                                        <div className="flex items-center justify-end gap-2 text-neutral-400">
-                                            <button className="p-1.5 hover:bg-neutral-100 hover:text-primary-600 rounded-md transition-colors"><Download className="w-4 h-4" /></button>
-                                            <button className="p-1.5 hover:bg-neutral-100 hover:text-primary-600 rounded-md transition-colors"><Eye className="w-4 h-4" /></button>
-                                            <button className="p-1.5 hover:bg-neutral-100 hover:text-neutral-700 rounded-md transition-colors"><MoreVertical className="w-4 h-4" /></button>
+                                        <div className="flex items-center justify-end gap-2 text-neutral-400 dark:text-neutral-500">
+                                            <button className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-primary-600 dark:hover:text-primary-400 rounded-lg transition-colors"><Download className="w-4 h-4" /></button>
+                                            <button className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-primary-600 dark:hover:text-primary-400 rounded-lg transition-colors"><Eye className="w-4 h-4" /></button>
+                                            <button className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white rounded-lg transition-colors"><MoreVertical className="w-4 h-4" /></button>
                                         </div>
                                     </td>
                                 </tr>

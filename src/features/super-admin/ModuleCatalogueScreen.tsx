@@ -18,38 +18,38 @@ export function ModuleCatalogueScreen() {
         <div className="space-y-8 animate-in fade-in duration-500">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-neutral-900 tracking-tight">Module Catalogue</h1>
-                    <p className="text-neutral-500 mt-1">Avyren ERP ecosystem features available to tenants.</p>
+                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Module Catalogue</h1>
+                    <p className="text-neutral-500 dark:text-neutral-400 mt-1">Avyren ERP ecosystem features available to tenants.</p>
                 </div>
-                <div className="flex bg-neutral-100 p-1 rounded-lg">
-                    <button className="px-4 py-1.5 rounded-md bg-white shadow text-sm font-bold text-neutral-900">List View</button>
-                    <button className="px-4 py-1.5 rounded-md text-sm font-bold text-neutral-500 hover:text-neutral-900">Grid View</button>
+                <div className="flex bg-neutral-100 dark:bg-neutral-800/50 p-1 rounded-lg border border-neutral-200/50 dark:border-neutral-700/50">
+                    <button className="px-4 py-1.5 rounded-md bg-white dark:bg-neutral-700 shadow-sm text-sm font-bold text-primary-950 dark:text-white transition-colors">List View</button>
+                    <button className="px-4 py-1.5 rounded-md text-sm font-bold text-neutral-500 dark:text-neutral-400 hover:text-primary-950 dark:hover:text-white transition-colors">Grid View</button>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
                 {MODULES.map((mod) => (
-                    <div key={mod.id} className="group bg-white rounded-2xl border border-neutral-100 p-6 shadow-xl shadow-neutral-200/30 hover:-translate-y-1 transition-all duration-300 flex flex-col h-full relative overflow-hidden">
+                    <div key={mod.id} className="group bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 p-6 shadow-xl shadow-neutral-900/5 hover:-translate-y-1 hover:border-primary-200 dark:hover:border-primary-800/50 transition-all duration-300 flex flex-col h-full relative overflow-hidden">
                         {/* Soft background glow on hover */}
-                        <div className={cn("absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity duration-500 bg-gradient-to-br", mod.color)} />
+                        <div className={cn("absolute inset-0 opacity-0 group-hover:opacity-[0.03] dark:group-hover:opacity-[0.08] transition-opacity duration-500 bg-gradient-to-br", mod.color)} />
 
                         <div className="flex justify-between items-start mb-4 relative z-10">
                             <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-white bg-gradient-to-br shadow-inner", mod.color)}>
                                 <mod.icon className="w-6 h-6" />
                             </div>
                             {mod.required && (
-                                <span className="text-[10px] font-bold tracking-wider uppercase text-neutral-500 bg-neutral-100 px-2 py-1 rounded">Required</span>
+                                <span className="text-[10px] font-bold tracking-wider uppercase text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-2 py-1 rounded">Required</span>
                             )}
                         </div>
 
-                        <h3 className="text-lg font-bold text-neutral-900 mb-2 relative z-10">{mod.name}</h3>
-                        <p className="text-sm text-neutral-500 mb-6 flex-1 relative z-10">{mod.desc}</p>
+                        <h3 className="text-lg font-bold text-primary-950 dark:text-white mb-2 relative z-10">{mod.name}</h3>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6 flex-1 relative z-10">{mod.desc}</p>
 
-                        <div className="flex items-center justify-between pt-4 border-t border-neutral-100 relative z-10 mt-auto">
-                            <span className="font-bold text-primary-600">{mod.price}</span>
+                        <div className="flex items-center justify-between pt-4 border-t border-neutral-100 dark:border-neutral-800 relative z-10 mt-auto">
+                            <span className="font-bold text-primary-600 dark:text-primary-400">{mod.price}</span>
                             <div className="flex -space-x-2">
-                                <div className="w-6 h-6 rounded-full bg-neutral-100 border border-white flex items-center justify-center relative z-20"><Smartphone className="w-3 h-3 text-neutral-400" /></div>
-                                <div className="w-6 h-6 rounded-full bg-neutral-100 border border-white flex items-center justify-center relative z-10"><Laptop className="w-3 h-3 text-neutral-400" /></div>
+                                <div className="w-6 h-6 rounded-full bg-neutral-100 dark:bg-neutral-800 border border-white dark:border-neutral-900 flex items-center justify-center relative z-20"><Smartphone className="w-3 h-3 text-neutral-400 dark:text-neutral-500" /></div>
+                                <div className="w-6 h-6 rounded-full bg-neutral-100 dark:bg-neutral-800 border border-white dark:border-neutral-900 flex items-center justify-center relative z-10"><Laptop className="w-3 h-3 text-neutral-400 dark:text-neutral-500" /></div>
                             </div>
                         </div>
                     </div>

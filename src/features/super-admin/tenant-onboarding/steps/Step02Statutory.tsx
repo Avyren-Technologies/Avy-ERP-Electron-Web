@@ -111,15 +111,15 @@ export function Step02Statutory() {
                         { label: 'LWF Reg.', note: 'State-specific applicability', status: 'optional' },
                         { label: 'ROC State', note: 'Always required', status: 'required' },
                     ].map((item) => (
-                        <div key={item.label} className="flex items-center justify-between bg-neutral-50 rounded-lg px-4 py-2.5">
-                            <span className="text-xs font-bold text-primary-900">{item.label}</span>
+                        <div key={item.label} className="flex items-center justify-between bg-neutral-50 rounded-lg px-4 py-2.5 dark:bg-neutral-800">
+                            <span className="text-xs font-bold text-primary-900 dark:text-white">{item.label}</span>
                             <div className="flex items-center gap-2">
-                                <span className="text-xs text-neutral-600">{item.note}</span>
+                                <span className="text-xs text-neutral-600 dark:text-neutral-300">{item.note}</span>
                                 <span
                                     className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase
-                    ${item.status === 'required' ? 'bg-danger-50 text-danger-600' :
-                                            item.status === 'conditional' ? 'bg-warning-50 text-warning-600' :
-                                                'bg-neutral-100 text-neutral-500'}`}
+                    ${item.status === 'required' ? 'bg-danger-50 dark:bg-danger-900/20 text-danger-600' :
+                                            item.status === 'conditional' ? 'bg-warning-50 dark:bg-warning-900/20 text-warning-600' :
+                                                'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'}`}
                                 >
                                     {item.status}
                                 </span>
