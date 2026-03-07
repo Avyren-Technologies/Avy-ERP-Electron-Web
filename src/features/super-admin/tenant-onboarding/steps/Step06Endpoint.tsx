@@ -6,17 +6,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { cn } from '@/lib/utils';
 import { Globe, Server, CheckCircle2, AlertCircle } from 'lucide-react';
-import { SectionCard, FormInput, SecretInput, FormTextarea, RadioOption, TwoCol, InfoBanner } from '../atoms';
-import { BACKEND_REGIONS } from '../constants';
+import { SectionCard, FormInput, InfoBanner } from '../atoms';
 import { useTenantOnboardingStore } from '../store';
+import { client } from '@/lib/api/client';
 
 const schema = z.object({
     endpointType: z.enum(['default', 'custom']),
-    customRegion: z.string().optional(),
     customBaseUrl: z.string().optional(),
-    apiKey: z.string().optional(),
-    webhookSecret: z.string().optional(),
-    customNote: z.string().optional(),
 }).superRefine((data, ctx) => {
     if (data.endpointType === 'custom') {
         if (!data.customBaseUrl) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['customBaseUrl'], message: 'Required' });
@@ -25,23 +21,67 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+const HEALTH_STATUS_SUCCESS = 'healthy';
+
+function buildHealthUrl(baseUrl: string) {
+    const normalized = baseUrl.trim().replace(/\/+$/, '');
+    if (!normalized) return '';
+    return normalized.endsWith('/health') ? normalized : `${normalized}/health`;
+}
+
 export function Step06Endpoint() {
     const { step6, setStep6, goNext } = useTenantOnboardingStore();
+    const [verifyState, setVerifyState] = React.useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+    const [verifyMessage, setVerifyMessage] = React.useState('');
 
     const { control, handleSubmit, watch } = useForm<FormData>({
         resolver: zodResolver(schema),
         defaultValues: {
             endpointType: step6.endpointType || 'default',
-            customRegion: step6.customRegion,
             customBaseUrl: step6.customBaseUrl,
-            apiKey: step6.apiKey,
-            webhookSecret: step6.webhookSecret,
-            customNote: step6.customNote,
         }
     });
 
     const endpointType = watch('endpointType');
     const customBaseUrl = watch('customBaseUrl');
+
+    React.useEffect(() => {
+        setVerifyState('idle');
+        setVerifyMessage('');
+    }, [endpointType, customBaseUrl]);
+
+    const verifyEndpoint = async () => {
+        const healthUrl = buildHealthUrl(customBaseUrl || '');
+        if (!healthUrl) {
+            setVerifyState('error');
+            setVerifyMessage('Enter a valid base URL before verification.');
+            return;
+        }
+
+        setVerifyState('loading');
+        setVerifyMessage('Running health check...');
+
+        try {
+            const response = await client.get(healthUrl, {
+                timeout: 10000,
+                headers: { Accept: 'application/json' },
+            });
+
+            const status = String(response.data?.status ?? '').toLowerCase();
+            if (response.status === 200 && status === HEALTH_STATUS_SUCCESS) {
+                setVerifyState('success');
+                setVerifyMessage('Endpoint verified successfully.');
+                return;
+            }
+
+            setVerifyState('error');
+            setVerifyMessage('Health check response must be: { status: "healthy" }.');
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Endpoint verification failed.';
+            setVerifyState('error');
+            setVerifyMessage(message);
+        }
+    };
 
     const onSubmit = (data: FormData) => {
         setStep6(data);
@@ -136,31 +176,17 @@ export function Step06Endpoint() {
                 </div>
             </SectionCard>
 
-            {/* Default — Region Selection */}
+            {/* Default Endpoint Summary */}
             {endpointType === 'default' && (
                 <SectionCard
-                    title="Server Region"
-                    subtitle="Select the geographic region closest to the company's primary operations"
+                    title="Default Endpoint"
+                    subtitle="Tenant will connect to the platform default backend endpoint"
                 >
-                    <Controller name="customRegion" control={control} render={({ field }) => (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {BACKEND_REGIONS.map((region) => (
-                                <RadioOption
-                                    key={region.key}
-                                    label={region.label}
-                                    subtitle={region.subtitle}
-                                    selected={field.value === region.key}
-                                    onSelect={() => field.onChange(region.key)}
-                                />
-                            ))}
-                        </div>
-                    )} />
-
-                    <div className="mt-4 bg-success-50 border border-success-200 rounded-xl px-5 py-4 dark:bg-success-900/20 dark:border-success-800/50">
+                    <div className="bg-success-50 border border-success-200 rounded-xl px-5 py-4 dark:bg-success-900/20 dark:border-success-800/50">
                         <p className="text-xs font-bold text-success-800 mb-1 dark:text-success-400">✅ Default Endpoint Active</p>
                         <p className="text-xs text-success-700 dark:text-success-400">
-                            Tenant will be provisioned on <strong>api.avy-erp.com</strong> with your selected region as the
-                            preferred shard. SSL/TLS, backups, and monitoring are fully managed by Avyren.
+                            Tenant will be provisioned on <strong>api.avy-erp.com</strong>. SSL/TLS, backups,
+                            and monitoring are fully managed by Avyren.
                         </p>
                     </div>
                 </SectionCard>
@@ -179,22 +205,34 @@ export function Step06Endpoint() {
                             <FormInput label="Backend Base URL" placeholder="https://erp.yourcompany.com/api/v1" {...field} value={field.value || ''} required hint="The root URL of the custom backend. Must be HTTPS with a valid SSL certificate." monospace error={fieldState.error?.message} />
                         )} />
 
-                        <TwoCol>
-                            <Controller name="customRegion" control={control} render={({ field, fieldState }) => (
-                                <FormInput label="Region / Deployment Label" placeholder="e.g. On-Premise Mumbai DC" {...field} value={field.value || ''} hint="Human-readable label shown in the admin panel" error={fieldState.error?.message} />
-                            )} />
-                            <Controller name="apiKey" control={control} render={({ field, fieldState }) => (
-                                <FormInput label="API Key" placeholder="Bearer token or API key for auth" {...field} value={field.value || ''} hint="Used by Avy ERP Super-Admin to authenticate management requests" monospace error={fieldState.error?.message} />
-                            )} />
-                        </TwoCol>
+                        <div className="flex flex-wrap items-center gap-3">
+                            <button
+                                type="button"
+                                onClick={verifyEndpoint}
+                                disabled={verifyState === 'loading'}
+                                className={cn(
+                                    'px-4 py-2 rounded-xl text-xs font-bold transition-all',
+                                    verifyState === 'loading'
+                                        ? 'bg-neutral-300 text-neutral-600 cursor-not-allowed'
+                                        : 'bg-primary-600 text-white hover:bg-primary-700'
+                                )}
+                            >
+                                {verifyState === 'loading' ? 'Verifying...' : 'Verify'}
+                            </button>
 
-                        <Controller name="webhookSecret" control={control} render={({ field, fieldState }) => (
-                            <SecretInput label="Webhook Secret" placeholder="Secret token for secure webhook verification" {...field} value={field.value || ''} hint="Used to validate events sent from the custom backend to the platform" error={fieldState.error?.message} />
-                        )} />
-
-                        <Controller name="customNote" control={control} render={({ field, fieldState }) => (
-                            <FormTextarea label="Notes / Additional Config" placeholder="e.g. VPN required for connectivity, contact IT: sysadmin@company.com" {...field} value={field.value || ''} hint="Internal notes for Avyren support team (not shown to tenant users)" rows={3} error={fieldState.error?.message} />
-                        )} />
+                            {verifyState !== 'idle' && (
+                                <p
+                                    className={cn(
+                                        'text-xs',
+                                        verifyState === 'success' && 'text-success-700',
+                                        verifyState === 'error' && 'text-danger-600',
+                                        verifyState === 'loading' && 'text-neutral-500'
+                                    )}
+                                >
+                                    {verifyMessage}
+                                </p>
+                            )}
+                        </div>
                     </SectionCard>
 
                     <SectionCard title="Endpoint Health" subtitle="Validation status of the custom backend connection">

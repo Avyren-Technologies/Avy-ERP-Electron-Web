@@ -67,10 +67,6 @@ const defaultStep5: Step5Form = {
 const defaultStep6: Step6Form = {
     endpointType: 'default',
     customBaseUrl: '',
-    customRegion: '',
-    customNote: '',
-    apiKey: '',
-    webhookSecret: '',
 };
 
 const defaultStep7: Step7ModulesForm = {

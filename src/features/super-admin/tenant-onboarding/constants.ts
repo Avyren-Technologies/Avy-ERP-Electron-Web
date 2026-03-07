@@ -148,17 +148,6 @@ export const DATE_FORMATS = ['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD'];
 export const NUMBER_FORMATS = ['Indian (2,00,000)', 'International (200,000)'];
 export const TIME_FORMATS = ['12-hour (AM/PM)', '24-hour'];
 
-// ============ BACKEND ENDPOINTS ============
-
-export const BACKEND_REGIONS = [
-    { key: 'in-south', label: 'India — South (Bengaluru)', subtitle: 'Low latency for South Asia' },
-    { key: 'in-west', label: 'India — West (Mumbai)', subtitle: 'Low latency for West India' },
-    { key: 'in-north', label: 'India — North (Delhi)', subtitle: 'Low latency for North India' },
-    { key: 'uae', label: 'UAE (Dubai)', subtitle: 'Middle East region' },
-    { key: 'sg', label: 'Singapore', subtitle: 'South-East Asia region' },
-    { key: 'us-east', label: 'US East (Virginia)', subtitle: 'Americas region' },
-];
-
 // ============ MODULES CATALOGUE ============
 
 export const MODULE_CATALOGUE = [

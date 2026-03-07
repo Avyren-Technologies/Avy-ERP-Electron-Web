@@ -197,11 +197,6 @@ export interface Step5Form {
 export interface Step6Form {
     endpointType: 'default' | 'custom';
     customBaseUrl: string;
-    customRegion: string;
-    customNote: string;
-    // API keys for connecting this tenant to the backend
-    apiKey: string;
-    webhookSecret: string;
 }
 
 // Step 7: Module Selection (WEB EXCLUSIVE — missing from mobile)
