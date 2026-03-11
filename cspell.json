@@ -1,0 +1,25 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "Avyren",
+    "Pressable",
+    "autofill",
+    "reanimated",
+    "nativewind",
+    "expo",
+    "zustand",
+    "Flashlist",
+    "Lato",
+    "tsdk",
+    "cspell",
+    "tailwindcss",
+    "importantForAutofill"
+  ],
+  "ignorePaths": [
+    "node_modules",
+    "*.lock",
+    ".next",
+    "dist"
+  ]
+}
