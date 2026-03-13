@@ -9,7 +9,7 @@ export function AuthLayout() {
             <div className="absolute top-[30%] left-[60%] w-[30%] h-[30%] rounded-full bg-info-400/10 dark:bg-info-600/10 blur-[100px]" />
 
             {/* Content Area */}
-            <div className="relative z-10 flex min-h-screen items-center justify-center p-6">
+            <div className="relative z-10 flex min-h-screen items-start justify-center pt-8 p-6">
                 <Outlet />
             </div>
         </div>

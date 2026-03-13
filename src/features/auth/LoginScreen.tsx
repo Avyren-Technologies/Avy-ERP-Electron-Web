@@ -7,6 +7,7 @@ import * as z from "zod";
 import { useAuthStore } from "@/store/useAuthStore";
 import { CustomLoader } from "@/components/ui/CustomLoader";
 import { cn } from "@/lib/utils";
+import companyLogo from "@/assets/logo/Company-Logo.png";
 
 // Make sure to add this schema
 const loginSchema = z.object({
@@ -18,11 +19,26 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 const PRD_HIGHLIGHTS = [
-    { title: "Modular Architecture", desc: "Select and pay only for the modules your factory needs." },
-    { title: "Single Source of Truth", desc: "No duplicate entry. Synchronized across web, desktop, and mobile." },
-    { title: "Offline-First Design", desc: "Keep the shop floor moving even when the internet goes down." },
-    { title: "Multi-Tenant Security", desc: "Isolated database shards per company for enterprise-grade security." },
-    { title: "Role-Based Access", desc: "Granular control over what every member of your team can see or do." }
+    { 
+        title: "Intelligent Orchestration", 
+        desc: "Real-time visibility and control across your entire production lifecycle." 
+    },
+    { 
+        title: "Global Connectivity", 
+        desc: "Synchronize teams, vendors, and clients on a single unified source of truth." 
+    },
+    { 
+        title: "Precision Analytics", 
+        desc: "Data-driven insights to optimize your output and minimize operational waste." 
+    },
+    { 
+        title: "Adaptive Scaling", 
+        desc: "Modular tools designed to grow with your enterprise from 10 to 10,000 members." 
+    },
+    { 
+        title: "Secure Infrastructure", 
+        desc: "Enterprise-grade protection for your most sensitive manufacturing data." 
+    }
 ];
 
 export function LoginScreen() {
@@ -57,52 +73,65 @@ export function LoginScreen() {
     };
 
     return (
-        <div className="w-full max-w-6xl mx-auto flex flex-col md:flex-row gap-8 items-center justify-center p-4">
+        <div className="w-full max-w-6xl mx-auto flex flex-col md:flex-row gap-8 items-start justify-center p-4">
 
-            {/* Left Column: Welcome & Highlights */}
-            <div className="w-full md:w-1/2 flex flex-col items-start gap-6 pt-10 px-4 md:px-0 order-last md:order-first">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-primary-600 to-accent-500 flex items-center justify-center shadow-lg shadow-primary-500/30 mb-2">
-                    <span className="text-white font-bold text-3xl">A</span>
-                </div>
-                <div>
-                    <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 dark:text-white mb-3">Welcome to Avy ERP</h1>
-                    <p className="text-lg text-neutral-600 dark:text-neutral-400">The operating system of modern manufacturing.</p>
-                </div>
+            {/* ── Left Column ── */}
+            <div className="w-full md:w-1/2 flex flex-col items-start justify-start order-last md:order-first pl-0 md:pl-2 pr-4">
 
-                {/* Animated Carousel Highlights */}
-                <div className="mt-8 w-full max-w-sm relative h-32">
-                    {PRD_HIGHLIGHTS.map((item, idx) => (
-                        <div
-                            key={idx}
-                            className={cn(
-                                "absolute inset-0 transition-all duration-700 transform flex flex-col justify-center",
-                                idx === highlightIndex
-                                    ? "opacity-100 translate-y-0 pointer-events-auto"
-                                    : "opacity-0 translate-y-4 pointer-events-none"
-                            )}
-                        >
-                            <div className="inline-flex items-center gap-2 mb-2">
-                                <span className="bg-primary-100 dark:bg-primary-900/40 p-1.5 rounded-full">
-                                    <Check className="w-4 h-4 text-primary-600 dark:text-primary-400" strokeWidth={3} />
-                                </span>
-                                <h3 className="font-bold text-lg text-neutral-900 dark:text-neutral-100">
-                                    {item.title}
-                                </h3>
-                            </div>
-                            <p className="text-neutral-500 dark:text-neutral-400 pl-9">
-                                {item.desc}
-                            </p>
-                        </div>
-                    ))}
+                {/* Logo — negative top margin cancels PNG internal whitespace */}
+                <img
+                    src={companyLogo}
+                    alt="Avyren Technologies"
+                    className="w-full max-w-[380px] h-auto object-contain -mt-20 -ml-9 mb-0"
+                />
 
-                    {/* Carousel Indicators */}
-                    <div className="absolute bottom-0 left-9 flex gap-1.5">
-                        {PRD_HIGHLIGHTS.map((_, idx) => (
+                {/* Headline — single line and professional */}
+                <h1 className="text-xl md:text-2xl font-semibold text-neutral-900 dark:text-white mb-3 tracking-tight -mt-16 leading-tight whitespace-nowrap">
+                    Empowering modern <span className="text-primary-600 dark:text-primary-400">manufacturing teams.</span>
+                </h1>
+                <p className="text-base text-neutral-500 dark:text-neutral-400 max-w-sm leading-relaxed mb-8 font-medium">
+                    The next-generation operating system for industrial excellence.
+                </p>
+
+                {/* Slide box — elegant tinted card */}
+                <div className="w-full max-w-md">
+                    <div className="relative border border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/20 rounded-2xl min-h-[140px] overflow-hidden backdrop-blur-sm shadow-sm">
+                        {PRD_HIGHLIGHTS.map((item, idx) => (
                             <div
                                 key={idx}
                                 className={cn(
-                                    "h-1.5 rounded-full transition-all duration-500",
-                                    idx === highlightIndex ? "w-6 bg-primary-600" : "w-1.5 bg-neutral-300 dark:bg-neutral-700"
+                                    "absolute inset-0 px-7 py-6 flex flex-col justify-center transition-all duration-1000 ease-in-out",
+                                    idx === highlightIndex
+                                        ? "opacity-100 translate-y-0 scale-100 pointer-events-auto z-10"
+                                        : "opacity-0 translate-y-4 scale-95 pointer-events-none z-0"
+                                )}
+                            >
+                                <div className="flex items-center gap-3.5 mb-2.5">
+                                    <div className="w-7 h-7 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
+                                        <Check className="w-4 h-4 text-primary-600 dark:text-primary-400" strokeWidth={2.5} />
+                                    </div>
+                                    <h3 className="font-bold text-[16px] text-neutral-800 dark:text-neutral-100 tracking-tight">
+                                        {item.title}
+                                    </h3>
+                                </div>
+                                <p className="text-[14px] text-neutral-500 dark:text-neutral-400 pl-[42px] leading-relaxed font-medium">
+                                    {item.desc}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Dot indicators */}
+                    <div className="flex items-center gap-1.5 mt-3 px-1">
+                        {PRD_HIGHLIGHTS.map((_, idx) => (
+                            <button
+                                key={idx}
+                                onClick={() => setHighlightIndex(idx)}
+                                className={cn(
+                                    "h-1 rounded-full transition-all duration-400 border-0 outline-none cursor-pointer",
+                                    idx === highlightIndex
+                                        ? "w-5 bg-primary-500 dark:bg-primary-400"
+                                        : "w-1.5 bg-neutral-300 dark:bg-neutral-600 hover:bg-neutral-400"
                                 )}
                             />
                         ))}
