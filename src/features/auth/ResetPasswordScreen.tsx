@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, CheckCircle2, Lock } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useResetPasswordMutation } from "@/lib/api/use-auth-mutations";
 import { CustomLoader } from "@/components/ui/CustomLoader";
 import { cn } from "@/lib/utils";
 import { AuthFlowAside } from "./AuthFlowAside";
@@ -24,9 +25,11 @@ export function ResetPasswordScreen() {
     const email = searchParams.get("email") ?? "";
     const code = searchParams.get("code") ?? "";
 
-    const [isLoading, setIsLoading] = useState(false);
+    const resetMutation = useResetPasswordMutation();
     const [isDone, setIsDone] = useState(false);
     const [focusedInput, setFocusedInput] = useState<"password" | "confirmPassword" | null>(null);
+
+    const isLoading = resetMutation.isPending;
 
     const { register, handleSubmit, formState: { errors } } = useForm<ResetPasswordFormValues>({
         resolver: zodResolver(resetPasswordSchema),
@@ -41,12 +44,17 @@ export function ResetPasswordScreen() {
 
     const title = useMemo(() => (isDone ? "Password reset complete" : "Create a new password"), [isDone]);
 
-    const onSubmit = () => {
-        setIsLoading(true);
-        setTimeout(() => {
-            setIsLoading(false);
-            setIsDone(true);
-        }, 1200);
+    const onSubmit = (data: ResetPasswordFormValues) => {
+        resetMutation.mutate(
+            { email, code, newPassword: data.password },
+            {
+                onSuccess: (response) => {
+                    if (response.success) {
+                        setIsDone(true);
+                    }
+                },
+            },
+        );
     };
 
     return (
@@ -143,6 +151,16 @@ export function ResetPasswordScreen() {
                                     )}
                                 </button>
                             </form>
+
+                            {resetMutation.isError && (
+                                <div className="mt-4 p-3 rounded-xl bg-danger-50 dark:bg-danger-950/30 border border-danger-200 dark:border-danger-800">
+                                    <p className="text-sm font-semibold text-danger-700 dark:text-danger-400 text-center">
+                                        {(resetMutation.error as any)?.response?.data?.message
+                                            || (resetMutation.error as any)?.response?.data?.error
+                                            || 'Failed to reset password. Please try again.'}
+                                    </p>
+                                </div>
+                            )}
 
                             <button
                                 type="button"

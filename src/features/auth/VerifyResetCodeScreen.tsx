@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, KeyRound } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useVerifyResetCodeMutation, useForgotPasswordMutation } from "@/lib/api/use-auth-mutations";
 import { CustomLoader } from "@/components/ui/CustomLoader";
 import { cn } from "@/lib/utils";
 import { AuthFlowAside } from "./AuthFlowAside";
@@ -26,10 +27,12 @@ export function VerifyResetCodeScreen() {
     const [searchParams] = useSearchParams();
     const email = searchParams.get("email") ?? "";
 
-    const [isLoading, setIsLoading] = useState(false);
+    const verifyMutation = useVerifyResetCodeMutation();
+    const resendMutation = useForgotPasswordMutation();
     const [focused, setFocused] = useState(false);
     const [resendTimer, setResendTimer] = useState(30);
 
+    const isLoading = verifyMutation.isPending;
     const maskedEmail = useMemo(() => maskEmail(email), [email]);
 
     const { register, handleSubmit, formState: { errors } } = useForm<VerifyCodeFormValues>({
@@ -48,14 +51,20 @@ export function VerifyResetCodeScreen() {
     }, [resendTimer]);
 
     const onSubmit = (data: VerifyCodeFormValues) => {
-        setIsLoading(true);
-        setTimeout(() => {
-            setIsLoading(false);
-            navigate(`/reset-password/new?email=${encodeURIComponent(email)}&code=${encodeURIComponent(data.code)}`);
-        }, 1000);
+        verifyMutation.mutate(
+            { email, code: data.code },
+            {
+                onSuccess: (response) => {
+                    if (response.success) {
+                        navigate(`/reset-password/new?email=${encodeURIComponent(email)}&code=${encodeURIComponent(data.code)}`);
+                    }
+                },
+            },
+        );
     };
 
     const resendCode = () => {
+        resendMutation.mutate({ email });
         setResendTimer(30);
     };
 
@@ -127,6 +136,16 @@ export function VerifyResetCodeScreen() {
                             )}
                         </button>
                     </form>
+
+                    {verifyMutation.isError && (
+                        <div className="mt-4 p-3 rounded-xl bg-danger-50 dark:bg-danger-950/30 border border-danger-200 dark:border-danger-800">
+                            <p className="text-sm font-semibold text-danger-700 dark:text-danger-400 text-center">
+                                {(verifyMutation.error as any)?.response?.data?.message
+                                    || (verifyMutation.error as any)?.response?.data?.error
+                                    || 'Invalid verification code. Please try again.'}
+                            </p>
+                        </div>
+                    )}
 
                     <div className="mt-5 flex items-center justify-between">
                         <button

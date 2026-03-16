@@ -4,7 +4,7 @@ import { Mail, Lock, ArrowRight, Building, Check, ArrowUpRight, Boxes, Users, Ac
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useLoginMutation } from "@/lib/api/use-auth-mutations";
 import { CustomLoader } from "@/components/ui/CustomLoader";
 import { cn } from "@/lib/utils";
 import companyLogo from "@/assets/logo/Company-Logo.png";
@@ -108,9 +108,8 @@ function MetricCounter({ icon: Icon, value, suffix, label, color, delay }: {
 
 export function LoginScreen() {
     const navigate = useNavigate();
-    const signIn = useAuthStore((s) => s.signIn);
+    const loginMutation = useLoginMutation();
 
-    const [isLoading, setIsLoading] = useState(false);
     const [focusedInput, setFocusedInput] = useState<"email" | "password" | null>(null);
     const [highlightIndex, setHighlightIndex] = useState(0);
 
@@ -120,6 +119,7 @@ export function LoginScreen() {
     });
 
     const rememberMe = watch("rememberMe");
+    const isLoading = loginMutation.isPending;
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -128,13 +128,10 @@ export function LoginScreen() {
         return () => clearInterval(interval);
     }, []);
 
-    const onSubmit = (data: LoginFormValues) => {
-        setIsLoading(true);
-        setTimeout(() => {
-            setIsLoading(false);
-            signIn("mock-jwt-token-xyz", "super-admin");
-            navigate("/app/dashboard");
-        }, 1200);
+    const onSubmit = async (data: LoginFormValues) => {
+        loginMutation.mutate(
+            { email: data.email, password: data.password },
+        );
     };
 
     return (
@@ -338,6 +335,16 @@ export function LoginScreen() {
                             )}
                         </button>
                     </form>
+
+                    {loginMutation.isError && (
+                        <div className="mt-4 p-3 rounded-xl bg-danger-50 dark:bg-danger-950/30 border border-danger-200 dark:border-danger-800">
+                            <p className="text-sm font-semibold text-danger-700 dark:text-danger-400 text-center">
+                                {(loginMutation.error as any)?.response?.data?.message
+                                    || (loginMutation.error as any)?.response?.data?.error
+                                    || 'Login failed. Please check your credentials and try again.'}
+                            </p>
+                        </div>
+                    )}
 
                     {/* Terms Disclaimer */}
                     <p className="mt-5 text-center text-[11px] text-neutral-400 dark:text-neutral-500 leading-relaxed px-2">

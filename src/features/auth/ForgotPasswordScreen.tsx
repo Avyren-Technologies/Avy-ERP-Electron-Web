@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Mail } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useForgotPasswordMutation } from "@/lib/api/use-auth-mutations";
 import { CustomLoader } from "@/components/ui/CustomLoader";
 import { cn } from "@/lib/utils";
 import { AuthFlowAside } from "./AuthFlowAside";
@@ -18,8 +19,10 @@ export function ForgotPasswordScreen() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const emailFromQuery = searchParams.get("email") ?? "";
-    const [isLoading, setIsLoading] = useState(false);
+    const forgotPasswordMutation = useForgotPasswordMutation();
     const [focused, setFocused] = useState(false);
+
+    const isLoading = forgotPasswordMutation.isPending;
 
     const { register, handleSubmit, formState: { errors } } = useForm<ForgotPasswordFormValues>({
         resolver: zodResolver(forgotPasswordSchema),
@@ -27,11 +30,16 @@ export function ForgotPasswordScreen() {
     });
 
     const onSubmit = (data: ForgotPasswordFormValues) => {
-        setIsLoading(true);
-        setTimeout(() => {
-            setIsLoading(false);
-            navigate(`/reset-password/verify?email=${encodeURIComponent(data.email)}`);
-        }, 1000);
+        forgotPasswordMutation.mutate(
+            { email: data.email },
+            {
+                onSuccess: (response) => {
+                    if (response.success) {
+                        navigate(`/reset-password/verify?email=${encodeURIComponent(data.email)}`);
+                    }
+                },
+            },
+        );
     };
 
     return (
@@ -98,6 +106,16 @@ export function ForgotPasswordScreen() {
                             )}
                         </button>
                     </form>
+
+                    {forgotPasswordMutation.isError && (
+                        <div className="mt-4 p-3 rounded-xl bg-danger-50 dark:bg-danger-950/30 border border-danger-200 dark:border-danger-800">
+                            <p className="text-sm font-semibold text-danger-700 dark:text-danger-400 text-center">
+                                {(forgotPasswordMutation.error as any)?.response?.data?.message
+                                    || (forgotPasswordMutation.error as any)?.response?.data?.error
+                                    || 'Something went wrong. Please try again.'}
+                            </p>
+                        </div>
+                    )}
 
                     <button
                         type="button"
