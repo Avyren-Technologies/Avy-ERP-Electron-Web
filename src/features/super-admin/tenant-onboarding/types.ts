@@ -153,6 +153,7 @@ export interface Step3Form {
     corpLine2: string;
     corpCity: string;
     corpState: string;
+    corpCountry: string;
     corpPin: string;
 }
 

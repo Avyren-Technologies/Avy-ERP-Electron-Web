@@ -1,6 +1,6 @@
 // Step 03 — Address (Registered & Corporate)
 import React from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { SectionCard, FormInput, FormSelect, ToggleRow, TwoCol, ThreeCol } from '../atoms';
@@ -21,12 +21,14 @@ const schema = z.object({
     corpLine2: z.string().optional(),
     corpCity: z.string().optional(),
     corpState: z.string().optional(),
+    corpCountry: z.string().optional(),
     corpPin: z.string().optional(),
 }).superRefine((data, ctx) => {
     if (!data.sameAsRegistered) {
         if (!data.corpLine1) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['corpLine1'], message: 'Required' });
         if (!data.corpCity) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['corpCity'], message: 'Required' });
         if (!data.corpState) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['corpState'], message: 'Required' });
+        if (!data.corpCountry) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['corpCountry'], message: 'Required' });
         if (!data.corpPin) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['corpPin'], message: 'Required' });
     }
 });
@@ -36,7 +38,7 @@ type FormData = z.infer<typeof schema>;
 export function Step03Address() {
     const { step3, setStep3, goNext } = useTenantOnboardingStore();
 
-    const { control, handleSubmit, watch } = useForm<FormData>({
+    const { control, handleSubmit } = useForm<FormData>({
         resolver: zodResolver(schema),
         defaultValues: {
             regLine1: step3.regLine1,
@@ -52,11 +54,12 @@ export function Step03Address() {
             corpLine2: step3.corpLine2,
             corpCity: step3.corpCity,
             corpState: step3.corpState,
+            corpCountry: step3.corpCountry || 'India',
             corpPin: step3.corpPin,
         }
     });
 
-    const sameAsReg = watch('sameAsRegistered');
+    const sameAsReg = useWatch({ control, name: 'sameAsRegistered' });
 
     const onSubmit = (data: FormData) => {
         setStep3(data);
@@ -132,6 +135,12 @@ export function Step03Address() {
                                 <FormSelect label="State" options={INDIAN_STATES} placeholder="Select state" {...field} value={field.value || ''} required error={fieldState.error?.message} />
                             )} />
                         </ThreeCol>
+                        <TwoCol>
+                            <Controller name="corpCountry" control={control} render={({ field, fieldState }) => (
+                                <FormInput label="Country" placeholder="India" {...field} value={field.value || ''} required error={fieldState.error?.message} />
+                            )} />
+                            <div />
+                        </TwoCol>
                     </div>
                 )}
 

@@ -329,6 +329,7 @@ export function ChipSelector({
     onSelect,
     required,
     hint,
+    error,
 }: {
     label?: string;
     options: string[];
@@ -336,6 +337,7 @@ export function ChipSelector({
     onSelect: (v: string) => void;
     required?: boolean;
     hint?: string;
+    error?: string;
 }) {
     const isSelected = (opt: string) =>
         Array.isArray(selected) ? selected.includes(opt) : selected === opt;
@@ -358,14 +360,18 @@ export function ChipSelector({
                             'px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-150 select-none',
                             isSelected(opt)
                                 ? 'bg-primary-600 text-white border-primary-600 dark:border-primary-500 shadow-sm shadow-primary-500/20'
-                                : 'bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:border-primary-300 hover:text-primary-700 dark:text-primary-400'
+                                : 'bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:border-primary-300 hover:text-primary-700 dark:hover:text-primary-400'
                         )}
                     >
                         {opt}
                     </button>
                 ))}
             </div>
-            {hint && <p className="text-xs text-neutral-400 leading-4 dark:text-neutral-500">{hint}</p>}
+            {error ? (
+                <p className="text-xs text-danger-500 font-medium leading-4">{error}</p>
+            ) : hint ? (
+                <p className="text-xs text-neutral-400 leading-4 dark:text-neutral-500">{hint}</p>
+            ) : null}
         </div>
     );
 }
@@ -628,7 +634,7 @@ export function PhoneInput({
                     onChange={(e) => onPhoneChange(e.target.value)}
                     placeholder="9876543210"
                     className="flex-1 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-4 py-3 text-sm text-neutral-800 dark:text-neutral-200
-            placeholder:text-neutral-400 dark:text-neutral-500
+            placeholder:text-neutral-400 dark:placeholder:text-neutral-500
             focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400
             transition-all"
                 />

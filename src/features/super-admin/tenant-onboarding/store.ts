@@ -41,7 +41,7 @@ const defaultStep3: Step3Form = {
     regLine1: '', regLine2: '', regCity: '', regDistrict: '', regState: '',
     regCountry: 'India', regPin: '', regStdCode: '',
     sameAsRegistered: true,
-    corpLine1: '', corpLine2: '', corpCity: '', corpState: '', corpPin: '',
+    corpLine1: '', corpLine2: '', corpCity: '', corpState: '', corpCountry: 'India', corpPin: '',
 };
 
 const defaultStep4: Step4Form = {

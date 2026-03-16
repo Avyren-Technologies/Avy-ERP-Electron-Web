@@ -92,9 +92,6 @@ export const GEO_RADIUS_OPTIONS = [
 
 export const FY_OPTIONS = [
     { key: 'apr-mar', label: 'April – March', subtitle: 'Standard India FY' },
-    { key: 'jan-dec', label: 'January – December', subtitle: 'Calendar year (global)' },
-    { key: 'jul-jun', label: 'July – June', subtitle: 'Australia / NZ style' },
-    { key: 'oct-sep', label: 'October – September', subtitle: 'Middle East / custom' },
     { key: 'custom', label: 'Custom Period', subtitle: 'Define your own FY start & end months' },
 ];
 

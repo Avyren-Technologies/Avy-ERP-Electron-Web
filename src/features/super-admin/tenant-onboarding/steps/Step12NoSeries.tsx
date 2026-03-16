@@ -4,7 +4,7 @@ import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-    SectionCard, FormInput, FormSelect, AddButton, ItemCard, TwoCol, ThreeCol, InfoBanner
+    SectionCard, FormInput, AddButton, ItemCard, TwoCol, ThreeCol, InfoBanner, ChipSelector
 } from '../atoms';
 import { NO_SERIES_SCREENS } from '../constants';
 import { useTenantOnboardingStore } from '../store';
@@ -111,13 +111,14 @@ export function Step12NoSeries() {
                                                 <Controller name={`noSeries.${idx}.code`} control={control} render={({ field: subField }) => (
                                                     <FormInput label="Series Code" placeholder="e.g. INV, EMP, WO" {...subField} value={subField.value || ''} onChange={(e) => subField.onChange(e.toUpperCase())} required monospace hint="Unique identifier for this series (used in API + reports)" error={errors?.code?.message} />
                                                 )} />
-                                                <Controller name={`noSeries.${idx}.linkedScreen`} control={control} render={({ field: subField }) => (
-                                                    <FormSelect label="Linked Screen / Document Type" {...subField} value={subField.value || ''} options={NO_SERIES_SCREENS} placeholder="Select document type" required />
-                                                )} />
                                             </TwoCol>
 
                                             <Controller name={`noSeries.${idx}.description`} control={control} render={({ field: subField }) => (
                                                 <FormInput label="Description" placeholder="e.g. Sales Invoice Numbering" {...subField} value={subField.value || ''} error={errors?.description?.message} />
+                                            )} />
+
+                                            <Controller name={`noSeries.${idx}.linkedScreen`} control={control} render={({ field: subField }) => (
+                                                <ChipSelector label="Linked Screen" options={NO_SERIES_SCREENS} selected={subField.value || ''} onSelect={subField.onChange} required error={errors?.linkedScreen?.message} />
                                             )} />
 
                                             <ThreeCol>

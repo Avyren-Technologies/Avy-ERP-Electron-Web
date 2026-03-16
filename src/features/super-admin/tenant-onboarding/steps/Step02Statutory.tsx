@@ -82,10 +82,11 @@ export function Step02Statutory() {
                     <Controller name="lwfrNo" control={control} render={({ field, fieldState }) => (
                         <FormInput label="LWFR Number (Labour Welfare Fund)" placeholder="Labour Welfare Fund Registration" {...field} value={field.value || ''} hint="Required under the Labour Welfare Fund Act in applicable states" monospace error={fieldState.error?.message} />
                     )} />
-                    <Controller name="rocState" control={control} render={({ field, fieldState }) => (
-                        <FormSelect label="ROC Filing State" options={INDIAN_STATES} placeholder="Select state" {...field} value={field.value || ''} required hint="State where company is registered with Registrar of Companies" error={fieldState.error?.message} />
-                    )} />
                 </TwoCol>
+
+                <Controller name="rocState" control={control} render={({ field, fieldState }) => (
+                    <FormSelect label="ROC Filing State" options={INDIAN_STATES} placeholder="Select state" {...field} value={field.value || ''} required hint="State where company is registered with Registrar of Companies" error={fieldState.error?.message} />
+                )} />
             </SectionCard>
 
             <SectionCard
