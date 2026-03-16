@@ -103,6 +103,22 @@
 
 .stat-glow { animation: stat-count-glow 3s ease-in-out infinite; }
 
+@keyframes liquid-glass-sweep {
+  from { transform: translateX(-120%) rotate(10deg); }
+  to   { transform: translateX(120%) rotate(10deg); }
+}
+
+.liquid-glass-shimmer {
+  background: linear-gradient(
+    110deg,
+    transparent 28%,
+    rgba(255, 255, 255, 0.35) 46%,
+    rgba(255, 255, 255, 0.12) 54%,
+    transparent 72%
+  );
+  animation: liquid-glass-sweep 7s ease-in-out infinite;
+}
+
 /* Dot grid background */
 .dot-grid {
   background-image: radial-gradient(circle, currentColor 0.8px, transparent 0.8px);

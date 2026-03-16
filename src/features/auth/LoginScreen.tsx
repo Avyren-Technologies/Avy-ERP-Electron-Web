@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Lock, ArrowRight, Building, Check, ArrowUpRight, Boxes, Users, Activity, Factory } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -46,7 +46,7 @@ const PRD_HIGHLIGHTS = [
 ];
 
 const METRICS = [
-    { icon: Boxes, value: 10, suffix: "+", label: "Modules", color: "text-primary-600 dark:text-primary-400" },
+    { icon: Boxes, value: 9, suffix: "+", label: "Modules", color: "text-primary-600 dark:text-primary-400" },
     { icon: Users, value: 5000, suffix: "+", label: "Users Supported", color: "text-accent-600 dark:text-accent-400" },
     { icon: Activity, value: 99.9, suffix: "%", label: "Uptime", color: "text-success-600 dark:text-success-400" },
     { icon: Factory, value: 9, suffix: "+", label: "Industries", color: "text-info-600 dark:text-info-400" },
@@ -54,12 +54,9 @@ const METRICS = [
 
 function useCountUp(target: number, duration = 1800, startDelay = 300) {
     const [count, setCount] = useState(0);
-    const hasAnimated = useRef(false);
 
     useEffect(() => {
-        if (hasAnimated.current) return;
-        hasAnimated.current = true;
-
+        let interval: ReturnType<typeof setInterval> | undefined;
         const timeout = setTimeout(() => {
             const isDecimal = target % 1 !== 0;
             const steps = 60;
@@ -67,19 +64,22 @@ function useCountUp(target: number, duration = 1800, startDelay = 300) {
             let current = 0;
             let step = 0;
 
-            const interval = setInterval(() => {
+            interval = setInterval(() => {
                 step++;
                 current += increment;
                 if (step >= steps) {
                     setCount(target);
-                    clearInterval(interval);
+                    if (interval) clearInterval(interval);
                 } else {
                     setCount(isDecimal ? parseFloat(current.toFixed(1)) : Math.floor(current));
                 }
             }, duration / steps);
         }, startDelay);
 
-        return () => clearTimeout(timeout);
+        return () => {
+            clearTimeout(timeout);
+            if (interval) clearInterval(interval);
+        };
     }, [target, duration, startDelay]);
 
     return count;
@@ -267,7 +267,11 @@ export function LoginScreen() {
                         <div className="space-y-1.5">
                             <div className="flex justify-between items-baseline mb-1 ml-1 pr-1">
                                 <label className="text-sm font-semibold text-neutral-900 dark:text-neutral-200">Password</label>
-                                <button type="button" className="text-xs font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300">
+                                <button
+                                    type="button"
+                                    onClick={() => navigate("/forgot-password")}
+                                    className="text-xs font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
+                                >
                                     Forgot password?
                                 </button>
                             </div>

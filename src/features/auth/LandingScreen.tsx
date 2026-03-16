@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     ArrowRight, ShieldCheck, Factory, Users, BarChart3,
@@ -8,38 +8,46 @@ import {
 import { cn } from "@/lib/utils";
 import companyLogo from "@/assets/logo/Company-Logo.png";
 
-/* ─── Animated Counter ─── */
-function useCountUp(target: number, duration = 2000, startDelay = 400) {
+function useCountUp(target: number, duration = 1800, startDelay = 300) {
     const [count, setCount] = useState(0);
-    const hasAnimated = useRef(false);
 
     useEffect(() => {
-        if (hasAnimated.current) return;
-        hasAnimated.current = true;
+        let interval: ReturnType<typeof setInterval> | undefined;
         const timeout = setTimeout(() => {
             const isDecimal = target % 1 !== 0;
             const steps = 60;
-            const inc = target / steps;
-            let cur = 0, step = 0;
-            const interval = setInterval(() => {
+            const increment = target / steps;
+            let current = 0;
+            let step = 0;
+
+            interval = setInterval(() => {
                 step++;
-                cur += inc;
-                if (step >= steps) { setCount(target); clearInterval(interval); }
-                else setCount(isDecimal ? parseFloat(cur.toFixed(1)) : Math.floor(cur));
+                current += increment;
+                if (step >= steps) {
+                    setCount(target);
+                    if (interval) clearInterval(interval);
+                } else {
+                    setCount(isDecimal ? parseFloat(current.toFixed(1)) : Math.floor(current));
+                }
             }, duration / steps);
         }, startDelay);
-        return () => clearTimeout(timeout);
+
+        return () => {
+            clearTimeout(timeout);
+            if (interval) clearInterval(interval);
+        };
     }, [target, duration, startDelay]);
+
     return count;
 }
 
-/* ─── Stat Counter Component ─── */
 function StatBlock({ value, suffix, label, delay }: { value: number; suffix: string; label: string; delay: number }) {
-    const count = useCountUp(value, 2000, delay);
+    const count = useCountUp(value, 1800, delay);
     return (
         <div className="flex flex-col items-center px-5 md:px-8">
             <span className="text-2xl md:text-3xl font-black tracking-tight text-neutral-900 dark:text-white stat-glow">
-                {count}{suffix}
+                {count}
+                {suffix}
             </span>
             <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-[0.15em] mt-1.5">
                 {label}
@@ -50,7 +58,7 @@ function StatBlock({ value, suffix, label, delay }: { value: number; suffix: str
 
 /* ─── Data ─── */
 const HERO_STATS = [
-    { value: 10, suffix: "+", label: "Modules" },
+    { value: 9, suffix: "+", label: "Modules" },
     { value: 9, suffix: "+", label: "Industries" },
     { value: 99.9, suffix: "%", label: "Uptime SLA" },
     { value: 3, suffix: "", label: "Platforms" },
@@ -112,14 +120,14 @@ export function LandingScreen() {
                 <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-primary-400/15 dark:bg-primary-600/10 blur-[120px] pointer-events-none" />
                 <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] rounded-full bg-accent-400/15 dark:bg-accent-600/10 blur-[120px] pointer-events-none" />
 
-                <div className="relative z-10 max-w-7xl mx-auto px-6 pt-2 md:pt-3 pb-16 md:pb-24">
+                <div className="relative z-10 max-w-7xl mx-auto px-6 -mt-6 md:-mt-8 pt-0 pb-16 md:pb-24">
 
                     {/* ── Top bar: Logo + Sign In ── */}
-                    <div className="flex items-center justify-between mb-4 md:mb-6 hero-stagger-1">
+                    <div className="flex items-center justify-between mb-2 md:mb-4 hero-stagger-1">
                         <img
                             src={companyLogo}
                             alt="Avyren Technologies"
-                            className="w-40 md:w-48 h-auto object-contain -ml-5"
+                            className="w-52 md:w-64 h-auto object-contain -ml-5"
                         />
                         <button
                             onClick={() => navigate("/login")}
@@ -234,11 +242,17 @@ export function LandingScreen() {
                     {/* ── Stats bar ── */}
                     <div className="hero-stagger-6 mt-12 md:mt-16">
                         <div className="relative mx-auto max-w-3xl">
-                            {/* Glass card */}
-                            <div className="flex items-center justify-center divide-x divide-neutral-200/60 dark:divide-neutral-700/40 py-5 px-4 rounded-2xl bg-white/60 dark:bg-neutral-900/50 border border-neutral-200/50 dark:border-neutral-800/50 backdrop-blur-xl shadow-xl shadow-neutral-200/20 dark:shadow-black/20">
-                                {HERO_STATS.map((stat, i) => (
-                                    <StatBlock key={stat.label} {...stat} delay={800 + i * 200} />
-                                ))}
+                            <div className="relative overflow-hidden rounded-2xl border border-white/50 dark:border-white/10 bg-white/40 dark:bg-neutral-900/35 backdrop-blur-2xl shadow-[0_12px_40px_rgba(99,102,241,0.14)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.45)]">
+                                <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/80 via-white/45 to-primary-100/35 dark:from-white/10 dark:via-white/[0.03] dark:to-primary-500/10" />
+                                <div className="pointer-events-none absolute -top-16 left-10 h-28 w-80 rounded-full bg-white/70 dark:bg-white/10 blur-3xl" />
+                                <div className="pointer-events-none absolute -bottom-20 right-8 h-28 w-72 rounded-full bg-primary-300/35 dark:bg-primary-500/20 blur-3xl" />
+                                <div className="pointer-events-none absolute inset-0 liquid-glass-shimmer opacity-80" />
+
+                                <div className="relative z-10 flex items-center justify-center divide-x divide-white/60 dark:divide-white/10 py-5 px-4">
+                                    {HERO_STATS.map((stat, i) => (
+                                        <StatBlock key={stat.label} {...stat} delay={800 + i * 200} />
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -7,6 +7,9 @@ import { useAuthStore } from "./store/useAuthStore";
 // Screens (Implemented)
 import { LandingScreen } from "./features/auth/LandingScreen";
 import { LoginScreen } from "./features/auth/LoginScreen";
+import { ForgotPasswordScreen } from "./features/auth/ForgotPasswordScreen";
+import { VerifyResetCodeScreen } from "./features/auth/VerifyResetCodeScreen";
+import { ResetPasswordScreen } from "./features/auth/ResetPasswordScreen";
 import { DashboardScreen } from "./features/super-admin/DashboardScreen";
 import { CompanyListScreen } from "./features/super-admin/CompanyListScreen";
 import { CompanyDetailScreen } from "./features/super-admin/CompanyDetailScreen";
@@ -44,6 +47,9 @@ function App() {
       <Route element={<AuthLayout />}>
         <Route path="/" element={<LandingScreen />} />
         <Route path="/login" element={<LoginScreen />} />
+        <Route path="/forgot-password" element={<ForgotPasswordScreen />} />
+        <Route path="/reset-password/verify" element={<VerifyResetCodeScreen />} />
+        <Route path="/reset-password/new" element={<ResetPasswordScreen />} />
       </Route>
 
       {/* Protected App Routes */}
