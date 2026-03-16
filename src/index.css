@@ -157,17 +157,6 @@
   animation: orbit-spin-reverse 30s linear infinite;
 }
 
-/* Connectivity lines: animate from center outward */
-@keyframes line-shoot {
-  from { opacity: 0; stroke-dashoffset: 150; }
-  to   { opacity: 0.4; stroke-dashoffset: 0; }
-}
-
-.connectivity-line {
-  stroke-dasharray: 150;
-  animation: line-shoot 0.6s cubic-bezier(0.22, 1, 0.36, 1) var(--delay) both;
-}
-
 /* Gentle float for the whole constellation after it has loaded */
 @keyframes constellation-breathe {
   0%, 100% { transform: translateY(0px); }

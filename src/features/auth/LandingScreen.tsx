@@ -112,10 +112,10 @@ export function LandingScreen() {
                 <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-primary-400/15 dark:bg-primary-600/10 blur-[120px] pointer-events-none" />
                 <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] rounded-full bg-accent-400/15 dark:bg-accent-600/10 blur-[120px] pointer-events-none" />
 
-                <div className="relative z-10 max-w-7xl mx-auto px-6 pt-4 pb-16 md:pb-24">
+                <div className="relative z-10 max-w-7xl mx-auto px-6 pt-2 md:pt-3 pb-16 md:pb-24">
 
                     {/* ── Top bar: Logo + Sign In ── */}
-                    <div className="flex items-center justify-between mb-8 md:mb-12 hero-stagger-1">
+                    <div className="flex items-center justify-between mb-4 md:mb-6 hero-stagger-1">
                         <img
                             src={companyLogo}
                             alt="Avyren Technologies"
@@ -123,14 +123,15 @@ export function LandingScreen() {
                         />
                         <button
                             onClick={() => navigate("/login")}
-                            className="text-sm font-bold text-neutral-600 dark:text-neutral-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                            className="group inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 dark:bg-neutral-900/75 border border-primary-200/80 dark:border-primary-700/60 text-primary-700 dark:text-primary-300 shadow-sm shadow-primary-500/10 hover:bg-primary-600 hover:text-white hover:border-primary-600 dark:hover:bg-primary-500 dark:hover:border-primary-500 transition-all"
                         >
-                            Sign In &rarr;
+                            <span className="text-sm font-bold">Sign In</span>
+                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                         </button>
                     </div>
 
                     {/* ── Main hero grid ── */}
-                    <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+                    <div className="flex flex-col lg:flex-row items-center gap-8 md:gap-10 lg:gap-16">
 
                         {/* Left: Copy */}
                         <div className="flex-1 max-w-2xl">
@@ -143,7 +144,7 @@ export function LandingScreen() {
                             </div>
 
                             {/* Headline */}
-                            <h1 className="hero-stagger-3 text-[2.5rem] md:text-[3.5rem] lg:text-[4rem] font-black leading-[1.05] tracking-tight text-neutral-900 dark:text-white mb-6">
+                            <h1 className="hero-stagger-3 text-[2.5rem] md:text-[3.5rem] lg:text-[4rem] font-black leading-[1.05] tracking-tight text-neutral-900 dark:text-white mb-5">
                                 The operating{" "}
                                 <br className="hidden md:block" />
                                 system for{" "}
@@ -157,7 +158,7 @@ export function LandingScreen() {
                             </h1>
 
                             {/* Sub-copy */}
-                            <p className="hero-stagger-4 text-lg md:text-xl text-neutral-500 dark:text-neutral-400 leading-relaxed mb-10 max-w-lg">
+                            <p className="hero-stagger-4 text-lg md:text-xl text-neutral-500 dark:text-neutral-400 leading-relaxed mb-7 md:mb-8 max-w-lg">
                                 A mobile-first, modular platform giving every person in your factory — from shop-floor operator to business owner — the right information at the right time.
                             </p>
 
@@ -184,33 +185,6 @@ export function LandingScreen() {
 
                         {/* Right: Module constellation — expand from center + orbit */}
                         <div className="relative w-72 h-72 md:w-80 md:h-80 lg:w-[400px] lg:h-[400px] flex-shrink-0 hidden md:flex items-center justify-center constellation-breathe">
-
-                            {/* SVG connectivity lines from center to each module */}
-                            <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" viewBox="0 0 400 400">
-                                {FLOATING_MODULES.map((_, i) => {
-                                    const angle = (i * 60) - 90;
-                                    const radius = 150;
-                                    const ex = 200 + Math.cos((angle * Math.PI) / 180) * radius;
-                                    const ey = 200 + Math.sin((angle * Math.PI) / 180) * radius;
-                                    return (
-                                        <line
-                                            key={`line-${i}`}
-                                            x1="200" y1="200"
-                                            x2={ex} y2={ey}
-                                            stroke="url(#line-gradient)"
-                                            strokeWidth="1.5"
-                                            className="connectivity-line"
-                                            style={{ "--delay": `${0.8 + i * 0.1}s` } as React.CSSProperties}
-                                        />
-                                    );
-                                })}
-                                <defs>
-                                    <linearGradient id="line-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" stopColor="#6366F1" stopOpacity="0.5" />
-                                        <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0.15" />
-                                    </linearGradient>
-                                </defs>
-                            </svg>
 
                             {/* Orbit rings — expand in */}
                             <div className="absolute w-[300px] h-[300px] rounded-full border border-dashed border-neutral-300/50 dark:border-neutral-700/30 orbit-ring-1" />
