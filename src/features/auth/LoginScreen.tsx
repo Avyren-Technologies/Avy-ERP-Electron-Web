@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Mail, Lock, ArrowRight, Building, Check, ArrowUpRight, Boxes, Users, Activity, Factory } from "lucide-react";
+import { Mail, Lock, ArrowRight, Building, Check, ArrowUpRight, Boxes, Users, Activity, Factory, Eye, EyeOff } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -111,6 +111,7 @@ export function LoginScreen() {
     const loginMutation = useLoginMutation();
 
     const [focusedInput, setFocusedInput] = useState<"email" | "password" | null>(null);
+    const [showPassword, setShowPassword] = useState(false);
     const [highlightIndex, setHighlightIndex] = useState(0);
 
     const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<LoginFormValues>({
@@ -286,7 +287,7 @@ export function LoginScreen() {
                                     <Lock className={cn("w-5 h-5", focusedInput === "password" ? "text-primary-600 dark:text-primary-400" : (errors.password ? "text-danger-500" : "text-neutral-400 dark:text-neutral-500"))} />
                                 </div>
                                 <input
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     {...register("password")}
                                     onFocus={() => setFocusedInput("password")}
                                     onBlur={() => setFocusedInput(null)}
@@ -294,6 +295,16 @@ export function LoginScreen() {
                                     className="flex-1 h-full bg-transparent border-none outline-none text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-600 font-medium disabled:opacity-50 tracking-widest text-lg"
                                     disabled={isLoading}
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword((v) => !v)}
+                                    className="pr-4 pl-2 flex items-center justify-center text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+                                    tabIndex={-1}
+                                >
+                                    {showPassword
+                                        ? <EyeOff className="w-5 h-5" />
+                                        : <Eye className="w-5 h-5" />}
+                                </button>
                             </div>
                             {errors.password && <p className="text-xs font-bold text-danger-500 ml-1">{errors.password.message}</p>}
                         </div>
