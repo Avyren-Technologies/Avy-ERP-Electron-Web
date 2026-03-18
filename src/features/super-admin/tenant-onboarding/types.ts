@@ -210,6 +210,7 @@ export interface Step5Form {
     ess: boolean;
     mobileApp: boolean;
     webApp: boolean;
+    systemApp: boolean;
     aiChatbot: boolean;
     eSign: boolean;
     biometric: boolean;
@@ -279,8 +280,6 @@ export interface Step14ControlsForm {
     leaveCarryForward: boolean;
     overtimeApproval: boolean;
     mfa: boolean;
-    backdatedEntry: boolean;
-    docNumberLock: boolean;
 }
 
 export interface Step15UsersForm {

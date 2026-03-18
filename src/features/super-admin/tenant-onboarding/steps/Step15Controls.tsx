@@ -1,4 +1,4 @@
-// Step 14 — System Controls
+// Step 15 — System Controls
 import React from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,13 +14,11 @@ const schema = z.object({
     leaveCarryForward: z.boolean(),
     overtimeApproval: z.boolean(),
     mfa: z.boolean(),
-    backdatedEntry: z.boolean(),
-    docNumberLock: z.boolean(),
 });
 
 type FormData = z.infer<typeof schema>;
 
-export function Step14Controls() {
+export function Step15Controls() {
     const { step14, setStep14, goNext } = useTenantOnboardingStore();
 
     const { control, handleSubmit, watch } = useForm<FormData>({
@@ -129,22 +127,6 @@ export function Step14Controls() {
                         onToggle={field.onChange}
                     />
                 )} />
-                <Controller name="backdatedEntry" control={control} render={({ field }) => (
-                    <ToggleRow
-                        label="Backdated Entry Control"
-                        subtitle="Restrict creation of records with past dates beyond a defined window (configurable: 1–30 days). Prevents retroactive manipulation."
-                        value={field.value}
-                        onToggle={field.onChange}
-                    />
-                )} />
-                <Controller name="docNumberLock" control={control} render={({ field }) => (
-                    <ToggleRow
-                        label="Document Number Edit Lock"
-                        subtitle="Prevent manual editing of auto-generated document numbers (e.g. invoices, work orders). All numbers must follow the configured No. Series."
-                        value={field.value}
-                        onToggle={field.onChange}
-                    />
-                )} />
             </SectionCard>
 
             {/* Summary */}
@@ -158,8 +140,6 @@ export function Step14Controls() {
                         { label: 'Leave Carry Forward', value: watchedForm.leaveCarryForward },
                         { label: 'Overtime Approval', value: watchedForm.overtimeApproval },
                         { label: 'MFA Required', value: watchedForm.mfa },
-                        { label: 'Backdated Entry Control', value: watchedForm.backdatedEntry },
-                        { label: 'Doc Number Lock', value: watchedForm.docNumberLock },
                     ].map((ctrl) => (
                         <div
                             key={ctrl.label}

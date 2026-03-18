@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { cn } from '@/lib/utils';
 import { Star } from 'lucide-react';
 import {
-    SectionCard, FormInput, FormSelect, ToggleRow,
+    SectionCard, FormInput, FormSelect, PhoneInput, ToggleRow,
     RadioOption, AddButton, ItemCard, TwoCol, ThreeCol, SectionDivider
 } from '../atoms';
 import {
@@ -197,11 +197,6 @@ export function Step08Locations() {
         document.getElementById('wizard-content')?.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    const countryOptions = COUNTRY_CODES.map(c => ({
-        value: c.code,
-        label: `${c.flag} ${c.code}`
-    }));
-
     const setHQLoc = (indexToSet: number) => {
         watchedLocations.forEach((loc, i) => {
             setValue(`locations.${i}.isHQ`, i === indexToSet);
@@ -326,29 +321,23 @@ export function Step08Locations() {
                                         <Controller name={`locations.${idx}.contactEmail`} control={control} render={({ field: subField }) => (
                                             <FormInput label="Email" placeholder="branch@company.com" {...subField} value={subField.value || ''} type="email" error={errors?.contactEmail?.message} />
                                         )} />
-
-                                        <div className="space-y-2 relative">
-                                            <label className="block text-xs font-bold text-primary-900 dark:text-white">Phone Number</label>
-                                            <div className="flex gap-2">
-                                                <div className="w-24">
-                                                    <Controller name={`locations.${idx}.contactCountryCode`} control={control} render={({ field: subField }) => (
-                                                        <FormSelect label="" options={countryOptions} {...subField} value={subField.value || ''} />
-                                                    )} />
+                                        <Controller name={`locations.${idx}.contactCountryCode`} control={control} render={({ field: codeField }) => (
+                                            <Controller name={`locations.${idx}.contactPhone`} control={control} render={({ field: phoneField }) => (
+                                                <div className="space-y-1.5">
+                                                    <PhoneInput
+                                                        label="Phone Number"
+                                                        countryCode={codeField.value || '+91'}
+                                                        phone={phoneField.value || ''}
+                                                        onCountryCodeChange={codeField.onChange}
+                                                        onPhoneChange={phoneField.onChange}
+                                                        options={COUNTRY_CODES}
+                                                    />
+                                                    {errors?.contactPhone?.message ? (
+                                                        <p className="text-xs text-danger-500 font-medium leading-4">{errors.contactPhone.message}</p>
+                                                    ) : null}
                                                 </div>
-                                                <div className="flex-1 relative">
-                                                    <Controller name={`locations.${idx}.contactPhone`} control={control} render={({ field: subField }) => (
-                                                        <FormInput
-                                                            label="Phone Number"
-                                                            placeholder="9876543210"
-                                                            type="tel"
-                                                            {...subField}
-                                                            value={subField.value || ''}
-                                                            error={errors?.contactPhone?.message}
-                                                        />
-                                                    )} />
-                                                </div>
-                                            </div>
-                                        </div>
+                                            )} />
+                                        )} />
                                     </TwoCol>
 
                                     {/* Geo-Fencing */}

@@ -5,12 +5,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { cn } from '@/lib/utils';
 import {
-    SectionCard, FormSelect, ChipSelector, RadioOption, TwoCol, ThreeCol, InfoBanner, SectionDivider
+    SectionCard, FormInput, FormSelect, ChipSelector, RadioOption, TwoCol, ThreeCol, InfoBanner, SectionDivider
 } from '../atoms';
 import {
-    FY_OPTIONS, MONTHS, WEEK_STARTS, TIMEZONES, DAYS_OF_WEEK
+    FY_OPTIONS, MONTHS, WEEK_STARTS, DAYS_OF_WEEK
 } from '../constants';
 import { useTenantOnboardingStore } from '../store';
+
+const IST_TIMEZONE = 'IST UTC+5:30';
 
 const schema = z.object({
     fyType: z.string().min(1, 'Required'),
@@ -87,16 +89,23 @@ export function Step04Fiscal() {
             cutoffDay: step4.cutoffDay,
             disbursementDay: step4.disbursementDay,
             weekStart: step4.weekStart || 'Monday',
-            timezone: step4.timezone || 'IST UTC+5:30',
+            timezone: IST_TIMEZONE,
         }
     });
 
     const fyType = watch('fyType');
     const cutoffDay = watch('cutoffDay');
     const disbursementDay = watch('disbursementDay');
+    const timezone = watch('timezone');
+
+    React.useEffect(() => {
+        if (timezone !== IST_TIMEZONE) {
+            setValue('timezone', IST_TIMEZONE, { shouldValidate: true });
+        }
+    }, [setValue, timezone]);
 
     const onSubmit = (data: FormData) => {
-        setStep4({ ...data, payrollFreq: 'Monthly' });
+        setStep4({ ...data, payrollFreq: 'Monthly', timezone: IST_TIMEZONE });
         goNext();
         document.getElementById('wizard-content')?.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -139,7 +148,11 @@ export function Step04Fiscal() {
             </SectionCard>
 
             {/* Payroll Cycle */}
-            <SectionCard title="Payroll Cycle" subtitle="Controls when salaries are computed, locked, and disbursed">
+            <SectionCard
+                title="Payroll Cycle"
+                subtitle="Controls when salaries are computed, locked, and disbursed"
+                className="relative z-20 overflow-visible"
+            >
                 <div className="rounded-2xl bg-info-50 dark:bg-info-900/20 border border-info-200 dark:border-info-800/50 px-4 py-3">
                     <p className="text-xs font-semibold text-info-700 dark:text-info-400">
                         Payroll frequency is set to Monthly. This is the standard for most Indian companies.
@@ -162,13 +175,23 @@ export function Step04Fiscal() {
             </SectionCard>
 
             {/* Calendar & Timezone */}
-            <SectionCard title="Calendar & Timezone" subtitle="Controls scheduling, shift allocation, and time-based operations">
+            <SectionCard
+                title="Calendar & Timezone"
+                subtitle="Controls scheduling, shift allocation, and time-based operations"
+                className="relative z-0"
+            >
                 <ThreeCol>
                     <Controller name="weekStart" control={control} render={({ field }) => (
                         <ChipSelector label="Week Starts On" options={WEEK_STARTS} selected={field.value} onSelect={field.onChange} />
                     )} />
-                    <Controller name="timezone" control={control} render={({ field, fieldState }) => (
-                        <FormSelect label="Timezone" options={TIMEZONES} {...field} value={field.value || ''} hint="Used for all timestamp calculations and reports" error={fieldState.error?.message} />
+                    <Controller name="timezone" control={control} render={({ field }) => (
+                        <FormInput
+                            label="Timezone"
+                            value={field.value || IST_TIMEZONE}
+                            onChange={() => {}}
+                            readOnly
+                            hint="Locked to IST (UTC+5:30) for now"
+                        />
                     )} />
                     <div />
                 </ThreeCol>

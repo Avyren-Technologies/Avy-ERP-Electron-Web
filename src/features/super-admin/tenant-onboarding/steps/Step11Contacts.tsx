@@ -1,4 +1,4 @@
-// Step 09 — Key Contacts
+// Step 11 — Key Contacts
 import React from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -27,7 +27,7 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-export function Step09Contacts() {
+export function Step11Contacts() {
     const { step9, setStep9, goNext } = useTenantOnboardingStore();
 
     const { control, handleSubmit } = useForm<FormData>({
@@ -167,7 +167,7 @@ export function Step09Contacts() {
                                                 <div className="space-y-1.5">
                                                     <label className="block text-xs font-bold text-primary-900 dark:text-white">Mobile Number</label>
                                                     <div className="flex items-end gap-2">
-                                                        <div className="w-24 flex-shrink-0">
+                                                    <div className="w-26 flex-shrink-0">
                                                             <Controller name={`contacts.${idx}.countryCode`} control={control} render={({ field: subField }) => (
                                                                 <FormSelect label="" options={countryOptions} {...subField} value={subField.value || ''} />
                                                             )} />

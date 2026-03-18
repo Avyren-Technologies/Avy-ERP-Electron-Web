@@ -1,4 +1,4 @@
-// Step 11 — Shifts & Time
+// Step 12 — Shifts & Time
 import React from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -37,7 +37,7 @@ type FormData = z.infer<typeof schema>;
 
 // ---- Main Step ----
 
-export function Step11Shifts() {
+export function Step12Shifts() {
     const { step11, setStep11, goNext } = useTenantOnboardingStore();
 
     const { control, handleSubmit, watch, setValue, formState } = useForm<FormData>({

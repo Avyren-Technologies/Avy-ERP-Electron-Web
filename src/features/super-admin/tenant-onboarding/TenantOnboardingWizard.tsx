@@ -21,11 +21,11 @@ import { Step07Strategy } from './steps/Step07Strategy';
 import { Step08Locations } from './steps/Step08Locations';
 import { Step09PerLocationModules } from './steps/Step09PerLocationModules';
 import { Step10PerLocationTier } from './steps/Step10PerLocationTier';
-import { Step09Contacts } from './steps/Step09Contacts';
-import { Step11Shifts } from './steps/Step11Shifts';
-import { Step12NoSeries } from './steps/Step12NoSeries';
-import { Step13IOTReasons } from './steps/Step13IOTReasons';
-import { Step14Controls } from './steps/Step14Controls';
+import { Step11Contacts } from './steps/Step11Contacts';
+import { Step12Shifts } from './steps/Step12Shifts';
+import { Step13NoSeries } from './steps/Step13NoSeries';
+import { Step14IOTReasons } from './steps/Step14IOTReasons';
+import { Step15Controls } from './steps/Step15Controls';
 import { Step16Users } from './steps/Step16Users';
 import { Step17Activation } from './steps/Step17Activation';
 
@@ -41,11 +41,11 @@ const STEP_COMPONENTS: Record<number, React.ComponentType> = {
     8: Step08Locations,
     9: Step09PerLocationModules,
     10: Step10PerLocationTier,
-    11: Step09Contacts,
-    12: Step11Shifts,
-    13: Step12NoSeries,
-    14: Step13IOTReasons,
-    15: Step14Controls,
+    11: Step11Contacts,
+    12: Step12Shifts,
+    13: Step13NoSeries,
+    14: Step14IOTReasons,
+    15: Step15Controls,
     16: Step16Users,
     17: Step17Activation,
 };

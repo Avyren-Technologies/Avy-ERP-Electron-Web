@@ -3,7 +3,7 @@ import React from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { MapPin, Layers, DollarSign, AlertTriangle } from 'lucide-react';
+import { MapPin, Layers, IndianRupee, AlertTriangle } from 'lucide-react';
 import { SectionCard, RadioOption, ToggleRow } from '../atoms';
 import { useTenantOnboardingStore } from '../store';
 
@@ -39,7 +39,7 @@ export function Step07Strategy({ onConfirmSubmit }: { onConfirmSubmit?: () => vo
             {/* Billing scope info banner */}
             <div className="bg-primary-50 border border-primary-200 rounded-2xl px-5 py-4 mb-1 dark:bg-primary-900/20 dark:border-primary-800/50">
                 <div className="flex items-start gap-3">
-                    <DollarSign size={16} className="text-primary-600 flex-shrink-0 mt-0.5 dark:text-primary-400" />
+                    <IndianRupee size={16} className="text-primary-600 flex-shrink-0 mt-0.5 dark:text-primary-400" />
                     <div>
                         <p className="text-sm font-bold text-primary-800 dark:text-primary-300">Per-Location Billing</p>
                         <p className="text-xs text-primary-700 dark:text-primary-400 mt-0.5 leading-relaxed">

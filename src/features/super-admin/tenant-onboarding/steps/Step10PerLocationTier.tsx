@@ -367,7 +367,7 @@ export function Step10PerLocationTier({ onConfirmSubmit }: { onConfirmSubmit?: (
                             className="max-w-[200px]"
                             error={fieldState.error?.message}
                         />
-                        <div className="bg-primary-50 border border-primary-200 rounded-xl px-4 py-3 mt-5 dark:bg-primary-900/30 dark:border-primary-800/50">
+                        <div className="bg-primary-50 border border-primary-200 rounded-xl px-4 py-3 dark:bg-primary-900/30 dark:border-primary-800/50">
                             <p className="text-xs font-bold text-primary-800 dark:text-primary-300">14 days = Standard trial</p>
                             <p className="text-xs text-primary-600 dark:text-primary-400">Set to 0 to skip trial (for managed onboarding)</p>
                         </div>

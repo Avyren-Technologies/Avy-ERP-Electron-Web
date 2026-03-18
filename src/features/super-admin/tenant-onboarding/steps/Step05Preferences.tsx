@@ -19,6 +19,7 @@ const schema = z.object({
     indiaCompliance: z.boolean(),
     mobileApp: z.boolean(),
     webApp: z.boolean(),
+    systemApp: z.boolean(),
     biometric: z.boolean(),
     bankIntegration: z.boolean(),
 
@@ -133,10 +134,11 @@ export function Step05Preferences() {
             // Employee Portal & App
             mobileApp: step5.mobileApp,
             webApp: step5.webApp ?? true,
+            systemApp: step5.systemApp ?? false,
             // Integrations
             biometric: false,
             bankIntegration: step5.bankIntegration,
-            razorpayEnabled: step5.razorpayEnabled,
+            razorpayEnabled: false,
             razorpayKeyId: step5.razorpayKeyId,
             razorpayKeySecret: step5.razorpayKeySecret,
             razorpayWebhookSecret: step5.razorpayWebhookSecret,
@@ -155,6 +157,7 @@ export function Step05Preferences() {
     const onSubmit = (data: FormData) => {
         setStep5({
             ...data,
+            razorpayEnabled: false,
             // Ensure removed fields keep safe defaults in store
             multiCurrency: false,
             ess: false,
@@ -184,7 +187,10 @@ export function Step05Preferences() {
                         <ToggleRow label="Mobile App (iOS & Android)" subtitle="Avy ERP mobile app access for all employees — production, HR, attendance" value={field.value} onToggle={field.onChange} />
                     )} />
                     <Controller name="webApp" control={control} render={({ field }) => (
-                        <ToggleRow label="Web / System Application" subtitle="Browser-based ERP access for managers, HR, and admin users — full feature access" value={field.value} onToggle={field.onChange} />
+                        <ToggleRow label="Web Application" subtitle="Browser-based ERP access for managers, HR, and admin users — full feature access" value={field.value} onToggle={field.onChange} />
+                    )} />
+                    <Controller name="systemApp" control={control} render={({ field }) => (
+                        <ToggleRow label="System Application" subtitle="Desktop/system application access for users who operate from company systems" value={field.value} onToggle={field.onChange} />
                     )} />
                 </SectionCard>
 
@@ -201,9 +207,17 @@ export function Step05Preferences() {
 
                     {bankIntegration && (
                         <div className="pl-4 border-l-2 border-primary-200 dark:border-primary-800/50">
-                            <Controller name="razorpayEnabled" control={control} render={({ field }) => (
-                                <ToggleRow label="RazorpayX Payout API" subtitle="Enable direct one-click salary disbursement via RazorpayX — fully automated payroll" value={field.value} onToggle={field.onChange} />
-                            )} />
+                            <div className="relative opacity-60 pointer-events-none">
+                                <ToggleRow
+                                    label="RazorpayX Payout API"
+                                    subtitle="Enable direct one-click salary disbursement via RazorpayX — fully automated payroll"
+                                    value={false}
+                                    onToggle={() => {}}
+                                />
+                                <span className="absolute top-3 right-12 text-[9px] font-bold px-2 py-0.5 rounded-full bg-warning-100 text-warning-700 border border-warning-200">
+                                    COMING SOON
+                                </span>
+                            </div>
                             {razorpayEnabled && <RazorpaySection />}
                         </div>
                     )}

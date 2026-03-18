@@ -960,7 +960,7 @@ export function PhoneInput({
                         onChange={(e) => onCountryCodeChange(e.target.value)}
                         className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3 py-3 pr-8 text-sm text-neutral-800 dark:text-neutral-200
               focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400
-              transition-all appearance-none w-[4.5rem]"
+              transition-all appearance-none w-[6rem] min-w-[6rem]"
                     >
                         {options.map((o) => (
                             <option key={o.code} value={o.code}>

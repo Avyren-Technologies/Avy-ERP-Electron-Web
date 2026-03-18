@@ -30,13 +30,13 @@ interface SubItem {
 
 interface NavSection {
     group: string;
-    roles?: UserRole[]; // undefined = visible to all
+    roles?: SidebarUserRole[]; // undefined = visible to all
     items: {
         icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
         label: string;
         path: string;
         badge?: string | number;
-        roles?: UserRole[];
+        roles?: SidebarUserRole[];
         children?: SubItem[];
     }[];
 }

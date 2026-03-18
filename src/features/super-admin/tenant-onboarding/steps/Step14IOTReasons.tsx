@@ -1,4 +1,4 @@
-// Step 13 — IOT Reasons (Machine Downtime & Idle Reasons)
+// Step 14 — IOT Reasons (Machine Downtime & Idle Reasons)
 import React from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,7 +31,7 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-export function Step13IOTReasons() {
+export function Step14IOTReasons() {
     const { step13, setStep13, goNext } = useTenantOnboardingStore();
 
     const { control, handleSubmit, watch } = useForm<FormData>({

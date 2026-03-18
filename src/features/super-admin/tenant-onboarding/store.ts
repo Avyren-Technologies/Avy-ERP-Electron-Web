@@ -58,6 +58,7 @@ const defaultStep5: Step5Form = {
     currency: 'INR — ₹', language: 'English', dateFormat: 'DD/MM/YYYY',
     numberFormat: 'Indian (2,00,000)', timeFormat: '12-hour (AM/PM)',
     indiaCompliance: true, multiCurrency: false, ess: true, mobileApp: true, webApp: true,
+    systemApp: false,
     aiChatbot: false, eSign: false, biometric: false,
     bankIntegration: false,
     razorpayEnabled: false, razorpayKeyId: '', razorpayKeySecret: '',
@@ -102,7 +103,7 @@ const defaultStep11: Step11ShiftsForm = {
 const defaultStep14: Step14ControlsForm = {
     ncEditMode: false, loadUnload: false, cycleTime: false,
     payrollLock: true, leaveCarryForward: true, overtimeApproval: false,
-    mfa: false, backdatedEntry: false, docNumberLock: true,
+    mfa: false,
 };
 
 const defaultUser: UserItem = {

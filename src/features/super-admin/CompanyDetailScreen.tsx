@@ -115,7 +115,7 @@ const TENANT = {
     controls: {
         ncEditMode: false, loadUnload: true, cycleTime: true,
         payrollLock: true, leaveCarryForward: true, overtimeApproval: true,
-        mfa: true, backdatedEntry: false, docNumberLock: true,
+        mfa: true,
     },
 
     createdAt: 'Jan 12, 2026',
@@ -648,8 +648,6 @@ export function CompanyDetailScreen() {
                                     <ControlBadge label="Leave Carry Forward" value={TENANT.controls.leaveCarryForward} />
                                     <ControlBadge label="Overtime Approval" value={TENANT.controls.overtimeApproval} />
                                     <ControlBadge label="MFA Required" value={TENANT.controls.mfa} />
-                                    <ControlBadge label="Backdated Entry Control" value={TENANT.controls.backdatedEntry} />
-                                    <ControlBadge label="Doc Number Lock" value={TENANT.controls.docNumberLock} />
                                 </div>
                             )}
                             {!expandedSections.controls && (
