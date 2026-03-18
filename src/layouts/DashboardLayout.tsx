@@ -5,9 +5,22 @@ import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
+import { useAuthStore } from '@/store/useAuthStore';
+import type { UserRole } from '@/store/useAuthStore';
+import type { SidebarUserRole } from './Sidebar';
+
+/** Map auth store role (hyphen) to sidebar role (underscore). */
+function toSidebarRole(role: UserRole | null): SidebarUserRole {
+    switch (role) {
+        case 'super-admin': return 'super_admin';
+        case 'company-admin': return 'company_admin';
+        default: return 'viewer';
+    }
+}
 
 export function DashboardLayout() {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const userRole = useAuthStore((s) => s.userRole);
 
     return (
         <div className="flex h-screen w-full overflow-hidden bg-[var(--background)] dark:bg-neutral-950 transition-colors">
@@ -15,7 +28,7 @@ export function DashboardLayout() {
             <Sidebar
                 collapsed={sidebarCollapsed}
                 onCollapse={setSidebarCollapsed}
-                role="super_admin"
+                role={toSidebarRole(userRole)}
             />
 
             {/* Main Content Area */}

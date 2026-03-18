@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { Building2, Upload, X, Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
-    SectionCard, FormInput, ChipSelector, RadioOption, TwoCol, ThreeCol
+    SectionCard, FormInput, FormSelect, FormDatePicker, RadioOption, TwoCol, ThreeCol
 } from '../atoms';
 import { BUSINESS_TYPES, INDUSTRIES, COMPANY_STATUSES } from '../constants';
 import { useTenantOnboardingStore } from '../store';
@@ -157,7 +157,11 @@ export function Step01Identity({ onConfirmSubmit }: { onConfirmSubmit?: () => vo
             </SectionCard>
 
             {/* Core Identity */}
-            <SectionCard title="Core Identity" subtitle="Primary identifiers displayed across the ERP platform">
+            <SectionCard
+                title="Core Identity"
+                subtitle="Primary identifiers displayed across the ERP platform"
+                className="overflow-visible"
+            >
                 <TwoCol>
                     <Controller name="displayName" control={control} render={({ field, fieldState }) => (
                         <FormInput label="Display Name" placeholder="e.g. Apex Manufacturing" {...field} value={field.value || ''} required hint="Shown in the app header, portal, and all dashboards" error={fieldState.error?.message} />
@@ -169,10 +173,27 @@ export function Step01Identity({ onConfirmSubmit }: { onConfirmSubmit?: () => vo
 
                 <TwoCol>
                     <Controller name="businessType" control={control} render={({ field, fieldState }) => (
-                        <ChipSelector label="Business Type" options={BUSINESS_TYPES} selected={field.value} onSelect={field.onChange} required hint={fieldState.error?.message} />
+                        <FormSelect
+                            label="Business Type"
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                            options={BUSINESS_TYPES}
+                            placeholder="Select Business Type"
+                            required
+                            error={fieldState.error?.message}
+                        />
                     )} />
                     <Controller name="industry" control={control} render={({ field, fieldState }) => (
-                        <ChipSelector label="Nature of Industry" options={INDUSTRIES} selected={field.value} onSelect={field.onChange} required hint={fieldState.error?.message} />
+                        <FormSelect
+                            label="Nature of Industry"
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                            options={INDUSTRIES}
+                            placeholder="Select Nature of Industry"
+                            searchable
+                            required
+                            error={fieldState.error?.message}
+                        />
                     )} />
                 </TwoCol>
 
@@ -184,17 +205,21 @@ export function Step01Identity({ onConfirmSubmit }: { onConfirmSubmit?: () => vo
                         <FormInput label="Short Name" placeholder="APEX" {...field} value={field.value || ''} hint="Abbreviated for headers and reports" error={fieldState.error?.message} />
                     )} />
                     <Controller name="incorporationDate" control={control} render={({ field, fieldState }) => (
-                        <FormInput label="Date of Incorporation" type="date" {...field} value={field.value || ''} required error={fieldState.error?.message} />
+                        <FormDatePicker
+                            label="Date of Incorporation"
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                            required
+                            error={fieldState.error?.message}
+                        />
                     )} />
                 </ThreeCol>
 
                 <TwoCol>
-                    <Controller name="employees" control={control} render={({ field, fieldState }) => (
-                        <FormInput label="Number of Employees (approx.)" placeholder="e.g. 250" type="number" {...field} value={field.value || ''} hint="Used for PF, ESI, PT compliance threshold checks" error={fieldState.error?.message} />
-                    )} />
                     <Controller name="cin" control={control} render={({ field, fieldState }) => (
                         <FormInput label="CIN Number" placeholder="U72900KA2019PTC312847" {...field} value={field.value || ''} onChange={v => field.onChange(v.toUpperCase())} hint="Company Identification Number from MCA" error={fieldState.error?.message} />
                     )} />
+                    <div />
                 </TwoCol>
 
                 <TwoCol>

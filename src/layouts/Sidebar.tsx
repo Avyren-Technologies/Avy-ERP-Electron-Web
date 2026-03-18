@@ -11,14 +11,16 @@ import {
     Users, FileText, BarChart3, Package, Wrench, ClipboardList,
     ShieldCheck, Bell, HelpCircle, PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
-import { useAuthStore } from '@/store/useAuthStore';
+import { useAuthStore, getUserInitials, getDisplayName } from '@/store/useAuthStore';
 import { useNavigate } from 'react-router-dom';
 
 // ============================================================
 // Nav Config — role-based
 // ============================================================
 
-export type UserRole = 'super_admin' | 'company_admin' | 'hr_manager' | 'viewer';
+export type SidebarUserRole = 'super_admin' | 'company_admin' | 'hr_manager' | 'viewer';
+/** @deprecated Use SidebarUserRole */
+export type UserRole = SidebarUserRole;
 
 interface SubItem {
     label: string;
@@ -153,13 +155,17 @@ const BOTTOM_NAV = [
 interface SidebarProps {
     collapsed: boolean;
     onCollapse: (v: boolean) => void;
-    role?: UserRole;
+    role?: SidebarUserRole;
 }
 
 export function Sidebar({ collapsed, onCollapse, role = 'super_admin' }: SidebarProps) {
     const location = useLocation();
     const navigate = useNavigate();
     const signOut = useAuthStore((s) => s.signOut);
+    const user = useAuthStore((s) => s.user);
+    const initials = getUserInitials(user);
+    const displayName = getDisplayName(user);
+    const email = user?.email ?? '';
 
     // Track which groups are expanded
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
@@ -462,16 +468,16 @@ export function Sidebar({ collapsed, onCollapse, role = 'super_admin' }: Sidebar
                             title="Sign Out"
                             className="w-9 h-9 rounded-xl bg-gradient-to-tr from-accent-400 to-primary-500 flex items-center justify-center shadow-sm"
                         >
-                            <span className="text-white font-bold text-xs">SA</span>
+                            <span className="text-white font-bold text-xs">{initials}</span>
                         </button>
                     ) : (
                         <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700">
                             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-accent-400 to-primary-500 flex items-center justify-center flex-shrink-0 shadow-sm">
-                                <span className="text-white font-bold text-[11px]">SA</span>
+                                <span className="text-white font-bold text-[11px]">{initials}</span>
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-xs font-bold text-primary-950 dark:text-white truncate">Super Admin</p>
-                                <p className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate">admin@avyren.com</p>
+                                <p className="text-xs font-bold text-primary-950 dark:text-white truncate">{displayName}</p>
+                                <p className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate">{email}</p>
                             </div>
                             <button
                                 onClick={handleLogout}

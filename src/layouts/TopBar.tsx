@@ -11,7 +11,7 @@ import {
     ArrowRight, Command, LogOut,
 } from 'lucide-react';
 import { useThemeStore } from '@/store/useThemeStore';
-import { useAuthStore } from '@/store/useAuthStore';
+import { useAuthStore, getUserInitials, getDisplayName, getRoleLabel } from '@/store/useAuthStore';
 
 // ============================================================
 // Page title map
@@ -235,6 +235,12 @@ function ProfileDropdown() {
     const ref = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
     const signOut = useAuthStore((s) => s.signOut);
+    const user = useAuthStore((s) => s.user);
+    const userRole = useAuthStore((s) => s.userRole);
+    const initials = getUserInitials(user);
+    const displayName = getDisplayName(user);
+    const roleLabel = getRoleLabel(userRole);
+    const email = user?.email ?? '';
 
     useEffect(() => {
         const handler = (e: MouseEvent) => {
@@ -255,11 +261,11 @@ function ProfileDropdown() {
                 )}
             >
                 <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-accent-400 to-primary-500 flex items-center justify-center shadow-sm flex-shrink-0">
-                    <span className="text-white font-bold text-[11px]">SA</span>
+                    <span className="text-white font-bold text-[11px]">{initials}</span>
                 </div>
                 <div className="hidden md:block text-left">
-                    <p className="text-xs font-bold text-primary-950 dark:text-white leading-none">Super Admin</p>
-                    <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">admin@avyren.com</p>
+                    <p className="text-xs font-bold text-primary-950 dark:text-white leading-none">{displayName}</p>
+                    <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{roleLabel}</p>
                 </div>
                 <ChevronDown size={12} className={cn('text-neutral-400 transition-transform duration-150', open && 'rotate-180')} />
             </button>
@@ -269,11 +275,11 @@ function ProfileDropdown() {
                     <div className="px-4 py-4 border-b border-neutral-100 dark:border-neutral-800">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-accent-400 to-primary-500 flex items-center justify-center shadow-sm">
-                                <span className="text-white font-bold text-sm">SA</span>
+                                <span className="text-white font-bold text-sm">{initials}</span>
                             </div>
                             <div>
-                                <p className="text-sm font-bold text-primary-950 dark:text-white">Super Admin</p>
-                                <p className="text-xs text-neutral-500 dark:text-neutral-400">admin@avyren.com</p>
+                                <p className="text-sm font-bold text-primary-950 dark:text-white">{displayName}</p>
+                                <p className="text-xs text-neutral-500 dark:text-neutral-400">{email}</p>
                             </div>
                         </div>
                     </div>

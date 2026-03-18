@@ -1,13 +1,15 @@
 import { create } from 'zustand';
 import type { AuthTokens, AuthUser } from '@/lib/api/auth';
+import { checkPermission } from '@/lib/api/auth';
 
-type UserRole = 'super-admin' | 'company-admin' | 'user';
+export type UserRole = 'super-admin' | 'company-admin' | 'user';
 
 interface AuthState {
     status: 'idle' | 'signOut' | 'signIn';
     token: string | null;
     user: AuthUser | null;
     userRole: UserRole | null;
+    permissions: string[];
     signIn: (tokens: AuthTokens, user: AuthUser, role?: UserRole) => void;
     signOut: () => void;
     updateTokens: (tokens: AuthTokens) => void;
@@ -16,13 +18,33 @@ interface AuthState {
 /** Map backend role strings to our internal role type */
 export function mapBackendRole(backendRole: string): UserRole {
     switch (backendRole) {
-        case 'SUPER_ADMIN':
-            return 'super-admin';
-        case 'COMPANY_ADMIN':
-            return 'company-admin';
-        default:
-            return 'user';
+        case 'SUPER_ADMIN': return 'super-admin';
+        case 'COMPANY_ADMIN': return 'company-admin';
+        default: return 'user';
     }
+}
+
+/** Human-readable label for a role. */
+export function getRoleLabel(role: UserRole | null): string {
+    switch (role) {
+        case 'super-admin': return 'Super Admin';
+        case 'company-admin': return 'Company Admin';
+        default: return 'User';
+    }
+}
+
+/** Get initials from a user object. */
+export function getUserInitials(user: AuthUser | null): string {
+    if (!user) return '?';
+    const f = user.firstName?.[0] ?? '';
+    const l = user.lastName?.[0] ?? '';
+    return (f + l).toUpperCase() || '?';
+}
+
+/** Get full display name. */
+export function getDisplayName(user: AuthUser | null): string {
+    if (!user) return 'Unknown';
+    return `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -30,20 +52,22 @@ export const useAuthStore = create<AuthState>((set) => ({
     token: null,
     user: null,
     userRole: null,
+    permissions: [],
 
     signIn: (tokens, user, role) => {
         const mappedRole = role ?? mapBackendRole(user.role);
+        const permissions = user.permissions ?? [];
         localStorage.setItem('auth_tokens', JSON.stringify(tokens));
         localStorage.setItem('auth_user', JSON.stringify(user));
         localStorage.setItem('user_role', mappedRole);
-        set({ status: 'signIn', token: tokens.accessToken, user, userRole: mappedRole });
+        set({ status: 'signIn', token: tokens.accessToken, user, userRole: mappedRole, permissions });
     },
 
     signOut: () => {
         localStorage.removeItem('auth_tokens');
         localStorage.removeItem('auth_user');
         localStorage.removeItem('user_role');
-        set({ status: 'signOut', token: null, user: null, userRole: null });
+        set({ status: 'signOut', token: null, user: null, userRole: null, permissions: [] });
     },
 
     updateTokens: (tokens) => {
@@ -85,13 +109,15 @@ export const hydrateAuth = () => {
         if (tokensRaw) {
             const tokens: AuthTokens = JSON.parse(tokensRaw);
             const user: AuthUser | null = userRaw ? JSON.parse(userRaw) : null;
-            const mappedRole = role ?? (user ? mapBackendRole(user.role) : 'super-admin');
+            const mappedRole = role ?? (user ? mapBackendRole(user.role) : 'user');
+            const permissions = user?.permissions ?? [];
 
             useAuthStore.setState({
                 status: 'signIn',
                 token: tokens.accessToken,
                 user,
                 userRole: mappedRole,
+                permissions,
             });
         } else {
             useAuthStore.setState({ status: 'signOut' });
@@ -100,3 +126,9 @@ export const hydrateAuth = () => {
         useAuthStore.setState({ status: 'signOut' });
     }
 };
+
+/** React hook: returns true if the current user has the given permission. */
+export function useHasPermission(permission: string): boolean {
+    const permissions = useAuthStore((s) => s.permissions);
+    return checkPermission(permissions, permission);
+}

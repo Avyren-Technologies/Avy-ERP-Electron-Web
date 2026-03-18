@@ -3,6 +3,8 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthLayout } from "./layouts/AuthLayout";
 import { DashboardLayout } from "./layouts/DashboardLayout";
 import { useAuthStore } from "./store/useAuthStore";
+import type { UserRole } from "./store/useAuthStore";
+import { NoPermissionScreen } from "./features/shared/NoPermissionScreen";
 
 // Screens (Implemented)
 import { LandingScreen } from "./features/auth/LandingScreen";
@@ -29,12 +31,33 @@ const Placeholder = ({ name }: { name: string }) => (
   </div>
 );
 
-// Private Route Wrapper
+// Private Route Wrapper — redirects to login if not authenticated
+// While status is 'idle' (hydrating), show a minimal loading indicator to avoid flashing
 const RequireAuth = ({ children }: { children: React.ReactNode }) => {
   const status = useAuthStore((s) => s.status);
 
+  if (status === 'idle') {
+    return (
+      <div className="flex h-screen items-center justify-center bg-white dark:bg-neutral-950">
+        <div className="w-6 h-6 rounded-full border-2 border-primary-200 border-t-primary-600 animate-spin" />
+      </div>
+    );
+  }
+
   if (status === 'signOut') {
     return <Navigate to="/login" replace />;
+  }
+
+  return children;
+};
+
+// Role Guard — renders NoPermissionScreen if user doesn't have the required role
+const RequireRole = ({ children, roles }: { children: React.ReactNode; roles: UserRole[] }) => {
+  const userRole = useAuthStore((s) => s.userRole);
+
+  // While auth is still hydrating (idle), wait — RequireAuth above handles the idle state
+  if (userRole !== null && !roles.includes(userRole)) {
+    return <NoPermissionScreen />;
   }
 
   return children;
@@ -63,13 +86,16 @@ function App() {
       >
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<DashboardScreen />} />
-        <Route path="companies" element={<CompanyListScreen />} />
-        <Route path="companies/add" element={<AddCompanyWizard />} />
-        <Route path="companies/:id" element={<CompanyDetailScreen />} />
-        <Route path="companies/:id/modules" element={<ModuleAssignmentScreen />} />
-        <Route path="billing" element={<BillingOverviewScreen />} />
-        <Route path="modules" element={<ModuleCatalogueScreen />} />
-        <Route path="monitor" element={<PlatformMonitorScreen />} />
+        {/* Super-admin-only routes */}
+        <Route path="companies" element={<RequireRole roles={['super-admin']}><CompanyListScreen /></RequireRole>} />
+        <Route path="companies/add" element={<RequireRole roles={['super-admin']}><AddCompanyWizard /></RequireRole>} />
+        <Route path="companies/:id" element={<RequireRole roles={['super-admin']}><CompanyDetailScreen /></RequireRole>} />
+        <Route path="companies/:id/modules" element={<RequireRole roles={['super-admin']}><ModuleAssignmentScreen /></RequireRole>} />
+        <Route path="billing" element={<RequireRole roles={['super-admin']}><BillingOverviewScreen /></RequireRole>} />
+        {/* Super-admin + company-admin routes */}
+        <Route path="modules" element={<RequireRole roles={['super-admin', 'company-admin']}><ModuleCatalogueScreen /></RequireRole>} />
+        <Route path="monitor" element={<RequireRole roles={['super-admin', 'company-admin']}><PlatformMonitorScreen /></RequireRole>} />
+        {/* All authenticated users */}
         <Route path="notifications" element={<Placeholder name="Notifications" />} />
         <Route path="settings" element={<Placeholder name="Settings" />} />
       </Route>

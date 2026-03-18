@@ -2,9 +2,9 @@
 // Tenant Onboarding — Shared Atom Components (Web)
 // All reusable form primitives used across steps
 // ============================================================
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Eye, EyeOff, Plus, Trash2, ChevronDown } from 'lucide-react';
+import { Eye, EyeOff, Plus, Trash2, ChevronDown, Check, Search, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // ---- Section Card ----
 
@@ -102,6 +102,199 @@ export function FormInput({
                         monospace && 'font-mono text-xs',
                     )}
                 />
+            </div>
+            {error ? (
+                <p className="text-xs text-danger-500 font-medium leading-4">{error}</p>
+            ) : hint ? (
+                <p className="text-xs text-neutral-400 leading-4 dark:text-neutral-500">{hint}</p>
+            ) : null}
+        </div>
+    );
+}
+
+// ---- Date Picker ----
+
+export function FormDatePicker({
+    label,
+    value,
+    onChange,
+    required,
+    hint,
+    error,
+}: {
+    label: string;
+    value: string;
+    onChange: (v: string) => void;
+    required?: boolean;
+    hint?: string;
+    error?: string;
+}) {
+    const [open, setOpen] = useState(false);
+    const wrapRef = useRef<HTMLDivElement>(null);
+
+    const selectedDate = useMemo(() => {
+        if (!value) return null;
+
+        const ddmmyyyyMatch = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+        if (ddmmyyyyMatch) {
+            const [, day, month, year] = ddmmyyyyMatch;
+            const parsed = new Date(Number(year), Number(month) - 1, Number(day));
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+
+        const yyyymmddMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (yyyymmddMatch) {
+            const [, year, month, day] = yyyymmddMatch;
+            const parsed = new Date(Number(year), Number(month) - 1, Number(day));
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }, [value]);
+
+    const [viewDate, setViewDate] = useState<Date>(selectedDate ?? new Date());
+
+    useEffect(() => {
+        if (open) {
+            setViewDate(selectedDate ?? new Date());
+        }
+    }, [open, selectedDate]);
+
+    useEffect(() => {
+        if (!open) return undefined;
+
+        const onDocClick = (event: MouseEvent) => {
+            if (!wrapRef.current?.contains(event.target as Node)) {
+                setOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', onDocClick);
+        return () => document.removeEventListener('mousedown', onDocClick);
+    }, [open]);
+
+    const monthStart = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+    const gridStart = new Date(monthStart);
+    gridStart.setDate(monthStart.getDate() - monthStart.getDay());
+
+    const days = Array.from({ length: 42 }, (_, idx) => {
+        const d = new Date(gridStart);
+        d.setDate(gridStart.getDate() + idx);
+        return d;
+    });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const formatDate = (date: Date) => {
+        const dd = `${date.getDate()}`.padStart(2, '0');
+        const mm = `${date.getMonth() + 1}`.padStart(2, '0');
+        const yyyy = date.getFullYear();
+        return `${dd}/${mm}/${yyyy}`;
+    };
+
+    const monthLabel = viewDate.toLocaleString('default', {
+        month: 'long',
+        year: 'numeric',
+    });
+
+    const selectedKey = selectedDate ? formatDate(selectedDate) : '';
+
+    return (
+        <div ref={wrapRef} className="space-y-1.5 w-full">
+            <label className="block text-xs font-bold text-primary-900 dark:text-white">
+                {label}
+                {required && <span className="text-danger-500 ml-0.5">*</span>}
+            </label>
+            <div className="relative">
+                <button
+                    type="button"
+                    onClick={() => setOpen((prev) => !prev)}
+                    className={cn(
+                        'w-full rounded-2xl border border-neutral-200/60 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/50 px-4 py-3 pr-10 text-left text-sm text-neutral-800 dark:text-neutral-200',
+                        'focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400',
+                        'transition-all duration-150',
+                        error && 'border-danger-400 focus:ring-danger-500/20 focus:border-danger-400 bg-danger-50/30 dark:bg-danger-900/10'
+                    )}
+                >
+                    {value || 'Select a date'}
+                </button>
+                <CalendarDays size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none dark:text-neutral-500" />
+
+                {open && (
+                    <div className="absolute z-[200] mt-2 w-full rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg p-3">
+                        <div className="flex items-center justify-between mb-3">
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setViewDate(
+                                        (prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1)
+                                    )
+                                }
+                                className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300"
+                            >
+                                <ChevronLeft size={15} />
+                            </button>
+                            <span className="text-sm font-semibold text-primary-900 dark:text-white">
+                                {monthLabel}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setViewDate(
+                                        (prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1)
+                                    )
+                                }
+                                className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300"
+                            >
+                                <ChevronRight size={15} />
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-7 gap-1 mb-1">
+                            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
+                                <div
+                                    key={d}
+                                    className="text-[10px] font-bold text-neutral-400 text-center py-1"
+                                >
+                                    {d}
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="grid grid-cols-7 gap-1">
+                            {days.map((date) => {
+                                const inCurrentMonth = date.getMonth() === viewDate.getMonth();
+                                const dateKey = formatDate(date);
+                                const isSelected = dateKey === selectedKey;
+                                const disabled = date > today;
+
+                                return (
+                                    <button
+                                        key={`${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`}
+                                        type="button"
+                                        disabled={disabled}
+                                        onClick={() => {
+                                            onChange(dateKey);
+                                            setOpen(false);
+                                        }}
+                                        className={cn(
+                                            'h-8 rounded-md text-xs transition-colors',
+                                            !inCurrentMonth && 'text-neutral-300 dark:text-neutral-600',
+                                            inCurrentMonth && 'text-neutral-700 dark:text-neutral-200',
+                                            isSelected && 'bg-primary-600 text-white dark:text-white',
+                                            !isSelected && !disabled && 'hover:bg-primary-50 dark:hover:bg-primary-900/30',
+                                            disabled && 'opacity-35 cursor-not-allowed'
+                                        )}
+                                    >
+                                        {date.getDate()}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
             </div>
             {error ? (
                 <p className="text-xs text-danger-500 font-medium leading-4">{error}</p>
@@ -220,6 +413,7 @@ export function FormSelect({
     hint,
     required,
     error,
+    searchable = false,
 }: {
     label: string;
     value: string;
@@ -229,40 +423,152 @@ export function FormSelect({
     hint?: string;
     required?: boolean;
     error?: string;
+    searchable?: boolean;
 }) {
     const normalized = options.map((o) =>
         typeof o === 'string' ? { value: o, label: o } : o
     );
+    const [isOpen, setIsOpen] = useState(false);
+    const [query, setQuery] = useState('');
+    const wrapRef = useRef<HTMLDivElement>(null);
+
+    const selectedLabel =
+        normalized.find((opt) => opt.value === value)?.label ?? '';
+
+    const filtered = useMemo(() => {
+        if (!query.trim()) return normalized;
+        const lower = query.trim().toLowerCase();
+        return normalized.filter(
+            (opt) =>
+                opt.label.toLowerCase().includes(lower) ||
+                opt.value.toLowerCase().includes(lower)
+        );
+    }, [normalized, query]);
+
+    useEffect(() => {
+        if (!isOpen) return undefined;
+        const handleOutside = (event: MouseEvent) => {
+            if (!wrapRef.current?.contains(event.target as Node)) {
+                setIsOpen(false);
+                setQuery('');
+            }
+        };
+        document.addEventListener('mousedown', handleOutside);
+        return () => document.removeEventListener('mousedown', handleOutside);
+    }, [isOpen]);
+
+    if (!searchable) {
+        return (
+            <div className="space-y-1.5 w-full">
+                <label className="block text-xs font-bold text-primary-900 dark:text-white">
+                    {label}
+                    {required && <span className="text-danger-500 ml-0.5">*</span>}
+                </label>
+                <div className="relative">
+                    <select
+                        value={value}
+                        onChange={(e) => onChange(e.target.value)}
+                        className={cn(
+                            'w-full rounded-2xl border border-neutral-200/60 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/50 px-4 py-3 pr-10 text-sm text-neutral-800 dark:text-neutral-200',
+                            'focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400',
+                            'transition-all duration-150 appearance-none cursor-pointer',
+                            error && 'border-danger-400 focus:ring-danger-500/20 focus:border-danger-400 bg-danger-50/30 dark:bg-danger-900/10'
+                        )}
+                    >
+                        {placeholder && (
+                            <option value="" disabled>
+                                {placeholder}
+                            </option>
+                        )}
+                        {normalized.map((o) => (
+                            <option key={o.value} value={o.value}>
+                                {o.label}
+                            </option>
+                        ))}
+                    </select>
+                    <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none dark:text-neutral-500" />
+                </div>
+                {error ? (
+                    <p className="text-xs text-danger-500 font-medium leading-4">{error}</p>
+                ) : hint ? (
+                    <p className="text-xs text-neutral-400 leading-4 dark:text-neutral-500">{hint}</p>
+                ) : null}
+            </div>
+        );
+    }
 
     return (
-        <div className="space-y-1.5 w-full">
+        <div ref={wrapRef} className="space-y-1.5 w-full">
             <label className="block text-xs font-bold text-primary-900 dark:text-white">
                 {label}
                 {required && <span className="text-danger-500 ml-0.5">*</span>}
             </label>
             <div className="relative">
-                <select
-                    value={value}
-                    onChange={(e) => onChange(e.target.value)}
+                <button
+                    type="button"
+                    onClick={() => setIsOpen((prev) => !prev)}
                     className={cn(
                         'w-full rounded-2xl border border-neutral-200/60 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/50 px-4 py-3 pr-10 text-sm text-neutral-800 dark:text-neutral-200',
                         'focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400',
-                        'transition-all duration-150 appearance-none cursor-pointer',
+                        'transition-all duration-150 cursor-pointer text-left',
                         error && 'border-danger-400 focus:ring-danger-500/20 focus:border-danger-400 bg-danger-50/30 dark:bg-danger-900/10'
                     )}
                 >
-                    {placeholder && (
-                        <option value="" disabled>
-                            {placeholder}
-                        </option>
+                    {selectedLabel || placeholder || 'Select...'}
+                </button>
+                <ChevronDown
+                    size={16}
+                    className={cn(
+                        'absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none dark:text-neutral-500 transition-transform duration-150',
+                        isOpen && 'rotate-180'
                     )}
-                    {normalized.map((o) => (
-                        <option key={o.value} value={o.value}>
-                            {o.label}
-                        </option>
-                    ))}
-                </select>
-                <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none dark:text-neutral-500" />
+                />
+
+                {isOpen && (
+                    <div className="absolute z-30 mt-2 w-full rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg overflow-hidden">
+                        <div className="flex items-center gap-2 border-b border-neutral-100 dark:border-neutral-800 px-3 py-2">
+                            <Search size={14} className="text-neutral-400" />
+                            <input
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                placeholder="Search options..."
+                                autoFocus
+                                className="w-full bg-transparent text-sm text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400 focus:outline-none"
+                            />
+                        </div>
+                        <div className="max-h-56 overflow-auto py-1">
+                            {filtered.length === 0 ? (
+                                <div className="px-3 py-2 text-xs text-neutral-500 dark:text-neutral-400">
+                                    No matches found
+                                </div>
+                            ) : (
+                                filtered.map((opt) => {
+                                    const isSelected = opt.value === value;
+                                    return (
+                                        <button
+                                            key={opt.value}
+                                            type="button"
+                                            onClick={() => {
+                                                onChange(opt.value);
+                                                setIsOpen(false);
+                                                setQuery('');
+                                            }}
+                                            className={cn(
+                                                'w-full px-3 py-2 text-left text-sm flex items-center justify-between transition-colors',
+                                                isSelected
+                                                    ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
+                                                    : 'text-neutral-800 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800'
+                                            )}
+                                        >
+                                            <span>{opt.label}</span>
+                                            {isSelected && <Check size={14} />}
+                                        </button>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
             {error ? (
                 <p className="text-xs text-danger-500 font-medium leading-4">{error}</p>

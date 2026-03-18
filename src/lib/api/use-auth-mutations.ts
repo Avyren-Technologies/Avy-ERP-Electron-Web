@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { authApi } from './auth';
+import { authApi, decodeJwtPayload } from './auth';
 import { useAuthStore, mapBackendRole } from '@/store/useAuthStore';
 
 export function useLoginMutation() {
@@ -13,8 +13,13 @@ export function useLoginMutation() {
         onSuccess: (response) => {
             if (response.success && response.data) {
                 const { user, tokens } = response.data;
+                // Decode JWT to extract permissions (embedded in token payload by backend)
+                const payload = decodeJwtPayload(tokens.accessToken);
+                const permissions: string[] = Array.isArray(payload?.permissions)
+                    ? (payload.permissions as string[])
+                    : [];
                 const role = mapBackendRole(user.role);
-                signIn(tokens, user, role);
+                signIn(tokens, { ...user, permissions }, role);
                 navigate('/app/dashboard');
             }
         },
