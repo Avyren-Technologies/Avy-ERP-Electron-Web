@@ -4,7 +4,7 @@ import { useForm, Controller, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { SectionCard, FormInput, FormSelect, ToggleRow, TwoCol, ThreeCol } from '../atoms';
-import { INDIAN_STATES } from '../constants';
+import { INDIAN_STATES, COUNTRIES } from '../constants';
 import { useTenantOnboardingStore } from '../store';
 
 const schema = z.object({
@@ -20,9 +20,11 @@ const schema = z.object({
     corpLine1: z.string().optional(),
     corpLine2: z.string().optional(),
     corpCity: z.string().optional(),
+    corpDistrict: z.string().optional(),
     corpState: z.string().optional(),
     corpCountry: z.string().optional(),
     corpPin: z.string().optional(),
+    corpStdCode: z.string().optional(),
 }).superRefine((data, ctx) => {
     if (!data.sameAsRegistered) {
         if (!data.corpLine1) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['corpLine1'], message: 'Required' });
@@ -53,16 +55,22 @@ export function Step03Address() {
             corpLine1: step3.corpLine1,
             corpLine2: step3.corpLine2,
             corpCity: step3.corpCity,
+            corpDistrict: step3.corpDistrict || '',
             corpState: step3.corpState,
             corpCountry: step3.corpCountry || 'India',
             corpPin: step3.corpPin,
+            corpStdCode: step3.corpStdCode || '',
         }
     });
 
     const sameAsReg = useWatch({ control, name: 'sameAsRegistered' });
 
     const onSubmit = (data: FormData) => {
-        setStep3(data);
+        setStep3({
+            ...data,
+            corpDistrict: data.corpDistrict || '',
+            corpStdCode: data.corpStdCode || '',
+        });
         goNext();
         document.getElementById('wizard-content')?.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -94,7 +102,7 @@ export function Step03Address() {
                         <FormSelect label="State" options={INDIAN_STATES} placeholder="Select state" {...field} value={field.value || ''} required hint="Determines CGST+SGST vs. IGST applicability" error={fieldState.error?.message} />
                     )} />
                     <Controller name="regCountry" control={control} render={({ field, fieldState }) => (
-                        <FormInput label="Country" placeholder="India" {...field} value={field.value || ''} required error={fieldState.error?.message} />
+                        <FormSelect label="Country" options={COUNTRIES} placeholder="Select country" {...field} value={field.value || ''} required error={fieldState.error?.message} />
                     )} />
                 </TwoCol>
                 <Controller name="regStdCode" control={control} render={({ field, fieldState }) => (
@@ -128,19 +136,24 @@ export function Step03Address() {
                             <Controller name="corpCity" control={control} render={({ field, fieldState }) => (
                                 <FormInput label="City / Town" placeholder="Mumbai" {...field} value={field.value || ''} required error={fieldState.error?.message} />
                             )} />
+                            <Controller name="corpDistrict" control={control} render={({ field, fieldState }) => (
+                                <FormInput label="District" placeholder="Mumbai City" {...field} value={field.value || ''} error={fieldState.error?.message} />
+                            )} />
                             <Controller name="corpPin" control={control} render={({ field, fieldState }) => (
                                 <FormInput label="PIN Code" placeholder="400001" {...field} value={field.value || ''} required error={fieldState.error?.message} />
                             )} />
+                        </ThreeCol>
+                        <TwoCol>
                             <Controller name="corpState" control={control} render={({ field, fieldState }) => (
                                 <FormSelect label="State" options={INDIAN_STATES} placeholder="Select state" {...field} value={field.value || ''} required error={fieldState.error?.message} />
                             )} />
-                        </ThreeCol>
-                        <TwoCol>
                             <Controller name="corpCountry" control={control} render={({ field, fieldState }) => (
-                                <FormInput label="Country" placeholder="India" {...field} value={field.value || ''} required error={fieldState.error?.message} />
+                                <FormSelect label="Country" options={COUNTRIES} placeholder="Select country" {...field} value={field.value || ''} required error={fieldState.error?.message} />
                             )} />
-                            <div />
                         </TwoCol>
+                        <Controller name="corpStdCode" control={control} render={({ field, fieldState }) => (
+                            <FormInput label="STD Code (Telephone)" placeholder="022" {...field} value={field.value || ''} hint="Area/STD code for the corporate location's landline" error={fieldState.error?.message} />
+                        )} />
                     </div>
                 )}
 

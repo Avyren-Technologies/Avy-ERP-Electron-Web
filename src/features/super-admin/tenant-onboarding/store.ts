@@ -22,6 +22,8 @@ import type {
     IOTReason,
     UserItem,
     Shift,
+    StrategyConfig,
+    LocationCommercialEntry,
 } from './types';
 
 // Default initial values
@@ -41,7 +43,7 @@ const defaultStep3: Step3Form = {
     regLine1: '', regLine2: '', regCity: '', regDistrict: '', regState: '',
     regCountry: 'India', regPin: '', regStdCode: '',
     sameAsRegistered: true,
-    corpLine1: '', corpLine2: '', corpCity: '', corpState: '', corpCountry: 'India', corpPin: '',
+    corpLine1: '', corpLine2: '', corpCity: '', corpDistrict: '', corpState: '', corpCountry: 'India', corpPin: '', corpStdCode: '',
 };
 
 const defaultStep4: Step4Form = {
@@ -55,7 +57,7 @@ const defaultStep4: Step4Form = {
 const defaultStep5: Step5Form = {
     currency: 'INR — ₹', language: 'English', dateFormat: 'DD/MM/YYYY',
     numberFormat: 'Indian (2,00,000)', timeFormat: '12-hour (AM/PM)',
-    indiaCompliance: true, multiCurrency: false, ess: true, mobileApp: true,
+    indiaCompliance: true, multiCurrency: false, ess: true, mobileApp: true, webApp: true,
     aiChatbot: false, eSign: false, biometric: false,
     bankIntegration: false,
     razorpayEnabled: false, razorpayKeyId: '', razorpayKeySecret: '',
@@ -108,6 +110,22 @@ const defaultUser: UserItem = {
     role: 'Company Admin', email: '', mobile: '', department: '',
 };
 
+const defaultStrategyConfig: StrategyConfig = {
+    multiLocationMode: false,
+    locationConfig: 'common',
+    billingScope: 'per-location',
+};
+
+const defaultLocationCommercialEntry = (): LocationCommercialEntry => ({
+    moduleIds: [],
+    customModulePricing: {},
+    userTier: 'starter',
+    customUserLimit: '',
+    customTierPrice: '',
+    billingCycle: 'monthly',
+    trialDays: '14',
+});
+
 // ============ Store Interface ============
 
 interface TenantOnboardingStore extends TenantOnboardingState {
@@ -136,6 +154,10 @@ interface TenantOnboardingStore extends TenantOnboardingState {
     setStep14: (u: Partial<Step14ControlsForm>) => void;
     setStep15: (u: { users: UserItem[] }) => void;
     setUsers: (users: UserItem[]) => void;
+    setStrategyConfig: (u: Partial<StrategyConfig>) => void;
+    setLocationCommercial: (locationId: string, u: Partial<LocationCommercialEntry>) => void;
+    initLocationCommercial: (locationId: string) => void;
+    removeLocationCommercial: (locationId: string) => void;
 
     // Helpers
     toggleWorkingDay: (day: string) => void;
@@ -169,6 +191,8 @@ interface TenantOnboardingStore extends TenantOnboardingState {
 export const useTenantOnboardingStore = create<TenantOnboardingStore>((set) => ({
     // Initial state
     currentStep: 1,
+    strategyConfig: defaultStrategyConfig,
+    locationCommercial: {},
     step1: defaultStep1,
     step2: defaultStep2,
     step3: defaultStep3,
@@ -190,7 +214,7 @@ export const useTenantOnboardingStore = create<TenantOnboardingStore>((set) => (
     // Navigation
     goToStep: (step) => set({ currentStep: step }),
     goNext: () => set((s) => ({
-        currentStep: Math.min(s.currentStep + 1, 15),
+        currentStep: Math.min(s.currentStep + 1, 17),
         isDirty: true,
     })),
     goPrev: () => set((s) => ({ currentStep: Math.max(s.currentStep - 1, 1) })),
@@ -381,10 +405,36 @@ export const useTenantOnboardingStore = create<TenantOnboardingStore>((set) => (
         isDirty: true,
     })),
 
+    setStrategyConfig: (u) => set((s) => ({ strategyConfig: { ...s.strategyConfig, ...u }, isDirty: true })),
+
+    setLocationCommercial: (locationId, u) => set((s) => ({
+        locationCommercial: {
+            ...s.locationCommercial,
+            [locationId]: { ...(s.locationCommercial[locationId] ?? defaultLocationCommercialEntry()), ...u },
+        },
+        isDirty: true,
+    })),
+
+    initLocationCommercial: (locationId) => set((s) => {
+        if (s.locationCommercial[locationId]) return s;
+        return {
+            locationCommercial: { ...s.locationCommercial, [locationId]: defaultLocationCommercialEntry() },
+            isDirty: true,
+        };
+    }),
+
+    removeLocationCommercial: (locationId) => set((s) => {
+        const next = { ...s.locationCommercial };
+        delete next[locationId];
+        return { locationCommercial: next, isDirty: true };
+    }),
+
     // Lifecycle
     setIsSubmitting: (v) => set({ isSubmitting: v }),
     reset: () => set({
         currentStep: 1,
+        strategyConfig: defaultStrategyConfig,
+        locationCommercial: {},
         step1: defaultStep1,
         step2: defaultStep2,
         step3: defaultStep3,

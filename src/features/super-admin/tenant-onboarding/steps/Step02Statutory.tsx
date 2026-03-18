@@ -7,21 +7,60 @@ import { SectionCard, FormInput, FormSelect, InfoBanner, TwoCol } from '../atoms
 import { INDIAN_STATES } from '../constants';
 import { useTenantOnboardingStore } from '../store';
 
-const schema = z.object({
-    pan: z.string().min(1, 'PAN is required'),
-    tan: z.string().min(1, 'TAN is required'),
-    gstin: z.string().optional(),
-    pfRegNo: z.string().min(1, 'PF Registration No. is required'),
-    esiCode: z.string().optional(),
-    ptReg: z.string().optional(),
-    lwfrNo: z.string().optional(),
-    rocState: z.string().min(1, 'ROC Filing State is required'),
-});
+const CORPORATE_TYPES = ['Private Limited (Pvt. Ltd.)', 'Public Limited'];
 
-type FormData = z.infer<typeof schema>;
+type FormData = {
+    pan: string;
+    tan: string;
+    gstin: string;
+    pfRegNo: string;
+    esiCode: string;
+    ptReg: string;
+    lwfrNo: string;
+    rocState: string;
+};
+
+function buildSchema(isCorporate: boolean) {
+    return z.object({
+        pan: z.string().min(1, 'PAN is required'),
+        tan: z.string(),
+        gstin: z.string(),
+        pfRegNo: z.string(),
+        esiCode: z.string(),
+        ptReg: z.string(),
+        lwfrNo: z.string(),
+        rocState: z.string(),
+    }).superRefine((data, ctx) => {
+        if (data.pan && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(data.pan)) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['pan'], message: 'Invalid PAN format (e.g. AARCA5678F)' });
+        }
+        if (isCorporate) {
+            if (!data.tan) {
+                ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['tan'], message: 'TAN is required' });
+            } else if (!/^[A-Z]{4}[0-9]{5}[A-Z]{1}$/.test(data.tan)) {
+                ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['tan'], message: 'Invalid TAN format (e.g. BLRA98765T)' });
+            }
+            if (!data.pfRegNo) {
+                ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['pfRegNo'], message: 'PF Registration No. is required' });
+            }
+            if (!data.rocState) {
+                ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rocState'], message: 'ROC Filing State is required' });
+            }
+        } else {
+            if (data.tan && !/^[A-Z]{4}[0-9]{5}[A-Z]{1}$/.test(data.tan)) {
+                ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['tan'], message: 'Invalid TAN format (e.g. BLRA98765T)' });
+            }
+        }
+        if (data.gstin && !/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(data.gstin)) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['gstin'], message: 'Invalid GSTIN format (e.g. 29AARCA5678F1Z3)' });
+        }
+    });
+}
 
 export function Step02Statutory() {
-    const { step2, setStep2, goNext } = useTenantOnboardingStore();
+    const { step1, step2, setStep2, goNext } = useTenantOnboardingStore();
+    const isCorporate = CORPORATE_TYPES.includes(step1.businessType);
+    const schema = buildSchema(isCorporate);
 
     const { control, handleSubmit } = useForm<FormData>({
         resolver: zodResolver(schema),
@@ -56,7 +95,17 @@ export function Step02Statutory() {
                         <FormInput label="PAN" placeholder="AARCA5678F" {...field} value={field.value || ''} onChange={v => field.onChange(v.toUpperCase())} required hint="Required for TDS, Form 16, Form 24Q filing" monospace error={fieldState.error?.message} />
                     )} />
                     <Controller name="tan" control={control} render={({ field, fieldState }) => (
-                        <FormInput label="TAN (Tax Deduction Account Number)" placeholder="BLRA98765T" {...field} value={field.value || ''} onChange={v => field.onChange(v.toUpperCase())} required hint="Required for TDS deduction and quarterly returns" monospace error={fieldState.error?.message} />
+                        <FormInput
+                            label="TAN (Tax Deduction Account Number)"
+                            placeholder="BLRA98765T"
+                            {...field}
+                            value={field.value || ''}
+                            onChange={v => field.onChange(v.toUpperCase())}
+                            required={isCorporate}
+                            hint={isCorporate ? 'Required for TDS deduction and quarterly returns' : 'Optional — required only if deducting TDS'}
+                            monospace
+                            error={fieldState.error?.message}
+                        />
                     )} />
                 </TwoCol>
 
@@ -65,7 +114,16 @@ export function Step02Statutory() {
                         <FormInput label="GSTIN" placeholder="29AARCA5678F1Z3" {...field} value={field.value || ''} onChange={v => field.onChange(v.toUpperCase())} hint="Required if GST-registered. State code auto-prefixed from registration state." monospace error={fieldState.error?.message} />
                     )} />
                     <Controller name="pfRegNo" control={control} render={({ field, fieldState }) => (
-                        <FormInput label="PF Registration No." placeholder="KA/BLR/0112345/000/0001" {...field} value={field.value || ''} required hint="Required for PF deductions and ECR uploads to EPFO portal" monospace error={fieldState.error?.message} />
+                        <FormInput
+                            label="PF Registration No."
+                            placeholder="KA/BLR/0112345/000/0001"
+                            {...field}
+                            value={field.value || ''}
+                            required={isCorporate}
+                            hint={isCorporate ? 'Required for PF deductions and ECR uploads to EPFO portal' : 'Optional — required if employing 20+ employees'}
+                            monospace
+                            error={fieldState.error?.message}
+                        />
                     )} />
                 </TwoCol>
 
@@ -82,28 +140,32 @@ export function Step02Statutory() {
                     <Controller name="lwfrNo" control={control} render={({ field, fieldState }) => (
                         <FormInput label="LWFR Number (Labour Welfare Fund)" placeholder="Labour Welfare Fund Registration" {...field} value={field.value || ''} hint="Required under the Labour Welfare Fund Act in applicable states" monospace error={fieldState.error?.message} />
                     )} />
+                    <div />
                 </TwoCol>
 
-                <Controller name="rocState" control={control} render={({ field, fieldState }) => (
-                    <FormSelect label="ROC Filing State" options={INDIAN_STATES} placeholder="Select state" {...field} value={field.value || ''} required hint="State where company is registered with Registrar of Companies" error={fieldState.error?.message} />
-                )} />
+                {isCorporate && (
+                    <Controller name="rocState" control={control} render={({ field, fieldState }) => (
+                        <FormSelect label="ROC Filing State" options={INDIAN_STATES} placeholder="Select state" {...field} value={field.value || ''} required hint="State where company is registered with Registrar of Companies" error={fieldState.error?.message} />
+                    )} />
+                )}
             </SectionCard>
 
             <SectionCard
                 title="Compliance Notes"
                 subtitle="Quick reference for mandatory vs optional registrations"
                 accent="info"
+                className="mt-6"
             >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
                     {[
-                        { label: 'PAN', note: 'Mandatory for all companies', status: 'required' },
-                        { label: 'TAN', note: 'Mandatory if deducting TDS', status: 'required' },
+                        { label: 'PAN', note: 'Mandatory for all entities', status: 'required' },
+                        { label: 'TAN', note: isCorporate ? 'Mandatory if deducting TDS' : 'Optional — provide if deducting TDS', status: isCorporate ? 'required' : 'optional' },
                         { label: 'GSTIN', note: 'Mandatory if annual turnover > ₹40L', status: 'conditional' },
-                        { label: 'PF Reg.', note: 'Mandatory if ≥ 20 employees', status: 'required' },
+                        { label: 'PF Reg.', note: isCorporate ? 'Mandatory if ≥ 20 employees' : 'Optional — required if ≥ 20 employees', status: isCorporate ? 'required' : 'conditional' },
                         { label: 'ESI Code', note: 'Mandatory if ≥ 10 employees with salary ≤ ₹21K', status: 'conditional' },
                         { label: 'PT Reg.', note: 'State-specific applicability', status: 'conditional' },
                         { label: 'LWF Reg.', note: 'State-specific applicability', status: 'optional' },
-                        { label: 'ROC State', note: 'Always required', status: 'required' },
+                        ...(isCorporate ? [{ label: 'ROC State', note: 'Mandatory for registered companies', status: 'required' as const }] : []),
                     ].map((item) => (
                         <div key={item.label} className="flex items-center justify-between bg-neutral-50 rounded-xl px-4 py-3 dark:bg-neutral-800">
                             <span className="text-sm font-bold text-primary-900 dark:text-white">{item.label}</span>

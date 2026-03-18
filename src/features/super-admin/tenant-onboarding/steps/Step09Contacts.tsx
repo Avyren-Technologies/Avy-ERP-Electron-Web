@@ -123,36 +123,62 @@ export function Step09Contacts() {
                                                 <Controller name={`contacts.${idx}.department`} control={control} render={({ field: subField }) => (
                                                     <FormInput label="Department" placeholder="e.g. Human Resources" {...subField} value={subField.value || ''} error={errors?.department?.message} />
                                                 )} />
-                                                <Controller name={`contacts.${idx}.type`} control={control} render={({ field: subField }) => (
-                                                    <FormSelect label="Contact Type" {...subField} value={subField.value || ''} options={CONTACT_TYPES} />
-                                                )} />
+                                                <Controller name={`contacts.${idx}.type`} control={control} render={({ field: subField }) => {
+                                                    const isCustom = !CONTACT_TYPES.includes(subField.value || '') && subField.value !== '';
+                                                    const [showCustom, setShowCustom] = React.useState(isCustom);
+                                                    const displayValue = isCustom ? 'Custom...' : (subField.value || '');
+                                                    return (
+                                                        <div className="space-y-2">
+                                                            <FormSelect
+                                                                label="Contact Type"
+                                                                value={displayValue}
+                                                                onChange={(v) => {
+                                                                    if (v === 'Custom...') {
+                                                                        setShowCustom(true);
+                                                                        subField.onChange('');
+                                                                    } else {
+                                                                        setShowCustom(false);
+                                                                        subField.onChange(v);
+                                                                    }
+                                                                }}
+                                                                options={[...CONTACT_TYPES, 'Custom...']}
+                                                            />
+                                                            {showCustom && (
+                                                                <FormInput
+                                                                    label="Custom Type"
+                                                                    placeholder="e.g. Procurement Contact"
+                                                                    value={isCustom ? subField.value : ''}
+                                                                    onChange={(v) => {
+                                                                        if (v.length > 0 && v.length <= 50) subField.onChange(v);
+                                                                        else if (v.length === 0) subField.onChange('');
+                                                                    }}
+                                                                    hint="Max 50 characters"
+                                                                />
+                                                            )}
+                                                        </div>
+                                                    );
+                                                }} />
                                             </TwoCol>
 
                                             <TwoCol>
                                                 <Controller name={`contacts.${idx}.email`} control={control} render={({ field: subField }) => (
                                                     <FormInput label="Email Address" placeholder="priya@company.com" {...subField} value={subField.value || ''} type="email" required error={errors?.email?.message} />
                                                 )} />
-                                                <div className="space-y-2 relative">
+                                                <div className="space-y-1.5">
                                                     <label className="block text-xs font-bold text-primary-900 dark:text-white">Mobile Number</label>
-                                                    <div className="flex gap-2">
-                                                        <div className="w-24">
+                                                    <div className="flex items-end gap-2">
+                                                        <div className="w-24 flex-shrink-0">
                                                             <Controller name={`contacts.${idx}.countryCode`} control={control} render={({ field: subField }) => (
                                                                 <FormSelect label="" options={countryOptions} {...subField} value={subField.value || ''} />
                                                             )} />
                                                         </div>
-                                                        <div className="flex-1 relative">
+                                                        <div className="flex-1">
                                                             <Controller name={`contacts.${idx}.mobile`} control={control} render={({ field: subField }) => (
-                                                                <FormInput
-                                                                    label="Mobile Number"
-                                                                    placeholder="9876543210"
-                                                                    type="tel"
-                                                                    {...subField}
-                                                                    value={subField.value || ''}
-                                                                    error={errors?.mobile?.message}
-                                                                />
+                                                                <FormInput label="" placeholder="9876543210" type="tel" {...subField} value={subField.value || ''} error={errors?.mobile?.message} />
                                                             )} />
                                                         </div>
                                                     </div>
+                                                    {errors?.mobile?.message && <p className="text-[10px] text-danger-500">{errors.mobile.message}</p>}
                                                 </div>
                                             </TwoCol>
 

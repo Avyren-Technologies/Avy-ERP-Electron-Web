@@ -1,27 +1,24 @@
-// Step 05 — Preferences (Locale, Compliance, Integrations)
+// Step 05 — Preferences (Compliance, Integrations)
 import React from 'react';
 import { useForm, Controller, useFormContext, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-    SectionCard, FormInput, SecretInput, ChipSelector, ToggleRow, TwoCol, InfoBanner, SectionDivider
+    SectionCard, FormInput, SecretInput, ToggleRow, TwoCol, InfoBanner, SectionDivider
 } from '../atoms';
-import { CURRENCIES, LANGUAGES, DATE_FORMATS, NUMBER_FORMATS, TIME_FORMATS } from '../constants';
 import { useTenantOnboardingStore } from '../store';
 
 const schema = z.object({
-    currency: z.string().min(1, 'Required'),
+    // Hidden locale defaults — not shown in UI
+    currency: z.string().optional(),
     language: z.string().optional(),
     dateFormat: z.string().optional(),
     numberFormat: z.string().optional(),
     timeFormat: z.string().optional(),
 
     indiaCompliance: z.boolean(),
-    multiCurrency: z.boolean(),
-    ess: z.boolean(),
     mobileApp: z.boolean(),
-    aiChatbot: z.boolean(),
-    eSign: z.boolean(),
+    webApp: z.boolean(),
     biometric: z.boolean(),
     bankIntegration: z.boolean(),
 
@@ -125,12 +122,29 @@ export function Step05Preferences() {
     const methods = useForm<FormData>({
         resolver: zodResolver(schema),
         defaultValues: {
-            ...step5,
-            currency: step5.currency || 'INR',
+            // Hidden locale defaults
+            currency: step5.currency || 'INR — ₹',
             language: step5.language || 'English',
             dateFormat: step5.dateFormat || 'DD/MM/YYYY',
-            numberFormat: step5.numberFormat || 'Indian (1,00,000.00)',
-            timeFormat: step5.timeFormat || '12-hour (1:30 PM)',
+            numberFormat: step5.numberFormat || 'Indian (2,00,000)',
+            timeFormat: step5.timeFormat || '12-hour (AM/PM)',
+            // Compliance
+            indiaCompliance: step5.indiaCompliance,
+            // Employee Portal & App
+            mobileApp: step5.mobileApp,
+            webApp: step5.webApp ?? true,
+            // Integrations
+            biometric: false,
+            bankIntegration: step5.bankIntegration,
+            razorpayEnabled: step5.razorpayEnabled,
+            razorpayKeyId: step5.razorpayKeyId,
+            razorpayKeySecret: step5.razorpayKeySecret,
+            razorpayWebhookSecret: step5.razorpayWebhookSecret,
+            razorpayAccountNumber: step5.razorpayAccountNumber,
+            razorpayAutoDisbursement: step5.razorpayAutoDisbursement,
+            razorpayTestMode: step5.razorpayTestMode,
+            emailNotif: step5.emailNotif,
+            whatsapp: false,
         }
     });
 
@@ -139,7 +153,16 @@ export function Step05Preferences() {
     const razorpayEnabled = watch('razorpayEnabled');
 
     const onSubmit = (data: FormData) => {
-        setStep5(data);
+        setStep5({
+            ...data,
+            // Ensure removed fields keep safe defaults in store
+            multiCurrency: false,
+            ess: false,
+            aiChatbot: false,
+            eSign: false,
+            biometric: false,
+            whatsapp: false,
+        });
         goNext();
         document.getElementById('wizard-content')?.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -148,68 +171,29 @@ export function Step05Preferences() {
         <FormProvider {...methods}>
             <form id="wizard-step-form" onSubmit={handleSubmit(onSubmit)} className="space-y-0 animate-in fade-in slide-in-from-right-3 duration-300 pb-10">
 
-                {/* Locale & Format */}
-                <SectionCard title="Locale & Format" subtitle="Controls how numbers, dates, currencies, and times are displayed">
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                        <div className="col-span-2 md:col-span-1">
-                            <Controller name="currency" control={control} render={({ field, fieldState }) => (
-                                <ChipSelector label="Currency" options={CURRENCIES} selected={field.value} onSelect={field.onChange} required hint={fieldState.error?.message} />
-                            )} />
-                        </div>
-                        <div className="col-span-2 md:col-span-1">
-                            <Controller name="language" control={control} render={({ field }) => (
-                                <ChipSelector label="Language" options={LANGUAGES} selected={field.value || ''} onSelect={field.onChange} />
-                            )} />
-                        </div>
-                        <div className="col-span-2 md:col-span-1">
-                            <Controller name="dateFormat" control={control} render={({ field }) => (
-                                <ChipSelector label="Date Format" options={DATE_FORMATS} selected={field.value || ''} onSelect={field.onChange} />
-                            )} />
-                        </div>
-                        <div className="col-span-2 md:col-span-1">
-                            <Controller name="numberFormat" control={control} render={({ field }) => (
-                                <ChipSelector label="Number Format" options={NUMBER_FORMATS} selected={field.value || ''} onSelect={field.onChange} />
-                            )} />
-                        </div>
-                        <div className="col-span-2 md:col-span-1">
-                            <Controller name="timeFormat" control={control} render={({ field }) => (
-                                <ChipSelector label="Time Format" options={TIME_FORMATS} selected={field.value || ''} onSelect={field.onChange} />
-                            )} />
-                        </div>
-                    </div>
-                </SectionCard>
-
                 {/* Compliance Toggles */}
                 <SectionCard title="Compliance Toggles" subtitle="Statutory and regulatory frameworks active for this tenant">
                     <Controller name="indiaCompliance" control={control} render={({ field }) => (
                         <ToggleRow label="India Statutory Compliance" subtitle="Enables PF, ESI, PT, TDS, Form 16, Gratuity, Bonus Act calculations and filings" value={field.value} onToggle={field.onChange} />
                     )} />
-                    <Controller name="multiCurrency" control={control} render={({ field }) => (
-                        <ToggleRow label="Multi-Currency Payroll" subtitle="Support for international employees paid in multiple currencies" value={field.value} onToggle={field.onChange} />
-                    )} />
                 </SectionCard>
 
                 {/* Employee Portal & App */}
                 <SectionCard title="Employee Portal & App" subtitle="Self-service and digital tools for employees">
-                    <Controller name="ess" control={control} render={({ field }) => (
-                        <ToggleRow label="Employee Self-Service (ESS) Portal" subtitle="Employee login for leaves, payslips, IT declarations, and personal profile" value={field.value} onToggle={field.onChange} />
-                    )} />
                     <Controller name="mobileApp" control={control} render={({ field }) => (
                         <ToggleRow label="Mobile App (iOS & Android)" subtitle="Avy ERP mobile app access for all employees — production, HR, attendance" value={field.value} onToggle={field.onChange} />
                     )} />
-                    <Controller name="aiChatbot" control={control} render={({ field }) => (
-                        <ToggleRow label="AI HR Assistant Chatbot" subtitle="NLP chatbot for employee leave queries, policy FAQs, and HR support" value={field.value} onToggle={field.onChange} />
-                    )} />
-                    <Controller name="eSign" control={control} render={({ field }) => (
-                        <ToggleRow label="e-Sign Integration" subtitle="Digital signatures for offer letters, full & final settlements, compliance documents" value={field.value} onToggle={field.onChange} />
+                    <Controller name="webApp" control={control} render={({ field }) => (
+                        <ToggleRow label="Web / System Application" subtitle="Browser-based ERP access for managers, HR, and admin users — full feature access" value={field.value} onToggle={field.onChange} />
                     )} />
                 </SectionCard>
 
                 {/* Integrations & Devices */}
                 <SectionCard title="Integrations & Devices" subtitle="Hardware and third-party system connections">
-                    <Controller name="biometric" control={control} render={({ field }) => (
-                        <ToggleRow label="Biometric / Device Sync" subtitle="Auto-sync employee attendance from ZKTeco, ESSL, and compatible biometric devices" value={field.value} onToggle={field.onChange} />
-                    )} />
+                    <div className="relative opacity-60 pointer-events-none">
+                        <ToggleRow label="Biometric / Device Sync" subtitle="Auto-sync employee attendance from ZKTeco, ESSL, and compatible biometric devices" value={false} onToggle={() => {}} />
+                        <span className="absolute top-3 right-12 text-[9px] font-bold px-2 py-0.5 rounded-full bg-warning-100 text-warning-700 border border-warning-200">COMING SOON</span>
+                    </div>
 
                     <Controller name="bankIntegration" control={control} render={({ field }) => (
                         <ToggleRow label="Payroll Bank Integration" subtitle="NEFT/RTGS bank file generation for salary disbursement via banking partner" value={field.value} onToggle={field.onChange} />
@@ -227,9 +211,11 @@ export function Step05Preferences() {
                     <Controller name="emailNotif" control={control} render={({ field }) => (
                         <ToggleRow label="Email Notifications" subtitle="Automated emails for payslips, leave approvals, breakdown alerts, and reminders" value={field.value} onToggle={field.onChange} />
                     )} />
-                    <Controller name="whatsapp" control={control} render={({ field }) => (
-                        <ToggleRow label="WhatsApp Notifications" subtitle="Salary alerts, leave approval status, and OTP delivery via WhatsApp Business API" value={field.value} onToggle={field.onChange} />
-                    )} />
+
+                    <div className="relative opacity-60 pointer-events-none">
+                        <ToggleRow label="WhatsApp Notifications" subtitle="Salary alerts, leave approval status, and OTP delivery via WhatsApp Business API" value={false} onToggle={() => {}} />
+                        <span className="absolute top-3 right-12 text-[9px] font-bold px-2 py-0.5 rounded-full bg-warning-100 text-warning-700 border border-warning-200">COMING SOON</span>
+                    </div>
                 </SectionCard>
             </form>
         </FormProvider>

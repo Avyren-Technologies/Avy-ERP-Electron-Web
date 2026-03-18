@@ -219,6 +219,12 @@ export function Step08UserTier() {
                         </div>
                     </div>
                 )} />
+                <div className="bg-info-50 border border-info-200 rounded-xl px-4 py-3 dark:bg-info-900/20 dark:border-info-800/50">
+                    <p className="text-xs font-semibold text-info-800 dark:text-info-300">📅 Billing Date</p>
+                    <p className="text-xs text-info-700 mt-0.5 dark:text-info-400">
+                        Billing will commence from the date of successful tenant registration and first payment confirmation by the tenant. The trial period begins immediately upon activation.
+                    </p>
+                </div>
             </SectionCard>
 
             {/* Pricing Summary */}

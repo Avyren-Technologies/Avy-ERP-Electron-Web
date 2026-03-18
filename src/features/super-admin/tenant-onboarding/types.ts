@@ -109,6 +109,34 @@ export interface ModuleItem {
     dependencies?: string[]; // module IDs this requires
 }
 
+// ---- Scoped Config (common or per-location) ----
+
+export type ScopedConfig<T> = {
+    mode: 'common' | 'per-location';
+    common: T;
+    byLocationId: Record<string, T>;
+};
+
+// ---- Strategy Config ----
+
+export interface StrategyConfig {
+    multiLocationMode: boolean;
+    locationConfig: 'common' | 'per-location';
+    billingScope: 'per-location';
+}
+
+// ---- Per-Location Commercial ----
+
+export interface LocationCommercialEntry {
+    moduleIds: string[];
+    customModulePricing: Record<string, number>;
+    userTier: 'starter' | 'growth' | 'scale' | 'enterprise' | 'custom';
+    customUserLimit: string;
+    customTierPrice: string;
+    billingCycle: 'monthly' | 'annual';
+    trialDays: string;
+}
+
 // ---- Step Form Types ----
 
 export interface Step1Form {
@@ -152,9 +180,11 @@ export interface Step3Form {
     corpLine1: string;
     corpLine2: string;
     corpCity: string;
+    corpDistrict: string;
     corpState: string;
     corpCountry: string;
     corpPin: string;
+    corpStdCode: string;
 }
 
 export interface Step4Form {
@@ -179,6 +209,7 @@ export interface Step5Form {
     multiCurrency: boolean;
     ess: boolean;
     mobileApp: boolean;
+    webApp: boolean;
     aiChatbot: boolean;
     eSign: boolean;
     biometric: boolean;
@@ -260,6 +291,8 @@ export interface Step15UsersForm {
 
 export interface TenantOnboardingState {
     currentStep: number;
+    strategyConfig: StrategyConfig;
+    locationCommercial: Record<string, LocationCommercialEntry>;
     step1: Step1Form;
     step2: Step2Form;
     step3: Step3Form;

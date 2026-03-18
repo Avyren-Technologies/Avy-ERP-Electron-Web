@@ -3,7 +3,7 @@
 // Web + Electron
 // ============================================================
 
-export const TOTAL_STEPS = 15;
+export const TOTAL_STEPS = 17;
 
 export const STEP_META = [
     { id: 1, title: 'Company Identity', subtitle: 'Logo, name, industry & status', icon: '🏢' },
@@ -12,15 +12,17 @@ export const STEP_META = [
     { id: 4, title: 'Fiscal & Calendar', subtitle: 'FY period, payroll cycle, timezone', icon: '📅' },
     { id: 5, title: 'Preferences', subtitle: 'Currency, language, integrations', icon: '⚙️' },
     { id: 6, title: 'Backend Endpoint', subtitle: 'Default or custom server connection', icon: '🖥️' },
-    { id: 7, title: 'Module Selection', subtitle: 'Pick active modules & features', icon: '🧩' },
-    { id: 8, title: 'User Tier & Pricing', subtitle: 'User capacity & subscription plan', icon: '💰' },
-    { id: 9, title: 'Key Contacts', subtitle: 'HR, Finance, IT, Operations', icon: '👥' },
-    { id: 10, title: 'Plants & Branches', subtitle: 'Locations, geo-fencing & GST', icon: '🏭' },
-    { id: 11, title: 'Shifts & Time', subtitle: 'Shift master, downtime slots', icon: '🕐' },
-    { id: 12, title: 'No. Series', subtitle: 'Document numbering sequences', icon: '🔢' },
-    { id: 13, title: 'IOT Reasons', subtitle: 'Machine downtime & idle reasons', icon: '📡' },
-    { id: 14, title: 'System Controls', subtitle: 'Operational & security settings', icon: '🔒' },
-    { id: 15, title: 'Activation', subtitle: 'Review checklist & go live', icon: '🚀' },
+    { id: 7, title: 'Configuration Strategy', subtitle: 'Location mode & billing scope', icon: '🗺️' },
+    { id: 8, title: 'Locations Master', subtitle: 'Plants, branches, GST & geo-fencing', icon: '🏭' },
+    { id: 9, title: 'Per-Location Modules', subtitle: 'Active modules billed per location', icon: '🧩' },
+    { id: 10, title: 'Per-Location Pricing', subtitle: 'User tier & subscription per location', icon: '💰' },
+    { id: 11, title: 'Key Contacts', subtitle: 'HR, Finance, IT, Operations', icon: '👥' },
+    { id: 12, title: 'Shifts & Time', subtitle: 'Shift master, downtime slots', icon: '🕐' },
+    { id: 13, title: 'No. Series', subtitle: 'Document numbering sequences', icon: '🔢' },
+    { id: 14, title: 'IOT Reasons', subtitle: 'Machine downtime & idle reasons', icon: '📡' },
+    { id: 15, title: 'System Controls', subtitle: 'Operational & security settings', icon: '🔒' },
+    { id: 16, title: 'Users & Access', subtitle: 'Users, roles & location access scope', icon: '👤' },
+    { id: 17, title: 'Activation', subtitle: 'Location readiness & billing summary', icon: '🚀' },
 ];
 
 // ============ COMPANY ============
@@ -58,6 +60,12 @@ export const INDIAN_STATES = [
     'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand',
     'West Bengal', 'Delhi', 'Jammu & Kashmir', 'Ladakh', 'Puducherry',
     'Chandigarh', 'Others',
+];
+
+export const COUNTRIES = [
+    'India', 'United States', 'United Kingdom', 'UAE', 'Singapore',
+    'Australia', 'Germany', 'Japan', 'Malaysia', 'Thailand', 'South Korea',
+    'China', 'Canada', 'France', 'Italy', 'Netherlands', 'Others',
 ];
 
 export const COUNTRY_CODES = [

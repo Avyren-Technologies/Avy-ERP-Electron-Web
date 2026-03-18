@@ -186,6 +186,7 @@ export function FormDatePicker({
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const currentYear = today.getFullYear();
 
     const formatDate = (date: Date) => {
         const dd = `${date.getDate()}`.padStart(2, '0');
@@ -194,10 +195,18 @@ export function FormDatePicker({
         return `${dd}/${mm}/${yyyy}`;
     };
 
-    const monthLabel = viewDate.toLocaleString('default', {
-        month: 'long',
-        year: 'numeric',
-    });
+    const monthOptions = useMemo(
+        () =>
+            Array.from({ length: 12 }, (_, index) =>
+                new Date(2000, index, 1).toLocaleString('default', { month: 'long' })
+            ),
+        []
+    );
+
+    const yearOptions = useMemo(
+        () => Array.from({ length: currentYear - 1899 }, (_, index) => currentYear - index),
+        [currentYear]
+    );
 
     const selectedKey = selectedDate ? formatDate(selectedDate) : '';
 
@@ -224,7 +233,7 @@ export function FormDatePicker({
 
                 {open && (
                     <div className="absolute z-[200] mt-2 w-full rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg p-3">
-                        <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center justify-between mb-3 gap-2">
                             <button
                                 type="button"
                                 onClick={() =>
@@ -236,9 +245,36 @@ export function FormDatePicker({
                             >
                                 <ChevronLeft size={15} />
                             </button>
-                            <span className="text-sm font-semibold text-primary-900 dark:text-white">
-                                {monthLabel}
-                            </span>
+                            <div className="flex items-center gap-2">
+                                <select
+                                    value={viewDate.getMonth()}
+                                    onChange={(event) => {
+                                        const nextMonth = Number(event.target.value);
+                                        setViewDate((prev) => new Date(prev.getFullYear(), nextMonth, 1));
+                                    }}
+                                    className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50/70 dark:bg-neutral-800 px-2.5 py-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400"
+                                >
+                                    {monthOptions.map((monthName, index) => (
+                                        <option key={monthName} value={index}>
+                                            {monthName}
+                                        </option>
+                                    ))}
+                                </select>
+                                <select
+                                    value={viewDate.getFullYear()}
+                                    onChange={(event) => {
+                                        const nextYear = Number(event.target.value);
+                                        setViewDate((prev) => new Date(nextYear, prev.getMonth(), 1));
+                                    }}
+                                    className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50/70 dark:bg-neutral-800 px-2.5 py-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400"
+                                >
+                                    {yearOptions.map((year) => (
+                                        <option key={year} value={year}>
+                                            {year}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                             <button
                                 type="button"
                                 onClick={() =>

@@ -24,6 +24,11 @@ const schema = z.object({
     website: z.string().url('Invalid URL, include https://').optional().or(z.literal('')),
     emailDomain: z.string().min(1, 'Corporate Email Domain is required'),
     status: z.string().min(1, 'Company Status is required'),
+}).superRefine((data, ctx) => {
+    const isCorporate = ['Private Limited (Pvt. Ltd.)', 'Public Limited'].includes(data.businessType);
+    if (isCorporate && !data.cin) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['cin'], message: 'CIN is required for Private Limited and Public Limited companies' });
+    }
 });
 
 type FormData = z.infer<typeof schema>;
@@ -51,6 +56,8 @@ export function Step01Identity({ onConfirmSubmit }: { onConfirmSubmit?: () => vo
     });
 
     const watchedDisplayName = watch('displayName');
+    const businessType = watch('businessType');
+    const isCorporate = ['Private Limited (Pvt. Ltd.)', 'Public Limited'].includes(businessType);
 
     // Auto-generate company code from display name if empty or starts with AUTO-
     useEffect(() => {
@@ -206,7 +213,7 @@ export function Step01Identity({ onConfirmSubmit }: { onConfirmSubmit?: () => vo
                     )} />
                     <Controller name="incorporationDate" control={control} render={({ field, fieldState }) => (
                         <FormDatePicker
-                            label="Date of Incorporation"
+                            label={isCorporate ? 'Date of Incorporation' : businessType === 'Partnership' ? 'Partnership Deed Date' : 'Business Registration Date'}
                             value={field.value || ''}
                             onChange={field.onChange}
                             required
@@ -215,12 +222,14 @@ export function Step01Identity({ onConfirmSubmit }: { onConfirmSubmit?: () => vo
                     )} />
                 </ThreeCol>
 
-                <TwoCol>
-                    <Controller name="cin" control={control} render={({ field, fieldState }) => (
-                        <FormInput label="CIN Number" placeholder="U72900KA2019PTC312847" {...field} value={field.value || ''} onChange={v => field.onChange(v.toUpperCase())} hint="Company Identification Number from MCA" error={fieldState.error?.message} />
-                    )} />
-                    <div />
-                </TwoCol>
+                {isCorporate && (
+                    <TwoCol>
+                        <Controller name="cin" control={control} render={({ field, fieldState }) => (
+                            <FormInput label="CIN Number" placeholder="U72900KA2019PTC312847" {...field} value={field.value || ''} onChange={v => field.onChange(v.toUpperCase())} hint="Company Identification Number from MCA" error={fieldState.error?.message} />
+                        )} />
+                        <div />
+                    </TwoCol>
+                )}
 
                 <TwoCol>
                     <Controller name="website" control={control} render={({ field, fieldState }) => (
