@@ -40,7 +40,7 @@ export function Step09PerLocationModules({ onConfirmSubmit }: { onConfirmSubmit?
         userTier: 'starter' as const,
         customUserLimit: '',
         customTierPrice: '',
-        billingCycle: 'monthly' as const,
+        billingType: 'monthly' as const,
         trialDays: '14',
     };
 

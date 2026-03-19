@@ -80,7 +80,7 @@ const defaultStep7: Step7ModulesForm = {
 const defaultStep8: Step8TierForm = {
     userTier: 'starter',
     customUserLimit: '',
-    billingCycle: 'monthly',
+    billingType: 'monthly',
     customTierPrice: '',
     trialDays: '14',
 };
@@ -123,7 +123,7 @@ const defaultLocationCommercialEntry = (): LocationCommercialEntry => ({
     userTier: 'starter',
     customUserLimit: '',
     customTierPrice: '',
-    billingCycle: 'monthly',
+    billingType: 'monthly',
     trialDays: '14',
 });
 

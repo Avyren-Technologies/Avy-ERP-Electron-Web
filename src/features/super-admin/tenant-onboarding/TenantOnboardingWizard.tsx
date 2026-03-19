@@ -367,7 +367,7 @@ export function TenantOnboardingWizard({ onClose, onSuccess }: TenantOnboardingW
                         userTier: locCommercial?.userTier ?? undefined,
                         customUserLimit: locCommercial?.customUserLimit || undefined,
                         customTierPrice: locCommercial?.customTierPrice || undefined,
-                        billingCycle: locCommercial?.billingCycle ?? undefined,
+                        billingType: locCommercial?.billingType ?? undefined,
                         trialDays: locCommercial?.trialDays ? parseInt(locCommercial.trialDays) : undefined,
                     };
                 }),
@@ -377,7 +377,7 @@ export function TenantOnboardingWizard({ onClose, onSuccess }: TenantOnboardingW
                     userTier: s.step8.userTier,
                     customUserLimit: s.step8.customUserLimit || undefined,
                     customTierPrice: s.step8.customTierPrice || undefined,
-                    billingCycle: s.step8.billingCycle,
+                    billingType: s.step8.billingType,
                     trialDays: s.step8.trialDays ? parseInt(s.step8.trialDays) : undefined,
                 } : undefined,
                 contacts: s.step9.contacts.map((c) => ({

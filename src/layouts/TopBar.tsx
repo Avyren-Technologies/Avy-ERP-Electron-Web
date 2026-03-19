@@ -26,6 +26,23 @@ const PAGE_TITLES: Record<string, { title: string; subtitle?: string }> = {
     '/app/notifications': { title: 'Notifications', subtitle: 'Alerts & updates' },
     '/app/help': { title: 'Help & Support', subtitle: '' },
     '/app/hr': { title: 'HR & People', subtitle: 'Workforce management' },
+    '/app/company/profile': { title: 'Company Profile', subtitle: 'Manage your company information' },
+    '/app/company/locations': { title: 'Locations', subtitle: 'Manage plants and branches' },
+    '/app/company/shifts': { title: 'Shifts & Time', subtitle: 'Configure shift schedules' },
+    '/app/company/contacts': { title: 'Key Contacts', subtitle: 'Manage company contacts' },
+    '/app/company/no-series': { title: 'Number Series', subtitle: 'Configure document numbering' },
+    '/app/company/iot-reasons': { title: 'IOT Reasons', subtitle: 'Manage IOT reason codes' },
+    '/app/company/controls': { title: 'System Controls', subtitle: 'Configure system parameters' },
+    '/app/company/settings': { title: 'Company Settings', subtitle: 'Company preferences and configuration' },
+    '/app/company/users': { title: 'User Management', subtitle: 'Manage company users' },
+    '/app/company/roles': { title: 'Roles & Permissions', subtitle: 'Configure access control' },
+    '/app/company/feature-toggles': { title: 'Feature Toggles', subtitle: 'Enable or disable features' },
+    '/app/company/hr/departments': { title: 'Departments', subtitle: 'Manage organization departments' },
+    '/app/company/hr/designations': { title: 'Designations', subtitle: 'Configure job titles and designations' },
+    '/app/company/hr/grades': { title: 'Grades & Bands', subtitle: 'Define employee grades and compensation bands' },
+    '/app/company/hr/employee-types': { title: 'Employee Types', subtitle: 'Manage employee categories' },
+    '/app/company/hr/cost-centres': { title: 'Cost Centres', subtitle: 'Define cost centres for budgeting' },
+    '/app/company/hr/employees': { title: 'Employee Directory', subtitle: 'Browse and manage employees' },
 };
 
 function getPageTitle(path: string) {

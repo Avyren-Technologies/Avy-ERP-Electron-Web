@@ -214,9 +214,9 @@ export function Step17Activation({ onConfirmSubmit }: { onConfirmSubmit?: () => 
                                                     {tier.label} Tier
                                                 </span>
                                             )}
-                                            {entry?.billingCycle && (
+                                            {entry?.billingType && (
                                                 <span className="capitalize text-neutral-500 dark:text-neutral-400">
-                                                    {entry.billingCycle} billing
+                                                    {entry.billingType} billing
                                                 </span>
                                             )}
                                         </div>
@@ -226,10 +226,10 @@ export function Step17Activation({ onConfirmSubmit }: { onConfirmSubmit?: () => 
                                 {isComplete && (
                                     <div className="text-right flex-shrink-0">
                                         <p className="text-base font-bold text-primary-700 dark:text-primary-400">
-                                            ₹{(entry?.billingCycle === 'annual' ? annual : monthly).toLocaleString('en-IN')}
+                                            ₹{(entry?.billingType === 'annual' ? annual : monthly).toLocaleString('en-IN')}
                                         </p>
                                         <p className="text-[10px] text-neutral-400 dark:text-neutral-500">
-                                            /{entry?.billingCycle === 'annual' ? 'year' : 'month'}
+                                            /{entry?.billingType === 'annual' ? 'year' : 'month'}
                                         </p>
                                     </div>
                                 )}

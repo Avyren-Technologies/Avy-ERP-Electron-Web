@@ -4,17 +4,19 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { cn } from '@/lib/utils';
-import { Star, Check, Zap, TrendingUp } from 'lucide-react';
+import { Star, Check, Zap, TrendingUp, ShieldCheck, Info } from 'lucide-react';
 import { SectionCard, FormInput, InfoBanner } from '../atoms';
-import { USER_TIERS, MODULE_CATALOGUE, resolveModuleDependencies } from '../constants';
+import { USER_TIERS, MODULE_CATALOGUE, BILLING_TYPES, resolveModuleDependencies } from '../constants';
 import { useTenantOnboardingStore } from '../store';
 
 const locationTierSchema = z.object({
     userTier: z.string().min(1, 'Required'),
     customUserLimit: z.string().optional(),
     customTierPrice: z.string().optional(),
-    billingCycle: z.enum(['monthly', 'annual']),
+    billingType: z.enum(['monthly', 'annual', 'one_time_amc']),
     trialDays: z.string().optional(),
+    oneTimeLicenseFee: z.string().optional(),
+    amcAmount: z.string().optional(),
 }).superRefine((data, ctx) => {
     if (data.userTier === 'custom') {
         if (!data.customUserLimit) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['customUserLimit'], message: 'Required' });
@@ -27,6 +29,7 @@ type LocationTierFormData = z.infer<typeof locationTierSchema>;
 export function Step10PerLocationTier({ onConfirmSubmit }: { onConfirmSubmit?: () => void }) {
     const {
         strategyConfig,
+        step6,
         step10,
         locationCommercial,
         setLocationCommercial,
@@ -35,7 +38,10 @@ export function Step10PerLocationTier({ onConfirmSubmit }: { onConfirmSubmit?: (
     } = useTenantOnboardingStore();
 
     const locations = step10.locations;
+    const endpointType = step6.endpointType;
     const [activeLocationId, setActiveLocationId] = React.useState<string>(locations[0]?.id ?? '');
+    const [overrideOneTime, setOverrideOneTime] = React.useState(false);
+    const [overrideAmc, setOverrideAmc] = React.useState(false);
 
     // Initialize commercial entries for all locations on mount
     useEffect(() => {
@@ -51,13 +57,19 @@ export function Step10PerLocationTier({ onConfirmSubmit }: { onConfirmSubmit?: (
         }
     }, [locations, activeLocationId]);
 
+    // Reset overrides when switching locations
+    useEffect(() => {
+        setOverrideOneTime(false);
+        setOverrideAmc(false);
+    }, [activeLocationId]);
+
     const activeEntry = locationCommercial[activeLocationId] ?? {
         moduleIds: [],
         customModulePricing: {},
         userTier: 'starter' as const,
         customUserLimit: '',
         customTierPrice: '',
-        billingCycle: 'monthly' as const,
+        billingType: 'monthly' as const,
         trialDays: '14',
     };
 
@@ -69,8 +81,10 @@ export function Step10PerLocationTier({ onConfirmSubmit }: { onConfirmSubmit?: (
             userTier: activeEntry.userTier,
             customUserLimit: activeEntry.customUserLimit,
             customTierPrice: activeEntry.customTierPrice,
-            billingCycle: activeEntry.billingCycle,
+            billingType: activeEntry.billingType,
             trialDays: activeEntry.trialDays,
+            oneTimeLicenseFee: activeEntry.oneTimeLicenseFee ?? '',
+            amcAmount: activeEntry.amcAmount ?? '',
         },
     });
 
@@ -82,15 +96,19 @@ export function Step10PerLocationTier({ onConfirmSubmit }: { onConfirmSubmit?: (
                 userTier: entry.userTier,
                 customUserLimit: entry.customUserLimit,
                 customTierPrice: entry.customTierPrice,
-                billingCycle: entry.billingCycle,
+                billingType: entry.billingType,
                 trialDays: entry.trialDays,
+                oneTimeLicenseFee: entry.oneTimeLicenseFee ?? '',
+                amcAmount: entry.amcAmount ?? '',
             });
         }
     }, [activeLocationId, locationCommercial, reset]);
 
     const userTier = watch('userTier');
-    const billingCycle = watch('billingCycle');
+    const billingType = watch('billingType');
     const customTierPrice = watch('customTierPrice');
+    const formOneTimeFee = watch('oneTimeLicenseFee');
+    const formAmcAmount = watch('amcAmount');
 
     const currentTier = USER_TIERS.find(t => t.key === userTier);
 
@@ -112,22 +130,54 @@ export function Step10PerLocationTier({ onConfirmSubmit }: { onConfirmSubmit?: (
     const locationMonthly = moduleCost + tierBaseCost;
     const locationAnnual = locationMonthly * 10;
 
+    // One-time + AMC calculations
+    const calculatedOneTimeFee = locationMonthly * 24;
+    const effectiveOneTimeFee = overrideOneTime && formOneTimeFee
+        ? (parseInt(formOneTimeFee, 10) || 0)
+        : calculatedOneTimeFee;
+    const calculatedAmc = Math.round(effectiveOneTimeFee * 0.18);
+    const effectiveAmc = overrideAmc && formAmcAmount
+        ? (parseInt(formAmcAmount, 10) || 0)
+        : calculatedAmc;
+
     // Grand totals across all locations
-    const grandMonthly = locations.reduce((sum, loc) => {
-        const entry = locationCommercial[loc.id];
-        if (!entry) return sum;
-        const { resolved } = resolveModuleDependencies(entry.moduleIds, MODULE_CATALOGUE);
-        const modCost = resolved.reduce((s, id) => {
-            const mod = MODULE_CATALOGUE.find(m => m.id === id);
-            return s + (entry.customModulePricing[id] ?? mod?.price ?? 0);
-        }, 0);
-        const tier = USER_TIERS.find(t => t.key === entry.userTier);
-        const tierCost = entry.userTier === 'custom'
-            ? parseInt(entry.customTierPrice || '0') || 0
-            : tier?.basePrice ?? 0;
-        return sum + modCost + tierCost;
-    }, 0);
-    const grandAnnual = grandMonthly * 10;
+    const grandTotals = React.useMemo(() => {
+        let totalMonthly = 0;
+        let totalAnnual = 0;
+        let totalOneTime = 0;
+        let totalAmc = 0;
+        for (const loc of locations) {
+            const entry = locationCommercial[loc.id];
+            if (!entry) continue;
+            const { resolved } = resolveModuleDependencies(entry.moduleIds, MODULE_CATALOGUE);
+            const modCost = resolved.reduce((s, id) => {
+                const mod = MODULE_CATALOGUE.find(m => m.id === id);
+                return s + (entry.customModulePricing[id] ?? mod?.price ?? 0);
+            }, 0);
+            const tier = USER_TIERS.find(t => t.key === entry.userTier);
+            const tierCost = entry.userTier === 'custom'
+                ? parseInt(entry.customTierPrice || '0') || 0
+                : tier?.basePrice ?? 0;
+            const locMonthly = modCost + tierCost;
+            if (entry.billingType === 'annual') {
+                totalAnnual += locMonthly * 10;
+            } else if (entry.billingType === 'one_time_amc') {
+                const otFee = entry.oneTimeLicenseFee
+                    ? (parseInt(entry.oneTimeLicenseFee, 10) || 0)
+                    : locMonthly * 24;
+                totalOneTime += otFee;
+                if (endpointType === 'default') {
+                    const amcFee = entry.amcAmount
+                        ? (parseInt(entry.amcAmount, 10) || 0)
+                        : Math.round(otFee * 0.18);
+                    totalAmc += amcFee;
+                }
+            } else {
+                totalMonthly += locMonthly;
+            }
+        }
+        return { totalMonthly, totalAnnual, totalOneTime, totalAmc };
+    }, [locations, locationCommercial, endpointType]);
 
     const onSubmit = (data: LocationTierFormData) => {
         // Save current location's tier data before advancing
@@ -135,8 +185,10 @@ export function Step10PerLocationTier({ onConfirmSubmit }: { onConfirmSubmit?: (
             userTier: data.userTier as any,
             customUserLimit: data.customUserLimit || '',
             customTierPrice: data.customTierPrice || '',
-            billingCycle: data.billingCycle,
+            billingType: data.billingType,
             trialDays: data.trialDays || '14',
+            oneTimeLicenseFee: data.billingType === 'one_time_amc' ? data.oneTimeLicenseFee : undefined,
+            amcAmount: data.billingType === 'one_time_amc' ? data.amcAmount : undefined,
         });
         goNext();
         document.getElementById('wizard-content')?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -149,8 +201,10 @@ export function Step10PerLocationTier({ onConfirmSubmit }: { onConfirmSubmit?: (
             userTier: (values.userTier as any) || 'starter',
             customUserLimit: values.customUserLimit || '',
             customTierPrice: values.customTierPrice || '',
-            billingCycle: values.billingCycle || 'monthly',
+            billingType: values.billingType || 'monthly',
             trialDays: values.trialDays || '14',
+            oneTimeLicenseFee: values.billingType === 'one_time_amc' ? values.oneTimeLicenseFee : undefined,
+            amcAmount: values.billingType === 'one_time_amc' ? values.amcAmount : undefined,
         });
         setActiveLocationId(newLocationId);
     };
@@ -159,8 +213,8 @@ export function Step10PerLocationTier({ onConfirmSubmit }: { onConfirmSubmit?: (
         <form id="wizard-step-form" onSubmit={handleSubmit(onSubmit)} className="space-y-0 animate-in fade-in slide-in-from-right-3 duration-300 pb-10">
 
             <InfoBanner variant="info" className="mb-5">
-                <strong>Per-location billing:</strong> Each location has its own user tier and billing cycle.
-                Annual billing applies a 2-month discount per location.
+                <strong>Per-location billing:</strong> Each location has its own user tier and billing type.
+                Annual billing applies a 2-month discount per location. One-Time + AMC provides a perpetual license.
             </InfoBanner>
 
             {/* Location Tabs (multi-location only) */}
@@ -307,51 +361,178 @@ export function Step10PerLocationTier({ onConfirmSubmit }: { onConfirmSubmit?: (
                 )}
             </SectionCard>
 
-            {/* Billing Cycle */}
-            <SectionCard title="Billing Cycle" subtitle="Annual billing includes a 2-month discount (pay for 10, get 12)">
-                <Controller name="billingCycle" control={control} render={({ field }) => (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <button
-                            type="button"
-                            onClick={() => field.onChange('monthly')}
-                            className={cn(
-                                'flex items-center gap-4 p-5 rounded-2xl border-2 text-left transition-all duration-200',
-                                field.value === 'monthly'
-                                    ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 shadow-sm'
-                                    : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 hover:border-primary-200 dark:hover:border-primary-800/50'
-                            )}
-                        >
-                            <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center text-lg dark:bg-primary-900/40">📅</div>
-                            <div>
-                                <p className="text-sm font-bold text-primary-950 dark:text-white">Monthly Billing</p>
-                                <p className="text-xs text-neutral-500 mt-0.5 dark:text-neutral-400">Billed every month. Cancel anytime.</p>
-                            </div>
-                            {field.value === 'monthly' && <Check size={16} className="ml-auto text-primary-600 flex-shrink-0" />}
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={() => field.onChange('annual')}
-                            className={cn(
-                                'relative flex items-center gap-4 p-5 rounded-2xl border-2 text-left transition-all duration-200',
-                                field.value === 'annual'
-                                    ? 'border-success-500 bg-success-50 dark:bg-success-900/20 shadow-sm'
-                                    : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 hover:border-success-200 dark:hover:border-success-800/50'
-                            )}
-                        >
-                            <div className="absolute -top-2.5 right-4 px-2 py-0.5 rounded-full bg-success-500 text-white text-[10px] font-bold flex items-center gap-1">
-                                <Zap size={8} fill="white" /> SAVE 2 MONTHS
-                            </div>
-                            <div className="w-10 h-10 rounded-xl bg-success-100 flex items-center justify-center text-lg dark:bg-success-900/30">📆</div>
-                            <div>
-                                <p className="text-sm font-bold text-primary-950 dark:text-white">Annual Billing</p>
-                                <p className="text-xs text-neutral-500 mt-0.5 dark:text-neutral-400">Billed once per year. 2 months free.</p>
-                            </div>
-                            {field.value === 'annual' && <Check size={16} className="ml-auto text-success-600 flex-shrink-0" />}
-                        </button>
+            {/* Billing Type */}
+            <SectionCard title="Billing Type" subtitle="Choose the billing model for this location">
+                <Controller name="billingType" control={control} render={({ field }) => (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {BILLING_TYPES.map((bt) => {
+                            const selected = field.value === bt.key;
+                            const isAnnual = bt.key === 'annual';
+                            const isOneTime = bt.key === 'one_time_amc';
+                            return (
+                                <button
+                                    key={bt.key}
+                                    type="button"
+                                    onClick={() => field.onChange(bt.key)}
+                                    className={cn(
+                                        'relative flex items-start gap-4 p-5 rounded-2xl border-2 text-left transition-all duration-200',
+                                        selected
+                                            ? isAnnual
+                                                ? 'border-success-500 bg-success-50 dark:bg-success-900/20 shadow-sm'
+                                                : isOneTime
+                                                    ? 'border-accent-500 bg-accent-50 dark:bg-accent-900/20 shadow-sm'
+                                                    : 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 shadow-sm'
+                                            : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 hover:border-primary-200 dark:hover:border-primary-800/50'
+                                    )}
+                                >
+                                    {isAnnual && (
+                                        <div className="absolute -top-2.5 right-4 px-2 py-0.5 rounded-full bg-success-500 text-white text-[10px] font-bold flex items-center gap-1">
+                                            <Zap size={8} fill="white" /> SAVE 16.67%
+                                        </div>
+                                    )}
+                                    <div className={cn(
+                                        'w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0',
+                                        selected
+                                            ? isAnnual
+                                                ? 'bg-success-100 dark:bg-success-900/30'
+                                                : isOneTime
+                                                    ? 'bg-accent-100 dark:bg-accent-900/30'
+                                                    : 'bg-primary-100 dark:bg-primary-900/40'
+                                            : 'bg-neutral-100 dark:bg-neutral-800'
+                                    )}>
+                                        {bt.key === 'monthly' && '📅'}
+                                        {bt.key === 'annual' && '📆'}
+                                        {bt.key === 'one_time_amc' && '🛡️'}
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-sm font-bold text-primary-950 dark:text-white">{bt.label}</p>
+                                        <p className="text-xs text-neutral-500 mt-0.5 dark:text-neutral-400">{bt.description}</p>
+                                    </div>
+                                    {selected && (
+                                        <Check size={16} className={cn(
+                                            'flex-shrink-0 mt-1',
+                                            isAnnual ? 'text-success-600' : isOneTime ? 'text-accent-600' : 'text-primary-600'
+                                        )} />
+                                    )}
+                                </button>
+                            );
+                        })}
                     </div>
                 )} />
             </SectionCard>
+
+            {/* One-Time + AMC Section */}
+            {billingType === 'one_time_amc' && (
+                <SectionCard
+                    title="One-Time License + AMC"
+                    subtitle="Perpetual license fee with optional annual maintenance"
+                    accent="accent"
+                >
+                    <div className="space-y-5">
+                        {/* One-Time Fee */}
+                        <div>
+                            <p className="text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-2">One-Time License Fee</p>
+                            <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800/50 rounded-xl p-4 mb-3">
+                                <p className="text-xs text-primary-600 dark:text-primary-400">Calculated: Monthly Total x 24</p>
+                                <p className="text-2xl font-bold text-primary-900 dark:text-primary-200 mt-1">
+                                    ₹{calculatedOneTimeFee.toLocaleString('en-IN')}
+                                </p>
+                            </div>
+
+                            <div className="flex items-center gap-3 mb-2">
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="sr-only peer"
+                                        checked={overrideOneTime}
+                                        onChange={(e) => {
+                                            setOverrideOneTime(e.target.checked);
+                                            if (!e.target.checked) {
+                                                const formField = control._fields.oneTimeLicenseFee;
+                                                if (formField) formField._f.onChange({ target: { value: '' } });
+                                            }
+                                        }}
+                                    />
+                                    <div className="w-9 h-5 bg-neutral-200 peer-focus:outline-none rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary-600"></div>
+                                </label>
+                                <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Override one-time fee</span>
+                            </div>
+
+                            {overrideOneTime && (
+                                <div className="animate-in fade-in duration-200">
+                                    <Controller name="oneTimeLicenseFee" control={control} render={({ field, fieldState }) => (
+                                        <FormInput
+                                            label="Custom One-Time Fee (₹)"
+                                            placeholder={calculatedOneTimeFee.toString()}
+                                            {...field}
+                                            value={field.value || ''}
+                                            type="number"
+                                            error={fieldState.error?.message}
+                                        />
+                                    )} />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* AMC Section */}
+                        {endpointType === 'default' ? (
+                            <div>
+                                <p className="text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-2">Annual Maintenance Contract (AMC)</p>
+                                <div className="bg-accent-50 dark:bg-accent-900/20 border border-accent-200 dark:border-accent-800/50 rounded-xl p-4 mb-3">
+                                    <p className="text-xs text-accent-600 dark:text-accent-400">AMC: 18% of one-time fee per year</p>
+                                    <p className="text-2xl font-bold text-accent-900 dark:text-accent-200 mt-1">
+                                        ₹{calculatedAmc.toLocaleString('en-IN')}/year
+                                    </p>
+                                </div>
+
+                                <div className="flex items-center gap-3 mb-2">
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            className="sr-only peer"
+                                            checked={overrideAmc}
+                                            onChange={(e) => {
+                                                setOverrideAmc(e.target.checked);
+                                                if (!e.target.checked) {
+                                                    const formField = control._fields.amcAmount;
+                                                    if (formField) formField._f.onChange({ target: { value: '' } });
+                                                }
+                                            }}
+                                        />
+                                        <div className="w-9 h-5 bg-neutral-200 peer-focus:outline-none rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent-600"></div>
+                                    </label>
+                                    <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Override AMC amount</span>
+                                </div>
+
+                                {overrideAmc && (
+                                    <div className="animate-in fade-in duration-200">
+                                        <Controller name="amcAmount" control={control} render={({ field, fieldState }) => (
+                                            <FormInput
+                                                label="Custom AMC Amount (₹/year)"
+                                                placeholder={calculatedAmc.toString()}
+                                                {...field}
+                                                value={field.value || ''}
+                                                type="number"
+                                                error={fieldState.error?.message}
+                                            />
+                                        )} />
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-xl p-4 flex items-start gap-3">
+                                <Info size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
+                                <div>
+                                    <p className="text-xs font-bold text-blue-800 dark:text-blue-300">Self-Hosted Infrastructure</p>
+                                    <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
+                                        AMC not required — self-hosted infrastructure. The client manages their own server and maintenance.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </SectionCard>
+            )}
 
             {/* Trial Days */}
             <SectionCard title="Trial Period" subtitle="Free trial days before billing begins (standard: 14 days)">
@@ -420,20 +601,28 @@ export function Step10PerLocationTier({ onConfirmSubmit }: { onConfirmSubmit?: (
                     <div className="border-t-2 border-primary-200 pt-3 flex items-center justify-between dark:border-primary-800/50">
                         <div>
                             <p className="text-base font-bold text-primary-950 dark:text-white">
-                                {activeLoc?.name || 'Location'} — {billingCycle === 'annual' ? 'Annual' : 'Monthly'}
+                                {activeLoc?.name || 'Location'} — {billingType === 'annual' ? 'Annual' : billingType === 'one_time_amc' ? 'One-Time + AMC' : 'Monthly'}
                             </p>
                             <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                                {billingCycle === 'annual'
-                                    ? `₹${locationAnnual.toLocaleString('en-IN')}/year (2 months free)`
-                                    : 'Billed monthly'}
+                                {billingType === 'monthly' && 'Billed monthly'}
+                                {billingType === 'annual' && `₹${locationAnnual.toLocaleString('en-IN')}/year (₹${locationMonthly.toLocaleString('en-IN')}/month x 10 months — save 16.67%)`}
+                                {billingType === 'one_time_amc' && (
+                                    endpointType === 'default'
+                                        ? `₹${effectiveOneTimeFee.toLocaleString('en-IN')} one-time + ₹${effectiveAmc.toLocaleString('en-IN')} AMC/year`
+                                        : `₹${effectiveOneTimeFee.toLocaleString('en-IN')} one-time (no AMC)`
+                                )}
                             </p>
                         </div>
                         <div className="text-right">
                             <p className="text-3xl font-bold text-primary-600">
-                                ₹{(billingCycle === 'annual' ? locationAnnual : locationMonthly).toLocaleString('en-IN')}
+                                {billingType === 'monthly' && `₹${locationMonthly.toLocaleString('en-IN')}`}
+                                {billingType === 'annual' && `₹${locationAnnual.toLocaleString('en-IN')}`}
+                                {billingType === 'one_time_amc' && `₹${effectiveOneTimeFee.toLocaleString('en-IN')}`}
                             </p>
                             <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                                {billingCycle === 'annual' ? '/year' : '/month'}
+                                {billingType === 'monthly' && '/month'}
+                                {billingType === 'annual' && '/year'}
+                                {billingType === 'one_time_amc' && 'one-time'}
                             </p>
                         </div>
                     </div>
@@ -461,6 +650,17 @@ export function Step10PerLocationTier({ onConfirmSubmit }: { onConfirmSubmit?: (
                                 : locTier?.basePrice ?? 0;
                             const locTotal = locModCost + locTierCost;
                             const locAnnual = locTotal * 10;
+                            const locOneTime = entry.oneTimeLicenseFee
+                                ? (parseInt(entry.oneTimeLicenseFee, 10) || 0)
+                                : locTotal * 24;
+                            const locAmc = entry.amcAmount
+                                ? (parseInt(entry.amcAmount, 10) || 0)
+                                : Math.round(locOneTime * 0.18);
+
+                            const billingLabel =
+                                entry.billingType === 'annual' ? 'annual'
+                                : entry.billingType === 'one_time_amc' ? 'one-time + AMC'
+                                : 'monthly';
 
                             return (
                                 <div key={loc.id} className="flex items-center justify-between text-sm py-2 border-b border-neutral-100 dark:border-neutral-800 last:border-0">
@@ -470,33 +670,67 @@ export function Step10PerLocationTier({ onConfirmSubmit }: { onConfirmSubmit?: (
                                             {loc.isHQ && <span className="ml-1.5 text-[10px] text-neutral-400">HQ</span>}
                                         </p>
                                         <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                                            {resolved.length} module{resolved.length !== 1 ? 's' : ''} · {locTier?.label || entry.userTier} tier · {entry.billingCycle}
+                                            {resolved.length} module{resolved.length !== 1 ? 's' : ''} · {locTier?.label || entry.userTier} tier · {billingLabel}
                                         </p>
                                     </div>
                                     <div className="text-right">
                                         <p className="font-bold text-primary-800 dark:text-primary-300">
-                                            ₹{(entry.billingCycle === 'annual' ? locAnnual : locTotal).toLocaleString('en-IN')}
+                                            {entry.billingType === 'monthly' && `₹${locTotal.toLocaleString('en-IN')}`}
+                                            {entry.billingType === 'annual' && `₹${locAnnual.toLocaleString('en-IN')}`}
+                                            {entry.billingType === 'one_time_amc' && `₹${locOneTime.toLocaleString('en-IN')}`}
                                         </p>
                                         <p className="text-xs text-neutral-400 dark:text-neutral-500">
-                                            /{entry.billingCycle === 'annual' ? 'year' : 'month'}
+                                            {entry.billingType === 'monthly' && '/month'}
+                                            {entry.billingType === 'annual' && '/year'}
+                                            {entry.billingType === 'one_time_amc' && (
+                                                endpointType === 'default' ? `+ ₹${locAmc.toLocaleString('en-IN')} AMC/yr` : 'one-time'
+                                            )}
                                         </p>
                                     </div>
                                 </div>
                             );
                         })}
 
-                        <div className="bg-primary-950 rounded-xl px-5 py-4 flex items-center justify-between mt-2">
-                            <div className="flex items-center gap-2">
-                                <TrendingUp size={16} className="text-primary-300" />
-                                <div>
-                                    <p className="text-sm font-bold text-white">Grand Total (Monthly)</p>
-                                    <p className="text-xs text-primary-300">If all locations billed monthly</p>
+                        <div className="bg-primary-950 rounded-xl px-5 py-4 space-y-2 mt-2">
+                            {grandTotals.totalMonthly > 0 && (
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <TrendingUp size={14} className="text-primary-300" />
+                                        <span className="text-xs text-primary-300">Monthly subscriptions</span>
+                                    </div>
+                                    <span className="text-lg font-bold text-white">₹{grandTotals.totalMonthly.toLocaleString('en-IN')}/mo</span>
                                 </div>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-2xl font-bold text-white">₹{grandMonthly.toLocaleString('en-IN')}</p>
-                                <p className="text-xs text-primary-300">Annual equivalent: ₹{grandAnnual.toLocaleString('en-IN')}</p>
-                            </div>
+                            )}
+                            {grandTotals.totalAnnual > 0 && (
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <TrendingUp size={14} className="text-primary-300" />
+                                        <span className="text-xs text-primary-300">Annual subscriptions</span>
+                                    </div>
+                                    <span className="text-lg font-bold text-white">₹{grandTotals.totalAnnual.toLocaleString('en-IN')}/yr</span>
+                                </div>
+                            )}
+                            {grandTotals.totalOneTime > 0 && (
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <ShieldCheck size={14} className="text-accent-300" />
+                                        <span className="text-xs text-primary-300">One-time licenses</span>
+                                    </div>
+                                    <span className="text-lg font-bold text-white">₹{grandTotals.totalOneTime.toLocaleString('en-IN')}</span>
+                                </div>
+                            )}
+                            {grandTotals.totalAmc > 0 && (
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <ShieldCheck size={14} className="text-accent-300" />
+                                        <span className="text-xs text-primary-300">AMC (annual)</span>
+                                    </div>
+                                    <span className="text-lg font-bold text-white">₹{grandTotals.totalAmc.toLocaleString('en-IN')}/yr</span>
+                                </div>
+                            )}
+                            {grandTotals.totalMonthly === 0 && grandTotals.totalAnnual === 0 && grandTotals.totalOneTime === 0 && (
+                                <p className="text-sm text-primary-300">Configure tiers for each location to see totals.</p>
+                            )}
                         </div>
                     </div>
                 </SectionCard>

@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import {
     IndianRupee,
     TrendingUp,
@@ -7,6 +8,7 @@ import {
     Eye,
     MoreVertical,
     ArrowUpRight,
+    ChevronRight,
     Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -42,6 +44,7 @@ function Spinner() {
 }
 
 export function BillingOverviewScreen() {
+    const navigate = useNavigate();
     const summaryQuery = useBillingSummary();
     const invoicesQuery = useInvoices({ page: 1, limit: 10 });
     const chartQuery = useRevenueChart();
@@ -199,11 +202,32 @@ export function BillingOverviewScreen() {
                 </div>
             </div>
 
+            {/* Quick Links */}
+            <div className="flex gap-4">
+                <button
+                    onClick={() => navigate('/app/billing/invoices')}
+                    className="flex-1 flex items-center justify-between bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 px-6 py-4 shadow-sm hover:shadow-md transition-all group"
+                >
+                    <span className="text-sm font-bold text-primary-950 dark:text-white">All Invoices</span>
+                    <ChevronRight className="w-5 h-5 text-neutral-400 group-hover:text-primary-600 transition-colors" />
+                </button>
+                <button
+                    onClick={() => navigate('/app/billing/payments')}
+                    className="flex-1 flex items-center justify-between bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 px-6 py-4 shadow-sm hover:shadow-md transition-all group"
+                >
+                    <span className="text-sm font-bold text-primary-950 dark:text-white">Payment History</span>
+                    <ChevronRight className="w-5 h-5 text-neutral-400 group-hover:text-primary-600 transition-colors" />
+                </button>
+            </div>
+
             {/* Recent Invoices Table */}
             <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-xl shadow-neutral-900/5 overflow-hidden transition-colors">
                 <div className="flex px-6 py-5 items-center justify-between border-b border-neutral-200 dark:border-neutral-800">
                     <h2 className="text-lg font-bold text-primary-950 dark:text-white">Recent Invoices</h2>
-                    <button className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 flex items-center gap-1">
+                    <button
+                        onClick={() => navigate('/app/billing/invoices')}
+                        className="text-sm font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 flex items-center gap-1"
+                    >
                         View All <ArrowUpRight className="w-4 h-4" />
                     </button>
                 </div>

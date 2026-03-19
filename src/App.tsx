@@ -23,6 +23,32 @@ import { PlatformMonitorScreen } from "./features/super-admin/PlatformMonitorScr
 import { ModuleCatalogueScreen } from "./features/super-admin/ModuleCatalogueScreen";
 import { ModuleAssignmentScreen } from "./features/super-admin/ModuleAssignmentScreen";
 import { AuditLogScreen } from "./features/super-admin/AuditLogScreen";
+import { PaymentHistoryScreen } from "./features/super-admin/PaymentHistoryScreen";
+import { InvoiceListScreen } from "./features/super-admin/InvoiceListScreen";
+import { InvoiceDetailScreen } from "./features/super-admin/InvoiceDetailScreen";
+import { SubscriptionDetailScreen } from "./features/super-admin/SubscriptionDetailScreen";
+
+// Company Admin Screens
+import { CompanyProfileScreen } from "./features/company-admin/CompanyProfileScreen";
+import { LocationManagementScreen } from "./features/company-admin/LocationManagementScreen";
+import { ShiftManagementScreen } from "./features/company-admin/ShiftManagementScreen";
+import { ContactManagementScreen } from "./features/company-admin/ContactManagementScreen";
+import { NoSeriesManagementScreen } from "./features/company-admin/NoSeriesManagementScreen";
+import { IOTReasonManagementScreen } from "./features/company-admin/IOTReasonManagementScreen";
+import { SystemControlsScreen } from "./features/company-admin/SystemControlsScreen";
+import { CompanySettingsScreen } from "./features/company-admin/CompanySettingsScreen";
+import { UserManagementScreen } from "./features/company-admin/UserManagementScreen";
+import { RoleManagementScreen } from "./features/company-admin/RoleManagementScreen";
+import { FeatureToggleScreen } from "./features/company-admin/FeatureToggleScreen";
+
+// HR Org Structure Screens
+import { DepartmentScreen } from "./features/company-admin/hr/DepartmentScreen";
+import { DesignationScreen } from "./features/company-admin/hr/DesignationScreen";
+import { GradeScreen } from "./features/company-admin/hr/GradeScreen";
+import { EmployeeTypeScreen } from "./features/company-admin/hr/EmployeeTypeScreen";
+import { CostCentreScreen } from "./features/company-admin/hr/CostCentreScreen";
+import { EmployeeDirectoryScreen } from "./features/company-admin/hr/EmployeeDirectoryScreen";
+import { EmployeeProfileScreen } from "./features/company-admin/hr/EmployeeProfileScreen";
 
 // Placeholder components to prevent router crashes before we build them
 const Placeholder = ({ name }: { name: string }) => (
@@ -103,7 +129,31 @@ function App() {
         <Route path="companies/:id" element={<RequireRole roles={['super-admin']}><CompanyDetailScreen /></RequireRole>} />
         <Route path="companies/:id/modules" element={<RequireRole roles={['super-admin']}><ModuleAssignmentScreen /></RequireRole>} />
         <Route path="billing" element={<RequireRole roles={['super-admin']}><BillingOverviewScreen /></RequireRole>} />
-        <Route path="reports/audit" element={<RequireRole roles={['super-admin']}><AuditLogScreen /></RequireRole>} />
+        <Route path="billing/invoices" element={<RequireRole roles={['super-admin']}><InvoiceListScreen /></RequireRole>} />
+        <Route path="billing/invoices/:id" element={<RequireRole roles={['super-admin']}><InvoiceDetailScreen /></RequireRole>} />
+        <Route path="billing/payments" element={<RequireRole roles={['super-admin']}><PaymentHistoryScreen /></RequireRole>} />
+        <Route path="billing/subscriptions/:companyId" element={<RequireRole roles={['super-admin']}><SubscriptionDetailScreen /></RequireRole>} />
+        <Route path="reports/audit" element={<RequireRole roles={['super-admin', 'company-admin']}><AuditLogScreen /></RequireRole>} />
+        {/* Company-admin-only routes */}
+        <Route path="company/profile" element={<RequireRole roles={['company-admin']}><CompanyProfileScreen /></RequireRole>} />
+        <Route path="company/locations" element={<RequireRole roles={['company-admin']}><LocationManagementScreen /></RequireRole>} />
+        <Route path="company/shifts" element={<RequireRole roles={['company-admin']}><ShiftManagementScreen /></RequireRole>} />
+        <Route path="company/contacts" element={<RequireRole roles={['company-admin']}><ContactManagementScreen /></RequireRole>} />
+        <Route path="company/no-series" element={<RequireRole roles={['company-admin']}><NoSeriesManagementScreen /></RequireRole>} />
+        <Route path="company/iot-reasons" element={<RequireRole roles={['company-admin']}><IOTReasonManagementScreen /></RequireRole>} />
+        <Route path="company/controls" element={<RequireRole roles={['company-admin']}><SystemControlsScreen /></RequireRole>} />
+        <Route path="company/settings" element={<RequireRole roles={['company-admin']}><CompanySettingsScreen /></RequireRole>} />
+        <Route path="company/users" element={<RequireRole roles={['company-admin']}><UserManagementScreen /></RequireRole>} />
+        <Route path="company/roles" element={<RequireRole roles={['company-admin']}><RoleManagementScreen /></RequireRole>} />
+        <Route path="company/feature-toggles" element={<RequireRole roles={['company-admin']}><FeatureToggleScreen /></RequireRole>} />
+        {/* Company-admin HR routes */}
+        <Route path="company/hr/departments" element={<RequireRole roles={['company-admin']}><DepartmentScreen /></RequireRole>} />
+        <Route path="company/hr/designations" element={<RequireRole roles={['company-admin']}><DesignationScreen /></RequireRole>} />
+        <Route path="company/hr/grades" element={<RequireRole roles={['company-admin']}><GradeScreen /></RequireRole>} />
+        <Route path="company/hr/employee-types" element={<RequireRole roles={['company-admin']}><EmployeeTypeScreen /></RequireRole>} />
+        <Route path="company/hr/cost-centres" element={<RequireRole roles={['company-admin']}><CostCentreScreen /></RequireRole>} />
+        <Route path="company/hr/employees" element={<RequireRole roles={['company-admin']}><EmployeeDirectoryScreen /></RequireRole>} />
+        <Route path="company/hr/employees/:id" element={<RequireRole roles={['company-admin']}><EmployeeProfileScreen /></RequireRole>} />
         {/* Super-admin + company-admin routes */}
         <Route path="modules" element={<RequireRole roles={['super-admin', 'company-admin']}><ModuleCatalogueScreen /></RequireRole>} />
         <Route path="monitor" element={<RequireRole roles={['super-admin', 'company-admin']}><PlatformMonitorScreen /></RequireRole>} />

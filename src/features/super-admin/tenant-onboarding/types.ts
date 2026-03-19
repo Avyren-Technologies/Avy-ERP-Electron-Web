@@ -133,8 +133,10 @@ export interface LocationCommercialEntry {
     userTier: 'starter' | 'growth' | 'scale' | 'enterprise' | 'custom';
     customUserLimit: string;
     customTierPrice: string;
-    billingCycle: 'monthly' | 'annual';
+    billingType: 'monthly' | 'annual' | 'one_time_amc';
     trialDays: string;
+    oneTimeLicenseFee?: string;
+    amcAmount?: string;
 }
 
 // ---- Step Form Types ----
@@ -242,7 +244,7 @@ export interface Step7ModulesForm {
 export interface Step8TierForm {
     userTier: 'starter' | 'growth' | 'scale' | 'enterprise' | 'custom';
     customUserLimit: string;
-    billingCycle: 'monthly' | 'annual';
+    billingType: 'monthly' | 'annual' | 'one_time_amc';
     customTierPrice: string; // monthly base override
     trialDays: string;
 }

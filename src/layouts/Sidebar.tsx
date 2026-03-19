@@ -10,6 +10,8 @@ import {
     Settings, LogOut, ChevronLeft, ChevronRight, ChevronDown,
     Users, FileText, BarChart3, Package, Wrench, ClipboardList,
     ShieldCheck, Bell, HelpCircle, PanelLeftClose, PanelLeftOpen,
+    MapPin, Clock, Hash, Cpu, SlidersHorizontal, UserCog, Shield, ToggleLeft,
+    Briefcase, UserCheck, Wallet,
 } from 'lucide-react';
 import { useAuthStore, getUserInitials, getDisplayName } from '@/store/useAuthStore';
 import { useNavigate } from 'react-router-dom';
@@ -65,10 +67,99 @@ const NAV_CONFIG: NavSection[] = [
                 icon: CreditCard,
                 label: 'Billing',
                 path: '/app/billing',
+                children: [
+                    { label: 'Overview', path: '/app/billing' },
+                    { label: 'Invoices', path: '/app/billing/invoices' },
+                    { label: 'Payments', path: '/app/billing/payments' },
+                ],
             },
             {
                 icon: ShieldCheck,
                 label: 'Audit Log',
+                path: '/app/reports/audit',
+            },
+        ],
+    },
+    {
+        group: 'Company',
+        roles: ['company_admin'],
+        items: [
+            {
+                icon: Building2,
+                label: 'Company Profile',
+                path: '/app/company/profile',
+            },
+            {
+                icon: MapPin,
+                label: 'Locations',
+                path: '/app/company/locations',
+            },
+            {
+                icon: Clock,
+                label: 'Shifts & Time',
+                path: '/app/company/shifts',
+            },
+            {
+                icon: Users,
+                label: 'Key Contacts',
+                path: '/app/company/contacts',
+            },
+        ],
+    },
+    {
+        group: 'Configuration',
+        roles: ['company_admin'],
+        items: [
+            {
+                icon: Hash,
+                label: 'Number Series',
+                path: '/app/company/no-series',
+            },
+            {
+                icon: Cpu,
+                label: 'IOT Reasons',
+                path: '/app/company/iot-reasons',
+            },
+            {
+                icon: SlidersHorizontal,
+                label: 'System Controls',
+                path: '/app/company/controls',
+            },
+            {
+                icon: Settings,
+                label: 'Settings',
+                path: '/app/company/settings',
+            },
+        ],
+    },
+    {
+        group: 'People & Access',
+        roles: ['company_admin'],
+        items: [
+            {
+                icon: UserCog,
+                label: 'User Management',
+                path: '/app/company/users',
+            },
+            {
+                icon: Shield,
+                label: 'Roles & Permissions',
+                path: '/app/company/roles',
+            },
+            {
+                icon: ToggleLeft,
+                label: 'Feature Toggles',
+                path: '/app/company/feature-toggles',
+            },
+        ],
+    },
+    {
+        group: 'Reports',
+        roles: ['company_admin'],
+        items: [
+            {
+                icon: FileText,
+                label: 'Audit Logs',
                 path: '/app/reports/audit',
             },
         ],
@@ -91,27 +182,37 @@ const NAV_CONFIG: NavSection[] = [
     },
     {
         group: 'HR & People',
-        roles: ['super_admin', 'company_admin', 'hr_manager'],
+        roles: ['company_admin'],
         items: [
             {
-                icon: Users,
-                label: 'HR Management',
-                path: '/app/hr',
-                children: [
-                    { label: 'Employee Directory', path: '/app/hr/employees' },
-                    { label: 'Attendance', path: '/app/hr/attendance' },
-                    { label: 'Payroll', path: '/app/hr/payroll' },
-                    { label: 'Leave', path: '/app/hr/leave' },
-                ],
+                icon: Building2,
+                label: 'Departments',
+                path: '/app/company/hr/departments',
             },
             {
-                icon: FileText,
-                label: 'Reports',
-                path: '/app/reports',
-                children: [
-                    { label: 'Summary', path: '/app/reports/summary' },
-                    { label: 'Analytics', path: '/app/reports/analytics' },
-                ],
+                icon: Briefcase,
+                label: 'Designations',
+                path: '/app/company/hr/designations',
+            },
+            {
+                icon: BarChart3,
+                label: 'Grades & Bands',
+                path: '/app/company/hr/grades',
+            },
+            {
+                icon: UserCheck,
+                label: 'Employee Types',
+                path: '/app/company/hr/employee-types',
+            },
+            {
+                icon: Wallet,
+                label: 'Cost Centres',
+                path: '/app/company/hr/cost-centres',
+            },
+            {
+                icon: Users,
+                label: 'Employee Directory',
+                path: '/app/company/hr/employees',
             },
         ],
     },
