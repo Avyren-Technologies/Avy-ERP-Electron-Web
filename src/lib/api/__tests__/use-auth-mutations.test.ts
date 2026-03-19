@@ -57,6 +57,7 @@ vi.mock('@/store/useAuthStore', () => ({
 
 vi.mock('@/lib/api/auth', () => ({
     authApi: mockAuthApi,
+    decodeJwtPayload: vi.fn(() => ({ permissions: [] })),
 }));
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -133,7 +134,7 @@ describe('useLoginMutation', () => {
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
         expect(mockSignIn).toHaveBeenCalledTimes(1);
-        expect(mockSignIn).toHaveBeenCalledWith(mockTokens, mockUser, 'super-admin');
+        expect(mockSignIn).toHaveBeenCalledWith(mockTokens, { ...mockUser, permissions: [] }, 'super-admin');
     });
 
     it('navigates to /app/dashboard on success', async () => {

@@ -1,5 +1,6 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from 'sonner';
 import { AuthLayout } from "./layouts/AuthLayout";
 import { DashboardLayout } from "./layouts/DashboardLayout";
 import { useAuthStore } from "./store/useAuthStore";
@@ -13,6 +14,7 @@ import { ForgotPasswordScreen } from "./features/auth/ForgotPasswordScreen";
 import { VerifyResetCodeScreen } from "./features/auth/VerifyResetCodeScreen";
 import { ResetPasswordScreen } from "./features/auth/ResetPasswordScreen";
 import { DashboardScreen } from "./features/super-admin/DashboardScreen";
+import { CompanyAdminDashboard } from "./features/company-admin/CompanyAdminDashboard";
 import { CompanyListScreen } from "./features/super-admin/CompanyListScreen";
 import { CompanyDetailScreen } from "./features/super-admin/CompanyDetailScreen";
 import { AddCompanyWizard } from "./features/super-admin/AddCompanyWizard";
@@ -20,6 +22,7 @@ import { BillingOverviewScreen } from "./features/super-admin/BillingOverviewScr
 import { PlatformMonitorScreen } from "./features/super-admin/PlatformMonitorScreen";
 import { ModuleCatalogueScreen } from "./features/super-admin/ModuleCatalogueScreen";
 import { ModuleAssignmentScreen } from "./features/super-admin/ModuleAssignmentScreen";
+import { AuditLogScreen } from "./features/super-admin/AuditLogScreen";
 
 // Placeholder components to prevent router crashes before we build them
 const Placeholder = ({ name }: { name: string }) => (
@@ -63,8 +66,16 @@ const RequireRole = ({ children, roles }: { children: React.ReactNode; roles: Us
   return children;
 };
 
+function RoleBasedDashboard() {
+  const userRole = useAuthStore((s) => s.userRole);
+  if (userRole === 'company-admin') return <CompanyAdminDashboard />;
+  return <DashboardScreen />;
+}
+
 function App() {
   return (
+    <>
+    <Toaster position="top-right" richColors closeButton toastOptions={{ style: { fontFamily: 'Inter, system-ui, sans-serif' } }} />
     <Routes>
       {/* Public Auth Routes */}
       <Route element={<AuthLayout />}>
@@ -85,13 +96,14 @@ function App() {
         }
       >
         <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<DashboardScreen />} />
+        <Route path="dashboard" element={<RoleBasedDashboard />} />
         {/* Super-admin-only routes */}
         <Route path="companies" element={<RequireRole roles={['super-admin']}><CompanyListScreen /></RequireRole>} />
         <Route path="companies/add" element={<RequireRole roles={['super-admin']}><AddCompanyWizard /></RequireRole>} />
         <Route path="companies/:id" element={<RequireRole roles={['super-admin']}><CompanyDetailScreen /></RequireRole>} />
         <Route path="companies/:id/modules" element={<RequireRole roles={['super-admin']}><ModuleAssignmentScreen /></RequireRole>} />
         <Route path="billing" element={<RequireRole roles={['super-admin']}><BillingOverviewScreen /></RequireRole>} />
+        <Route path="reports/audit" element={<RequireRole roles={['super-admin']}><AuditLogScreen /></RequireRole>} />
         {/* Super-admin + company-admin routes */}
         <Route path="modules" element={<RequireRole roles={['super-admin', 'company-admin']}><ModuleCatalogueScreen /></RequireRole>} />
         <Route path="monitor" element={<RequireRole roles={['super-admin', 'company-admin']}><PlatformMonitorScreen /></RequireRole>} />
@@ -103,6 +115,7 @@ function App() {
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
 }
 

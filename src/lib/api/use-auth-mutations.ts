@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { authApi, decodeJwtPayload } from './auth';
+import { authApi, decodeJwtPayload } from '@/lib/api/auth';
 import { useAuthStore, mapBackendRole } from '@/store/useAuthStore';
 
 export function useLoginMutation() {

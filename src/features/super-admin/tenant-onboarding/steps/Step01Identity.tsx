@@ -71,8 +71,12 @@ export function Step01Identity({ onConfirmSubmit }: { onConfirmSubmit?: () => vo
     const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        const url = URL.createObjectURL(file);
-        setStep1({ logoFile: file, logoPreviewUrl: url });
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = typeof reader.result === 'string' ? reader.result : '';
+            setStep1({ logoFile: file, logoPreviewUrl: result });
+        };
+        reader.readAsDataURL(file);
     };
 
     const removeLogo = () => {
@@ -226,6 +230,33 @@ export function Step01Identity({ onConfirmSubmit }: { onConfirmSubmit?: () => vo
                     <TwoCol>
                         <Controller name="cin" control={control} render={({ field, fieldState }) => (
                             <FormInput label="CIN Number" placeholder="U72900KA2019PTC312847" {...field} value={field.value || ''} onChange={v => field.onChange(v.toUpperCase())} hint="Company Identification Number from MCA" error={fieldState.error?.message} />
+                        )} />
+                        <Controller name="employees" control={control} render={({ field, fieldState }) => (
+                            <FormInput
+                                label="Approx Employee Count"
+                                placeholder="e.g. 120"
+                                type="number"
+                                {...field}
+                                value={field.value || ''}
+                                hint="Used to derive initial company size bucket"
+                                error={fieldState.error?.message}
+                            />
+                        )} />
+                    </TwoCol>
+                )}
+
+                {!isCorporate && (
+                    <TwoCol>
+                        <Controller name="employees" control={control} render={({ field, fieldState }) => (
+                            <FormInput
+                                label="Approx Employee Count"
+                                placeholder="e.g. 120"
+                                type="number"
+                                {...field}
+                                value={field.value || ''}
+                                hint="Used to derive initial company size bucket"
+                                error={fieldState.error?.message}
+                            />
                         )} />
                         <div />
                     </TwoCol>

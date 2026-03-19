@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { STEP_META, TOTAL_STEPS } from './constants';
 import { useTenantOnboardingStore } from './store';
+import { useOnboardTenant } from '@/features/super-admin/api/use-tenant-queries';
 
 // Steps
 import { Step01Identity } from './steps/Step01Identity';
@@ -211,12 +212,16 @@ export interface TenantOnboardingWizardProps {
 }
 
 export function TenantOnboardingWizard({ onClose, onSuccess }: TenantOnboardingWizardProps) {
+    const store = useTenantOnboardingStore();
     const {
         currentStep, goNext, goPrev, goToStep, reset, isSubmitting, setIsSubmitting, step1,
-    } = useTenantOnboardingStore();
+    } = store;
 
     const [showConfirm, setShowConfirm] = useState(false);
     const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+    const [submitError, setSubmitError] = useState('');
+
+    const onboardMutation = useOnboardTenant();
 
     const stepMeta = STEP_META[currentStep - 1];
     const StepComponent = STEP_COMPONENTS[currentStep];
@@ -228,14 +233,220 @@ export function TenantOnboardingWizard({ onClose, onSuccess }: TenantOnboardingW
 
     const handleConfirm = async () => {
         setIsSubmitting(true);
+        setSubmitError('');
         try {
-            // TODO — Replace with actual API call to create tenant
-            await new Promise((resolve) => setTimeout(resolve, 2000));
+            // Build the full API payload from the Zustand store
+            const s = useTenantOnboardingStore.getState();
+
+            const payload = {
+                identity: {
+                    displayName: s.step1.displayName,
+                    legalName: s.step1.legalName,
+                    businessType: s.step1.businessType,
+                    industry: s.step1.industry,
+                    companyCode: s.step1.companyCode,
+                    shortName: s.step1.shortName || undefined,
+                    incorporationDate: s.step1.incorporationDate || undefined,
+                    employeeCount: s.step1.employees || undefined,
+                    cin: s.step1.cin || undefined,
+                    website: s.step1.website || undefined,
+                    emailDomain: s.step1.emailDomain,
+                    logoUrl: s.step1.logoPreviewUrl || undefined,
+                    wizardStatus: s.step1.status || 'Draft',
+                },
+                statutory: {
+                    pan: s.step2.pan,
+                    tan: s.step2.tan || undefined,
+                    gstin: s.step2.gstin || undefined,
+                    pfRegNo: s.step2.pfRegNo || undefined,
+                    esiCode: s.step2.esiCode || undefined,
+                    ptReg: s.step2.ptReg || undefined,
+                    lwfrNo: s.step2.lwfrNo || undefined,
+                    rocState: s.step2.rocState || undefined,
+                },
+                address: {
+                    registered: {
+                        line1: s.step3.regLine1,
+                        line2: s.step3.regLine2 || undefined,
+                        city: s.step3.regCity,
+                        district: s.step3.regDistrict || undefined,
+                        state: s.step3.regState,
+                        pin: s.step3.regPin,
+                        country: s.step3.regCountry,
+                        stdCode: s.step3.regStdCode || undefined,
+                    },
+                    sameAsRegistered: s.step3.sameAsRegistered,
+                    corporate: s.step3.sameAsRegistered ? undefined : {
+                        line1: s.step3.corpLine1,
+                        line2: s.step3.corpLine2 || undefined,
+                        city: s.step3.corpCity,
+                        district: s.step3.corpDistrict || undefined,
+                        state: s.step3.corpState,
+                        pin: s.step3.corpPin,
+                        country: s.step3.corpCountry,
+                        stdCode: s.step3.corpStdCode || undefined,
+                    },
+                },
+                fiscal: {
+                    fyType: s.step4.fyType,
+                    fyCustomStartMonth: s.step4.fyCustomStartMonth || undefined,
+                    fyCustomEndMonth: s.step4.fyCustomEndMonth || undefined,
+                    payrollFreq: s.step4.payrollFreq,
+                    cutoffDay: s.step4.cutoffDay,
+                    disbursementDay: s.step4.disbursementDay,
+                    weekStart: s.step4.weekStart,
+                    timezone: s.step4.timezone,
+                    workingDays: s.step4.workingDays,
+                },
+                preferences: {
+                    currency: s.step5.currency,
+                    language: s.step5.language,
+                    dateFormat: s.step5.dateFormat,
+                    numberFormat: s.step5.numberFormat || undefined,
+                    timeFormat: s.step5.timeFormat || undefined,
+                    indiaCompliance: s.step5.indiaCompliance,
+                    multiCurrency: s.step5.multiCurrency,
+                    ess: s.step5.ess,
+                    mobileApp: s.step5.mobileApp,
+                    webApp: s.step5.webApp,
+                    systemApp: s.step5.systemApp,
+                    aiChatbot: s.step5.aiChatbot,
+                    eSign: s.step5.eSign,
+                    biometric: s.step5.biometric,
+                    bankIntegration: s.step5.bankIntegration,
+                    emailNotif: s.step5.emailNotif,
+                    whatsapp: s.step5.whatsapp,
+                    razorpayEnabled: s.step5.razorpayEnabled,
+                    razorpayKeyId: s.step5.razorpayKeyId || undefined,
+                    razorpayKeySecret: s.step5.razorpayKeySecret || undefined,
+                    razorpayWebhookSecret: s.step5.razorpayWebhookSecret || undefined,
+                    razorpayAccountNumber: s.step5.razorpayAccountNumber || undefined,
+                    razorpayAutoDisbursement: s.step5.razorpayAutoDisbursement,
+                    razorpayTestMode: s.step5.razorpayTestMode,
+                },
+                endpoint: {
+                    endpointType: s.step6.endpointType as 'default' | 'custom',
+                    customBaseUrl: s.step6.customBaseUrl || undefined,
+                },
+                strategy: {
+                    multiLocationMode: s.strategyConfig.multiLocationMode,
+                    locationConfig: s.strategyConfig.locationConfig as 'common' | 'per-location',
+                },
+                locations: s.step10.locations.map((loc) => {
+                    const locCommercial = s.locationCommercial[loc.id];
+                    return {
+                        name: loc.name,
+                        code: loc.code,
+                        facilityType: loc.facilityType,
+                        customFacilityType: loc.customFacilityType || undefined,
+                        status: loc.status,
+                        isHQ: loc.isHQ,
+                        addressLine1: loc.addressLine1 || undefined,
+                        addressLine2: loc.addressLine2 || undefined,
+                        city: loc.city || undefined,
+                        district: loc.district || undefined,
+                        state: loc.state || undefined,
+                        pin: loc.pin || undefined,
+                        country: loc.country || undefined,
+                        gstin: loc.gstin || undefined,
+                        stateGST: loc.stateGST || undefined,
+                        contactName: loc.contactName || undefined,
+                        contactDesignation: loc.contactDesignation || undefined,
+                        contactEmail: loc.contactEmail || undefined,
+                        contactCountryCode: loc.contactCountryCode || undefined,
+                        contactPhone: loc.contactPhone || undefined,
+                        geoEnabled: loc.geoEnabled,
+                        geoLocationName: loc.geoLocationName || undefined,
+                        geoLat: loc.geoLat || undefined,
+                        geoLng: loc.geoLng || undefined,
+                        geoRadius: loc.geoRadius,
+                        geoShape: loc.geoShape || undefined,
+                        // Per-location commercial data
+                        moduleIds: locCommercial?.moduleIds ?? undefined,
+                        customModulePricing: locCommercial?.customModulePricing ?? undefined,
+                        userTier: locCommercial?.userTier ?? undefined,
+                        customUserLimit: locCommercial?.customUserLimit || undefined,
+                        customTierPrice: locCommercial?.customTierPrice || undefined,
+                        billingCycle: locCommercial?.billingCycle ?? undefined,
+                        trialDays: locCommercial?.trialDays ? parseInt(locCommercial.trialDays) : undefined,
+                    };
+                }),
+                commercial: s.strategyConfig.locationConfig === 'common' ? {
+                    selectedModuleIds: s.step7.selectedModuleIds,
+                    customModulePricing: s.step7.customModulePricing,
+                    userTier: s.step8.userTier,
+                    customUserLimit: s.step8.customUserLimit || undefined,
+                    customTierPrice: s.step8.customTierPrice || undefined,
+                    billingCycle: s.step8.billingCycle,
+                    trialDays: s.step8.trialDays ? parseInt(s.step8.trialDays) : undefined,
+                } : undefined,
+                contacts: s.step9.contacts.map((c) => ({
+                    name: c.name,
+                    designation: c.designation || undefined,
+                    department: c.department || undefined,
+                    type: c.type,
+                    email: c.email,
+                    countryCode: c.countryCode || undefined,
+                    mobile: c.mobile,
+                    linkedin: c.linkedin || undefined,
+                })),
+                shifts: {
+                    dayStartTime: s.step11.dayStartTime || undefined,
+                    dayEndTime: s.step11.dayEndTime || undefined,
+                    weeklyOffs: s.step11.weeklyOffs,
+                    items: s.step11.shifts.map((sh) => ({
+                        name: sh.name,
+                        fromTime: sh.fromTime,
+                        toTime: sh.toTime,
+                        noShuffle: sh.noShuffle,
+                        downtimeSlots: sh.downtimeSlots,
+                    })),
+                },
+                noSeries: s.step12.noSeries.map((ns) => ({
+                    code: ns.code,
+                    linkedScreen: ns.linkedScreen,
+                    description: ns.description || undefined,
+                    prefix: ns.prefix,
+                    suffix: ns.suffix || undefined,
+                    numberCount: ns.numberCount ? parseInt(ns.numberCount) : undefined,
+                    startNumber: ns.startNumber ? parseInt(ns.startNumber) : undefined,
+                })),
+                iotReasons: s.step13.reasons.map((r) => ({
+                    reasonType: r.reasonType,
+                    reason: r.reason,
+                    description: r.description || undefined,
+                    department: r.department || undefined,
+                    planned: r.planned,
+                    duration: r.duration || undefined,
+                })),
+                controls: {
+                    ncEditMode: s.step14.ncEditMode,
+                    loadUnload: s.step14.loadUnload,
+                    cycleTime: s.step14.cycleTime,
+                    payrollLock: s.step14.payrollLock,
+                    leaveCarryForward: s.step14.leaveCarryForward,
+                    overtimeApproval: s.step14.overtimeApproval,
+                    mfa: s.step14.mfa,
+                },
+                users: s.step15.users.map((u) => ({
+                    fullName: u.fullName,
+                    username: u.username,
+                    password: u.password,
+                    role: u.role,
+                    email: u.email,
+                    mobile: u.mobile || undefined,
+                    department: u.department || undefined,
+                })),
+            };
+
+            await onboardMutation.mutateAsync(payload);
             setShowConfirm(false);
             onSuccess?.(step1.displayName);
             reset();
-        } catch (e) {
+        } catch (e: any) {
             console.error('Failed to create company', e);
+            const msg = e?.response?.data?.message ?? e?.message ?? 'Failed to create company. Please try again.';
+            setSubmitError(msg);
         } finally {
             setIsSubmitting(false);
         }
@@ -430,12 +641,22 @@ export function TenantOnboardingWizard({ onClose, onSuccess }: TenantOnboardingW
 
             {/* ===== CONFIRM SUBMIT MODAL ===== */}
             {showConfirm && (
-                <ConfirmSubmitModal
-                    companyName={step1.displayName}
-                    onConfirm={handleConfirm}
-                    onCancel={() => setShowConfirm(false)}
-                    isLoading={isSubmitting}
-                />
+                <>
+                    <ConfirmSubmitModal
+                        companyName={step1.displayName}
+                        onConfirm={handleConfirm}
+                        onCancel={() => { setShowConfirm(false); setSubmitError(''); }}
+                        isLoading={isSubmitting}
+                    />
+                    {submitError && (
+                        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] max-w-md w-full px-4">
+                            <div className="bg-danger-600 text-white rounded-xl px-5 py-3 shadow-xl text-sm font-medium flex items-center gap-3">
+                                <AlertCircle size={16} className="flex-shrink-0" />
+                                {submitError}
+                            </div>
+                        </div>
+                    )}
+                </>
             )}
 
             {/* ===== DISCARD CONFIRM MODAL ===== */}

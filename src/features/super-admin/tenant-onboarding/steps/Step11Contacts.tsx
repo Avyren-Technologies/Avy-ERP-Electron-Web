@@ -147,7 +147,7 @@ export function Step11Contacts() {
                                                                 <FormInput
                                                                     label="Custom Type"
                                                                     placeholder="e.g. Procurement Contact"
-                                                                    value={isCustom ? subField.value : ''}
+                                                                    value={isCustom ? (subField.value ?? '') : ''}
                                                                     onChange={(v) => {
                                                                         if (v.length > 0 && v.length <= 50) subField.onChange(v);
                                                                         else if (v.length === 0) subField.onChange('');

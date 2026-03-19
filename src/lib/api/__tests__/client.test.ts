@@ -30,7 +30,7 @@ const localStorageMock = {
     clear: vi.fn(() => { Object.keys(localStore).forEach((k) => delete localStore[k]); }),
 };
 
-Object.defineProperty(global, 'localStorage', {
+Object.defineProperty(globalThis, 'localStorage', {
     value: localStorageMock,
     writable: true,
 });
@@ -38,7 +38,7 @@ Object.defineProperty(global, 'localStorage', {
 // ── window.location mock ──────────────────────────────────────────────────────
 
 const locationMock = { pathname: '/app/dashboard', href: 'http://localhost/app/dashboard' };
-Object.defineProperty(global, 'window', {
+Object.defineProperty(globalThis, 'window', {
     value: { location: locationMock },
     writable: true,
 });
@@ -264,23 +264,65 @@ describe('client — response interceptor (TOKEN_EXPIRED, successful refresh)', 
         }));
 
         vi.doMock('axios', async (importOriginal) => {
-            const actual: any = await importOriginal();
-            // Handle CJS/ESM interop: axios may be at actual.default or actual directly
-            const axiosInstance = actual.default ?? actual;
-            // Keep the real axios.create for the main `client` instance (first call),
-            // use our spy for refreshClient (second call).
             let callCount = 0;
+
+            let requestOnFulfilled: ((config: any) => any) | undefined;
+            let responseOnFulfilled: ((response: any) => any) | undefined;
+            let responseOnRejected: ((error: any) => any) | undefined;
+
+            // Minimal axios-like instance that supports interceptors + adapter.
+            // This lets us run the real interceptor registration code in client.ts.
+            const mainClient: any = (async (config: any) => {
+                let cfg = { ...config, headers: { ...(config?.headers ?? {}) } };
+                if (requestOnFulfilled) {
+                    cfg = await requestOnFulfilled(cfg);
+                }
+
+                const adapter = mainClient.defaults.adapter;
+                if (typeof adapter !== 'function') {
+                    throw new Error('No axios adapter configured for test');
+                }
+
+                try {
+                    const response = await adapter(cfg);
+                    return responseOnFulfilled ? responseOnFulfilled(response) : response;
+                } catch (err) {
+                    return responseOnRejected ? responseOnRejected(err) : Promise.reject(err);
+                }
+            }) as any;
+
+            mainClient.defaults = { adapter: undefined as any, headers: {} };
+            mainClient.interceptors = {
+                request: {
+                    use: (onFulfilled: any) => {
+                        requestOnFulfilled = onFulfilled;
+                    },
+                },
+                response: {
+                    use: (onFulfilled: any, onRejected: any) => {
+                        responseOnFulfilled = onFulfilled;
+                        responseOnRejected = onRejected;
+                    },
+                },
+            };
+
+            mainClient.get = (url: string, config?: any) =>
+                mainClient({
+                    ...(config ?? {}),
+                    method: 'get',
+                    url,
+                    headers: config?.headers ?? {},
+                });
+
+            const refreshClient = { post: refreshPost, get: vi.fn(), defaults: {} };
+
             return {
-                ...actual,
+                __esModule: true,
                 default: {
-                    ...axiosInstance,
-                    create: (...args: any[]) => {
+                    create: () => {
                         callCount++;
-                        if (callCount === 2) {
-                            // This is the refreshClient
-                            return { post: refreshPost, get: vi.fn(), defaults: {} };
-                        }
-                        return axiosInstance.create(...args);
+                        // client.ts creates `refreshClient` first, then `client`.
+                        return callCount === 1 ? refreshClient : mainClient;
                     },
                 },
             };
@@ -337,19 +379,52 @@ describe('client — response interceptor (TOKEN_EXPIRED, refresh fails)', () =>
         const refreshPost = vi.fn().mockRejectedValue(new Error('Refresh network error'));
 
         vi.doMock('axios', async (importOriginal) => {
-            const actual: any = await importOriginal();
-            const axiosInstance = actual.default ?? actual;
             let callCount = 0;
+            let requestOnFulfilled: ((config: any) => any) | undefined;
+            let responseOnFulfilled: ((response: any) => any) | undefined;
+            let responseOnRejected: ((error: any) => any) | undefined;
+
+            const mainClient: any = (async (config: any) => {
+                let cfg = { ...config, headers: { ...(config?.headers ?? {}) } };
+                if (requestOnFulfilled) cfg = await requestOnFulfilled(cfg);
+                const adapter = mainClient.defaults.adapter;
+                if (typeof adapter !== 'function') throw new Error('No axios adapter configured for test');
+                try {
+                    const response = await adapter(cfg);
+                    return responseOnFulfilled ? responseOnFulfilled(response) : response;
+                } catch (err) {
+                    return responseOnRejected ? responseOnRejected(err) : Promise.reject(err);
+                }
+            }) as any;
+
+            mainClient.defaults = { adapter: undefined as any, headers: {} };
+            mainClient.interceptors = {
+                request: { use: (onFulfilled: any) => (requestOnFulfilled = onFulfilled) },
+                response: {
+                    use: (onFulfilled: any, onRejected: any) => {
+                        responseOnFulfilled = onFulfilled;
+                        responseOnRejected = onRejected;
+                    },
+                },
+            };
+
+            mainClient.get = (url: string, config?: any) =>
+                mainClient({
+                    ...(config ?? {}),
+                    method: 'get',
+                    url,
+                    headers: config?.headers ?? {},
+                });
+
+            const refreshClient = { post: refreshPost, get: vi.fn(), defaults: {} };
+
             return {
-                ...actual,
+                __esModule: true,
                 default: {
-                    ...axiosInstance,
-                    create: (...args: any[]) => {
+                    create: () => {
                         callCount++;
-                        if (callCount === 2) {
-                            return { post: refreshPost, get: vi.fn(), defaults: {} };
-                        }
-                        return axiosInstance.create(...args);
+                        // client.ts creates `refreshClient` first, then `client`.
+                        return callCount === 1 ? refreshClient : mainClient;
                     },
                 },
             };
@@ -387,19 +462,52 @@ describe('client — response interceptor (TOKEN_EXPIRED, refresh fails)', () =>
         });
 
         vi.doMock('axios', async (importOriginal) => {
-            const actual: any = await importOriginal();
-            const axiosInstance = actual.default ?? actual;
             let callCount = 0;
+            let requestOnFulfilled: ((config: any) => any) | undefined;
+            let responseOnFulfilled: ((response: any) => any) | undefined;
+            let responseOnRejected: ((error: any) => any) | undefined;
+
+            const mainClient: any = (async (config: any) => {
+                let cfg = { ...config, headers: { ...(config?.headers ?? {}) } };
+                if (requestOnFulfilled) cfg = await requestOnFulfilled(cfg);
+                const adapter = mainClient.defaults.adapter;
+                if (typeof adapter !== 'function') throw new Error('No axios adapter configured for test');
+                try {
+                    const response = await adapter(cfg);
+                    return responseOnFulfilled ? responseOnFulfilled(response) : response;
+                } catch (err) {
+                    return responseOnRejected ? responseOnRejected(err) : Promise.reject(err);
+                }
+            }) as any;
+
+            mainClient.defaults = { adapter: undefined as any, headers: {} };
+            mainClient.interceptors = {
+                request: { use: (onFulfilled: any) => (requestOnFulfilled = onFulfilled) },
+                response: {
+                    use: (onFulfilled: any, onRejected: any) => {
+                        responseOnFulfilled = onFulfilled;
+                        responseOnRejected = onRejected;
+                    },
+                },
+            };
+
+            mainClient.get = (url: string, config?: any) =>
+                mainClient({
+                    ...(config ?? {}),
+                    method: 'get',
+                    url,
+                    headers: config?.headers ?? {},
+                });
+
+            const refreshClient = { post: refreshPost, get: vi.fn(), defaults: {} };
+
             return {
-                ...actual,
+                __esModule: true,
                 default: {
-                    ...axiosInstance,
-                    create: (...args: any[]) => {
+                    create: () => {
                         callCount++;
-                        if (callCount === 2) {
-                            return { post: refreshPost, get: vi.fn(), defaults: {} };
-                        }
-                        return axiosInstance.create(...args);
+                        // client.ts creates `refreshClient` first, then `client`.
+                        return callCount === 1 ? refreshClient : mainClient;
                     },
                 },
             };
@@ -438,19 +546,52 @@ describe('client — response interceptor (TOKEN_EXPIRED, refresh fails)', () =>
         });
 
         vi.doMock('axios', async (importOriginal) => {
-            const actual: any = await importOriginal();
-            const axiosInstance = actual.default ?? actual;
             let callCount = 0;
+            let requestOnFulfilled: ((config: any) => any) | undefined;
+            let responseOnFulfilled: ((response: any) => any) | undefined;
+            let responseOnRejected: ((error: any) => any) | undefined;
+
+            const mainClient: any = (async (config: any) => {
+                let cfg = { ...config, headers: { ...(config?.headers ?? {}) } };
+                if (requestOnFulfilled) cfg = await requestOnFulfilled(cfg);
+                const adapter = mainClient.defaults.adapter;
+                if (typeof adapter !== 'function') throw new Error('No axios adapter configured for test');
+                try {
+                    const response = await adapter(cfg);
+                    return responseOnFulfilled ? responseOnFulfilled(response) : response;
+                } catch (err) {
+                    return responseOnRejected ? responseOnRejected(err) : Promise.reject(err);
+                }
+            }) as any;
+
+            mainClient.defaults = { adapter: undefined as any, headers: {} };
+            mainClient.interceptors = {
+                request: { use: (onFulfilled: any) => (requestOnFulfilled = onFulfilled) },
+                response: {
+                    use: (onFulfilled: any, onRejected: any) => {
+                        responseOnFulfilled = onFulfilled;
+                        responseOnRejected = onRejected;
+                    },
+                },
+            };
+
+            mainClient.get = (url: string, config?: any) =>
+                mainClient({
+                    ...(config ?? {}),
+                    method: 'get',
+                    url,
+                    headers: config?.headers ?? {},
+                });
+
+            const refreshClient = { post: refreshPost, get: vi.fn(), defaults: {} };
+
             return {
-                ...actual,
+                __esModule: true,
                 default: {
-                    ...axiosInstance,
-                    create: (...args: any[]) => {
+                    create: () => {
                         callCount++;
-                        if (callCount === 2) {
-                            return { post: refreshPost, get: vi.fn(), defaults: {} };
-                        }
-                        return axiosInstance.create(...args);
+                        // client.ts creates `refreshClient` first, then `client`.
+                        return callCount === 1 ? refreshClient : mainClient;
                     },
                 },
             };

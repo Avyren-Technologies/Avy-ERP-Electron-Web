@@ -65,11 +65,11 @@ const NAV_CONFIG: NavSection[] = [
                 icon: CreditCard,
                 label: 'Billing',
                 path: '/app/billing',
-                children: [
-                    { label: 'Overview', path: '/app/billing' },
-                    { label: 'Invoices', path: '/app/billing/invoices' },
-                    { label: 'Transactions', path: '/app/billing/transactions' },
-                ],
+            },
+            {
+                icon: ShieldCheck,
+                label: 'Audit Log',
+                path: '/app/reports/audit',
             },
         ],
     },

@@ -5,6 +5,7 @@ import { client } from './client';
 export interface ApiResponse<T = any> {
     success: boolean;
     data?: T;
+    meta?: any;
     message?: string;
     error?: string;
     code?: string;

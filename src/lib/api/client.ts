@@ -1,5 +1,7 @@
 import axios from 'axios';
 
+import { showError, showWarning } from '@/lib/toast';
+
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
 // Separate instance for refresh calls — avoids interceptor infinite loops
@@ -39,11 +41,75 @@ function getStoredRefreshToken(): string | null {
     }
 }
 
-// ── Request interceptor: attach Bearer token ──
+// ── Proactive token refresh ──
+
+/**
+ * Returns true if the JWT will expire within `thresholdMs` milliseconds.
+ * Defaults to 60 seconds — enough time to refresh before the server rejects it.
+ */
+function isTokenExpiringSoon(token: string, thresholdMs = 60_000): boolean {
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const expiresAt = payload.exp * 1000;
+        return Date.now() > expiresAt - thresholdMs;
+    } catch {
+        return false;
+    }
+}
+
+let isProactiveRefreshing = false;
+
+/**
+ * If the access token is about to expire, silently refresh it before the
+ * request goes out. This avoids 401 round-trips for most requests.
+ */
+async function proactiveRefreshIfNeeded(): Promise<string | null> {
+    const accessToken = getStoredAccessToken();
+    if (!accessToken || !isTokenExpiringSoon(accessToken)) {
+        return accessToken;
+    }
+
+    // Avoid duplicate proactive refreshes
+    if (isProactiveRefreshing) return accessToken;
+    isProactiveRefreshing = true;
+
+    try {
+        const storedRefreshToken = getStoredRefreshToken();
+        if (!storedRefreshToken) return accessToken;
+
+        const { data } = await refreshClient.post('/auth/refresh-token', {
+            refreshToken: storedRefreshToken,
+        });
+
+        if (data.success && data.data?.tokens) {
+            const newTokens = data.data.tokens;
+            localStorage.setItem('auth_tokens', JSON.stringify(newTokens));
+
+            // Update Zustand store
+            try {
+                const { useAuthStore } = await import('@/store/useAuthStore');
+                useAuthStore.getState().updateTokens(newTokens);
+            } catch {
+                // Store not available — tokens already saved to localStorage
+            }
+
+            return newTokens.accessToken;
+        }
+    } catch {
+        // Proactive refresh failed — let the request proceed with the old token;
+        // the response interceptor will handle the 401 if it actually expires.
+    } finally {
+        isProactiveRefreshing = false;
+    }
+
+    return accessToken;
+}
+
+// ── Request interceptor: attach Bearer token (with proactive refresh) ──
 
 client.interceptors.request.use(
-    (config) => {
-        const token = getStoredAccessToken();
+    async (config) => {
+        const token = await proactiveRefreshIfNeeded();
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -75,6 +141,17 @@ client.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config;
+
+        // 403 — permission denied
+        if (error.response?.status === 403) {
+            showWarning('Access Denied', 'You do not have permission to perform this action.');
+            return Promise.reject(error);
+        }
+
+        // 5xx — server errors
+        if (error.response?.status && error.response.status >= 500) {
+            showError('Server Error', 'Something went wrong. Please try again later.');
+        }
 
         // Only attempt refresh on 401 with TOKEN_EXPIRED code
         const isTokenExpired =

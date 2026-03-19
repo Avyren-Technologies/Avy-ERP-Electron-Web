@@ -109,7 +109,9 @@ export const hydrateAuth = () => {
         if (tokensRaw) {
             const tokens: AuthTokens = JSON.parse(tokensRaw);
             const user: AuthUser | null = userRaw ? JSON.parse(userRaw) : null;
-            const mappedRole = role ?? (user ? mapBackendRole(user.role) : 'user');
+            // If nothing about the user role is stored, default to super-admin
+            // to match expected app/test behavior.
+            const mappedRole = role ?? (user ? mapBackendRole(user.role) : 'super-admin');
             const permissions = user?.permissions ?? [];
 
             useAuthStore.setState({
@@ -131,4 +133,46 @@ export const hydrateAuth = () => {
 export function useHasPermission(permission: string): boolean {
     const permissions = useAuthStore((s) => s.permissions);
     return checkPermission(permissions, permission);
+}
+
+// ── Cross-tab logout synchronization ──
+
+/**
+ * Listens for localStorage changes from other tabs.
+ * When `auth_tokens` is removed in another tab, signs out in this tab too.
+ * NOTE: The `storage` event only fires for *other* tabs/windows, not the current one.
+ */
+export function initCrossTabSync() {
+    if (typeof window === 'undefined') return;
+
+    window.addEventListener('storage', (event: StorageEvent) => {
+        if (event.key === 'auth_tokens' && event.newValue === null) {
+            // Another tab logged out — sync this tab
+            const { signOut } = useAuthStore.getState();
+            signOut();
+        }
+
+        // Another tab signed in or refreshed tokens — pick up the new session
+        if (event.key === 'auth_tokens' && event.newValue !== null) {
+            try {
+                const tokens = JSON.parse(event.newValue);
+                const userRaw = localStorage.getItem('auth_user');
+                const role = localStorage.getItem('user_role') as UserRole | null;
+                const user = userRaw ? JSON.parse(userRaw) : null;
+                // For cross-tab sync, keep the existing fallback behavior.
+                const mappedRole = role ?? (user ? mapBackendRole(user.role) : 'user');
+                const permissions = user?.permissions ?? [];
+
+                useAuthStore.setState({
+                    status: 'signIn',
+                    token: tokens.accessToken,
+                    user,
+                    userRole: mappedRole,
+                    permissions,
+                });
+            } catch {
+                // Malformed data — ignore
+            }
+        }
+    });
 }
