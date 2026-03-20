@@ -12,6 +12,13 @@ import {
     ShieldCheck, Bell, HelpCircle, PanelLeftClose, PanelLeftOpen,
     MapPin, Clock, Hash, Cpu, SlidersHorizontal, UserCog, Shield, ToggleLeft,
     Briefcase, UserCheck, Wallet,
+    CalendarCheck, Calendar, CalendarDays, Timer, BookOpen, Send, Scale,
+    DollarSign, FileSpreadsheet, Landmark, HandCoins, Receipt, Calculator,
+    Play, PauseCircle, TrendingUp, Stamp,
+    Settings2, GitBranch, Mail, BellRing, FileCheck, UserCircle, CalendarOff,
+    Target, Flag, MessageSquare, Star, Brain, GitFork,
+    UserPlus, GraduationCap, Award, FileSignature, AlertTriangle, Gavel,
+    ArrowLeftRight,
 } from 'lucide-react';
 import { useAuthStore, getUserInitials, getDisplayName } from '@/store/useAuthStore';
 import { useNavigate } from 'react-router-dom';
@@ -20,7 +27,7 @@ import { useNavigate } from 'react-router-dom';
 // Nav Config — role-based
 // ============================================================
 
-export type SidebarUserRole = 'super_admin' | 'company_admin' | 'hr_manager' | 'viewer';
+export type SidebarUserRole = 'super_admin' | 'company_admin' | 'viewer';
 /** @deprecated Use SidebarUserRole */
 export type UserRole = SidebarUserRole;
 
@@ -217,6 +224,347 @@ const NAV_CONFIG: NavSection[] = [
         ],
     },
     {
+        group: 'Transfers & Promotions',
+        roles: ['company_admin'],
+        items: [
+            {
+                icon: ArrowLeftRight,
+                label: 'Transfers',
+                path: '/app/company/hr/transfers',
+            },
+            {
+                icon: TrendingUp,
+                label: 'Promotions',
+                path: '/app/company/hr/promotions',
+            },
+            {
+                icon: UserCheck,
+                label: 'Delegation',
+                path: '/app/company/hr/delegates',
+            },
+        ],
+    },
+    {
+        group: 'Attendance',
+        roles: ['company_admin'],
+        items: [
+            {
+                icon: CalendarCheck,
+                label: 'Attendance Dashboard',
+                path: '/app/company/hr/attendance',
+            },
+            {
+                icon: Calendar,
+                label: 'Holiday Calendar',
+                path: '/app/company/hr/holidays',
+            },
+            {
+                icon: CalendarDays,
+                label: 'Rosters',
+                path: '/app/company/hr/rosters',
+            },
+            {
+                icon: ClipboardList,
+                label: 'Attendance Rules',
+                path: '/app/company/hr/attendance-rules',
+            },
+            {
+                icon: Timer,
+                label: 'Overtime Rules',
+                path: '/app/company/hr/overtime-rules',
+            },
+        ],
+    },
+    {
+        group: 'Leave Management',
+        roles: ['company_admin'],
+        items: [
+            {
+                icon: FileText,
+                label: 'Leave Types',
+                path: '/app/company/hr/leave-types',
+            },
+            {
+                icon: BookOpen,
+                label: 'Leave Policies',
+                path: '/app/company/hr/leave-policies',
+            },
+            {
+                icon: Send,
+                label: 'Leave Requests',
+                path: '/app/company/hr/leave-requests',
+            },
+            {
+                icon: Scale,
+                label: 'Leave Balances',
+                path: '/app/company/hr/leave-balances',
+            },
+        ],
+    },
+    {
+        group: 'Payroll & Compliance',
+        roles: ['company_admin'],
+        items: [
+            {
+                icon: DollarSign,
+                label: 'Salary Components',
+                path: '/app/company/hr/salary-components',
+            },
+            {
+                icon: FileSpreadsheet,
+                label: 'Salary Structures',
+                path: '/app/company/hr/salary-structures',
+            },
+            {
+                icon: CreditCard,
+                label: 'Employee Salary',
+                path: '/app/company/hr/employee-salary',
+            },
+            {
+                icon: Shield,
+                label: 'Statutory Config',
+                path: '/app/company/hr/statutory-config',
+            },
+            {
+                icon: Calculator,
+                label: 'Tax & TDS',
+                path: '/app/company/hr/tax-config',
+            },
+            {
+                icon: Landmark,
+                label: 'Bank Config',
+                path: '/app/company/hr/bank-config',
+            },
+            {
+                icon: HandCoins,
+                label: 'Loan Policies',
+                path: '/app/company/hr/loan-policies',
+            },
+            {
+                icon: Receipt,
+                label: 'Loans',
+                path: '/app/company/hr/loans',
+            },
+        ],
+    },
+    {
+        group: 'Payroll Operations',
+        roles: ['company_admin'],
+        items: [
+            {
+                icon: Play,
+                label: 'Payroll Runs',
+                path: '/app/company/hr/payroll-runs',
+            },
+            {
+                icon: FileText,
+                label: 'Payslips',
+                path: '/app/company/hr/payslips',
+            },
+            {
+                icon: PauseCircle,
+                label: 'Salary Holds',
+                path: '/app/company/hr/salary-holds',
+            },
+            {
+                icon: TrendingUp,
+                label: 'Salary Revisions',
+                path: '/app/company/hr/salary-revisions',
+            },
+            {
+                icon: Stamp,
+                label: 'Statutory Filings',
+                path: '/app/company/hr/statutory-filings',
+            },
+            {
+                icon: BarChart3,
+                label: 'Payroll Reports',
+                path: '/app/company/hr/payroll-reports',
+            },
+        ],
+    },
+    {
+        group: 'ESS & Workflows',
+        roles: ['company_admin'],
+        items: [
+            {
+                icon: Settings2,
+                label: 'ESS Config',
+                path: '/app/company/hr/ess-config',
+            },
+            {
+                icon: GitBranch,
+                label: 'Approval Workflows',
+                path: '/app/company/hr/approval-workflows',
+            },
+            {
+                icon: Mail,
+                label: 'Notification Templates',
+                path: '/app/company/hr/notification-templates',
+            },
+            {
+                icon: BellRing,
+                label: 'Notification Rules',
+                path: '/app/company/hr/notification-rules',
+            },
+            {
+                icon: FileCheck,
+                label: 'IT Declarations',
+                path: '/app/company/hr/it-declarations',
+            },
+        ],
+    },
+    {
+        group: 'Self-Service',
+        roles: ['company_admin'],
+        items: [
+            {
+                icon: UserCircle,
+                label: 'My Profile',
+                path: '/app/company/hr/my-profile',
+            },
+            {
+                icon: Receipt,
+                label: 'My Payslips',
+                path: '/app/company/hr/my-payslips',
+            },
+            {
+                icon: CalendarOff,
+                label: 'My Leave',
+                path: '/app/company/hr/my-leave',
+            },
+            {
+                icon: Clock,
+                label: 'My Attendance',
+                path: '/app/company/hr/my-attendance',
+            },
+            {
+                icon: Users,
+                label: 'Team View',
+                path: '/app/company/hr/team-view',
+            },
+        ],
+    },
+    {
+        group: 'Performance',
+        roles: ['company_admin'],
+        items: [
+            {
+                icon: Target,
+                label: 'Appraisal Cycles',
+                path: '/app/company/hr/appraisal-cycles',
+            },
+            {
+                icon: Flag,
+                label: 'Goals & OKRs',
+                path: '/app/company/hr/goals',
+            },
+            {
+                icon: MessageSquare,
+                label: '360 Feedback',
+                path: '/app/company/hr/feedback-360',
+            },
+            {
+                icon: Star,
+                label: 'Ratings & Calibration',
+                path: '/app/company/hr/ratings',
+            },
+            {
+                icon: Brain,
+                label: 'Skills & Mapping',
+                path: '/app/company/hr/skills',
+            },
+            {
+                icon: GitFork,
+                label: 'Succession Planning',
+                path: '/app/company/hr/succession',
+            },
+            {
+                icon: Activity,
+                label: 'Performance Dashboard',
+                path: '/app/company/hr/performance-dashboard',
+            },
+        ],
+    },
+    {
+        group: 'Recruitment & Training',
+        roles: ['company_admin'],
+        items: [
+            {
+                icon: Briefcase,
+                label: 'Requisitions',
+                path: '/app/company/hr/requisitions',
+            },
+            {
+                icon: UserPlus,
+                label: 'Candidates',
+                path: '/app/company/hr/candidates',
+            },
+            {
+                icon: GraduationCap,
+                label: 'Training',
+                path: '/app/company/hr/training',
+            },
+            {
+                icon: Award,
+                label: 'Nominations',
+                path: '/app/company/hr/training-nominations',
+            },
+        ],
+    },
+    {
+        group: 'Exit & Separation',
+        roles: ['company_admin'],
+        items: [
+            {
+                icon: LogOut,
+                label: 'Exit Requests',
+                path: '/app/company/hr/exit-requests',
+            },
+            {
+                icon: ClipboardList,
+                label: 'Clearance Dashboard',
+                path: '/app/company/hr/clearance-dashboard',
+            },
+            {
+                icon: Calculator,
+                label: 'F&F Settlement',
+                path: '/app/company/hr/fnf-settlement',
+            },
+        ],
+    },
+    {
+        group: 'Advanced HR',
+        roles: ['company_admin'],
+        items: [
+            {
+                icon: Package,
+                label: 'Assets',
+                path: '/app/company/hr/assets',
+            },
+            {
+                icon: Receipt,
+                label: 'Expenses',
+                path: '/app/company/hr/expenses',
+            },
+            {
+                icon: FileSignature,
+                label: 'Letters',
+                path: '/app/company/hr/hr-letters',
+            },
+            {
+                icon: AlertTriangle,
+                label: 'Grievances',
+                path: '/app/company/hr/grievances',
+            },
+            {
+                icon: Gavel,
+                label: 'Discipline',
+                path: '/app/company/hr/disciplinary',
+            },
+        ],
+    },
+    {
         group: 'Operations',
         roles: ['super_admin', 'company_admin'],
         items: [
@@ -365,6 +713,7 @@ export function Sidebar({ collapsed, onCollapse, role = 'super_admin' }: Sidebar
                         onClick={() => onCollapse(true)}
                         className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
                         title="Collapse sidebar"
+                        aria-label="Collapse sidebar"
                     >
                         <PanelLeftClose size={15} />
                     </button>
@@ -377,6 +726,7 @@ export function Sidebar({ collapsed, onCollapse, role = 'super_admin' }: Sidebar
                     onClick={() => onCollapse(false)}
                     className="mx-auto mt-3 p-2 rounded-xl text-neutral-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-colors"
                     title="Expand sidebar"
+                    aria-label="Expand sidebar"
                 >
                     <PanelLeftOpen size={16} />
                 </button>
@@ -567,6 +917,7 @@ export function Sidebar({ collapsed, onCollapse, role = 'super_admin' }: Sidebar
                         <button
                             onClick={handleLogout}
                             title="Sign Out"
+                            aria-label={`Sign out ${displayName}`}
                             className="w-9 h-9 rounded-xl bg-gradient-to-tr from-accent-400 to-primary-500 flex items-center justify-center shadow-sm"
                         >
                             <span className="text-white font-bold text-xs">{initials}</span>
@@ -583,6 +934,7 @@ export function Sidebar({ collapsed, onCollapse, role = 'super_admin' }: Sidebar
                             <button
                                 onClick={handleLogout}
                                 title="Sign Out"
+                                aria-label="Sign out"
                                 className="p-1.5 rounded-lg text-neutral-400 hover:text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-950 transition-colors flex-shrink-0"
                             >
                                 <LogOut size={13} strokeWidth={2.5} />

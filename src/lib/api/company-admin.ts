@@ -1,17 +1,258 @@
 import { client } from './client';
 import type { ApiResponse } from './auth';
 
+// ── Types ──
+
+export interface CompanyProfile {
+    id: string;
+    name: string;
+    displayName?: string;
+    legalName?: string;
+    companyCode?: string;
+    industry?: string;
+    businessType?: string;
+    wizardStatus?: string;
+    gstin?: string;
+    pan?: string;
+    cin?: string;
+    tan?: string;
+    address?: {
+        line1?: string;
+        line2?: string;
+        city?: string;
+        state?: string;
+        pincode?: string;
+        country?: string;
+    };
+    fiscalYearStart?: string;
+    fiscalYearEnd?: string;
+    dateFormat?: string;
+    timeZone?: string;
+    currency?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface CompanyLocation {
+    id: string;
+    name: string;
+    code?: string;
+    facilityType?: string;
+    customFacilityType?: string;
+    status?: string;
+    isHQ?: boolean;
+    gstin?: string;
+    addressLine1?: string;
+    addressLine2?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+    country?: string;
+    contactName?: string;
+    contactDesignation?: string;
+    contactEmail?: string;
+    contactPhone?: string;
+    geoEnabled?: boolean;
+    latitude?: number;
+    longitude?: number;
+    geoRadius?: number;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface CompanyShift {
+    id: string;
+    name: string;
+    code?: string;
+    startTime: string;
+    endTime: string;
+    graceMinutes?: number;
+    halfDayHours?: number;
+    fullDayHours?: number;
+    isNightShift?: boolean;
+    isDefault?: boolean;
+    status?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface CreateShiftPayload {
+    name: string;
+    code?: string;
+    startTime: string;
+    endTime: string;
+    graceMinutes?: number;
+    halfDayHours?: number;
+    fullDayHours?: number;
+    isNightShift?: boolean;
+    isDefault?: boolean;
+}
+
+export interface CompanyContact {
+    id: string;
+    name: string;
+    designation?: string;
+    email?: string;
+    countryCode?: string;
+    phone?: string;
+    type?: string;
+    isPrimary?: boolean;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface CreateContactPayload {
+    name: string;
+    designation?: string;
+    email?: string;
+    countryCode?: string;
+    phone?: string;
+    type?: string;
+    isPrimary?: boolean;
+}
+
+export interface NoSeriesConfig {
+    id: string;
+    module: string;
+    prefix: string;
+    separator?: string;
+    nextNumber: number;
+    padLength?: number;
+    suffix?: string;
+    sample?: string;
+    isActive?: boolean;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface CreateNoSeriesPayload {
+    module: string;
+    prefix: string;
+    separator?: string;
+    nextNumber?: number;
+    padLength?: number;
+    suffix?: string;
+}
+
+export interface IOTReason {
+    id: string;
+    reasonType: string;
+    reason: string;
+    description?: string;
+    department?: string;
+    planned: boolean;
+    duration?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface CreateIOTReasonPayload {
+    reasonType: string;
+    reason: string;
+    description?: string;
+    department?: string;
+    planned: boolean;
+    duration?: string;
+}
+
+export interface SystemControls {
+    [key: string]: boolean | string | number;
+}
+
+export interface CompanySettings {
+    locale?: string;
+    dateFormat?: string;
+    timeZone?: string;
+    currency?: string;
+    complianceMode?: string;
+    portalEnabled?: boolean;
+    integrations?: Record<string, unknown>;
+    [key: string]: unknown;
+}
+
+export interface CompanyUser {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    fullName?: string;
+    email: string;
+    role?: string;
+    department?: string;
+    location?: string;
+    isActive?: boolean;
+    lastLoginAt?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface CreateUserPayload {
+    firstName: string;
+    lastName: string;
+    email: string;
+    role?: string;
+    department?: string;
+    location?: string;
+}
+
+export interface UpdateUserPayload {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    role?: string;
+    department?: string;
+    location?: string;
+}
+
+export interface AuditLogEntry {
+    id: string;
+    action: string;
+    entityType?: string;
+    entityId?: string;
+    userId?: string;
+    userName?: string;
+    details?: Record<string, unknown>;
+    ipAddress?: string;
+    createdAt: string;
+}
+
+export interface ActivityItem {
+    id?: string;
+    action?: string;
+    text?: string;
+    description?: string;
+    entityType?: string;
+    timestamp?: string;
+    time?: string;
+}
+
+export interface CompanyAdminStats {
+    totalUsers?: number;
+    totalEmployees?: number;
+    activeUsers?: number;
+    totalLocations?: number;
+    activeLocations?: number;
+    activeModules?: number;
+    companyStatus?: string;
+}
+
+export interface PaginationMeta {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+}
+
 // ── Profile ──
 
-async function getProfile(): Promise<ApiResponse<any>> {
+async function getProfile(): Promise<ApiResponse<CompanyProfile>> {
     const response = await client.get('/company/profile');
     return response.data;
 }
 
 async function updateProfileSection(
     sectionKey: string,
-    data: any,
-): Promise<ApiResponse<any>> {
+    data: Record<string, unknown>,
+): Promise<ApiResponse<CompanyProfile>> {
     const response = await client.patch(
         `/company/profile/sections/${sectionKey}`,
         data,
@@ -21,134 +262,134 @@ async function updateProfileSection(
 
 // ── Locations ──
 
-async function listLocations(): Promise<ApiResponse<any>> {
+async function listLocations(): Promise<ApiResponse<CompanyLocation[]>> {
     const response = await client.get('/company/locations');
     return response.data;
 }
 
-async function getLocation(id: string): Promise<ApiResponse<any>> {
+async function getLocation(id: string): Promise<ApiResponse<CompanyLocation>> {
     const response = await client.get(`/company/locations/${id}`);
     return response.data;
 }
 
-async function updateLocation(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateLocation(id: string, data: Partial<CompanyLocation>): Promise<ApiResponse<CompanyLocation>> {
     const response = await client.patch(`/company/locations/${id}`, data);
     return response.data;
 }
 
-async function deleteLocation(id: string): Promise<ApiResponse<any>> {
+async function deleteLocation(id: string): Promise<ApiResponse<void>> {
     const response = await client.delete(`/company/locations/${id}`);
     return response.data;
 }
 
 // ── Shifts ──
 
-async function listShifts(): Promise<ApiResponse<any>> {
+async function listShifts(): Promise<ApiResponse<CompanyShift[]>> {
     const response = await client.get('/company/shifts');
     return response.data;
 }
 
-async function createShift(data: any): Promise<ApiResponse<any>> {
+async function createShift(data: CreateShiftPayload): Promise<ApiResponse<CompanyShift>> {
     const response = await client.post('/company/shifts', data);
     return response.data;
 }
 
-async function updateShift(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateShift(id: string, data: Partial<CreateShiftPayload>): Promise<ApiResponse<CompanyShift>> {
     const response = await client.patch(`/company/shifts/${id}`, data);
     return response.data;
 }
 
-async function deleteShift(id: string): Promise<ApiResponse<any>> {
+async function deleteShift(id: string): Promise<ApiResponse<void>> {
     const response = await client.delete(`/company/shifts/${id}`);
     return response.data;
 }
 
 // ── Contacts ──
 
-async function listContacts(): Promise<ApiResponse<any>> {
+async function listContacts(): Promise<ApiResponse<CompanyContact[]>> {
     const response = await client.get('/company/contacts');
     return response.data;
 }
 
-async function createContact(data: any): Promise<ApiResponse<any>> {
+async function createContact(data: CreateContactPayload): Promise<ApiResponse<CompanyContact>> {
     const response = await client.post('/company/contacts', data);
     return response.data;
 }
 
-async function updateContact(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateContact(id: string, data: Partial<CreateContactPayload>): Promise<ApiResponse<CompanyContact>> {
     const response = await client.patch(`/company/contacts/${id}`, data);
     return response.data;
 }
 
-async function deleteContact(id: string): Promise<ApiResponse<any>> {
+async function deleteContact(id: string): Promise<ApiResponse<void>> {
     const response = await client.delete(`/company/contacts/${id}`);
     return response.data;
 }
 
 // ── No Series ──
 
-async function listNoSeries(): Promise<ApiResponse<any>> {
+async function listNoSeries(): Promise<ApiResponse<NoSeriesConfig[]>> {
     const response = await client.get('/company/no-series');
     return response.data;
 }
 
-async function createNoSeries(data: any): Promise<ApiResponse<any>> {
+async function createNoSeries(data: CreateNoSeriesPayload): Promise<ApiResponse<NoSeriesConfig>> {
     const response = await client.post('/company/no-series', data);
     return response.data;
 }
 
-async function updateNoSeries(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateNoSeries(id: string, data: Partial<CreateNoSeriesPayload>): Promise<ApiResponse<NoSeriesConfig>> {
     const response = await client.patch(`/company/no-series/${id}`, data);
     return response.data;
 }
 
-async function deleteNoSeries(id: string): Promise<ApiResponse<any>> {
+async function deleteNoSeries(id: string): Promise<ApiResponse<void>> {
     const response = await client.delete(`/company/no-series/${id}`);
     return response.data;
 }
 
 // ── IOT Reasons ──
 
-async function listIOTReasons(): Promise<ApiResponse<any>> {
+async function listIOTReasons(): Promise<ApiResponse<IOTReason[]>> {
     const response = await client.get('/company/iot-reasons');
     return response.data;
 }
 
-async function createIOTReason(data: any): Promise<ApiResponse<any>> {
+async function createIOTReason(data: CreateIOTReasonPayload): Promise<ApiResponse<IOTReason>> {
     const response = await client.post('/company/iot-reasons', data);
     return response.data;
 }
 
-async function updateIOTReason(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateIOTReason(id: string, data: Partial<CreateIOTReasonPayload>): Promise<ApiResponse<IOTReason>> {
     const response = await client.patch(`/company/iot-reasons/${id}`, data);
     return response.data;
 }
 
-async function deleteIOTReason(id: string): Promise<ApiResponse<any>> {
+async function deleteIOTReason(id: string): Promise<ApiResponse<void>> {
     const response = await client.delete(`/company/iot-reasons/${id}`);
     return response.data;
 }
 
 // ── Controls ──
 
-async function getControls(): Promise<ApiResponse<any>> {
+async function getControls(): Promise<ApiResponse<SystemControls>> {
     const response = await client.get('/company/controls');
     return response.data;
 }
 
-async function updateControls(data: any): Promise<ApiResponse<any>> {
+async function updateControls(data: SystemControls): Promise<ApiResponse<SystemControls>> {
     const response = await client.patch('/company/controls', data);
     return response.data;
 }
 
 // ── Settings ──
 
-async function getSettings(): Promise<ApiResponse<any>> {
+async function getSettings(): Promise<ApiResponse<CompanySettings>> {
     const response = await client.get('/company/settings');
     return response.data;
 }
 
-async function updateSettings(data: any): Promise<ApiResponse<any>> {
+async function updateSettings(data: Partial<CompanySettings>): Promise<ApiResponse<CompanySettings>> {
     const response = await client.patch('/company/settings', data);
     return response.data;
 }
@@ -161,27 +402,27 @@ async function listUsers(params?: {
     search?: string;
     role?: string;
     status?: string;
-}): Promise<ApiResponse<any>> {
+}): Promise<ApiResponse<CompanyUser[]>> {
     const response = await client.get('/company/users', { params });
     return response.data;
 }
 
-async function createUser(data: any): Promise<ApiResponse<any>> {
+async function createUser(data: CreateUserPayload): Promise<ApiResponse<CompanyUser>> {
     const response = await client.post('/company/users', data);
     return response.data;
 }
 
-async function getUser(id: string): Promise<ApiResponse<any>> {
+async function getUser(id: string): Promise<ApiResponse<CompanyUser>> {
     const response = await client.get(`/company/users/${id}`);
     return response.data;
 }
 
-async function updateUser(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateUser(id: string, data: UpdateUserPayload): Promise<ApiResponse<CompanyUser>> {
     const response = await client.patch(`/company/users/${id}`, data);
     return response.data;
 }
 
-async function updateUserStatus(id: string, status: string): Promise<ApiResponse<any>> {
+async function updateUserStatus(id: string, status: string): Promise<ApiResponse<CompanyUser>> {
     const response = await client.patch(`/company/users/${id}/status`, { status });
     return response.data;
 }
@@ -196,15 +437,62 @@ async function listAuditLogs(params?: {
     dateFrom?: string;
     dateTo?: string;
     search?: string;
-}): Promise<ApiResponse<any>> {
+}): Promise<ApiResponse<AuditLogEntry[]>> {
     const response = await client.get('/company/audit-logs', { params });
     return response.data;
 }
 
 // ── Activity ──
 
-async function getCompanyActivity(limit?: number): Promise<ApiResponse<any>> {
+async function getCompanyActivity(limit?: number): Promise<ApiResponse<ActivityItem[]>> {
     const response = await client.get('/dashboard/company-activity', { params: { limit } });
+    return response.data;
+}
+
+// ── RBAC Roles ──
+
+export interface RolePermission {
+    module: string;
+    view: boolean;
+    create: boolean;
+    edit: boolean;
+    delete: boolean;
+    approve: boolean;
+}
+
+export interface RbacRole {
+    id: string;
+    name: string;
+    description?: string;
+    isSystem: boolean;
+    userCount?: number;
+    permissions: RolePermission[];
+    createdAt?: string;
+}
+
+export interface CreateRolePayload {
+    name: string;
+    description?: string;
+    permissions: RolePermission[];
+}
+
+async function listRoles(): Promise<ApiResponse<RbacRole[]>> {
+    const response = await client.get('/rbac/roles');
+    return response.data;
+}
+
+async function createRole(data: CreateRolePayload): Promise<ApiResponse<RbacRole>> {
+    const response = await client.post('/rbac/roles', data);
+    return response.data;
+}
+
+async function updateRole(id: string, data: CreateRolePayload): Promise<ApiResponse<RbacRole>> {
+    const response = await client.patch(`/rbac/roles/${id}`, data);
+    return response.data;
+}
+
+async function deleteRole(id: string): Promise<ApiResponse<void>> {
+    const response = await client.delete(`/rbac/roles/${id}`);
     return response.data;
 }
 
@@ -242,4 +530,8 @@ export const companyAdminApi = {
     updateUserStatus,
     listAuditLogs,
     getCompanyActivity,
+    listRoles,
+    createRole,
+    updateRole,
+    deleteRole,
 };

@@ -41,6 +41,7 @@ import {
 } from "@/features/company-admin/api/use-hr-mutations";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { showSuccess, showApiError } from "@/lib/toast";
+import type { EmployeeStatus } from "@/lib/api/hr";
 
 /* ── Form Atoms ── */
 
@@ -362,7 +363,7 @@ export function EmployeeProfileScreen() {
         }
     };
 
-    const handleStatusAction = async (status: string) => {
+    const handleStatusAction = async (status: EmployeeStatus) => {
         if (!id || isNew) return;
         try {
             await statusMutation.mutateAsync({ id, status });
@@ -891,13 +892,13 @@ export function EmployeeProfileScreen() {
                                     <ChevronDown size={14} />
                                 </button>
                                 <div className="absolute right-0 bottom-full mb-2 w-48 bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-xl hidden group-hover:block z-10">
-                                    <button onClick={() => handleStatusAction("Confirmed")} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-t-xl transition-colors">
+                                    <button onClick={() => handleStatusAction("ACTIVE")} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-t-xl transition-colors">
                                         Confirm Employee
                                     </button>
-                                    <button onClick={() => handleStatusAction("Suspended")} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-warning-600 dark:text-warning-400 hover:bg-warning-50 dark:hover:bg-warning-900/20 transition-colors">
+                                    <button onClick={() => handleStatusAction("SUSPENDED")} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-warning-600 dark:text-warning-400 hover:bg-warning-50 dark:hover:bg-warning-900/20 transition-colors">
                                         Suspend
                                     </button>
-                                    <button onClick={() => handleStatusAction("On Notice")} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-danger-600 dark:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-b-xl transition-colors">
+                                    <button onClick={() => handleStatusAction("NOTICE_PERIOD")} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-danger-600 dark:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-b-xl transition-colors">
                                         Initiate Exit
                                     </button>
                                 </div>

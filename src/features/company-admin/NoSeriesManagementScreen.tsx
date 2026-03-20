@@ -89,22 +89,24 @@ export function NoSeriesManagementScreen() {
     const openEdit = (ns: any) => {
         setEditingId(ns.id);
         setForm({
-            code: ns.code ?? "",
+            code: ns.code ?? ns.prefix ?? "",
             description: ns.description ?? "",
-            linkedScreen: ns.linkedScreen ?? "",
+            linkedScreen: ns.linkedScreen ?? ns.module ?? "",
             prefix: ns.prefix ?? "",
             suffix: ns.suffix ?? "",
-            numberCount: String(ns.numberCount ?? 5),
-            startNumber: String(ns.startNumber ?? 1),
+            numberCount: String(ns.padLength ?? ns.numberCount ?? 5),
+            startNumber: String(ns.nextNumber ?? ns.startNumber ?? 1),
         });
         setModalOpen(true);
     };
 
     const handleSave = async () => {
         const payload = {
-            ...form,
-            numberCount: parseInt(form.numberCount) || 5,
-            startNumber: parseInt(form.startNumber) || 1,
+            module: form.linkedScreen,
+            prefix: form.prefix,
+            suffix: form.suffix,
+            padLength: parseInt(form.numberCount) || 5,
+            nextNumber: parseInt(form.startNumber) || 1,
         };
         try {
             if (editingId) {
@@ -185,7 +187,7 @@ export function NoSeriesManagementScreen() {
                             </thead>
                             <tbody className="text-sm">
                                 {filtered.map((ns: any) => {
-                                    const preview = buildPreview(ns.prefix ?? "", ns.suffix ?? "", ns.numberCount ?? 5, ns.startNumber ?? 1);
+                                    const preview = buildPreview(ns.prefix ?? "", ns.suffix ?? "", ns.padLength ?? ns.numberCount ?? 5, ns.nextNumber ?? ns.startNumber ?? 1);
                                     return (
                                         <tr key={ns.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
                                             <td className="py-4 px-6">

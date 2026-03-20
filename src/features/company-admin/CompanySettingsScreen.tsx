@@ -16,10 +16,12 @@ import { showSuccess, showApiError } from "@/lib/toast";
 function SelectField({ label, value, onChange, options }: {
     label: string; value: string; onChange: (v: string) => void; options: Array<{ value: string; label: string }>;
 }) {
+    const fieldId = label.toLowerCase().replace(/\s+/g, '-');
     return (
         <div>
-            <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">{label}</label>
+            <label htmlFor={fieldId} className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">{label}</label>
             <select
+                id={fieldId}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"

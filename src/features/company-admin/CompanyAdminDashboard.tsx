@@ -20,6 +20,7 @@ import {
     useCompanyActivity,
 } from "@/features/company-admin/api/use-company-admin-queries";
 import { useAuthStore, getDisplayName } from "@/store/useAuthStore";
+import type { CompanyAdminStats, CompanyProfile, ActivityItem } from "@/lib/api/company-admin";
 import { SkeletonKPIGrid, SkeletonTable, Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 
@@ -89,9 +90,9 @@ export function CompanyAdminDashboard() {
     const user = useAuthStore((s) => s.user);
     const displayName = getDisplayName(user);
 
-    const stats = statsData?.data as any;
-    const profile = profileData?.data as any;
-    const activities: any[] = activityData?.data ?? [];
+    const stats = statsData?.data as CompanyAdminStats | undefined;
+    const profile = profileData?.data as CompanyProfile | undefined;
+    const activities: ActivityItem[] = activityData?.data ?? [];
 
     const kpis: KPI[] = [
         {
@@ -153,9 +154,9 @@ export function CompanyAdminDashboard() {
                 <SkeletonKPIGrid count={4} />
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {kpis.map((kpi, idx) => (
+                    {kpis.map((kpi) => (
                         <div
-                            key={idx}
+                            key={kpi.title}
                             onClick={() => navigate(kpi.route)}
                             className="bg-white dark:bg-neutral-900 rounded-2xl p-6 border border-neutral-200/60 dark:border-neutral-800 shadow-xl shadow-neutral-900/5 transition-transform hover:-translate-y-1 duration-300 cursor-pointer"
                         >
@@ -289,7 +290,7 @@ export function CompanyAdminDashboard() {
                         </div>
                     ) : (
                         <div className="flex-1 space-y-6">
-                            {activities.map((item: any, i: number) => (
+                            {activities.map((item, i) => (
                                 <div key={item.id ?? i} className="flex gap-4">
                                     <div className="relative flex flex-col items-center">
                                         <div className="w-2.5 h-2.5 rounded-full bg-primary-500 ring-4 ring-primary-50 dark:ring-primary-900/30 z-10" />

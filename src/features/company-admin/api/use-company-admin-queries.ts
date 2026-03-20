@@ -16,6 +16,7 @@ export const companyAdminKeys = {
     user: (id: string) => [...companyAdminKeys.all, 'user', id] as const,
     auditLogs: (params?: Record<string, unknown>) => [...companyAdminKeys.all, 'audit-logs', params] as const,
     activity: (limit?: number) => [...companyAdminKeys.all, 'activity', limit] as const,
+    roles: () => [...companyAdminKeys.all, 'roles'] as const,
 };
 
 export function useCompanyProfile() {
@@ -82,10 +83,16 @@ export function useCompanySettings() {
     });
 }
 
-export function useCompanyUsers(params?: Record<string, unknown>) {
+export function useCompanyUsers(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    role?: string;
+    status?: string;
+}) {
     return useQuery({
-        queryKey: companyAdminKeys.users(params),
-        queryFn: () => companyAdminApi.listUsers(params as any),
+        queryKey: companyAdminKeys.users(params as Record<string, unknown>),
+        queryFn: () => companyAdminApi.listUsers(params),
     });
 }
 
@@ -97,10 +104,18 @@ export function useCompanyUser(id: string) {
     });
 }
 
-export function useCompanyAuditLogs(params?: Record<string, unknown>) {
+export function useCompanyAuditLogs(params?: {
+    page?: number;
+    limit?: number;
+    action?: string;
+    entityType?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    search?: string;
+}) {
     return useQuery({
-        queryKey: companyAdminKeys.auditLogs(params),
-        queryFn: () => companyAdminApi.listAuditLogs(params as any),
+        queryKey: companyAdminKeys.auditLogs(params as Record<string, unknown>),
+        queryFn: () => companyAdminApi.listAuditLogs(params),
     });
 }
 
@@ -109,5 +124,13 @@ export function useCompanyActivity(limit = 10) {
         queryKey: companyAdminKeys.activity(limit),
         queryFn: () => companyAdminApi.getCompanyActivity(limit),
         refetchInterval: 30000,
+        refetchIntervalInBackground: false,
+    });
+}
+
+export function useRbacRoles() {
+    return useQuery({
+        queryKey: companyAdminKeys.roles(),
+        queryFn: () => companyAdminApi.listRoles(),
     });
 }

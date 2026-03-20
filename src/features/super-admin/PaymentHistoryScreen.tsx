@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     CreditCard,
     Search,
@@ -109,10 +109,17 @@ function RecordPaymentModal({
         onClose();
     };
 
+    useEffect(() => {
+        if (!open) return;
+        const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') handleClose(); };
+        document.addEventListener('keydown', onEsc);
+        return () => document.removeEventListener('keydown', onEsc);
+    }, [open]);
+
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="record-payment-title">
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -123,11 +130,12 @@ function RecordPaymentModal({
             <div className="relative w-full max-w-lg mx-4 bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-neutral-200/60 dark:border-neutral-800 animate-in fade-in zoom-in-95 duration-200">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-neutral-200/60 dark:border-neutral-800">
-                    <h2 className="text-xl font-bold text-primary-950 dark:text-white">
+                    <h2 id="record-payment-title" className="text-xl font-bold text-primary-950 dark:text-white">
                         Record Payment
                     </h2>
                     <button
                         onClick={handleClose}
+                        aria-label="Close"
                         className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
                     >
                         <X className="w-4 h-4 text-neutral-500" />
@@ -138,10 +146,11 @@ function RecordPaymentModal({
                 <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[60vh] overflow-y-auto">
                     {/* Invoice ID */}
                     <div>
-                        <label className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5">
+                        <label htmlFor="record-invoice-id" className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5">
                             Invoice ID *
                         </label>
                         <input
+                            id="record-invoice-id"
                             type="text"
                             value={invoiceId}
                             onChange={(e) => setInvoiceId(e.target.value)}
@@ -153,10 +162,11 @@ function RecordPaymentModal({
 
                     {/* Amount */}
                     <div>
-                        <label className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5">
+                        <label htmlFor="record-amount" className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5">
                             Amount (INR) *
                         </label>
                         <input
+                            id="record-amount"
                             type="number"
                             step="0.01"
                             value={amount}
@@ -193,10 +203,11 @@ function RecordPaymentModal({
 
                     {/* Transaction Reference */}
                     <div>
-                        <label className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5">
+                        <label htmlFor="record-transaction-reference" className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5">
                             Transaction Reference
                         </label>
                         <input
+                            id="record-transaction-reference"
                             type="text"
                             value={reference}
                             onChange={(e) => setReference(e.target.value)}
@@ -207,10 +218,11 @@ function RecordPaymentModal({
 
                     {/* Payment Date */}
                     <div>
-                        <label className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5">
+                        <label htmlFor="record-payment-date" className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5">
                             Payment Date
                         </label>
                         <input
+                            id="record-payment-date"
                             type="date"
                             value={paidAt}
                             onChange={(e) => setPaidAt(e.target.value)}
@@ -220,10 +232,11 @@ function RecordPaymentModal({
 
                     {/* Notes */}
                     <div>
-                        <label className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5">
+                        <label htmlFor="record-notes" className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5">
                             Notes
                         </label>
                         <textarea
+                            id="record-notes"
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
                             placeholder="Optional notes..."

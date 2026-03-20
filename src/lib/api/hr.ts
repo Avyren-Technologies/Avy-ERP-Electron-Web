@@ -1,137 +1,395 @@
 import { client } from './client';
 import type { ApiResponse } from './auth';
 
+// ── Types ──
+
+export interface Department {
+    id: string;
+    name: string;
+    code?: string;
+    parentId?: string;
+    parent?: Department;
+    children?: Department[];
+    headId?: string;
+    headName?: string;
+    isActive?: boolean;
+    employeeCount?: number;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface CreateDepartmentPayload {
+    name: string;
+    code?: string;
+    parentId?: string;
+    headId?: string;
+}
+
+export interface Designation {
+    id: string;
+    name: string;
+    code?: string;
+    level?: string;
+    description?: string;
+    isActive?: boolean;
+    employeeCount?: number;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface CreateDesignationPayload {
+    name: string;
+    code?: string;
+    level?: string;
+    description?: string;
+}
+
+export interface Grade {
+    id: string;
+    name: string;
+    code?: string;
+    rank?: number;
+    minSalary?: number;
+    maxSalary?: number;
+    description?: string;
+    isActive?: boolean;
+    employeeCount?: number;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface CreateGradePayload {
+    name: string;
+    code?: string;
+    rank?: number;
+    minSalary?: number;
+    maxSalary?: number;
+    description?: string;
+}
+
+export interface EmployeeType {
+    id: string;
+    name: string;
+    code?: string;
+    description?: string;
+    isActive?: boolean;
+    employeeCount?: number;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface CreateEmployeeTypePayload {
+    name: string;
+    code?: string;
+    description?: string;
+}
+
+export interface CostCentre {
+    id: string;
+    name: string;
+    code?: string;
+    description?: string;
+    budget?: number;
+    isActive?: boolean;
+    employeeCount?: number;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface CreateCostCentrePayload {
+    name: string;
+    code?: string;
+    description?: string;
+    budget?: number;
+}
+
+export type EmployeeStatus = 'ACTIVE' | 'PROBATION' | 'NOTICE_PERIOD' | 'SUSPENDED' | 'EXITED';
+export type Gender = 'MALE' | 'FEMALE' | 'OTHER';
+export type MaritalStatus = 'SINGLE' | 'MARRIED' | 'DIVORCED' | 'WIDOWED';
+
+export interface Employee {
+    id: string;
+    employeeId: string;
+    firstName: string;
+    lastName: string;
+    fullName?: string;
+    email: string;
+    phone?: string;
+    gender?: Gender;
+    dateOfBirth?: string;
+    maritalStatus?: MaritalStatus;
+    status: EmployeeStatus;
+    departmentId?: string;
+    departmentName?: string;
+    designationId?: string;
+    designationName?: string;
+    gradeId?: string;
+    gradeName?: string;
+    employeeTypeId?: string;
+    employeeTypeName?: string;
+    costCentreId?: string;
+    costCentreName?: string;
+    locationId?: string;
+    locationName?: string;
+    reportingManagerId?: string;
+    reportingManagerName?: string;
+    joiningDate?: string;
+    confirmationDate?: string;
+    exitDate?: string;
+    workType?: string;
+    paymentMode?: string;
+    bankName?: string;
+    bankAccountNumber?: string;
+    ifscCode?: string;
+    pan?: string;
+    aadhaar?: string;
+    uan?: string;
+    esiNumber?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface CreateEmployeePayload {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string;
+    gender?: Gender;
+    dateOfBirth?: string;
+    maritalStatus?: MaritalStatus;
+    departmentId?: string;
+    designationId?: string;
+    gradeId?: string;
+    employeeTypeId?: string;
+    costCentreId?: string;
+    locationId?: string;
+    reportingManagerId?: string;
+    joiningDate?: string;
+    workType?: string;
+}
+
+export interface EmployeeNominee {
+    id: string;
+    name: string;
+    relationship: string;
+    dateOfBirth?: string;
+    percentage?: number;
+    phone?: string;
+    address?: string;
+    createdAt?: string;
+}
+
+export interface CreateNomineePayload {
+    name: string;
+    relationship: string;
+    dateOfBirth?: string;
+    percentage?: number;
+    phone?: string;
+    address?: string;
+}
+
+export interface EmployeeEducation {
+    id: string;
+    institution: string;
+    degree: string;
+    fieldOfStudy?: string;
+    startDate?: string;
+    endDate?: string;
+    grade?: string;
+    createdAt?: string;
+}
+
+export interface CreateEducationPayload {
+    institution: string;
+    degree: string;
+    fieldOfStudy?: string;
+    startDate?: string;
+    endDate?: string;
+    grade?: string;
+}
+
+export interface PreviousEmployment {
+    id: string;
+    companyName: string;
+    designation?: string;
+    startDate?: string;
+    endDate?: string;
+    reasonForLeaving?: string;
+    lastSalary?: number;
+    createdAt?: string;
+}
+
+export interface CreatePreviousEmploymentPayload {
+    companyName: string;
+    designation?: string;
+    startDate?: string;
+    endDate?: string;
+    reasonForLeaving?: string;
+    lastSalary?: number;
+}
+
+export interface EmployeeDocument {
+    id: string;
+    name: string;
+    type?: string;
+    fileUrl?: string;
+    fileName?: string;
+    fileSize?: number;
+    uploadedAt?: string;
+    createdAt?: string;
+}
+
+export interface CreateDocumentPayload {
+    name: string;
+    type?: string;
+    fileUrl?: string;
+    fileName?: string;
+    fileSize?: number;
+}
+
+export type TimelineEventType = 'CREATED' | 'STATUS_CHANGE' | 'PROMOTION' | 'TRANSFER' | 'NOTE' | 'OTHER';
+
+export interface TimelineEntry {
+    id: string;
+    eventType: TimelineEventType;
+    title: string;
+    description?: string;
+    metadata?: Record<string, unknown>;
+    createdAt: string;
+    createdBy?: string;
+}
+
 // ── Departments ──
 
-async function listDepartments(): Promise<ApiResponse<any>> {
+async function listDepartments(): Promise<ApiResponse<Department[]>> {
     const response = await client.get('/hr/departments');
     return response.data;
 }
 
-async function createDepartment(data: any): Promise<ApiResponse<any>> {
+async function createDepartment(data: CreateDepartmentPayload): Promise<ApiResponse<Department>> {
     const response = await client.post('/hr/departments', data);
     return response.data;
 }
 
-async function getDepartment(id: string): Promise<ApiResponse<any>> {
+async function getDepartment(id: string): Promise<ApiResponse<Department>> {
     const response = await client.get(`/hr/departments/${id}`);
     return response.data;
 }
 
-async function updateDepartment(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateDepartment(id: string, data: Partial<CreateDepartmentPayload>): Promise<ApiResponse<Department>> {
     const response = await client.patch(`/hr/departments/${id}`, data);
     return response.data;
 }
 
-async function deleteDepartment(id: string): Promise<ApiResponse<any>> {
+async function deleteDepartment(id: string): Promise<ApiResponse<void>> {
     const response = await client.delete(`/hr/departments/${id}`);
     return response.data;
 }
 
 // ── Designations ──
 
-async function listDesignations(): Promise<ApiResponse<any>> {
+async function listDesignations(): Promise<ApiResponse<Designation[]>> {
     const response = await client.get('/hr/designations');
     return response.data;
 }
 
-async function createDesignation(data: any): Promise<ApiResponse<any>> {
+async function createDesignation(data: CreateDesignationPayload): Promise<ApiResponse<Designation>> {
     const response = await client.post('/hr/designations', data);
     return response.data;
 }
 
-async function getDesignation(id: string): Promise<ApiResponse<any>> {
+async function getDesignation(id: string): Promise<ApiResponse<Designation>> {
     const response = await client.get(`/hr/designations/${id}`);
     return response.data;
 }
 
-async function updateDesignation(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateDesignation(id: string, data: Partial<CreateDesignationPayload>): Promise<ApiResponse<Designation>> {
     const response = await client.patch(`/hr/designations/${id}`, data);
     return response.data;
 }
 
-async function deleteDesignation(id: string): Promise<ApiResponse<any>> {
+async function deleteDesignation(id: string): Promise<ApiResponse<void>> {
     const response = await client.delete(`/hr/designations/${id}`);
     return response.data;
 }
 
 // ── Grades ──
 
-async function listGrades(): Promise<ApiResponse<any>> {
+async function listGrades(): Promise<ApiResponse<Grade[]>> {
     const response = await client.get('/hr/grades');
     return response.data;
 }
 
-async function createGrade(data: any): Promise<ApiResponse<any>> {
+async function createGrade(data: CreateGradePayload): Promise<ApiResponse<Grade>> {
     const response = await client.post('/hr/grades', data);
     return response.data;
 }
 
-async function getGrade(id: string): Promise<ApiResponse<any>> {
+async function getGrade(id: string): Promise<ApiResponse<Grade>> {
     const response = await client.get(`/hr/grades/${id}`);
     return response.data;
 }
 
-async function updateGrade(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateGrade(id: string, data: Partial<CreateGradePayload>): Promise<ApiResponse<Grade>> {
     const response = await client.patch(`/hr/grades/${id}`, data);
     return response.data;
 }
 
-async function deleteGrade(id: string): Promise<ApiResponse<any>> {
+async function deleteGrade(id: string): Promise<ApiResponse<void>> {
     const response = await client.delete(`/hr/grades/${id}`);
     return response.data;
 }
 
 // ── Employee Types ──
 
-async function listEmployeeTypes(): Promise<ApiResponse<any>> {
+async function listEmployeeTypes(): Promise<ApiResponse<EmployeeType[]>> {
     const response = await client.get('/hr/employee-types');
     return response.data;
 }
 
-async function createEmployeeType(data: any): Promise<ApiResponse<any>> {
+async function createEmployeeType(data: CreateEmployeeTypePayload): Promise<ApiResponse<EmployeeType>> {
     const response = await client.post('/hr/employee-types', data);
     return response.data;
 }
 
-async function getEmployeeType(id: string): Promise<ApiResponse<any>> {
+async function getEmployeeType(id: string): Promise<ApiResponse<EmployeeType>> {
     const response = await client.get(`/hr/employee-types/${id}`);
     return response.data;
 }
 
-async function updateEmployeeType(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateEmployeeType(id: string, data: Partial<CreateEmployeeTypePayload>): Promise<ApiResponse<EmployeeType>> {
     const response = await client.patch(`/hr/employee-types/${id}`, data);
     return response.data;
 }
 
-async function deleteEmployeeType(id: string): Promise<ApiResponse<any>> {
+async function deleteEmployeeType(id: string): Promise<ApiResponse<void>> {
     const response = await client.delete(`/hr/employee-types/${id}`);
     return response.data;
 }
 
 // ── Cost Centres ──
 
-async function listCostCentres(): Promise<ApiResponse<any>> {
+async function listCostCentres(): Promise<ApiResponse<CostCentre[]>> {
     const response = await client.get('/hr/cost-centres');
     return response.data;
 }
 
-async function createCostCentre(data: any): Promise<ApiResponse<any>> {
+async function createCostCentre(data: CreateCostCentrePayload): Promise<ApiResponse<CostCentre>> {
     const response = await client.post('/hr/cost-centres', data);
     return response.data;
 }
 
-async function getCostCentre(id: string): Promise<ApiResponse<any>> {
+async function getCostCentre(id: string): Promise<ApiResponse<CostCentre>> {
     const response = await client.get(`/hr/cost-centres/${id}`);
     return response.data;
 }
 
-async function updateCostCentre(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateCostCentre(id: string, data: Partial<CreateCostCentrePayload>): Promise<ApiResponse<CostCentre>> {
     const response = await client.patch(`/hr/cost-centres/${id}`, data);
     return response.data;
 }
 
-async function deleteCostCentre(id: string): Promise<ApiResponse<any>> {
+async function deleteCostCentre(id: string): Promise<ApiResponse<void>> {
     const response = await client.delete(`/hr/cost-centres/${id}`);
     return response.data;
 }
@@ -145,32 +403,32 @@ async function listEmployees(params?: {
     department?: string;
     designation?: string;
     status?: string;
-}): Promise<ApiResponse<any>> {
+}): Promise<ApiResponse<Employee[]>> {
     const response = await client.get('/hr/employees', { params });
     return response.data;
 }
 
-async function createEmployee(data: any): Promise<ApiResponse<any>> {
+async function createEmployee(data: CreateEmployeePayload): Promise<ApiResponse<Employee>> {
     const response = await client.post('/hr/employees', data);
     return response.data;
 }
 
-async function getEmployee(id: string): Promise<ApiResponse<any>> {
+async function getEmployee(id: string): Promise<ApiResponse<Employee>> {
     const response = await client.get(`/hr/employees/${id}`);
     return response.data;
 }
 
-async function updateEmployee(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateEmployee(id: string, data: Partial<CreateEmployeePayload>): Promise<ApiResponse<Employee>> {
     const response = await client.patch(`/hr/employees/${id}`, data);
     return response.data;
 }
 
-async function deleteEmployee(id: string): Promise<ApiResponse<any>> {
+async function deleteEmployee(id: string): Promise<ApiResponse<void>> {
     const response = await client.delete(`/hr/employees/${id}`);
     return response.data;
 }
 
-async function updateEmployeeStatus(id: string, status: string): Promise<ApiResponse<any>> {
+async function updateEmployeeStatus(id: string, status: EmployeeStatus): Promise<ApiResponse<Employee>> {
     const response = await client.patch(`/hr/employees/${id}/status`, { status });
     return response.data;
 }
@@ -178,91 +436,91 @@ async function updateEmployeeStatus(id: string, status: string): Promise<ApiResp
 // ── Employee Sub-Resources ──
 
 // Nominees
-async function listNominees(employeeId: string): Promise<ApiResponse<any>> {
+async function listNominees(employeeId: string): Promise<ApiResponse<EmployeeNominee[]>> {
     const response = await client.get(`/hr/employees/${employeeId}/nominees`);
     return response.data;
 }
 
-async function createNominee(employeeId: string, data: any): Promise<ApiResponse<any>> {
+async function createNominee(employeeId: string, data: CreateNomineePayload): Promise<ApiResponse<EmployeeNominee>> {
     const response = await client.post(`/hr/employees/${employeeId}/nominees`, data);
     return response.data;
 }
 
-async function updateNominee(employeeId: string, nomineeId: string, data: any): Promise<ApiResponse<any>> {
+async function updateNominee(employeeId: string, nomineeId: string, data: Partial<CreateNomineePayload>): Promise<ApiResponse<EmployeeNominee>> {
     const response = await client.patch(`/hr/employees/${employeeId}/nominees/${nomineeId}`, data);
     return response.data;
 }
 
-async function deleteNominee(employeeId: string, nomineeId: string): Promise<ApiResponse<any>> {
+async function deleteNominee(employeeId: string, nomineeId: string): Promise<ApiResponse<void>> {
     const response = await client.delete(`/hr/employees/${employeeId}/nominees/${nomineeId}`);
     return response.data;
 }
 
 // Education
-async function listEducation(employeeId: string): Promise<ApiResponse<any>> {
+async function listEducation(employeeId: string): Promise<ApiResponse<EmployeeEducation[]>> {
     const response = await client.get(`/hr/employees/${employeeId}/education`);
     return response.data;
 }
 
-async function createEducation(employeeId: string, data: any): Promise<ApiResponse<any>> {
+async function createEducation(employeeId: string, data: CreateEducationPayload): Promise<ApiResponse<EmployeeEducation>> {
     const response = await client.post(`/hr/employees/${employeeId}/education`, data);
     return response.data;
 }
 
-async function updateEducation(employeeId: string, educationId: string, data: any): Promise<ApiResponse<any>> {
+async function updateEducation(employeeId: string, educationId: string, data: Partial<CreateEducationPayload>): Promise<ApiResponse<EmployeeEducation>> {
     const response = await client.patch(`/hr/employees/${employeeId}/education/${educationId}`, data);
     return response.data;
 }
 
-async function deleteEducation(employeeId: string, educationId: string): Promise<ApiResponse<any>> {
+async function deleteEducation(employeeId: string, educationId: string): Promise<ApiResponse<void>> {
     const response = await client.delete(`/hr/employees/${employeeId}/education/${educationId}`);
     return response.data;
 }
 
 // Previous Employment
-async function listPreviousEmployment(employeeId: string): Promise<ApiResponse<any>> {
+async function listPreviousEmployment(employeeId: string): Promise<ApiResponse<PreviousEmployment[]>> {
     const response = await client.get(`/hr/employees/${employeeId}/previous-employment`);
     return response.data;
 }
 
-async function createPreviousEmployment(employeeId: string, data: any): Promise<ApiResponse<any>> {
+async function createPreviousEmployment(employeeId: string, data: CreatePreviousEmploymentPayload): Promise<ApiResponse<PreviousEmployment>> {
     const response = await client.post(`/hr/employees/${employeeId}/previous-employment`, data);
     return response.data;
 }
 
-async function updatePreviousEmployment(employeeId: string, prevEmpId: string, data: any): Promise<ApiResponse<any>> {
+async function updatePreviousEmployment(employeeId: string, prevEmpId: string, data: Partial<CreatePreviousEmploymentPayload>): Promise<ApiResponse<PreviousEmployment>> {
     const response = await client.patch(`/hr/employees/${employeeId}/previous-employment/${prevEmpId}`, data);
     return response.data;
 }
 
-async function deletePreviousEmployment(employeeId: string, prevEmpId: string): Promise<ApiResponse<any>> {
+async function deletePreviousEmployment(employeeId: string, prevEmpId: string): Promise<ApiResponse<void>> {
     const response = await client.delete(`/hr/employees/${employeeId}/previous-employment/${prevEmpId}`);
     return response.data;
 }
 
 // Documents
-async function listDocuments(employeeId: string): Promise<ApiResponse<any>> {
+async function listDocuments(employeeId: string): Promise<ApiResponse<EmployeeDocument[]>> {
     const response = await client.get(`/hr/employees/${employeeId}/documents`);
     return response.data;
 }
 
-async function createDocument(employeeId: string, data: any): Promise<ApiResponse<any>> {
+async function createDocument(employeeId: string, data: CreateDocumentPayload): Promise<ApiResponse<EmployeeDocument>> {
     const response = await client.post(`/hr/employees/${employeeId}/documents`, data);
     return response.data;
 }
 
-async function updateDocument(employeeId: string, documentId: string, data: any): Promise<ApiResponse<any>> {
+async function updateDocument(employeeId: string, documentId: string, data: Partial<CreateDocumentPayload>): Promise<ApiResponse<EmployeeDocument>> {
     const response = await client.patch(`/hr/employees/${employeeId}/documents/${documentId}`, data);
     return response.data;
 }
 
-async function deleteDocument(employeeId: string, documentId: string): Promise<ApiResponse<any>> {
+async function deleteDocument(employeeId: string, documentId: string): Promise<ApiResponse<void>> {
     const response = await client.delete(`/hr/employees/${employeeId}/documents/${documentId}`);
     return response.data;
 }
 
 // Timeline
-async function listTimeline(employeeId: string): Promise<ApiResponse<any>> {
+async function listTimeline(employeeId: string): Promise<ApiResponse<TimelineEntry[]>> {
     const response = await client.get(`/hr/employees/${employeeId}/timeline`);
     return response.data;
 }

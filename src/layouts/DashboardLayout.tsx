@@ -14,6 +14,7 @@ function toSidebarRole(role: UserRole | null): SidebarUserRole {
     switch (role) {
         case 'super-admin': return 'super_admin';
         case 'company-admin': return 'company_admin';
+        case 'user': return 'viewer';
         default: return 'viewer';
     }
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
     Shield,
     Plus,
@@ -11,31 +11,12 @@ import {
     Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { client } from "@/lib/api/client";
+import { useRbacRoles } from "@/features/company-admin/api/use-company-admin-queries";
+import { useCreateRole, useUpdateRole, useDeleteRole } from "@/features/company-admin/api/use-company-admin-mutations";
+import type { RbacRole, RolePermission } from "@/lib/api/company-admin";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
-
-// ── Types ──
-
-interface Permission {
-    module: string;
-    view: boolean;
-    create: boolean;
-    edit: boolean;
-    delete: boolean;
-    approve: boolean;
-}
-
-interface Role {
-    id: string;
-    name: string;
-    description?: string;
-    isSystem: boolean;
-    userCount?: number;
-    permissions: Permission[];
-    createdAt?: string;
-}
 
 // ── Module list for permission matrix ──
 
@@ -61,7 +42,7 @@ const ROLE_TEMPLATES: Record<string, Partial<Record<string, boolean>>> = {
     viewer: Object.fromEntries(MODULES.map((m) => [`${m}.view`, true])),
 };
 
-function buildPermissions(matrix: Record<string, boolean>): Permission[] {
+function buildPermissions(matrix: Record<string, boolean>): RolePermission[] {
     return MODULES.map((mod) => ({
         module: mod,
         view: matrix[`${mod}.view`] ?? false,
@@ -72,20 +53,24 @@ function buildPermissions(matrix: Record<string, boolean>): Permission[] {
     }));
 }
 
-function flattenPermissions(permissions: Permission[]): Record<string, boolean> {
+function flattenPermissions(permissions: RolePermission[]): Record<string, boolean> {
     const result: Record<string, boolean> = {};
     permissions.forEach((p) => {
         ACTIONS.forEach((a) => {
-            result[`${p.module}.${a}`] = (p as any)[a] ?? false;
+            result[`${p.module}.${a}`] = p[a] ?? false;
         });
     });
     return result;
 }
 
 export function RoleManagementScreen() {
-    const [roles, setRoles] = useState<Role[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
+    const { data: rolesData, isLoading: loading, isError: error } = useRbacRoles();
+    const createMutation = useCreateRole();
+    const updateMutation = useUpdateRole();
+    const deleteMutation = useDeleteRole();
+
+    const roles: RbacRole[] = rolesData?.data ?? [];
+
     const [search, setSearch] = useState("");
 
     const [modalOpen, setModalOpen] = useState(false);
@@ -93,26 +78,10 @@ export function RoleManagementScreen() {
     const [formName, setFormName] = useState("");
     const [formDescription, setFormDescription] = useState("");
     const [matrix, setMatrix] = useState<Record<string, boolean>>({});
-    const [saving, setSaving] = useState(false);
-    const [deleteTarget, setDeleteTarget] = useState<Role | null>(null);
-    const [deleting, setDeleting] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<RbacRole | null>(null);
 
-    const fetchRoles = async () => {
-        try {
-            setLoading(true);
-            const { data } = await client.get("/rbac/roles");
-            setRoles(data?.data ?? data ?? []);
-            setError(false);
-        } catch {
-            setError(true);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchRoles();
-    }, []);
+    const saving = createMutation.isPending || updateMutation.isPending;
+    const deleting = deleteMutation.isPending;
 
     const filtered = roles.filter((r) => {
         if (!search) return true;
@@ -127,7 +96,7 @@ export function RoleManagementScreen() {
         setModalOpen(true);
     };
 
-    const openEdit = (role: Role) => {
+    const openEdit = (role: RbacRole) => {
         if (role.isSystem) return;
         setEditingId(role.id);
         setFormName(role.name);
@@ -145,38 +114,30 @@ export function RoleManagementScreen() {
     };
 
     const handleSave = async () => {
-        setSaving(true);
         const permissions = buildPermissions(matrix);
         const payload = { name: formName, description: formDescription, permissions };
         try {
             if (editingId) {
-                await client.patch(`/rbac/roles/${editingId}`, payload);
+                await updateMutation.mutateAsync({ id: editingId, data: payload });
                 showSuccess("Role Updated", `${formName} has been updated.`);
             } else {
-                await client.post("/rbac/roles", payload);
+                await createMutation.mutateAsync(payload);
                 showSuccess("Role Created", `${formName} has been created.`);
             }
             setModalOpen(false);
-            fetchRoles();
         } catch (err) {
             showApiError(err);
-        } finally {
-            setSaving(false);
         }
     };
 
     const handleDelete = async () => {
         if (!deleteTarget) return;
-        setDeleting(true);
         try {
-            await client.delete(`/rbac/roles/${deleteTarget.id}`);
+            await deleteMutation.mutateAsync(deleteTarget.id);
             showSuccess("Role Deleted", `${deleteTarget.name} has been removed.`);
             setDeleteTarget(null);
-            fetchRoles();
         } catch (err) {
             showApiError(err);
-        } finally {
-            setDeleting(false);
         }
     };
 

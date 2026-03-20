@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
     Users,
     Plus,
@@ -16,21 +16,85 @@ import { useCompanyUsers } from "@/features/company-admin/api/use-company-admin-
 import { useCreateUser, useUpdateUser, useUpdateUserStatus } from "@/features/company-admin/api/use-company-admin-mutations";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { showSuccess, showApiError } from "@/lib/toast";
+import type { CompanyUser, PaginationMeta } from "@/lib/api/company-admin";
+import { showSuccess, showError, showApiError } from "@/lib/toast";
 
 function FormField({ label, value, onChange, placeholder, type = "text" }: {
     label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string;
 }) {
+    const fieldId = label.toLowerCase().replace(/\s+/g, '-');
     return (
         <div>
-            <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">{label}</label>
+            <label htmlFor={fieldId} className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">{label}</label>
             <input
+                id={fieldId}
                 type={type}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder}
                 className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
             />
+        </div>
+    );
+}
+
+function UserModal({ editingId, form, updateField, onClose, onSave, saving }: {
+    editingId: string | null;
+    form: typeof EMPTY_USER;
+    updateField: (key: string, value: string) => void;
+    onClose: () => void;
+    onSave: () => void;
+    saving: boolean;
+}) {
+    const handleEscKey = useCallback((e: KeyboardEvent) => {
+        if (e.key === 'Escape') onClose();
+    }, [onClose]);
+
+    useEffect(() => {
+        document.addEventListener('keydown', handleEscKey);
+        return () => document.removeEventListener('keydown', handleEscKey);
+    }, [handleEscKey]);
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
+            <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-lg animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
+                    <h2 id="user-modal-title" className="text-lg font-bold text-primary-950 dark:text-white">{editingId ? "Edit User" : "Add User"}</h2>
+                    <button onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400"><X size={18} /></button>
+                </div>
+                <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <FormField label="First Name" value={form.firstName} onChange={(v) => updateField("firstName", v)} placeholder="First name" />
+                        <FormField label="Last Name" value={form.lastName} onChange={(v) => updateField("lastName", v)} placeholder="Last name" />
+                    </div>
+                    <FormField label="Email" value={form.email} onChange={(v) => updateField("email", v)} type="email" placeholder="user@company.com" />
+                    <div>
+                        <label htmlFor="user-role" className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Role</label>
+                        <select
+                            id="user-role"
+                            value={form.role}
+                            onChange={(e) => updateField("role", e.target.value)}
+                            className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                        >
+                            <option value="admin">Admin</option>
+                            <option value="manager">Manager</option>
+                            <option value="operator">Operator</option>
+                            <option value="viewer">Viewer</option>
+                        </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <FormField label="Department" value={form.department} onChange={(v) => updateField("department", v)} placeholder="e.g. Engineering" />
+                        <FormField label="Location" value={form.location} onChange={(v) => updateField("location", v)} placeholder="e.g. HQ" />
+                    </div>
+                </div>
+                <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
+                    <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
+                    <button onClick={onSave} disabled={saving} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                        {saving && <Loader2 size={14} className="animate-spin" />}
+                        {saving ? "Saving..." : editingId ? "Update" : "Create"}
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }
@@ -84,8 +148,8 @@ export function UserManagementScreen() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [form, setForm] = useState({ ...EMPTY_USER });
 
-    const users: any[] = data?.data ?? [];
-    const meta = (data as any)?.meta;
+    const users: CompanyUser[] = data?.data ?? [];
+    const meta = data?.meta as PaginationMeta | undefined;
     const total = meta?.total ?? users.length;
 
     const openCreate = () => {
@@ -94,7 +158,7 @@ export function UserManagementScreen() {
         setModalOpen(true);
     };
 
-    const openEdit = (user: any) => {
+    const openEdit = (user: CompanyUser) => {
         setEditingId(user.id);
         setForm({
             firstName: user.firstName ?? "",
@@ -107,7 +171,21 @@ export function UserManagementScreen() {
         setModalOpen(true);
     };
 
+    const validateForm = (): string | null => {
+        if (!form.firstName.trim()) return "First name is required.";
+        if (!form.lastName.trim()) return "Last name is required.";
+        if (!form.email.trim()) return "Email is required.";
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(form.email.trim())) return "Please enter a valid email address.";
+        return null;
+    };
+
     const handleSave = async () => {
+        const validationError = validateForm();
+        if (validationError) {
+            showError("Validation Error", validationError);
+            return;
+        }
         try {
             if (editingId) {
                 await updateMutation.mutateAsync({ id: editingId, data: form });
@@ -122,7 +200,7 @@ export function UserManagementScreen() {
         }
     };
 
-    const handleToggleStatus = async (user: any) => {
+    const handleToggleStatus = async (user: CompanyUser) => {
         const newStatus = user.isActive !== false ? "inactive" : "active";
         try {
             await statusMutation.mutateAsync({ id: user.id, status: newStatus });
@@ -133,7 +211,7 @@ export function UserManagementScreen() {
     };
 
     const saving = createMutation.isPending || updateMutation.isPending;
-    const updateField = (key: string, value: any) => setForm((p) => ({ ...p, [key]: value }));
+    const updateField = (key: string, value: string) => setForm((p) => ({ ...p, [key]: value }));
 
     const formatDate = (d: string | null | undefined) => {
         if (!d) return "\u2014";
@@ -217,7 +295,7 @@ export function UserManagementScreen() {
                                 </tr>
                             </thead>
                             <tbody className="text-sm">
-                                {users.map((user: any) => {
+                                {users.map((user) => {
                                     const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.fullName || user.email;
                                     const isActive = user.isActive !== false;
                                     return (
@@ -247,7 +325,7 @@ export function UserManagementScreen() {
                                             <td className="py-4 px-6 text-neutral-500 dark:text-neutral-400 text-xs">{formatDate(user.lastLoginAt)}</td>
                                             <td className="py-4 px-6 text-right">
                                                 <div className="flex items-center justify-end gap-1">
-                                                    <button onClick={() => openEdit(user)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit">
+                                                    <button onClick={() => openEdit(user)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit" aria-label={`Edit ${fullName}`}>
                                                         <Edit3 size={15} />
                                                     </button>
                                                     <button
@@ -260,6 +338,7 @@ export function UserManagementScreen() {
                                                                 : "text-success-500 hover:bg-success-50 dark:hover:bg-success-900/20"
                                                         )}
                                                         title={isActive ? "Deactivate" : "Activate"}
+                                                        aria-label={isActive ? `Deactivate ${fullName}` : `Activate ${fullName}`}
                                                     >
                                                         {isActive ? <UserX size={15} /> : <UserCheck size={15} />}
                                                     </button>
@@ -290,45 +369,14 @@ export function UserManagementScreen() {
 
             {/* ── Create/Edit Modal ── */}
             {modalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-lg animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
-                            <h2 className="text-lg font-bold text-primary-950 dark:text-white">{editingId ? "Edit User" : "Add User"}</h2>
-                            <button onClick={() => setModalOpen(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400"><X size={18} /></button>
-                        </div>
-                        <div className="p-6 overflow-y-auto flex-1 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <FormField label="First Name" value={form.firstName} onChange={(v) => updateField("firstName", v)} placeholder="First name" />
-                                <FormField label="Last Name" value={form.lastName} onChange={(v) => updateField("lastName", v)} placeholder="Last name" />
-                            </div>
-                            <FormField label="Email" value={form.email} onChange={(v) => updateField("email", v)} type="email" placeholder="user@company.com" />
-                            <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Role</label>
-                                <select
-                                    value={form.role}
-                                    onChange={(e) => updateField("role", e.target.value)}
-                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
-                                >
-                                    <option value="admin">Admin</option>
-                                    <option value="manager">Manager</option>
-                                    <option value="operator">Operator</option>
-                                    <option value="viewer">Viewer</option>
-                                </select>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <FormField label="Department" value={form.department} onChange={(v) => updateField("department", v)} placeholder="e.g. Engineering" />
-                                <FormField label="Location" value={form.location} onChange={(v) => updateField("location", v)} placeholder="e.g. HQ" />
-                            </div>
-                        </div>
-                        <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
-                            <button onClick={() => setModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
-                            <button onClick={handleSave} disabled={saving} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                                {saving && <Loader2 size={14} className="animate-spin" />}
-                                {saving ? "Saving..." : editingId ? "Update" : "Create"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <UserModal
+                    editingId={editingId}
+                    form={form}
+                    updateField={updateField}
+                    onClose={() => setModalOpen(false)}
+                    onSave={handleSave}
+                    saving={saving}
+                />
             )}
         </div>
     );

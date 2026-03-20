@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { hrApi } from '@/lib/api/hr';
+import { hrApi, type EmployeeStatus } from '@/lib/api/hr';
 import { hrKeys } from './use-hr-queries';
 
 // ── Departments ──
@@ -179,7 +179,7 @@ export function useCreateEmployee() {
     return useMutation({
         mutationFn: (data: any) => hrApi.createEmployee(data),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: hrKeys.all });
+            queryClient.invalidateQueries({ queryKey: hrKeys.employees() });
         },
     });
 }
@@ -191,7 +191,7 @@ export function useUpdateEmployee() {
             hrApi.updateEmployee(id, data),
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: hrKeys.employee(variables.id) });
-            queryClient.invalidateQueries({ queryKey: hrKeys.all });
+            queryClient.invalidateQueries({ queryKey: hrKeys.employees() });
         },
     });
 }
@@ -201,7 +201,7 @@ export function useDeleteEmployee() {
     return useMutation({
         mutationFn: (id: string) => hrApi.deleteEmployee(id),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: hrKeys.all });
+            queryClient.invalidateQueries({ queryKey: hrKeys.employees() });
         },
     });
 }
@@ -209,11 +209,11 @@ export function useDeleteEmployee() {
 export function useUpdateEmployeeStatus() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, status }: { id: string; status: string }) =>
+        mutationFn: ({ id, status }: { id: string; status: EmployeeStatus }) =>
             hrApi.updateEmployeeStatus(id, status),
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: hrKeys.employee(variables.id) });
-            queryClient.invalidateQueries({ queryKey: hrKeys.all });
+            queryClient.invalidateQueries({ queryKey: hrKeys.employees() });
         },
     });
 }

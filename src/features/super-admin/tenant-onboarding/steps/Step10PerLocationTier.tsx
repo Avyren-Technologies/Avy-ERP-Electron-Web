@@ -426,7 +426,7 @@ export function Step10PerLocationTier({ onConfirmSubmit }: { onConfirmSubmit?: (
                 <SectionCard
                     title="One-Time License + AMC"
                     subtitle="Perpetual license fee with optional annual maintenance"
-                    accent="accent"
+                    accent="info"
                 >
                     <div className="space-y-5">
                         {/* One-Time Fee */}
@@ -448,8 +448,8 @@ export function Step10PerLocationTier({ onConfirmSubmit }: { onConfirmSubmit?: (
                                         onChange={(e) => {
                                             setOverrideOneTime(e.target.checked);
                                             if (!e.target.checked) {
-                                                const formField = control._fields.oneTimeLicenseFee;
-                                                if (formField) formField._f.onChange({ target: { value: '' } });
+                                                const formField = control._fields.oneTimeLicenseFee as any;
+                                                if (formField?._f?.onChange) formField._f.onChange({ target: { value: '' } });
                                             }
                                         }}
                                     />
@@ -494,8 +494,8 @@ export function Step10PerLocationTier({ onConfirmSubmit }: { onConfirmSubmit?: (
                                             onChange={(e) => {
                                                 setOverrideAmc(e.target.checked);
                                                 if (!e.target.checked) {
-                                                    const formField = control._fields.amcAmount;
-                                                    if (formField) formField._f.onChange({ target: { value: '' } });
+                                                    const formField = control._fields.amcAmount as any;
+                                                    if (formField?._f?.onChange) formField._f.onChange({ target: { value: '' } });
                                                 }
                                             }}
                                         />

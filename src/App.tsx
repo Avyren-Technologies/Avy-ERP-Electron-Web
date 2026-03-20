@@ -50,6 +50,85 @@ import { CostCentreScreen } from "./features/company-admin/hr/CostCentreScreen";
 import { EmployeeDirectoryScreen } from "./features/company-admin/hr/EmployeeDirectoryScreen";
 import { EmployeeProfileScreen } from "./features/company-admin/hr/EmployeeProfileScreen";
 
+// HR Leave Management Screens
+import { LeaveTypeScreen } from "./features/company-admin/hr/LeaveTypeScreen";
+import { LeavePolicyScreen } from "./features/company-admin/hr/LeavePolicyScreen";
+import { LeaveRequestScreen } from "./features/company-admin/hr/LeaveRequestScreen";
+import { LeaveBalanceScreen } from "./features/company-admin/hr/LeaveBalanceScreen";
+
+// HR Attendance Screens
+import { AttendanceDashboardScreen } from "./features/company-admin/hr/AttendanceDashboardScreen";
+import { HolidayScreen } from "./features/company-admin/hr/HolidayScreen";
+import { RosterScreen } from "./features/company-admin/hr/RosterScreen";
+import { AttendanceRulesScreen } from "./features/company-admin/hr/AttendanceRulesScreen";
+import { AttendanceOverrideScreen } from "./features/company-admin/hr/AttendanceOverrideScreen";
+import { OvertimeRulesScreen } from "./features/company-admin/hr/OvertimeRulesScreen";
+
+// HR Payroll & Compliance Screens
+import { SalaryComponentScreen } from "./features/company-admin/hr/SalaryComponentScreen";
+import { SalaryStructureScreen } from "./features/company-admin/hr/SalaryStructureScreen";
+import { EmployeeSalaryScreen } from "./features/company-admin/hr/EmployeeSalaryScreen";
+import { StatutoryConfigScreen } from "./features/company-admin/hr/StatutoryConfigScreen";
+import { TaxConfigScreen } from "./features/company-admin/hr/TaxConfigScreen";
+import { BankConfigScreen } from "./features/company-admin/hr/BankConfigScreen";
+import { LoanPolicyScreen } from "./features/company-admin/hr/LoanPolicyScreen";
+import { LoanScreen } from "./features/company-admin/hr/LoanScreen";
+
+// HR Payroll Operations Screens
+import { PayrollRunScreen } from "./features/company-admin/hr/PayrollRunScreen";
+import { PayslipScreen } from "./features/company-admin/hr/PayslipScreen";
+import { SalaryHoldScreen } from "./features/company-admin/hr/SalaryHoldScreen";
+import { SalaryRevisionScreen } from "./features/company-admin/hr/SalaryRevisionScreen";
+import { StatutoryFilingScreen } from "./features/company-admin/hr/StatutoryFilingScreen";
+import { PayrollReportScreen } from "./features/company-admin/hr/PayrollReportScreen";
+
+// HR ESS & Workflow Screens
+import { EssConfigScreen } from "./features/company-admin/hr/EssConfigScreen";
+import { ApprovalWorkflowScreen } from "./features/company-admin/hr/ApprovalWorkflowScreen";
+import { ApprovalRequestScreen } from "./features/company-admin/hr/ApprovalRequestScreen";
+import { NotificationTemplateScreen } from "./features/company-admin/hr/NotificationTemplateScreen";
+import { NotificationRuleScreen } from "./features/company-admin/hr/NotificationRuleScreen";
+import { ITDeclarationScreen } from "./features/company-admin/hr/ITDeclarationScreen";
+
+// HR Self-Service Screens
+import { MyProfileScreen } from "./features/company-admin/hr/MyProfileScreen";
+import { MyPayslipsScreen } from "./features/company-admin/hr/MyPayslipsScreen";
+import { MyLeaveScreen } from "./features/company-admin/hr/MyLeaveScreen";
+import { MyAttendanceScreen } from "./features/company-admin/hr/MyAttendanceScreen";
+import { TeamViewScreen } from "./features/company-admin/hr/TeamViewScreen";
+
+// HR Recruitment & Training Screens
+import { RequisitionScreen } from "./features/company-admin/hr/RequisitionScreen";
+import { CandidateScreen } from "./features/company-admin/hr/CandidateScreen";
+import { TrainingCatalogueScreen } from "./features/company-admin/hr/TrainingCatalogueScreen";
+import { TrainingNominationScreen } from "./features/company-admin/hr/TrainingNominationScreen";
+
+// HR Exit & Separation Screens
+import { ExitRequestScreen } from "./features/company-admin/hr/ExitRequestScreen";
+import { ClearanceDashboardScreen } from "./features/company-admin/hr/ClearanceDashboardScreen";
+import { FnFSettlementScreen } from "./features/company-admin/hr/FnFSettlementScreen";
+
+// HR Advanced HR Screens
+import { AssetManagementScreen } from "./features/company-admin/hr/AssetManagementScreen";
+import { ExpenseClaimScreen } from "./features/company-admin/hr/ExpenseClaimScreen";
+import { HRLetterScreen } from "./features/company-admin/hr/HRLetterScreen";
+import { GrievanceScreen } from "./features/company-admin/hr/GrievanceScreen";
+import { DisciplinaryScreen } from "./features/company-admin/hr/DisciplinaryScreen";
+
+// HR Transfer, Promotion & Delegation Screens
+import { TransferScreen } from "./features/company-admin/hr/TransferScreen";
+import { PromotionScreen } from "./features/company-admin/hr/PromotionScreen";
+import { DelegateScreen } from "./features/company-admin/hr/DelegateScreen";
+
+// HR Performance Management Screens
+import { AppraisalCycleScreen } from "./features/company-admin/hr/AppraisalCycleScreen";
+import { GoalScreen } from "./features/company-admin/hr/GoalScreen";
+import { Feedback360Screen } from "./features/company-admin/hr/Feedback360Screen";
+import { RatingsScreen } from "./features/company-admin/hr/RatingsScreen";
+import { SkillScreen } from "./features/company-admin/hr/SkillScreen";
+import { SuccessionScreen } from "./features/company-admin/hr/SuccessionScreen";
+import { PerformanceDashboardScreen } from "./features/company-admin/hr/PerformanceDashboardScreen";
+
 // Placeholder components to prevent router crashes before we build them
 const Placeholder = ({ name }: { name: string }) => (
   <div className="flex items-center justify-center p-12 h-full">
@@ -154,6 +233,74 @@ function App() {
         <Route path="company/hr/cost-centres" element={<RequireRole roles={['company-admin']}><CostCentreScreen /></RequireRole>} />
         <Route path="company/hr/employees" element={<RequireRole roles={['company-admin']}><EmployeeDirectoryScreen /></RequireRole>} />
         <Route path="company/hr/employees/:id" element={<RequireRole roles={['company-admin']}><EmployeeProfileScreen /></RequireRole>} />
+        {/* Company-admin Attendance routes */}
+        <Route path="company/hr/attendance" element={<RequireRole roles={['company-admin']}><AttendanceDashboardScreen /></RequireRole>} />
+        <Route path="company/hr/holidays" element={<RequireRole roles={['company-admin']}><HolidayScreen /></RequireRole>} />
+        <Route path="company/hr/rosters" element={<RequireRole roles={['company-admin']}><RosterScreen /></RequireRole>} />
+        <Route path="company/hr/attendance-rules" element={<RequireRole roles={['company-admin']}><AttendanceRulesScreen /></RequireRole>} />
+        <Route path="company/hr/attendance-overrides" element={<RequireRole roles={['company-admin']}><AttendanceOverrideScreen /></RequireRole>} />
+        <Route path="company/hr/overtime-rules" element={<RequireRole roles={['company-admin']}><OvertimeRulesScreen /></RequireRole>} />
+        {/* Company-admin Leave Management routes */}
+        <Route path="company/hr/leave-types" element={<RequireRole roles={['company-admin']}><LeaveTypeScreen /></RequireRole>} />
+        <Route path="company/hr/leave-policies" element={<RequireRole roles={['company-admin']}><LeavePolicyScreen /></RequireRole>} />
+        <Route path="company/hr/leave-requests" element={<RequireRole roles={['company-admin']}><LeaveRequestScreen /></RequireRole>} />
+        <Route path="company/hr/leave-balances" element={<RequireRole roles={['company-admin']}><LeaveBalanceScreen /></RequireRole>} />
+        {/* Company-admin Payroll & Compliance routes */}
+        <Route path="company/hr/salary-components" element={<RequireRole roles={['company-admin']}><SalaryComponentScreen /></RequireRole>} />
+        <Route path="company/hr/salary-structures" element={<RequireRole roles={['company-admin']}><SalaryStructureScreen /></RequireRole>} />
+        <Route path="company/hr/employee-salary" element={<RequireRole roles={['company-admin']}><EmployeeSalaryScreen /></RequireRole>} />
+        <Route path="company/hr/statutory-config" element={<RequireRole roles={['company-admin']}><StatutoryConfigScreen /></RequireRole>} />
+        <Route path="company/hr/tax-config" element={<RequireRole roles={['company-admin']}><TaxConfigScreen /></RequireRole>} />
+        <Route path="company/hr/bank-config" element={<RequireRole roles={['company-admin']}><BankConfigScreen /></RequireRole>} />
+        <Route path="company/hr/loan-policies" element={<RequireRole roles={['company-admin']}><LoanPolicyScreen /></RequireRole>} />
+        <Route path="company/hr/loans" element={<RequireRole roles={['company-admin']}><LoanScreen /></RequireRole>} />
+        {/* Company-admin Payroll Operations routes */}
+        <Route path="company/hr/payroll-runs" element={<RequireRole roles={['company-admin']}><PayrollRunScreen /></RequireRole>} />
+        <Route path="company/hr/payslips" element={<RequireRole roles={['company-admin']}><PayslipScreen /></RequireRole>} />
+        <Route path="company/hr/salary-holds" element={<RequireRole roles={['company-admin']}><SalaryHoldScreen /></RequireRole>} />
+        <Route path="company/hr/salary-revisions" element={<RequireRole roles={['company-admin']}><SalaryRevisionScreen /></RequireRole>} />
+        <Route path="company/hr/statutory-filings" element={<RequireRole roles={['company-admin']}><StatutoryFilingScreen /></RequireRole>} />
+        <Route path="company/hr/payroll-reports" element={<RequireRole roles={['company-admin']}><PayrollReportScreen /></RequireRole>} />
+        {/* Company-admin ESS & Workflow routes */}
+        <Route path="company/hr/ess-config" element={<RequireRole roles={['company-admin']}><EssConfigScreen /></RequireRole>} />
+        <Route path="company/hr/approval-workflows" element={<RequireRole roles={['company-admin']}><ApprovalWorkflowScreen /></RequireRole>} />
+        <Route path="company/hr/approval-requests" element={<RequireRole roles={['company-admin']}><ApprovalRequestScreen /></RequireRole>} />
+        <Route path="company/hr/notification-templates" element={<RequireRole roles={['company-admin']}><NotificationTemplateScreen /></RequireRole>} />
+        <Route path="company/hr/notification-rules" element={<RequireRole roles={['company-admin']}><NotificationRuleScreen /></RequireRole>} />
+        <Route path="company/hr/it-declarations" element={<RequireRole roles={['company-admin']}><ITDeclarationScreen /></RequireRole>} />
+        {/* Company-admin Self-Service routes */}
+        <Route path="company/hr/my-profile" element={<RequireRole roles={['company-admin']}><MyProfileScreen /></RequireRole>} />
+        <Route path="company/hr/my-payslips" element={<RequireRole roles={['company-admin']}><MyPayslipsScreen /></RequireRole>} />
+        <Route path="company/hr/my-leave" element={<RequireRole roles={['company-admin']}><MyLeaveScreen /></RequireRole>} />
+        <Route path="company/hr/my-attendance" element={<RequireRole roles={['company-admin']}><MyAttendanceScreen /></RequireRole>} />
+        <Route path="company/hr/team-view" element={<RequireRole roles={['company-admin']}><TeamViewScreen /></RequireRole>} />
+        {/* Company-admin Recruitment & Training routes */}
+        <Route path="company/hr/requisitions" element={<RequireRole roles={['company-admin']}><RequisitionScreen /></RequireRole>} />
+        <Route path="company/hr/candidates" element={<RequireRole roles={['company-admin']}><CandidateScreen /></RequireRole>} />
+        <Route path="company/hr/training" element={<RequireRole roles={['company-admin']}><TrainingCatalogueScreen /></RequireRole>} />
+        <Route path="company/hr/training-nominations" element={<RequireRole roles={['company-admin']}><TrainingNominationScreen /></RequireRole>} />
+        {/* Company-admin Exit & Separation routes */}
+        <Route path="company/hr/exit-requests" element={<RequireRole roles={['company-admin']}><ExitRequestScreen /></RequireRole>} />
+        <Route path="company/hr/clearance-dashboard" element={<RequireRole roles={['company-admin']}><ClearanceDashboardScreen /></RequireRole>} />
+        <Route path="company/hr/fnf-settlement" element={<RequireRole roles={['company-admin']}><FnFSettlementScreen /></RequireRole>} />
+        {/* Company-admin Advanced HR routes */}
+        <Route path="company/hr/assets" element={<RequireRole roles={['company-admin']}><AssetManagementScreen /></RequireRole>} />
+        <Route path="company/hr/expenses" element={<RequireRole roles={['company-admin']}><ExpenseClaimScreen /></RequireRole>} />
+        <Route path="company/hr/hr-letters" element={<RequireRole roles={['company-admin']}><HRLetterScreen /></RequireRole>} />
+        <Route path="company/hr/grievances" element={<RequireRole roles={['company-admin']}><GrievanceScreen /></RequireRole>} />
+        <Route path="company/hr/disciplinary" element={<RequireRole roles={['company-admin']}><DisciplinaryScreen /></RequireRole>} />
+        {/* Company-admin Transfer, Promotion & Delegation routes */}
+        <Route path="company/hr/transfers" element={<RequireRole roles={['company-admin']}><TransferScreen /></RequireRole>} />
+        <Route path="company/hr/promotions" element={<RequireRole roles={['company-admin']}><PromotionScreen /></RequireRole>} />
+        <Route path="company/hr/delegates" element={<RequireRole roles={['company-admin']}><DelegateScreen /></RequireRole>} />
+        {/* Company-admin Performance Management routes */}
+        <Route path="company/hr/appraisal-cycles" element={<RequireRole roles={['company-admin']}><AppraisalCycleScreen /></RequireRole>} />
+        <Route path="company/hr/goals" element={<RequireRole roles={['company-admin']}><GoalScreen /></RequireRole>} />
+        <Route path="company/hr/feedback-360" element={<RequireRole roles={['company-admin']}><Feedback360Screen /></RequireRole>} />
+        <Route path="company/hr/ratings" element={<RequireRole roles={['company-admin']}><RatingsScreen /></RequireRole>} />
+        <Route path="company/hr/skills" element={<RequireRole roles={['company-admin']}><SkillScreen /></RequireRole>} />
+        <Route path="company/hr/succession" element={<RequireRole roles={['company-admin']}><SuccessionScreen /></RequireRole>} />
+        <Route path="company/hr/performance-dashboard" element={<RequireRole roles={['company-admin']}><PerformanceDashboardScreen /></RequireRole>} />
         {/* Super-admin + company-admin routes */}
         <Route path="modules" element={<RequireRole roles={['super-admin', 'company-admin']}><ModuleCatalogueScreen /></RequireRole>} />
         <Route path="monitor" element={<RequireRole roles={['super-admin', 'company-admin']}><PlatformMonitorScreen /></RequireRole>} />

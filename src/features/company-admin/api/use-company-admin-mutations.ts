@@ -1,5 +1,17 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { companyAdminApi } from '@/lib/api/company-admin';
+import type {
+    CompanyLocation,
+    CreateShiftPayload,
+    CreateContactPayload,
+    CreateNoSeriesPayload,
+    CreateIOTReasonPayload,
+    SystemControls,
+    CompanySettings,
+    CreateUserPayload,
+    UpdateUserPayload,
+    CreateRolePayload,
+} from '@/lib/api/company-admin';
 import { companyAdminKeys } from './use-company-admin-queries';
 
 // ── Profile ──
@@ -7,7 +19,7 @@ import { companyAdminKeys } from './use-company-admin-queries';
 export function useUpdateProfileSection() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ sectionKey, data }: { sectionKey: string; data: any }) =>
+        mutationFn: ({ sectionKey, data }: { sectionKey: string; data: Record<string, unknown> }) =>
             companyAdminApi.updateProfileSection(sectionKey, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: companyAdminKeys.profile() });
@@ -20,7 +32,7 @@ export function useUpdateProfileSection() {
 export function useUpdateLocation() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) =>
+        mutationFn: ({ id, data }: { id: string; data: Partial<CompanyLocation> }) =>
             companyAdminApi.updateLocation(id, data),
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: companyAdminKeys.location(variables.id) });
@@ -44,7 +56,7 @@ export function useDeleteLocation() {
 export function useCreateShift() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (data: any) => companyAdminApi.createShift(data),
+        mutationFn: (data: CreateShiftPayload) => companyAdminApi.createShift(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: companyAdminKeys.shifts() });
         },
@@ -54,7 +66,7 @@ export function useCreateShift() {
 export function useUpdateShift() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) =>
+        mutationFn: ({ id, data }: { id: string; data: Partial<CreateShiftPayload> }) =>
             companyAdminApi.updateShift(id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: companyAdminKeys.shifts() });
@@ -77,7 +89,7 @@ export function useDeleteShift() {
 export function useCreateContact() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (data: any) => companyAdminApi.createContact(data),
+        mutationFn: (data: CreateContactPayload) => companyAdminApi.createContact(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: companyAdminKeys.contacts() });
         },
@@ -87,7 +99,7 @@ export function useCreateContact() {
 export function useUpdateContact() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) =>
+        mutationFn: ({ id, data }: { id: string; data: Partial<CreateContactPayload> }) =>
             companyAdminApi.updateContact(id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: companyAdminKeys.contacts() });
@@ -110,7 +122,7 @@ export function useDeleteContact() {
 export function useCreateNoSeries() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (data: any) => companyAdminApi.createNoSeries(data),
+        mutationFn: (data: CreateNoSeriesPayload) => companyAdminApi.createNoSeries(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: companyAdminKeys.noSeries() });
         },
@@ -120,7 +132,7 @@ export function useCreateNoSeries() {
 export function useUpdateNoSeries() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) =>
+        mutationFn: ({ id, data }: { id: string; data: Partial<CreateNoSeriesPayload> }) =>
             companyAdminApi.updateNoSeries(id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: companyAdminKeys.noSeries() });
@@ -143,7 +155,7 @@ export function useDeleteNoSeries() {
 export function useCreateIOTReason() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (data: any) => companyAdminApi.createIOTReason(data),
+        mutationFn: (data: CreateIOTReasonPayload) => companyAdminApi.createIOTReason(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: companyAdminKeys.iotReasons() });
         },
@@ -153,7 +165,7 @@ export function useCreateIOTReason() {
 export function useUpdateIOTReason() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) =>
+        mutationFn: ({ id, data }: { id: string; data: Partial<CreateIOTReasonPayload> }) =>
             companyAdminApi.updateIOTReason(id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: companyAdminKeys.iotReasons() });
@@ -176,7 +188,7 @@ export function useDeleteIOTReason() {
 export function useUpdateControls() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (data: any) => companyAdminApi.updateControls(data),
+        mutationFn: (data: SystemControls) => companyAdminApi.updateControls(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: companyAdminKeys.controls() });
         },
@@ -188,7 +200,7 @@ export function useUpdateControls() {
 export function useUpdateSettings() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (data: any) => companyAdminApi.updateSettings(data),
+        mutationFn: (data: Partial<CompanySettings>) => companyAdminApi.updateSettings(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: companyAdminKeys.settings() });
         },
@@ -200,9 +212,9 @@ export function useUpdateSettings() {
 export function useCreateUser() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (data: any) => companyAdminApi.createUser(data),
+        mutationFn: (data: CreateUserPayload) => companyAdminApi.createUser(data),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: companyAdminKeys.all });
+            queryClient.invalidateQueries({ queryKey: companyAdminKeys.users() });
         },
     });
 }
@@ -210,11 +222,11 @@ export function useCreateUser() {
 export function useUpdateUser() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) =>
+        mutationFn: ({ id, data }: { id: string; data: UpdateUserPayload }) =>
             companyAdminApi.updateUser(id, data),
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: companyAdminKeys.user(variables.id) });
-            queryClient.invalidateQueries({ queryKey: companyAdminKeys.all });
+            queryClient.invalidateQueries({ queryKey: companyAdminKeys.users() });
         },
     });
 }
@@ -226,7 +238,40 @@ export function useUpdateUserStatus() {
             companyAdminApi.updateUserStatus(id, status),
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: companyAdminKeys.user(variables.id) });
-            queryClient.invalidateQueries({ queryKey: companyAdminKeys.all });
+            queryClient.invalidateQueries({ queryKey: companyAdminKeys.users() });
+        },
+    });
+}
+
+// ── RBAC Roles ──
+
+export function useCreateRole() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: CreateRolePayload) => companyAdminApi.createRole(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: companyAdminKeys.roles() });
+        },
+    });
+}
+
+export function useUpdateRole() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, data }: { id: string; data: CreateRolePayload }) =>
+            companyAdminApi.updateRole(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: companyAdminKeys.roles() });
+        },
+    });
+}
+
+export function useDeleteRole() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => companyAdminApi.deleteRole(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: companyAdminKeys.roles() });
         },
     });
 }

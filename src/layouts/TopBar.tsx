@@ -43,6 +43,74 @@ const PAGE_TITLES: Record<string, { title: string; subtitle?: string }> = {
     '/app/company/hr/employee-types': { title: 'Employee Types', subtitle: 'Manage employee categories' },
     '/app/company/hr/cost-centres': { title: 'Cost Centres', subtitle: 'Define cost centres for budgeting' },
     '/app/company/hr/employees': { title: 'Employee Directory', subtitle: 'Browse and manage employees' },
+    // Transfers & Promotions
+    '/app/company/hr/transfers': { title: 'Employee Transfers', subtitle: 'Manage employee transfers across departments and locations' },
+    '/app/company/hr/promotions': { title: 'Employee Promotions', subtitle: 'Manage employee promotions and grade changes' },
+    '/app/company/hr/delegates': { title: 'Manager Delegation', subtitle: 'Temporarily delegate approval authority' },
+    // Attendance
+    '/app/company/hr/attendance': { title: 'Attendance Dashboard', subtitle: 'Track daily attendance and trends' },
+    '/app/company/hr/holidays': { title: 'Holiday Calendar', subtitle: 'Manage company holidays' },
+    '/app/company/hr/rosters': { title: 'Rosters', subtitle: 'Define and manage shift rosters' },
+    '/app/company/hr/attendance-rules': { title: 'Attendance Rules', subtitle: 'Configure attendance policies' },
+    '/app/company/hr/attendance-overrides': { title: 'Attendance Overrides', subtitle: 'Review override requests' },
+    '/app/company/hr/overtime-rules': { title: 'Overtime Rules', subtitle: 'Configure overtime calculation rules' },
+    // Leave Management
+    '/app/company/hr/leave-types': { title: 'Leave Types', subtitle: 'Define leave categories' },
+    '/app/company/hr/leave-policies': { title: 'Leave Policies', subtitle: 'Configure leave entitlements' },
+    '/app/company/hr/leave-requests': { title: 'Leave Requests', subtitle: 'Review and manage leave applications' },
+    '/app/company/hr/leave-balances': { title: 'Leave Balances', subtitle: 'View and adjust employee leave balances' },
+    // Payroll & Compliance
+    '/app/company/hr/salary-components': { title: 'Salary Components', subtitle: 'Define earnings and deduction components' },
+    '/app/company/hr/salary-structures': { title: 'Salary Structures', subtitle: 'Configure salary templates' },
+    '/app/company/hr/employee-salary': { title: 'Employee Salary', subtitle: 'Assign and manage employee compensation' },
+    '/app/company/hr/statutory-config': { title: 'Statutory Config', subtitle: 'PF, ESI, PT, Gratuity, Bonus & LWF settings' },
+    '/app/company/hr/tax-config': { title: 'Tax & TDS', subtitle: 'Income tax and TDS configuration' },
+    '/app/company/hr/bank-config': { title: 'Bank Config', subtitle: 'Salary disbursement bank settings' },
+    '/app/company/hr/loan-policies': { title: 'Loan Policies', subtitle: 'Define loan types and eligibility rules' },
+    '/app/company/hr/loans': { title: 'Loans', subtitle: 'Manage employee loan records' },
+    // Payroll Operations
+    '/app/company/hr/payroll-runs': { title: 'Payroll Runs', subtitle: 'Execute monthly payroll processing' },
+    '/app/company/hr/payslips': { title: 'Payslips', subtitle: 'View and distribute employee payslips' },
+    '/app/company/hr/salary-holds': { title: 'Salary Holds', subtitle: 'Manage salary hold and release' },
+    '/app/company/hr/salary-revisions': { title: 'Salary Revisions', subtitle: 'Process salary changes and arrears' },
+    '/app/company/hr/statutory-filings': { title: 'Statutory Filings', subtitle: 'PF, ESI, PT and other compliance filings' },
+    '/app/company/hr/payroll-reports': { title: 'Payroll Reports', subtitle: 'Salary register, bank file, variance and statutory reports' },
+    // ESS & Workflows
+    '/app/company/hr/ess-config': { title: 'ESS Config', subtitle: 'Configure Employee Self-Service settings and access' },
+    '/app/company/hr/approval-workflows': { title: 'Approval Workflows', subtitle: 'Define multi-step approval chains' },
+    '/app/company/hr/approval-requests': { title: 'Approval Requests', subtitle: 'Review and manage pending approvals' },
+    '/app/company/hr/notification-templates': { title: 'Notification Templates', subtitle: 'Manage email and push notification templates' },
+    '/app/company/hr/notification-rules': { title: 'Notification Rules', subtitle: 'Configure notification triggers and recipients' },
+    '/app/company/hr/it-declarations': { title: 'IT Declarations', subtitle: 'Employee income tax declarations and verification' },
+    // Exit & Separation
+    '/app/company/hr/exit-requests': { title: 'Exit Requests', subtitle: 'Manage employee exit and separation processes' },
+    '/app/company/hr/clearance-dashboard': { title: 'Clearance Dashboard', subtitle: 'Track department-wise exit clearances' },
+    '/app/company/hr/fnf-settlement': { title: 'F&F Settlement', subtitle: 'Full & final settlement computation and disbursement' },
+    // Self-Service
+    '/app/company/hr/my-profile': { title: 'My Profile', subtitle: 'Your personal information and documents' },
+    '/app/company/hr/my-payslips': { title: 'My Payslips', subtitle: 'View and download your payslips' },
+    '/app/company/hr/my-leave': { title: 'My Leave', subtitle: 'Leave balances, applications, and history' },
+    '/app/company/hr/my-attendance': { title: 'My Attendance', subtitle: 'Attendance records and regularization' },
+    '/app/company/hr/team-view': { title: 'Team View', subtitle: 'Manager self-service: team, approvals, and calendar' },
+    // Recruitment & Training
+    '/app/company/hr/requisitions': { title: 'Job Requisitions', subtitle: 'Create and manage hiring requisitions' },
+    '/app/company/hr/candidates': { title: 'Candidates', subtitle: 'Track candidates through the hiring pipeline' },
+    '/app/company/hr/training': { title: 'Training Catalogue', subtitle: 'Manage available training programmes' },
+    '/app/company/hr/training-nominations': { title: 'Training Nominations', subtitle: 'Nominate employees for training programmes' },
+    // Advanced HR
+    '/app/company/hr/assets': { title: 'Asset Management', subtitle: 'Track and assign company assets to employees' },
+    '/app/company/hr/expenses': { title: 'Expense Claims', subtitle: 'Submit and approve employee expense claims' },
+    '/app/company/hr/hr-letters': { title: 'HR Letters', subtitle: 'Generate and manage HR letters and templates' },
+    '/app/company/hr/grievances': { title: 'Grievances', subtitle: 'Manage employee grievance cases' },
+    '/app/company/hr/disciplinary': { title: 'Disciplinary Actions', subtitle: 'Track disciplinary proceedings and actions' },
+    // Performance Management
+    '/app/company/hr/appraisal-cycles': { title: 'Appraisal Cycles', subtitle: 'Create and manage performance review cycles' },
+    '/app/company/hr/goals': { title: 'Goals & OKRs', subtitle: 'Define KRAs, OKRs, and cascade goals across departments' },
+    '/app/company/hr/feedback-360': { title: '360 Feedback', subtitle: 'Multi-rater feedback collection and reports' },
+    '/app/company/hr/ratings': { title: 'Ratings & Calibration', subtitle: 'Appraisal ratings, self/manager review, and bell curve calibration' },
+    '/app/company/hr/skills': { title: 'Skills & Mapping', subtitle: 'Skill library, employee skill mapping, and gap analysis' },
+    '/app/company/hr/succession': { title: 'Succession Planning', subtitle: '9-box grid, bench strength, and succession pipelines' },
+    '/app/company/hr/performance-dashboard': { title: 'Performance Dashboard', subtitle: 'Cycle progress, completion rates, and rating distribution' },
 };
 
 function getPageTitle(path: string) {
@@ -61,15 +129,56 @@ function getPageTitle(path: string) {
 const SEARCH_ITEMS = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/app/dashboard', group: 'Pages' },
     { icon: Building2, label: 'Companies', path: '/app/companies', group: 'Pages' },
-    { icon: CreditCard, label: 'Billing', path: '/app/billing', group: 'Pages' },
+    { icon: CreditCard, label: 'Billing', path: '/app/billing', group: 'Billing' },
+    { icon: CreditCard, label: 'Invoices', path: '/app/billing/invoices', group: 'Billing' },
+    { icon: CreditCard, label: 'Payments', path: '/app/billing/payments', group: 'Billing' },
     { icon: Blocks, label: 'Module Catalogue', path: '/app/modules', group: 'Pages' },
     { icon: Activity, label: 'Platform Monitor', path: '/app/monitor', group: 'Pages' },
-    { icon: Users, label: 'Employee Directory', path: '/app/hr/employees', group: 'HR' },
-    { icon: FileText, label: 'Payroll Reports', path: '/app/reports/analytics', group: 'Reports' },
+    { icon: Settings, label: 'Settings', path: '/app/settings', group: 'Pages' },
+    // Company Admin
+    { icon: Building2, label: 'Company Profile', path: '/app/company/profile', group: 'Company' },
+    { icon: Users, label: 'User Management', path: '/app/company/users', group: 'Company' },
+    { icon: FileText, label: 'Roles & Permissions', path: '/app/company/roles', group: 'Company' },
+    { icon: Settings, label: 'Company Settings', path: '/app/company/settings', group: 'Company' },
+    // Transfers & Promotions
+    { icon: Users, label: 'Employee Transfers', path: '/app/company/hr/transfers', group: 'HR' },
+    { icon: Users, label: 'Employee Promotions', path: '/app/company/hr/promotions', group: 'HR' },
+    { icon: Users, label: 'Manager Delegation', path: '/app/company/hr/delegates', group: 'HR' },
+    // HR
+    { icon: Users, label: 'Employee Directory', path: '/app/company/hr/employees', group: 'HR' },
+    { icon: Building2, label: 'Departments', path: '/app/company/hr/departments', group: 'HR' },
+    { icon: FileText, label: 'Designations', path: '/app/company/hr/designations', group: 'HR' },
+    { icon: FileText, label: 'Payroll Reports', path: '/app/company/hr/payroll-reports', group: 'HR' },
+    { icon: Settings, label: 'ESS Config', path: '/app/company/hr/ess-config', group: 'ESS & Workflows' },
+    { icon: FileText, label: 'Approval Workflows', path: '/app/company/hr/approval-workflows', group: 'ESS & Workflows' },
+    { icon: FileText, label: 'IT Declarations', path: '/app/company/hr/it-declarations', group: 'ESS & Workflows' },
+    { icon: Users, label: 'My Profile', path: '/app/company/hr/my-profile', group: 'Self-Service' },
+    { icon: Users, label: 'Team View', path: '/app/company/hr/team-view', group: 'Self-Service' },
+    // Recruitment & Training
+    { icon: Users, label: 'Job Requisitions', path: '/app/company/hr/requisitions', group: 'Recruitment' },
+    { icon: Users, label: 'Candidates', path: '/app/company/hr/candidates', group: 'Recruitment' },
+    { icon: Settings, label: 'Training Catalogue', path: '/app/company/hr/training', group: 'Recruitment' },
+    { icon: Settings, label: 'Training Nominations', path: '/app/company/hr/training-nominations', group: 'Recruitment' },
+    // Advanced HR
+    { icon: Package, label: 'Asset Management', path: '/app/company/hr/assets', group: 'Advanced HR' },
+    { icon: FileText, label: 'Expense Claims', path: '/app/company/hr/expenses', group: 'Advanced HR' },
+    { icon: FileText, label: 'HR Letters', path: '/app/company/hr/hr-letters', group: 'Advanced HR' },
+    { icon: Settings, label: 'Grievances', path: '/app/company/hr/grievances', group: 'Advanced HR' },
+    { icon: Settings, label: 'Disciplinary Actions', path: '/app/company/hr/disciplinary', group: 'Advanced HR' },
+    // Performance Management
+    { icon: Settings, label: 'Appraisal Cycles', path: '/app/company/hr/appraisal-cycles', group: 'Performance' },
+    { icon: FileText, label: 'Goals & OKRs', path: '/app/company/hr/goals', group: 'Performance' },
+    { icon: Users, label: '360 Feedback', path: '/app/company/hr/feedback-360', group: 'Performance' },
+    { icon: Settings, label: 'Ratings & Calibration', path: '/app/company/hr/ratings', group: 'Performance' },
+    { icon: Settings, label: 'Skills & Mapping', path: '/app/company/hr/skills', group: 'Performance' },
+    { icon: Users, label: 'Succession Planning', path: '/app/company/hr/succession', group: 'Performance' },
+    { icon: Activity, label: 'Performance Dashboard', path: '/app/company/hr/performance-dashboard', group: 'Performance' },
+    // Reports
+    { icon: ClipboardList, label: 'Audit Logs', path: '/app/reports/audit', group: 'Reports' },
+    // Operations
     { icon: Package, label: 'Inventory', path: '/app/inventory', group: 'Operations' },
     { icon: Wrench, label: 'Machine Registry', path: '/app/maintenance/machines', group: 'Operations' },
     { icon: ClipboardList, label: 'Production', path: '/app/production', group: 'Operations' },
-    { icon: Settings, label: 'Settings', path: '/app/settings', group: 'Pages' },
 ];
 
 // ============================================================

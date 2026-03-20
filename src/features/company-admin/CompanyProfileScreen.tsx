@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
     Building2,
     Edit3,
@@ -75,13 +75,24 @@ function EditModal({ open, onClose, title, children, onSave, saving }: {
     onSave: () => void;
     saving: boolean;
 }) {
+    const handleEscKey = useCallback((e: KeyboardEvent) => {
+        if (e.key === 'Escape') onClose();
+    }, [onClose]);
+
+    useEffect(() => {
+        if (!open) return;
+        document.addEventListener('keydown', handleEscKey);
+        return () => document.removeEventListener('keydown', handleEscKey);
+    }, [open, handleEscKey]);
+
     if (!open) return null;
+    const modalId = title.toLowerCase().replace(/\s+/g, '-') + '-title';
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-labelledby={modalId}>
             <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-lg animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
-                    <h2 className="text-lg font-bold text-primary-950 dark:text-white">{title}</h2>
-                    <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
+                    <h2 id={modalId} className="text-lg font-bold text-primary-950 dark:text-white">{title}</h2>
+                    <button onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
                         <X size={18} />
                     </button>
                 </div>
@@ -116,10 +127,12 @@ function FormField({ label, value, onChange, placeholder, mono = false }: {
     placeholder?: string;
     mono?: boolean;
 }) {
+    const fieldId = label.toLowerCase().replace(/\s+/g, '-');
     return (
         <div>
-            <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">{label}</label>
+            <label htmlFor={fieldId} className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">{label}</label>
             <input
+                id={fieldId}
                 type="text"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}

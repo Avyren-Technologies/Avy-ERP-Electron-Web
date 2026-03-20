@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     ArrowLeft, FileText, Mail, Download, Ban, CheckCircle2,
@@ -84,6 +84,18 @@ function MarkAsPaidModal({
 
     const markPaidMutation = useMarkAsPaid();
 
+    const resetForm = () => {
+        setMethod('bank_transfer');
+        setReference('');
+        setPaymentDate(new Date().toISOString().split('T')[0]);
+        setNotes('');
+    };
+
+    const handleClose = () => {
+        resetForm();
+        onClose();
+    };
+
     const handleSubmit = async () => {
         if (!paymentDate) {
             showError('Validation Error', 'Please select a payment date.');
@@ -100,11 +112,18 @@ function MarkAsPaidModal({
                 },
             });
             showSuccess('Payment Recorded', 'Invoice has been marked as paid.');
-            onClose();
+            handleClose();
         } catch (err) {
             showApiError(err);
         }
     };
+
+    useEffect(() => {
+        if (!open) return;
+        const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') handleClose(); };
+        document.addEventListener('keydown', onEsc);
+        return () => document.removeEventListener('keydown', onEsc);
+    }, [open]);
 
     if (!open) return null;
 
@@ -119,8 +138,8 @@ function MarkAsPaidModal({
     ];
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="mark-as-paid-title">
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={handleClose} />
             <div className="relative bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-2xl w-full max-w-lg mx-4 animate-in fade-in zoom-in-95 duration-200">
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
@@ -129,11 +148,11 @@ function MarkAsPaidModal({
                             <CheckCircle2 className="w-5 h-5 text-success-600 dark:text-success-400" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-bold text-primary-950 dark:text-white">Mark as Paid</h3>
+                            <h3 id="mark-as-paid-title" className="text-lg font-bold text-primary-950 dark:text-white">Mark as Paid</h3>
                             <p className="text-xs text-neutral-500 dark:text-neutral-400">Record payment details for this invoice</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
+                    <button onClick={handleClose} aria-label="Close" className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
@@ -142,10 +161,11 @@ function MarkAsPaidModal({
                 <div className="px-6 py-5 space-y-4">
                     {/* Payment Method */}
                     <div>
-                        <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Payment Method *</label>
+                        <label htmlFor="payment-method" className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Payment Method *</label>
                         <div className="relative">
                             <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
                             <select
+                                id="payment-method"
                                 value={method}
                                 onChange={(e) => setMethod(e.target.value)}
                                 className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all appearance-none"
@@ -159,8 +179,9 @@ function MarkAsPaidModal({
 
                     {/* Payment Reference */}
                     <div>
-                        <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Payment Reference / Transaction ID</label>
+                        <label htmlFor="payment-reference" className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Payment Reference / Transaction ID</label>
                         <input
+                            id="payment-reference"
                             type="text"
                             value={reference}
                             onChange={(e) => setReference(e.target.value)}
@@ -171,10 +192,11 @@ function MarkAsPaidModal({
 
                     {/* Payment Date */}
                     <div>
-                        <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Payment Date *</label>
+                        <label htmlFor="payment-date" className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Payment Date *</label>
                         <div className="relative">
                             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
                             <input
+                                id="payment-date"
                                 type="date"
                                 value={paymentDate}
                                 onChange={(e) => setPaymentDate(e.target.value)}
@@ -185,8 +207,9 @@ function MarkAsPaidModal({
 
                     {/* Notes */}
                     <div>
-                        <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Notes</label>
+                        <label htmlFor="payment-notes" className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Notes</label>
                         <textarea
+                            id="payment-notes"
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
                             rows={3}
@@ -199,7 +222,7 @@ function MarkAsPaidModal({
                 {/* Footer */}
                 <div className="px-6 py-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-end gap-3">
                     <button
-                        onClick={onClose}
+                        onClick={handleClose}
                         className="px-4 py-2.5 text-sm font-semibold text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition-colors"
                     >
                         Cancel
@@ -235,17 +258,27 @@ function VoidConfirmModal({
     onConfirm: () => void;
     isPending: boolean;
 }) {
+    const handleEscKey = useCallback((e: KeyboardEvent) => {
+        if (e.key === 'Escape') onClose();
+    }, [onClose]);
+
+    useEffect(() => {
+        if (!open) return;
+        document.addEventListener('keydown', handleEscKey);
+        return () => document.removeEventListener('keydown', handleEscKey);
+    }, [open, handleEscKey]);
+
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="void-confirm-title">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
             <div className="relative bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-2xl w-full max-w-md mx-4 animate-in fade-in zoom-in-95 duration-200">
                 <div className="px-6 py-6 text-center">
                     <div className="w-14 h-14 rounded-full bg-danger-50 dark:bg-danger-900/30 flex items-center justify-center mx-auto mb-4">
                         <AlertTriangle className="w-7 h-7 text-danger-600 dark:text-danger-400" />
                     </div>
-                    <h3 className="text-lg font-bold text-primary-950 dark:text-white mb-2">Void Invoice?</h3>
+                    <h3 id="void-confirm-title" className="text-lg font-bold text-primary-950 dark:text-white mb-2">Void Invoice?</h3>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">
                         This action cannot be undone. The invoice will be permanently voided and cannot be used for payment collection.
                     </p>
@@ -395,6 +428,7 @@ export function InvoiceDetailScreen() {
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => navigate('/app/billing/invoices')}
+                        aria-label="Back to Invoices"
                         className="p-2.5 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors shadow-sm"
                     >
                         <ArrowLeft className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
