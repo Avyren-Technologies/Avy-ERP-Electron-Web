@@ -212,6 +212,7 @@ export function EmployeeProfileScreen() {
     const [salary, setSalary] = useState({ ...EMPTY_SALARY });
     const [bank, setBank] = useState({ ...EMPTY_BANK });
     const [documents, setDocuments] = useState({ ...EMPTY_DOCUMENTS });
+    const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
 
     // Queries
     const employeeQuery = useEmployee(isNew ? "" : id!);
@@ -246,6 +247,8 @@ export function EmployeeProfileScreen() {
     useEffect(() => {
         if (isNew || !employeeQuery.data?.data) return;
         const emp: any = employeeQuery.data.data;
+
+        setProfilePhotoUrl(emp.profilePhotoUrl ?? null);
 
         setPersonal({
             firstName: emp.firstName ?? "",
@@ -356,6 +359,9 @@ export function EmployeeProfileScreen() {
             departmentId: professional.departmentId,
             designationId: professional.designationId,
         };
+
+        // Profile photo
+        if (profilePhotoUrl !== undefined) payload.profilePhotoUrl = profilePhotoUrl;
 
         // Gender and marital status (already using backend enum values)
         if (personal.gender) payload.gender = personal.gender;
@@ -535,7 +541,7 @@ export function EmployeeProfileScreen() {
             {/* Tab Navigation */}
             <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm overflow-hidden">
                 <div className="flex overflow-x-auto border-b border-neutral-100 dark:border-neutral-800">
-                    {TABS.map((tab) => {
+                    {(isNew ? TABS.filter((t) => t.key !== "timeline") : TABS).map((tab) => {
                         const Icon = tab.icon;
                         const active = activeTab === tab.key;
                         return (
@@ -561,18 +567,42 @@ export function EmployeeProfileScreen() {
                     {/* ── Personal Tab ── */}
                     {activeTab === "personal" && (
                         <div className="space-y-6">
-                            {/* Photo placeholder */}
+                            {/* Profile Photo */}
                             <div className="flex items-center gap-6 mb-2">
                                 <div className="w-20 h-20 rounded-2xl bg-accent-100 dark:bg-accent-900/30 flex items-center justify-center text-2xl font-bold text-accent-700 dark:text-accent-400 relative">
-                                    {emp.photoUrl ? (
-                                        <img src={emp.photoUrl} alt="" className="w-full h-full rounded-2xl object-cover" />
+                                    {profilePhotoUrl ? (
+                                        <img src={profilePhotoUrl} alt="" className="w-full h-full rounded-2xl object-cover" />
                                     ) : (
                                         (personal.firstName?.charAt(0) ?? "") + (personal.lastName?.charAt(0) ?? "") || "?"
                                     )}
                                     {editing && (
-                                        <button className="absolute -bottom-1 -right-1 w-7 h-7 rounded-lg bg-primary-600 flex items-center justify-center text-white shadow-md">
-                                            <Camera size={14} />
-                                        </button>
+                                        <>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                id="profile-photo-input"
+                                                className="hidden"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (!file) return;
+                                                    if (file.size > 5 * 1024 * 1024) {
+                                                        showApiError({ message: "Photo must be under 5 MB" });
+                                                        return;
+                                                    }
+                                                    const reader = new FileReader();
+                                                    reader.onload = () => {
+                                                        setProfilePhotoUrl(reader.result as string);
+                                                    };
+                                                    reader.readAsDataURL(file);
+                                                }}
+                                            />
+                                            <label
+                                                htmlFor="profile-photo-input"
+                                                className="absolute -bottom-1 -right-1 w-7 h-7 rounded-lg bg-primary-600 flex items-center justify-center text-white shadow-md cursor-pointer"
+                                            >
+                                                <Camera size={14} />
+                                            </label>
+                                        </>
                                     )}
                                 </div>
                                 <div>
@@ -944,49 +974,73 @@ export function EmployeeProfileScreen() {
             </div>
 
             {/* Sticky Action Bar */}
-            {(editing || isNew) && (
-                <div className="sticky bottom-0 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-lg border-t border-neutral-200 dark:border-neutral-800 px-6 py-4 -mx-6 -mb-6 flex items-center justify-between gap-4 rounded-b-2xl">
-                    <div className="flex items-center gap-3">
-                        {!isNew && (
-                            <button
-                                onClick={() => setEditing(false)}
-                                className="px-5 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
-                            >
-                                Cancel
-                            </button>
-                        )}
-                    </div>
-                    <div className="flex items-center gap-3">
-                        {!isNew && (
-                            <div className="relative group">
-                                <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">
-                                    Status Action
-                                    <ChevronDown size={14} />
+            {(editing || isNew) && (() => {
+                const newTabOrder: TabKey[] = ["personal", "professional", "salary", "bank", "documents"];
+                const currentNewTabIndex = newTabOrder.indexOf(activeTab);
+                const isLastNewTab = isNew && currentNewTabIndex === newTabOrder.length - 1;
+                const isNotLastNewTab = isNew && currentNewTabIndex >= 0 && currentNewTabIndex < newTabOrder.length - 1;
+
+                return (
+                    <div className="sticky bottom-0 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-lg border-t border-neutral-200 dark:border-neutral-800 px-6 py-4 -mx-6 -mb-6 flex items-center justify-between gap-4 rounded-b-2xl">
+                        <div className="flex items-center gap-3">
+                            {!isNew && (
+                                <button
+                                    onClick={() => setEditing(false)}
+                                    className="px-5 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                                >
+                                    Cancel
                                 </button>
-                                <div className="absolute right-0 bottom-full mb-2 w-48 bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-xl hidden group-hover:block z-10">
-                                    <button onClick={() => handleStatusAction("CONFIRMED" as EmployeeStatus)} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-t-xl transition-colors">
-                                        Confirm Employee
+                            )}
+                            {isNew && currentNewTabIndex > 0 && (
+                                <button
+                                    onClick={() => setActiveTab(newTabOrder[currentNewTabIndex - 1])}
+                                    className="px-5 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                                >
+                                    &larr; Back
+                                </button>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                            {!isNew && (
+                                <div className="relative group">
+                                    <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">
+                                        Status Action
+                                        <ChevronDown size={14} />
                                     </button>
-                                    <button onClick={() => handleStatusAction("SUSPENDED" as EmployeeStatus)} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-warning-600 dark:text-warning-400 hover:bg-warning-50 dark:hover:bg-warning-900/20 transition-colors">
-                                        Suspend
-                                    </button>
-                                    <button onClick={() => handleStatusAction("ON_NOTICE" as EmployeeStatus)} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-danger-600 dark:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-b-xl transition-colors">
-                                        Initiate Exit
-                                    </button>
+                                    <div className="absolute right-0 bottom-full mb-2 w-48 bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-xl hidden group-hover:block z-10">
+                                        <button onClick={() => handleStatusAction("CONFIRMED" as EmployeeStatus)} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-t-xl transition-colors">
+                                            Confirm Employee
+                                        </button>
+                                        <button onClick={() => handleStatusAction("SUSPENDED" as EmployeeStatus)} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-warning-600 dark:text-warning-400 hover:bg-warning-50 dark:hover:bg-warning-900/20 transition-colors">
+                                            Suspend
+                                        </button>
+                                        <button onClick={() => handleStatusAction("ON_NOTICE" as EmployeeStatus)} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-danger-600 dark:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-b-xl transition-colors">
+                                            Initiate Exit
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
-                        <button
-                            onClick={handleSave}
-                            disabled={saving}
-                            className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none disabled:opacity-50"
-                        >
-                            {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                            {saving ? "Saving..." : isNew ? "Save Employee" : "Save Changes"}
-                        </button>
+                            )}
+                            {isNotLastNewTab ? (
+                                <button
+                                    onClick={() => setActiveTab(newTabOrder[currentNewTabIndex + 1])}
+                                    className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none"
+                                >
+                                    Next &rarr;
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleSave}
+                                    disabled={saving}
+                                    className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none disabled:opacity-50"
+                                >
+                                    {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                                    {saving ? "Saving..." : isNew ? "Create Employee" : "Save Changes"}
+                                </button>
+                            )}
+                        </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
         </div>
     );
 }

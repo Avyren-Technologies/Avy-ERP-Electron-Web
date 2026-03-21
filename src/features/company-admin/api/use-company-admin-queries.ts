@@ -17,6 +17,12 @@ export const companyAdminKeys = {
     auditLogs: (params?: Record<string, unknown>) => [...companyAdminKeys.all, 'audit-logs', params] as const,
     activity: (limit?: number) => [...companyAdminKeys.all, 'activity', limit] as const,
     roles: () => [...companyAdminKeys.all, 'roles'] as const,
+    moduleCatalogue: () => [...companyAdminKeys.all, 'module-catalogue'] as const,
+    subscription: () => [...companyAdminKeys.all, 'subscription'] as const,
+    costBreakdown: () => [...companyAdminKeys.all, 'cost-breakdown'] as const,
+    myInvoices: (params?: Record<string, unknown>) => [...companyAdminKeys.all, 'my-invoices', params] as const,
+    myInvoiceDetail: (id: string) => [...companyAdminKeys.all, 'my-invoice', id] as const,
+    myPayments: (params?: Record<string, unknown>) => [...companyAdminKeys.all, 'my-payments', params] as const,
 };
 
 export function useCompanyProfile() {
@@ -132,5 +138,55 @@ export function useRbacRoles() {
     return useQuery({
         queryKey: companyAdminKeys.roles(),
         queryFn: () => companyAdminApi.listRoles(),
+    });
+}
+
+export function useModuleCatalogue() {
+    return useQuery({
+        queryKey: companyAdminKeys.moduleCatalogue(),
+        queryFn: () => companyAdminApi.getModuleCatalogue(),
+    });
+}
+
+export function useMySubscription() {
+    return useQuery({
+        queryKey: companyAdminKeys.subscription(),
+        queryFn: () => companyAdminApi.getMySubscription(),
+    });
+}
+
+export function useMyCostBreakdown() {
+    return useQuery({
+        queryKey: companyAdminKeys.costBreakdown(),
+        queryFn: () => companyAdminApi.getMyCostBreakdown(),
+    });
+}
+
+export function useMyInvoices(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+}) {
+    return useQuery({
+        queryKey: companyAdminKeys.myInvoices(params as Record<string, unknown>),
+        queryFn: () => companyAdminApi.getMyInvoices(params),
+    });
+}
+
+export function useMyInvoiceDetail(id: string) {
+    return useQuery({
+        queryKey: companyAdminKeys.myInvoiceDetail(id),
+        queryFn: () => companyAdminApi.getMyInvoiceDetail(id),
+        enabled: !!id,
+    });
+}
+
+export function useMyPayments(params?: {
+    page?: number;
+    limit?: number;
+}) {
+    return useQuery({
+        queryKey: companyAdminKeys.myPayments(params as Record<string, unknown>),
+        queryFn: () => companyAdminApi.getMyPayments(params),
     });
 }

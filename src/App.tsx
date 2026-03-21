@@ -40,6 +40,9 @@ import { CompanySettingsScreen } from "./features/company-admin/CompanySettingsS
 import { UserManagementScreen } from "./features/company-admin/UserManagementScreen";
 import { RoleManagementScreen } from "./features/company-admin/RoleManagementScreen";
 import { FeatureToggleScreen } from "./features/company-admin/FeatureToggleScreen";
+import { BillingDashboardScreen } from "./features/company-admin/BillingDashboardScreen";
+import { MyInvoicesScreen } from "./features/company-admin/MyInvoicesScreen";
+import { MyPaymentsScreen } from "./features/company-admin/MyPaymentsScreen";
 
 // HR Org Structure Screens
 import { DepartmentScreen } from "./features/company-admin/hr/DepartmentScreen";
@@ -232,6 +235,10 @@ function App() {
         <Route path="company/users" element={<RequireRole roles={['company-admin']}><UserManagementScreen /></RequireRole>} />
         <Route path="company/roles" element={<RequireRole roles={['company-admin']}><RoleManagementScreen /></RequireRole>} />
         <Route path="company/feature-toggles" element={<RequireRole roles={['company-admin']}><FeatureToggleScreen /></RequireRole>} />
+        {/* Company-admin Billing routes */}
+        <Route path="company/billing" element={<RequireRole roles={['company-admin']}><BillingDashboardScreen /></RequireRole>} />
+        <Route path="company/billing/invoices" element={<RequireRole roles={['company-admin']}><MyInvoicesScreen /></RequireRole>} />
+        <Route path="company/billing/payments" element={<RequireRole roles={['company-admin']}><MyPaymentsScreen /></RequireRole>} />
         {/* Company-admin HR routes */}
         <Route path="company/hr/departments" element={<RequireRole roles={['company-admin']}><DepartmentScreen /></RequireRole>} />
         <Route path="company/hr/designations" element={<RequireRole roles={['company-admin']}><DesignationScreen /></RequireRole>} />

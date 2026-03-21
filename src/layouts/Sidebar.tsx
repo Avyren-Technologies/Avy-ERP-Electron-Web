@@ -114,6 +114,22 @@ const NAV_CONFIG: NavSection[] = [
         ],
     },
     {
+        group: 'Billing',
+        roles: ['company_admin'],
+        items: [
+            {
+                icon: CreditCard,
+                label: 'Billing',
+                path: '/app/company/billing',
+                children: [
+                    { label: 'Overview', path: '/app/company/billing' },
+                    { label: 'Invoices', path: '/app/company/billing/invoices' },
+                    { label: 'Payments', path: '/app/company/billing/payments' },
+                ],
+            },
+        ],
+    },
+    {
         group: 'Configuration',
         roles: ['company_admin'],
         items: [

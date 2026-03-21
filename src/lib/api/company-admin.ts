@@ -496,6 +496,154 @@ async function deleteRole(id: string): Promise<ApiResponse<void>> {
     return response.data;
 }
 
+// ── Module Catalogue ──
+
+export interface CatalogueModule {
+    id: string;
+    name: string;
+    description?: string;
+    category?: string;
+    icon?: string;
+    price?: string;
+    pricingModel?: string;
+    isRequired?: boolean;
+    isActive?: boolean;
+    dependencies?: string[];
+    features?: string[];
+}
+
+async function getModuleCatalogue(): Promise<ApiResponse<CatalogueModule[]>> {
+    const response = await client.get('/company/modules/catalogue');
+    return response.data;
+}
+
+// ── Billing ──
+
+export interface MySubscription {
+    id: string;
+    planId?: string;
+    userTier?: string;
+    billingType?: string;
+    modules?: Record<string, boolean>;
+    status?: string;
+    startDate?: string;
+    endDate?: string | null;
+    trialEndsAt?: string | null;
+    tierLabel?: string;
+    tierBasePrice?: number;
+    tierPerUserPrice?: number;
+}
+
+export interface CostBreakdownModule {
+    moduleId: string;
+    moduleName: string;
+    cataloguePrice: number;
+    customPrice: number | null;
+    effectivePrice: number;
+}
+
+export interface CostBreakdownLocation {
+    locationId: string;
+    locationName: string;
+    facilityType?: string;
+    monthly: number;
+    annual: number;
+    [key: string]: unknown;
+}
+
+export interface CostBreakdown {
+    tier: {
+        key: string;
+        label: string;
+        basePrice: number;
+        perUserPrice: number;
+    };
+    modules: CostBreakdownModule[];
+    locations: CostBreakdownLocation[];
+    totals: {
+        monthly: number;
+        annual: number;
+        locationCount: number;
+        moduleCount: number;
+    };
+}
+
+export interface MyInvoice {
+    id: string;
+    invoiceNumber?: string;
+    invoiceType?: string;
+    createdAt?: string;
+    dueDate?: string;
+    amount: number;
+    subtotal?: number;
+    totalTax?: number;
+    totalAmount?: number;
+    status: string;
+    paidAt?: string | null;
+    billingPeriodStart?: string;
+    billingPeriodEnd?: string;
+    lineItems?: Array<{
+        description: string;
+        quantity: number;
+        unitPrice: number;
+        amount: number;
+        gst?: number;
+    }>;
+    pdfUrl?: string;
+    payments?: MyPayment[];
+}
+
+export interface MyPayment {
+    id: string;
+    paidAt?: string;
+    createdAt?: string;
+    invoiceId?: string;
+    amount: number;
+    method?: string;
+    reference?: string;
+    status?: string;
+    gateway?: string;
+    invoice?: {
+        id: string;
+        invoiceNumber?: string;
+        amount?: number;
+        totalAmount?: number;
+        status?: string;
+    };
+}
+
+async function getMySubscription(): Promise<ApiResponse<MySubscription>> {
+    const response = await client.get('/company/billing/subscription');
+    return response.data;
+}
+
+async function getMyInvoices(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+}): Promise<ApiResponse<{ invoices: MyInvoice[]; total: number; page: number; limit: number }>> {
+    const response = await client.get('/company/billing/invoices', { params });
+    return response.data;
+}
+
+async function getMyInvoiceDetail(id: string): Promise<ApiResponse<MyInvoice>> {
+    const response = await client.get(`/company/billing/invoices/${id}`);
+    return response.data;
+}
+
+async function getMyPayments(params?: {
+    page?: number;
+    limit?: number;
+}): Promise<ApiResponse<{ payments: MyPayment[]; total: number; page: number; limit: number }>> {
+    const response = await client.get('/company/billing/payments', { params });
+    return response.data;
+}
+
+async function getMyCostBreakdown(): Promise<ApiResponse<CostBreakdown>> {
+    const response = await client.get('/company/billing/cost-breakdown');
+    return response.data;
+}
+
 export const companyAdminApi = {
     getProfile,
     updateProfileSection,
@@ -535,4 +683,10 @@ export const companyAdminApi = {
     createRole,
     updateRole,
     deleteRole,
+    getModuleCatalogue,
+    getMySubscription,
+    getMyInvoices,
+    getMyInvoiceDetail,
+    getMyPayments,
+    getMyCostBreakdown,
 };
