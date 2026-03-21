@@ -11,6 +11,26 @@ import {
 import { BUSINESS_TYPES, INDUSTRIES, COMPANY_STATUSES } from '../constants';
 import { useTenantOnboardingStore } from '../store';
 
+function generateCompanyCode(displayName: string): string {
+    const normalized = displayName.toUpperCase().replace(/[^A-Z0-9\s]/g, ' ').trim();
+    if (!normalized) return '';
+
+    const words = normalized.split(/\s+/).filter(Boolean);
+    if (words.length === 0) return '';
+
+    const prefix = words.length >= 2
+        ? `${words[0].slice(0, 3)}${words[1].slice(0, 3)}`
+        : words[0].slice(0, 6);
+
+    const hash = normalized
+        .split('')
+        .reduce((sum, ch) => (sum + ch.charCodeAt(0)) % 1000, 0)
+        .toString()
+        .padStart(3, '0');
+
+    return `${prefix}-${hash}`;
+}
+
 const schema = z.object({
     displayName: z.string().min(1, 'Display Name is required'),
     legalName: z.string().min(1, 'Legal / Registered Name is required'),
@@ -36,6 +56,7 @@ type FormData = z.infer<typeof schema>;
 export function Step01Identity({ onConfirmSubmit }: { onConfirmSubmit?: () => void }) {
     const { step1, setStep1, goNext } = useTenantOnboardingStore();
     const fileRef = useRef<HTMLInputElement>(null);
+    const lastAutoCodeRef = useRef('');
 
     const { control, handleSubmit, setValue, watch } = useForm<FormData>({
         resolver: zodResolver(schema),
@@ -59,12 +80,20 @@ export function Step01Identity({ onConfirmSubmit }: { onConfirmSubmit?: () => vo
     const businessType = watch('businessType');
     const isCorporate = ['Private Limited (Pvt. Ltd.)', 'Public Limited'].includes(businessType);
 
-    // Auto-generate company code from display name if empty or starts with AUTO-
+    // Auto-generate company code from display name until user overrides manually.
     useEffect(() => {
         const currentCode = watch('companyCode');
-        if (watchedDisplayName && (!currentCode || currentCode.startsWith('AUTO-'))) {
-            const code = 'AUTO-' + watchedDisplayName.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 6);
-            setValue('companyCode', code, { shouldValidate: true });
+        const generatedCode = generateCompanyCode(watchedDisplayName ?? '');
+        if (!generatedCode) {
+            return;
+        }
+
+        const normalizedCurrentCode = (currentCode ?? '').toUpperCase();
+        const shouldAutofill = normalizedCurrentCode.length === 0 || normalizedCurrentCode === lastAutoCodeRef.current;
+
+        if (shouldAutofill && normalizedCurrentCode !== generatedCode) {
+            setValue('companyCode', generatedCode, { shouldValidate: true });
+            lastAutoCodeRef.current = generatedCode;
         }
     }, [watchedDisplayName, setValue, watch]);
 
@@ -210,7 +239,7 @@ export function Step01Identity({ onConfirmSubmit }: { onConfirmSubmit?: () => vo
 
                 <ThreeCol>
                     <Controller name="companyCode" control={control} render={({ field, fieldState }) => (
-                        <FormInput label="Company Code" placeholder="ABC-IN-001" {...field} value={field.value || ''} onChange={v => field.onChange(v.toUpperCase())} required hint="Auto-generated. Override if needed." error={fieldState.error?.message} />
+                        <FormInput label="Company Code" placeholder="APEXMA-486" {...field} value={field.value || ''} onChange={v => field.onChange(v.toUpperCase())} required hint="Auto-generated from company name. Override if needed." error={fieldState.error?.message} />
                     )} />
                     <Controller name="shortName" control={control} render={({ field, fieldState }) => (
                         <FormInput label="Short Name" placeholder="APEX" {...field} value={field.value || ''} hint="Abbreviated for headers and reports" error={fieldState.error?.message} />
