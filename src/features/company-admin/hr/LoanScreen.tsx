@@ -85,7 +85,7 @@ const EMPTY_LOAN = {
     employeeId: "",
     policyId: "",
     amount: 0,
-    tenureMonths: 0,
+    tenure: 0,
 };
 
 /* ── Screen ── */
@@ -128,7 +128,7 @@ export function LoanScreen() {
 
     const handleStatusChange = async (loanId: string, newStatus: string) => {
         try {
-            await statusMutation.mutateAsync({ id: loanId, data: { status: newStatus } });
+            await statusMutation.mutateAsync({ id: loanId, data: { status: newStatus.toUpperCase() } });
             showSuccess("Status Updated", `Loan status changed to ${newStatus}.`);
         } catch (err) { showApiError(err); }
     };
@@ -137,13 +137,13 @@ export function LoanScreen() {
 
     // Auto-computed EMI
     const computedEMI = useMemo(() => {
-        if (!form.amount || !form.tenureMonths) return 0;
+        if (!form.amount || !form.tenure) return 0;
         const policy = policies.find((p: any) => p.id === form.policyId);
         const rate = (policy?.interestRate ?? 0) / 100 / 12;
-        if (rate === 0) return Math.round(form.amount / form.tenureMonths);
-        const emi = (form.amount * rate * Math.pow(1 + rate, form.tenureMonths)) / (Math.pow(1 + rate, form.tenureMonths) - 1);
+        if (rate === 0) return Math.round(form.amount / form.tenure);
+        const emi = (form.amount * rate * Math.pow(1 + rate, form.tenure)) / (Math.pow(1 + rate, form.tenure) - 1);
         return Math.round(emi);
-    }, [form.amount, form.tenureMonths, form.policyId, policies]);
+    }, [form.amount, form.tenure, form.policyId, policies]);
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -267,10 +267,10 @@ export function LoanScreen() {
                         </div>
                         <div className="p-6 overflow-y-auto flex-1 space-y-4">
                             <SelectField label="Employee" value={form.employeeId} onChange={(v) => updateField("employeeId", v)} options={employees.map((e: any) => ({ value: e.id, label: `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim() || e.id }))} placeholder="Select employee..." />
-                            <SelectField label="Loan Policy" value={form.policyId} onChange={(v) => updateField("policyId", v)} options={policies.filter((p: any) => p.status === "Active").map((p: any) => ({ value: p.id, label: p.name }))} placeholder="Select policy..." />
+                            <SelectField label="Loan Policy" value={form.policyId} onChange={(v) => updateField("policyId", v)} options={policies.filter((p: any) => p.isActive !== false).map((p: any) => ({ value: p.id, label: p.name }))} placeholder="Select policy..." />
                             <div className="grid grid-cols-2 gap-4">
                                 <NumberField label="Loan Amount (₹)" value={form.amount} onChange={(v) => updateField("amount", v)} min={0} />
-                                <NumberField label="Tenure (months)" value={form.tenureMonths} onChange={(v) => updateField("tenureMonths", v)} min={1} />
+                                <NumberField label="Tenure (months)" value={form.tenure} onChange={(v) => updateField("tenure", v)} min={1} />
                             </div>
 
                             {/* Auto-computed EMI */}
@@ -284,11 +284,11 @@ export function LoanScreen() {
                                         </div>
                                         <div className="flex justify-between py-1.5 text-sm">
                                             <span className="text-neutral-700 dark:text-neutral-300">Total Repayment</span>
-                                            <span className="font-mono font-semibold text-primary-950 dark:text-white">₹{(computedEMI * form.tenureMonths).toLocaleString("en-IN")}</span>
+                                            <span className="font-mono font-semibold text-primary-950 dark:text-white">₹{(computedEMI * form.tenure).toLocaleString("en-IN")}</span>
                                         </div>
                                         <div className="flex justify-between py-1.5 text-sm">
                                             <span className="text-neutral-700 dark:text-neutral-300">Total Interest</span>
-                                            <span className="font-mono text-neutral-600 dark:text-neutral-400">₹{(computedEMI * form.tenureMonths - form.amount).toLocaleString("en-IN")}</span>
+                                            <span className="font-mono text-neutral-600 dark:text-neutral-400">₹{(computedEMI * form.tenure - form.amount).toLocaleString("en-IN")}</span>
                                         </div>
                                     </div>
                                 </>

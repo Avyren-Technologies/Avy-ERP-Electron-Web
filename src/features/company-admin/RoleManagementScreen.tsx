@@ -42,24 +42,34 @@ const ROLE_TEMPLATES: Record<string, Partial<Record<string, boolean>>> = {
     viewer: Object.fromEntries(MODULES.map((m) => [`${m}.view`, true])),
 };
 
-function buildPermissions(matrix: Record<string, boolean>): RolePermission[] {
-    return MODULES.map((mod) => ({
-        module: mod,
-        view: matrix[`${mod}.view`] ?? false,
-        create: matrix[`${mod}.create`] ?? false,
-        edit: matrix[`${mod}.edit`] ?? false,
-        delete: matrix[`${mod}.delete`] ?? false,
-        approve: matrix[`${mod}.approve`] ?? false,
-    }));
-}
-
-function flattenPermissions(permissions: RolePermission[]): Record<string, boolean> {
-    const result: Record<string, boolean> = {};
-    permissions.forEach((p) => {
-        ACTIONS.forEach((a) => {
-            result[`${p.module}.${a}`] = p[a] ?? false;
+function buildPermissions(matrix: Record<string, boolean>): string[] {
+    const result: string[] = [];
+    MODULES.forEach((mod) => {
+        ACTIONS.forEach((action) => {
+            if (matrix[`${mod}.${action}`]) {
+                result.push(`${mod}.${action}`);
+            }
         });
     });
+    return result;
+}
+
+function flattenPermissions(permissions: string[] | RolePermission[]): Record<string, boolean> {
+    const result: Record<string, boolean> = {};
+    if (!permissions || permissions.length === 0) return result;
+    // Handle string[] format from backend
+    if (typeof permissions[0] === 'string') {
+        (permissions as string[]).forEach((p) => {
+            result[p] = true;
+        });
+    } else {
+        // Handle legacy RolePermission[] format
+        (permissions as RolePermission[]).forEach((p) => {
+            ACTIONS.forEach((a) => {
+                result[`${p.module}.${a}`] = p[a] ?? false;
+            });
+        });
+    }
     return result;
 }
 

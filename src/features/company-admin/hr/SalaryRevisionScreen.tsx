@@ -65,7 +65,7 @@ const STATUS_FILTERS = [
 const EMPTY_REVISION = {
     employeeId: "",
     oldCTC: 0,
-    newCTC: 0,
+    newCtc: 0,
     effectiveDate: "",
     reason: "",
 };
@@ -107,11 +107,18 @@ export function SalaryRevisionScreen() {
     const openCreate = () => { setForm({ ...EMPTY_REVISION }); setModalOpen(true); };
     const updateField = (key: string, value: any) => setForm((p) => ({ ...p, [key]: value }));
 
-    const incrementPercent = form.oldCTC > 0 ? (((form.newCTC - form.oldCTC) / form.oldCTC) * 100).toFixed(1) : "0.0";
+    const incrementPercent = form.oldCTC > 0 ? (((form.newCtc - form.oldCTC) / form.oldCTC) * 100).toFixed(1) : "0.0";
 
     const handleCreate = async () => {
         try {
-            await createMutation.mutateAsync(form);
+            const incrementPct = form.oldCTC > 0 ? ((form.newCtc - form.oldCTC) / form.oldCTC) * 100 : 0;
+            const payload = {
+                employeeId: form.employeeId,
+                newCtc: form.newCtc,
+                effectiveDate: form.effectiveDate,
+                incrementPercent: Math.round(incrementPct * 10) / 10,
+            };
+            await createMutation.mutateAsync(payload);
             showSuccess("Revision Created", "Salary revision has been submitted for approval.");
             setModalOpen(false);
         } catch (err) { showApiError(err); }
@@ -278,10 +285,10 @@ export function SalaryRevisionScreen() {
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">New CTC (\u20B9)</label>
-                                    <input type="number" value={form.newCTC} onChange={(e) => updateField("newCTC", Number(e.target.value))} min={0} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                                    <input type="number" value={form.newCtc} onChange={(e) => updateField("newCtc", Number(e.target.value))} min={0} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
                                 </div>
                             </div>
-                            {form.oldCTC > 0 && form.newCTC > 0 && (
+                            {form.oldCTC > 0 && form.newCtc > 0 && (
                                 <div className="bg-primary-50 dark:bg-primary-900/20 rounded-xl p-4 border border-primary-200 dark:border-primary-800/50 text-center">
                                     <span className="text-xs font-semibold text-primary-600 dark:text-primary-400 uppercase">Increment</span>
                                     <p className="text-2xl font-bold text-primary-700 dark:text-primary-300 mt-1">

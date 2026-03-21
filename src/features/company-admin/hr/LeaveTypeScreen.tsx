@@ -248,28 +248,24 @@ function SectionLabel({ title }: { title: string }) {
 /* ── Constants ── */
 
 const LEAVE_CATEGORIES = [
-    { value: "earned", label: "Earned / Privilege" },
-    { value: "casual", label: "Casual" },
-    { value: "sick", label: "Sick" },
-    { value: "maternity", label: "Maternity" },
-    { value: "paternity", label: "Paternity" },
-    { value: "compensatory", label: "Compensatory Off" },
-    { value: "lop", label: "Loss of Pay" },
-    { value: "other", label: "Other" },
+    { value: "PAID", label: "Paid (Earned / Casual / Sick)" },
+    { value: "UNPAID", label: "Unpaid (LOP)" },
+    { value: "COMPENSATORY", label: "Compensatory Off" },
+    { value: "STATUTORY", label: "Statutory (Maternity / Paternity)" },
 ];
 
 const ACCRUAL_FREQUENCIES = [
-    { value: "monthly", label: "Monthly" },
-    { value: "quarterly", label: "Quarterly" },
-    { value: "half-yearly", label: "Half-Yearly" },
-    { value: "yearly", label: "Yearly" },
-    { value: "none", label: "Upfront / None" },
+    { value: "MONTHLY", label: "Monthly" },
+    { value: "QUARTERLY", label: "Quarterly" },
+    { value: "ANNUAL", label: "Annual" },
+    { value: "PRO_RATA", label: "Pro-Rata" },
+    { value: "UPFRONT", label: "Upfront" },
 ];
 
 const GENDER_OPTIONS = [
-    { value: "all", label: "All" },
-    { value: "male", label: "Male" },
-    { value: "female", label: "Female" },
+    { value: "", label: "All" },
+    { value: "MALE", label: "Male" },
+    { value: "FEMALE", label: "Female" },
 ];
 
 /* ── Empty form ── */
@@ -279,25 +275,25 @@ const EMPTY_LEAVE_TYPE = {
     code: "",
     category: "",
     annualEntitlement: 0,
-    accrualFrequency: "monthly",
+    accrualFrequency: "MONTHLY",
     accrualDay: 1,
-    carryForwardEnabled: false,
-    carryForwardMaxDays: 0,
-    encashmentEnabled: false,
-    encashmentMaxDays: 0,
-    encashmentRate: 100,
-    applicableEmployeeTypes: [] as string[],
-    applicableGender: "all",
-    applicableDuringProbation: false,
-    advanceNoticeDays: 0,
-    minDaysPerRequest: 0.5,
-    maxDaysPerRequest: 0,
-    halfDayAllowed: true,
-    sandwichRuleEnabled: false,
+    carryForwardAllowed: false,
+    maxCarryForwardDays: 0,
+    encashmentAllowed: false,
+    maxEncashableDays: 0,
+    encashmentRate: "",
+    applicableTypeIds: [] as string[],
+    applicableGender: "",
+    probationRestricted: false,
+    minAdvanceNotice: 0,
+    minDaysPerApplication: 0.5,
+    maxConsecutiveDays: 0,
+    allowHalfDay: true,
+    weekendSandwich: false,
+    holidaySandwich: false,
     documentRequired: false,
-    documentRequiredAfterDays: 0,
-    isLop: false,
-    status: "Active",
+    documentAfterDays: 0,
+    lopOnExcess: true,
 };
 
 /* ── Screen ── */
@@ -341,36 +337,61 @@ export function LeaveTypeScreen() {
             code: lt.code ?? "",
             category: lt.category ?? "",
             annualEntitlement: lt.annualEntitlement ?? 0,
-            accrualFrequency: lt.accrualFrequency ?? "monthly",
+            accrualFrequency: lt.accrualFrequency ?? "MONTHLY",
             accrualDay: lt.accrualDay ?? 1,
-            carryForwardEnabled: lt.carryForwardEnabled ?? false,
-            carryForwardMaxDays: lt.carryForwardMaxDays ?? 0,
-            encashmentEnabled: lt.encashmentEnabled ?? false,
-            encashmentMaxDays: lt.encashmentMaxDays ?? 0,
-            encashmentRate: lt.encashmentRate ?? 100,
-            applicableEmployeeTypes: lt.applicableEmployeeTypes ?? [],
-            applicableGender: lt.applicableGender ?? "all",
-            applicableDuringProbation: lt.applicableDuringProbation ?? false,
-            advanceNoticeDays: lt.advanceNoticeDays ?? 0,
-            minDaysPerRequest: lt.minDaysPerRequest ?? 0.5,
-            maxDaysPerRequest: lt.maxDaysPerRequest ?? 0,
-            halfDayAllowed: lt.halfDayAllowed ?? true,
-            sandwichRuleEnabled: lt.sandwichRuleEnabled ?? false,
+            carryForwardAllowed: lt.carryForwardAllowed ?? false,
+            maxCarryForwardDays: lt.maxCarryForwardDays ?? 0,
+            encashmentAllowed: lt.encashmentAllowed ?? false,
+            maxEncashableDays: lt.maxEncashableDays ?? 0,
+            encashmentRate: lt.encashmentRate ?? "",
+            applicableTypeIds: lt.applicableTypeIds ?? [],
+            applicableGender: lt.applicableGender ?? "",
+            probationRestricted: lt.probationRestricted ?? false,
+            minAdvanceNotice: lt.minAdvanceNotice ?? 0,
+            minDaysPerApplication: lt.minDaysPerApplication ?? 0.5,
+            maxConsecutiveDays: lt.maxConsecutiveDays ?? 0,
+            allowHalfDay: lt.allowHalfDay ?? true,
+            weekendSandwich: lt.weekendSandwich ?? false,
+            holidaySandwich: lt.holidaySandwich ?? false,
             documentRequired: lt.documentRequired ?? false,
-            documentRequiredAfterDays: lt.documentRequiredAfterDays ?? 0,
-            isLop: lt.isLop ?? false,
-            status: lt.status ?? "Active",
+            documentAfterDays: lt.documentAfterDays ?? 0,
+            lopOnExcess: lt.lopOnExcess ?? true,
         });
         setModalOpen(true);
     };
 
     const handleSave = async () => {
         try {
+            const payload = {
+                name: form.name,
+                code: form.code,
+                category: form.category,
+                annualEntitlement: form.annualEntitlement,
+                accrualFrequency: form.accrualFrequency || undefined,
+                accrualDay: form.accrualDay || undefined,
+                carryForwardAllowed: form.carryForwardAllowed,
+                maxCarryForwardDays: form.carryForwardAllowed ? form.maxCarryForwardDays : undefined,
+                encashmentAllowed: form.encashmentAllowed,
+                maxEncashableDays: form.encashmentAllowed ? form.maxEncashableDays : undefined,
+                encashmentRate: form.encashmentAllowed && form.encashmentRate ? String(form.encashmentRate) : undefined,
+                applicableTypeIds: form.applicableTypeIds.length > 0 ? form.applicableTypeIds : undefined,
+                applicableGender: form.applicableGender || undefined,
+                probationRestricted: form.probationRestricted,
+                minAdvanceNotice: form.minAdvanceNotice || undefined,
+                minDaysPerApplication: form.minDaysPerApplication || undefined,
+                maxConsecutiveDays: form.maxConsecutiveDays || undefined,
+                allowHalfDay: form.allowHalfDay,
+                weekendSandwich: form.weekendSandwich,
+                holidaySandwich: form.holidaySandwich,
+                documentRequired: form.documentRequired,
+                documentAfterDays: form.documentRequired ? form.documentAfterDays : undefined,
+                lopOnExcess: form.lopOnExcess,
+            };
             if (editingId) {
-                await updateMutation.mutateAsync({ id: editingId, data: form });
+                await updateMutation.mutateAsync({ id: editingId, data: payload });
                 showSuccess("Leave Type Updated", `${form.name} has been updated.`);
             } else {
-                await createMutation.mutateAsync(form);
+                await createMutation.mutateAsync(payload);
                 showSuccess("Leave Type Created", `${form.name} has been added.`);
             }
             setModalOpen(false);
@@ -447,7 +468,7 @@ export function LeaveTypeScreen() {
                                     <th className="py-4 px-6 font-bold text-center">Carry Fwd</th>
                                     <th className="py-4 px-6 font-bold text-center">Encashment</th>
                                     <th className="py-4 px-6 font-bold text-center">Half Day</th>
-                                    <th className="py-4 px-6 font-bold text-center">Status</th>
+                                    <th className="py-4 px-6 font-bold text-center">Category</th>
                                     <th className="py-4 px-6 font-bold text-right">Actions</th>
                                 </tr>
                             </thead>
@@ -469,10 +490,10 @@ export function LeaveTypeScreen() {
                                         <td className="py-4 px-6"><CategoryBadge category={lt.category} /></td>
                                         <td className="py-4 px-6 text-center font-semibold text-primary-950 dark:text-white">{lt.annualEntitlement ?? 0}</td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs capitalize">{lt.accrualFrequency || "monthly"}</td>
-                                        <td className="py-4 px-6 text-center"><YesNoBadge enabled={lt.carryForwardEnabled} /></td>
-                                        <td className="py-4 px-6 text-center"><YesNoBadge enabled={lt.encashmentEnabled} /></td>
-                                        <td className="py-4 px-6 text-center"><YesNoBadge enabled={lt.halfDayAllowed} /></td>
-                                        <td className="py-4 px-6 text-center"><StatusBadge status={lt.status ?? "Active"} /></td>
+                                        <td className="py-4 px-6 text-center"><YesNoBadge enabled={lt.carryForwardAllowed} /></td>
+                                        <td className="py-4 px-6 text-center"><YesNoBadge enabled={lt.encashmentAllowed} /></td>
+                                        <td className="py-4 px-6 text-center"><YesNoBadge enabled={lt.allowHalfDay} /></td>
+                                        <td className="py-4 px-6 text-center"><CategoryBadge category={lt.category} /></td>
                                         <td className="py-4 px-6 text-right">
                                             <div className="flex items-center justify-end gap-1">
                                                 <button onClick={() => openEdit(lt)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit">
@@ -541,20 +562,20 @@ export function LeaveTypeScreen() {
                             {/* Carry Forward */}
                             <SectionLabel title="Carry Forward" />
                             <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-4 border border-neutral-200 dark:border-neutral-700 space-y-2">
-                                <ToggleSwitch label="Enable Carry Forward" checked={form.carryForwardEnabled} onChange={(v) => updateField("carryForwardEnabled", v)} />
-                                {form.carryForwardEnabled && (
-                                    <NumberField label="Max Carry Forward Days" value={form.carryForwardMaxDays} onChange={(v) => updateField("carryForwardMaxDays", v)} min={0} />
+                                <ToggleSwitch label="Enable Carry Forward" checked={form.carryForwardAllowed} onChange={(v) => updateField("carryForwardAllowed", v)} />
+                                {form.carryForwardAllowed && (
+                                    <NumberField label="Max Carry Forward Days" value={form.maxCarryForwardDays} onChange={(v) => updateField("maxCarryForwardDays", v)} min={0} />
                                 )}
                             </div>
 
                             {/* Encashment */}
                             <SectionLabel title="Encashment" />
                             <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-4 border border-neutral-200 dark:border-neutral-700 space-y-2">
-                                <ToggleSwitch label="Enable Encashment" checked={form.encashmentEnabled} onChange={(v) => updateField("encashmentEnabled", v)} />
-                                {form.encashmentEnabled && (
+                                <ToggleSwitch label="Enable Encashment" checked={form.encashmentAllowed} onChange={(v) => updateField("encashmentAllowed", v)} />
+                                {form.encashmentAllowed && (
                                     <div className="grid grid-cols-2 gap-4">
-                                        <NumberField label="Max Encashment Days" value={form.encashmentMaxDays} onChange={(v) => updateField("encashmentMaxDays", v)} min={0} />
-                                        <NumberField label="Encashment Rate (%)" value={form.encashmentRate} onChange={(v) => updateField("encashmentRate", v)} min={0} max={100} />
+                                        <NumberField label="Max Encashable Days" value={form.maxEncashableDays} onChange={(v) => updateField("maxEncashableDays", v)} min={0} />
+                                        <FormField label="Encashment Rate" value={form.encashmentRate} onChange={(v) => updateField("encashmentRate", v)} placeholder="e.g. 100% or formula" />
                                     </div>
                                 )}
                             </div>
@@ -563,8 +584,8 @@ export function LeaveTypeScreen() {
                             <SectionLabel title="Applicability" />
                             <MultiSelectField
                                 label="Employee Types"
-                                selected={form.applicableEmployeeTypes}
-                                onChange={(v) => updateField("applicableEmployeeTypes", v)}
+                                selected={form.applicableTypeIds}
+                                onChange={(v) => updateField("applicableTypeIds", v)}
                                 options={empTypes.map((et: any) => ({ value: et.id ?? et.code, label: et.name }))}
                             />
                             <div className="grid grid-cols-2 gap-4">
@@ -575,36 +596,27 @@ export function LeaveTypeScreen() {
                                     options={GENDER_OPTIONS}
                                 />
                                 <div className="flex items-end pb-1">
-                                    <ToggleSwitch label="During Probation" checked={form.applicableDuringProbation} onChange={(v) => updateField("applicableDuringProbation", v)} />
+                                    <ToggleSwitch label="Probation Restricted" checked={form.probationRestricted} onChange={(v) => updateField("probationRestricted", v)} />
                                 </div>
                             </div>
 
                             {/* Rules */}
                             <SectionLabel title="Rules" />
                             <div className="grid grid-cols-3 gap-4">
-                                <NumberField label="Advance Notice (Days)" value={form.advanceNoticeDays} onChange={(v) => updateField("advanceNoticeDays", v)} min={0} />
-                                <NumberField label="Min Days / Request" value={form.minDaysPerRequest} onChange={(v) => updateField("minDaysPerRequest", v)} min={0} />
-                                <NumberField label="Max Days / Request" value={form.maxDaysPerRequest} onChange={(v) => updateField("maxDaysPerRequest", v)} min={0} placeholder="0 = unlimited" />
+                                <NumberField label="Advance Notice (Days)" value={form.minAdvanceNotice} onChange={(v) => updateField("minAdvanceNotice", v)} min={0} />
+                                <NumberField label="Min Days / Application" value={form.minDaysPerApplication} onChange={(v) => updateField("minDaysPerApplication", v)} min={0} />
+                                <NumberField label="Max Consecutive Days" value={form.maxConsecutiveDays} onChange={(v) => updateField("maxConsecutiveDays", v)} min={0} placeholder="0 = unlimited" />
                             </div>
                             <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-4 border border-neutral-200 dark:border-neutral-700 space-y-1">
-                                <ToggleSwitch label="Allow Half Day" checked={form.halfDayAllowed} onChange={(v) => updateField("halfDayAllowed", v)} />
-                                <ToggleSwitch label="Sandwich Rule (count weekends between leaves)" checked={form.sandwichRuleEnabled} onChange={(v) => updateField("sandwichRuleEnabled", v)} />
+                                <ToggleSwitch label="Allow Half Day" checked={form.allowHalfDay} onChange={(v) => updateField("allowHalfDay", v)} />
+                                <ToggleSwitch label="Weekend Sandwich Rule" checked={form.weekendSandwich} onChange={(v) => updateField("weekendSandwich", v)} />
+                                <ToggleSwitch label="Holiday Sandwich Rule" checked={form.holidaySandwich} onChange={(v) => updateField("holidaySandwich", v)} />
                                 <ToggleSwitch label="Document Required" checked={form.documentRequired} onChange={(v) => updateField("documentRequired", v)} />
                                 {form.documentRequired && (
-                                    <NumberField label="Document Required After (Days)" value={form.documentRequiredAfterDays} onChange={(v) => updateField("documentRequiredAfterDays", v)} min={0} />
+                                    <NumberField label="Document Required After (Days)" value={form.documentAfterDays} onChange={(v) => updateField("documentAfterDays", v)} min={1} />
                                 )}
-                                <ToggleSwitch label="Loss of Pay (LOP)" checked={form.isLop} onChange={(v) => updateField("isLop", v)} />
+                                <ToggleSwitch label="LOP on Excess" checked={form.lopOnExcess} onChange={(v) => updateField("lopOnExcess", v)} />
                             </div>
-
-                            <SelectField
-                                label="Status"
-                                value={form.status}
-                                onChange={(v) => updateField("status", v)}
-                                options={[
-                                    { value: "Active", label: "Active" },
-                                    { value: "Inactive", label: "Inactive" },
-                                ]}
-                            />
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
                             <button onClick={() => setModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>

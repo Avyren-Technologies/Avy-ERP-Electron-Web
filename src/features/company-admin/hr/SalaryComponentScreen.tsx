@@ -182,22 +182,22 @@ function YesNoBadge({ enabled }: { enabled: boolean }) {
 /* ── Constants ── */
 
 const COMPONENT_TYPES = [
-    { value: "earning", label: "Earning" },
-    { value: "deduction", label: "Deduction" },
+    { value: "EARNING", label: "Earning" },
+    { value: "DEDUCTION", label: "Deduction" },
+    { value: "EMPLOYER_CONTRIBUTION", label: "Employer Contribution" },
 ];
 
 const CALCULATION_METHODS = [
-    { value: "fixed", label: "Fixed Amount" },
-    { value: "percentage_of_basic", label: "% of Basic" },
-    { value: "percentage_of_gross", label: "% of Gross" },
-    { value: "formula", label: "Custom Formula" },
+    { value: "FIXED", label: "Fixed Amount" },
+    { value: "PERCENT_OF_BASIC", label: "% of Basic" },
+    { value: "PERCENT_OF_GROSS", label: "% of Gross" },
+    { value: "FORMULA", label: "Custom Formula" },
 ];
 
 const TAX_TREATMENTS = [
-    { value: "fully_taxable", label: "Fully Taxable" },
-    { value: "partially_exempt", label: "Partially Exempt" },
-    { value: "fully_exempt", label: "Fully Exempt" },
-    { value: "tax_deductible", label: "Tax Deductible" },
+    { value: "FULLY_TAXABLE", label: "Fully Taxable" },
+    { value: "PARTIALLY_EXEMPT", label: "Partially Exempt" },
+    { value: "FULLY_EXEMPT", label: "Fully Exempt" },
 ];
 
 /* ── Empty form ── */
@@ -206,19 +206,19 @@ const EMPTY_COMPONENT = {
     name: "",
     code: "",
     type: "",
-    calculationMethod: "fixed",
-    fixedAmount: 0,
-    percentageValue: 0,
+    calculationMethod: "FIXED",
+    formulaValue: 0,
     formula: "",
-    taxTreatment: "fully_taxable",
+    taxable: "FULLY_TAXABLE",
     exemptionLimit: 0,
     exemptionSection: "",
-    pfApplicable: false,
-    esiApplicable: false,
-    ptApplicable: false,
+    pfInclusion: false,
+    esiInclusion: false,
+    bonusInclusion: false,
+    gratuityInclusion: false,
     showOnPayslip: true,
-    payslipLabel: "",
-    status: "Active",
+    payslipOrder: 0,
+    isActive: true,
 };
 
 /* ── Screen ── */
@@ -259,30 +259,48 @@ export function SalaryComponentScreen() {
             name: c.name ?? "",
             code: c.code ?? "",
             type: c.type ?? "",
-            calculationMethod: c.calculationMethod ?? "fixed",
-            fixedAmount: c.fixedAmount ?? 0,
-            percentageValue: c.percentageValue ?? 0,
+            calculationMethod: c.calculationMethod ?? "FIXED",
+            formulaValue: c.formulaValue ?? 0,
             formula: c.formula ?? "",
-            taxTreatment: c.taxTreatment ?? "fully_taxable",
+            taxable: c.taxable ?? "FULLY_TAXABLE",
             exemptionLimit: c.exemptionLimit ?? 0,
             exemptionSection: c.exemptionSection ?? "",
-            pfApplicable: c.pfApplicable ?? false,
-            esiApplicable: c.esiApplicable ?? false,
-            ptApplicable: c.ptApplicable ?? false,
+            pfInclusion: c.pfInclusion ?? false,
+            esiInclusion: c.esiInclusion ?? false,
+            bonusInclusion: c.bonusInclusion ?? false,
+            gratuityInclusion: c.gratuityInclusion ?? false,
             showOnPayslip: c.showOnPayslip ?? true,
-            payslipLabel: c.payslipLabel ?? "",
-            status: c.status ?? "Active",
+            payslipOrder: c.payslipOrder ?? 0,
+            isActive: c.isActive ?? true,
         });
         setModalOpen(true);
     };
 
     const handleSave = async () => {
         try {
+            const payload = {
+                name: form.name,
+                code: form.code,
+                type: form.type,
+                calculationMethod: form.calculationMethod,
+                formula: form.calculationMethod === "FORMULA" ? form.formula : undefined,
+                formulaValue: form.calculationMethod !== "FORMULA" ? form.formulaValue : undefined,
+                taxable: form.taxable,
+                exemptionSection: form.taxable === "PARTIALLY_EXEMPT" ? form.exemptionSection : undefined,
+                exemptionLimit: form.taxable === "PARTIALLY_EXEMPT" ? form.exemptionLimit : undefined,
+                pfInclusion: form.pfInclusion,
+                esiInclusion: form.esiInclusion,
+                bonusInclusion: form.bonusInclusion,
+                gratuityInclusion: form.gratuityInclusion,
+                showOnPayslip: form.showOnPayslip,
+                payslipOrder: form.payslipOrder || undefined,
+                isActive: form.isActive,
+            };
             if (editingId) {
-                await updateMutation.mutateAsync({ id: editingId, data: form });
+                await updateMutation.mutateAsync({ id: editingId, data: payload });
                 showSuccess("Component Updated", `${form.name} has been updated.`);
             } else {
-                await createMutation.mutateAsync(form);
+                await createMutation.mutateAsync(payload);
                 showSuccess("Component Created", `${form.name} has been added.`);
             }
             setModalOpen(false);
@@ -307,10 +325,10 @@ export function SalaryComponentScreen() {
 
     const getCalcDisplay = (c: any) => {
         switch (c.calculationMethod) {
-            case "fixed": return `Fixed ₹${(c.fixedAmount ?? 0).toLocaleString("en-IN")}`;
-            case "percentage_of_basic": return `${c.percentageValue ?? 0}% of Basic`;
-            case "percentage_of_gross": return `${c.percentageValue ?? 0}% of Gross`;
-            case "formula": return "Formula";
+            case "FIXED": return `Fixed \u20B9${(c.formulaValue ?? 0).toLocaleString("en-IN")}`;
+            case "PERCENT_OF_BASIC": return `${c.formulaValue ?? 0}% of Basic`;
+            case "PERCENT_OF_GROSS": return `${c.formulaValue ?? 0}% of Gross`;
+            case "FORMULA": return "Formula";
             default: return c.calculationMethod ?? "\u2014";
         }
     };
@@ -388,11 +406,11 @@ export function SalaryComponentScreen() {
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{c.code || "\u2014"}</td>
                                         <td className="py-4 px-6"><TypeBadge type={c.type} /></td>
                                         <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{getCalcDisplay(c)}</td>
-                                        <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400 capitalize">{(c.taxTreatment ?? "").replace(/_/g, " ")}</td>
+                                        <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400 capitalize">{(c.taxable ?? "").replace(/_/g, " ").toLowerCase()}</td>
                                         <td className="py-4 px-6 text-center">
                                             <div className="flex items-center justify-center gap-2">
-                                                <YesNoBadge enabled={c.pfApplicable} />
-                                                <YesNoBadge enabled={c.esiApplicable} />
+                                                <YesNoBadge enabled={c.pfInclusion} />
+                                                <YesNoBadge enabled={c.esiInclusion} />
                                             </div>
                                         </td>
                                         <td className="py-4 px-6 text-center"><YesNoBadge enabled={c.showOnPayslip} /></td>
@@ -443,21 +461,18 @@ export function SalaryComponentScreen() {
                                 <SelectField label="Calculation Method" value={form.calculationMethod} onChange={(v) => updateField("calculationMethod", v)} options={CALCULATION_METHODS} />
                             </div>
 
-                            {/* Conditional: Fixed Amount or Percentage */}
-                            {form.calculationMethod === "fixed" && (
-                                <NumberField label="Fixed Amount (₹)" value={form.fixedAmount} onChange={(v) => updateField("fixedAmount", v)} min={0} />
+                            {/* Conditional: Fixed/Percentage value or Formula */}
+                            {form.calculationMethod !== "FORMULA" && (
+                                <NumberField label={form.calculationMethod === "FIXED" ? "Fixed Amount (\u20B9)" : "Percentage (%)"} value={form.formulaValue} onChange={(v) => updateField("formulaValue", v)} min={0} />
                             )}
-                            {(form.calculationMethod === "percentage_of_basic" || form.calculationMethod === "percentage_of_gross") && (
-                                <NumberField label="Percentage (%)" value={form.percentageValue} onChange={(v) => updateField("percentageValue", v)} min={0} max={100} />
-                            )}
-                            {form.calculationMethod === "formula" && (
+                            {form.calculationMethod === "FORMULA" && (
                                 <FormField label="Formula Expression" value={form.formula} onChange={(v) => updateField("formula", v)} placeholder="e.g. basic * 0.4" />
                             )}
 
                             {/* Tax Treatment */}
                             <SectionLabel title="Tax Treatment" />
-                            <SelectField label="Tax Treatment" value={form.taxTreatment} onChange={(v) => updateField("taxTreatment", v)} options={TAX_TREATMENTS} />
-                            {form.taxTreatment === "partially_exempt" && (
+                            <SelectField label="Taxable" value={form.taxable} onChange={(v) => updateField("taxable", v)} options={TAX_TREATMENTS} />
+                            {form.taxable === "PARTIALLY_EXEMPT" && (
                                 <div className="grid grid-cols-2 gap-4">
                                     <NumberField label="Exemption Limit (₹ / year)" value={form.exemptionLimit} onChange={(v) => updateField("exemptionLimit", v)} min={0} />
                                     <FormField label="Exemption Section" value={form.exemptionSection} onChange={(v) => updateField("exemptionSection", v)} placeholder="e.g. Section 10(5)" />
@@ -467,9 +482,10 @@ export function SalaryComponentScreen() {
                             {/* Statutory */}
                             <SectionLabel title="Statutory Inclusion" />
                             <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-4 space-y-1 border border-neutral-200 dark:border-neutral-700">
-                                <ToggleSwitch label="Include in PF Wages" checked={form.pfApplicable} onChange={(v) => updateField("pfApplicable", v)} />
-                                <ToggleSwitch label="Include in ESI Wages" checked={form.esiApplicable} onChange={(v) => updateField("esiApplicable", v)} />
-                                <ToggleSwitch label="Include in PT Wages" checked={form.ptApplicable} onChange={(v) => updateField("ptApplicable", v)} />
+                                <ToggleSwitch label="Include in PF Wages" checked={form.pfInclusion} onChange={(v) => updateField("pfInclusion", v)} />
+                                <ToggleSwitch label="Include in ESI Wages" checked={form.esiInclusion} onChange={(v) => updateField("esiInclusion", v)} />
+                                <ToggleSwitch label="Include in Bonus" checked={form.bonusInclusion} onChange={(v) => updateField("bonusInclusion", v)} />
+                                <ToggleSwitch label="Include in Gratuity" checked={form.gratuityInclusion} onChange={(v) => updateField("gratuityInclusion", v)} />
                             </div>
 
                             {/* Payslip */}
@@ -477,19 +493,20 @@ export function SalaryComponentScreen() {
                             <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-4 space-y-2 border border-neutral-200 dark:border-neutral-700">
                                 <ToggleSwitch label="Show on Payslip" checked={form.showOnPayslip} onChange={(v) => updateField("showOnPayslip", v)} />
                                 {form.showOnPayslip && (
-                                    <FormField label="Custom Payslip Label (optional)" value={form.payslipLabel} onChange={(v) => updateField("payslipLabel", v)} placeholder="Leave blank to use component name" />
+                                    <NumberField label="Payslip Display Order" value={form.payslipOrder} onChange={(v) => updateField("payslipOrder", v)} min={0} placeholder="0" />
                                 )}
                             </div>
 
-                            <SelectField
-                                label="Status"
-                                value={form.status}
-                                onChange={(v) => updateField("status", v)}
-                                options={[
-                                    { value: "Active", label: "Active" },
-                                    { value: "Inactive", label: "Inactive" },
-                                ]}
-                            />
+                            <div className="flex items-center justify-between py-2">
+                                <span className="text-sm font-medium text-primary-950 dark:text-white">Active</span>
+                                <button
+                                    type="button"
+                                    onClick={() => updateField("isActive", !form.isActive)}
+                                    className={cn("w-10 h-6 rounded-full transition-colors relative", form.isActive ? "bg-primary-600" : "bg-neutral-300 dark:bg-neutral-700")}
+                                >
+                                    <div className={cn("w-4 h-4 rounded-full bg-white absolute top-1 transition-all", form.isActive ? "left-5" : "left-1")} />
+                                </button>
+                            </div>
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
                             <button onClick={() => setModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>

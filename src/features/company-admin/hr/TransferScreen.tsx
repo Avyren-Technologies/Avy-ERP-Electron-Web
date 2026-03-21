@@ -66,11 +66,15 @@ const STATUS_FILTERS = [
     { value: "cancelled", label: "Cancelled" },
 ];
 
-const TRANSFER_TYPES = ["Lateral", "Relocation", "Restructuring"];
+const TRANSFER_TYPES = [
+    { value: "LATERAL", label: "Lateral" },
+    { value: "RELOCATION", label: "Relocation" },
+    { value: "RESTRUCTURING", label: "Restructuring" },
+];
 
 const EMPTY_FORM = {
-    employeeId: "", toDepartment: "", toDesignation: "", toLocation: "",
-    toManagerId: "", effectiveDate: "", reason: "", transferType: "Lateral",
+    employeeId: "", toDepartmentId: "", toDesignationId: "", toLocationId: "",
+    toManagerId: "", effectiveDate: "", reason: "", transferType: "LATERAL",
 };
 
 /* ── Screen ── */
@@ -117,7 +121,17 @@ export function TransferScreen() {
 
     const handleCreate = async () => {
         try {
-            await createMutation.mutateAsync(form);
+            const payload: any = {
+                employeeId: form.employeeId,
+                effectiveDate: form.effectiveDate,
+                reason: form.reason,
+                transferType: form.transferType,
+            };
+            if (form.toDepartmentId) payload.toDepartmentId = form.toDepartmentId;
+            if (form.toDesignationId) payload.toDesignationId = form.toDesignationId;
+            if (form.toLocationId) payload.toLocationId = form.toLocationId;
+            if (form.toManagerId) payload.toManagerId = form.toManagerId;
+            await createMutation.mutateAsync(payload);
             showSuccess("Transfer Initiated", "Employee transfer has been submitted.");
             setModalOpen(false);
         } catch (err) { showApiError(err); }
@@ -272,15 +286,15 @@ export function TransferScreen() {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">To Department *</label>
-                                    <select value={form.toDepartment} onChange={(e) => updateField("toDepartment", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">To Department</label>
+                                    <select value={form.toDepartmentId} onChange={(e) => updateField("toDepartmentId", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
                                         <option value="">Select...</option>
                                         {departments.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
                                     </select>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">To Designation</label>
-                                    <select value={form.toDesignation} onChange={(e) => updateField("toDesignation", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
+                                    <select value={form.toDesignationId} onChange={(e) => updateField("toDesignationId", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
                                         <option value="">Select...</option>
                                         {designations.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
                                     </select>
@@ -289,7 +303,7 @@ export function TransferScreen() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">To Location</label>
-                                    <input type="text" value={form.toLocation} onChange={(e) => updateField("toLocation", e.target.value)} placeholder="e.g. Mumbai Office" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                    <input type="text" value={form.toLocationId} onChange={(e) => updateField("toLocationId", e.target.value)} placeholder="e.g. Mumbai Office" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Effective Date *</label>
@@ -300,7 +314,7 @@ export function TransferScreen() {
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Transfer Type</label>
                                 <div className="flex gap-2">
                                     {TRANSFER_TYPES.map(t => (
-                                        <button key={t} onClick={() => updateField("transferType", t)} className={cn("px-3 py-1.5 rounded-lg text-xs font-bold border transition-all", form.transferType === t ? "bg-primary-50 text-primary-700 border-primary-300 dark:bg-primary-900/30 dark:text-primary-400 dark:border-primary-700" : "bg-neutral-50 text-neutral-500 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700")}>{t}</button>
+                                        <button key={t.value} onClick={() => updateField("transferType", t.value)} className={cn("px-3 py-1.5 rounded-lg text-xs font-bold border transition-all", form.transferType === t.value ? "bg-primary-50 text-primary-700 border-primary-300 dark:bg-primary-900/30 dark:text-primary-400 dark:border-primary-700" : "bg-neutral-50 text-neutral-500 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700")}>{t.label}</button>
                                     ))}
                                 </div>
                             </div>

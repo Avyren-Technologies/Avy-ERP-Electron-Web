@@ -64,13 +64,10 @@ export interface CompanyShift {
     id: string;
     name: string;
     code?: string;
-    startTime: string;
-    endTime: string;
-    graceMinutes?: number;
-    halfDayHours?: number;
-    fullDayHours?: number;
-    isNightShift?: boolean;
-    isDefault?: boolean;
+    fromTime: string;
+    toTime: string;
+    noShuffle?: boolean;
+    downtimeSlots?: Array<{ type: string; duration: string }>;
     status?: string;
     createdAt?: string;
     updatedAt?: string;
@@ -78,14 +75,10 @@ export interface CompanyShift {
 
 export interface CreateShiftPayload {
     name: string;
-    code?: string;
-    startTime: string;
-    endTime: string;
-    graceMinutes?: number;
-    halfDayHours?: number;
-    fullDayHours?: number;
-    isNightShift?: boolean;
-    isDefault?: boolean;
+    fromTime: string;
+    toTime: string;
+    noShuffle?: boolean;
+    downtimeSlots?: Array<{ type: string; duration: string }>;
 }
 
 export interface CompanyContact {
@@ -113,25 +106,26 @@ export interface CreateContactPayload {
 
 export interface NoSeriesConfig {
     id: string;
-    module: string;
+    code: string;
+    linkedScreen: string;
+    description?: string;
     prefix: string;
-    separator?: string;
-    nextNumber: number;
-    padLength?: number;
     suffix?: string;
-    sample?: string;
+    numberCount?: number;
+    startNumber?: number;
     isActive?: boolean;
     createdAt?: string;
     updatedAt?: string;
 }
 
 export interface CreateNoSeriesPayload {
-    module: string;
+    code: string;
+    linkedScreen: string;
+    description?: string;
     prefix: string;
-    separator?: string;
-    nextNumber?: number;
-    padLength?: number;
     suffix?: string;
+    numberCount?: number;
+    startNumber?: number;
 }
 
 export interface IOTReason {
@@ -180,6 +174,7 @@ export interface CompanyUser {
     department?: string;
     location?: string;
     isActive?: boolean;
+    lastLogin?: string;
     lastLoginAt?: string;
     createdAt?: string;
     updatedAt?: string;
@@ -189,18 +184,17 @@ export interface CreateUserPayload {
     firstName: string;
     lastName: string;
     email: string;
+    password: string;
+    phone?: string;
     role?: string;
-    department?: string;
-    location?: string;
 }
 
 export interface UpdateUserPayload {
     firstName?: string;
     lastName?: string;
     email?: string;
+    phone?: string;
     role?: string;
-    department?: string;
-    location?: string;
 }
 
 export interface AuditLogEntry {
@@ -423,7 +417,8 @@ async function updateUser(id: string, data: UpdateUserPayload): Promise<ApiRespo
 }
 
 async function updateUserStatus(id: string, status: string): Promise<ApiResponse<CompanyUser>> {
-    const response = await client.patch(`/company/users/${id}/status`, { status });
+    const isActive = status === 'active';
+    const response = await client.patch(`/company/users/${id}/status`, { isActive });
     return response.data;
 }
 
@@ -439,6 +434,11 @@ async function listAuditLogs(params?: {
     search?: string;
 }): Promise<ApiResponse<AuditLogEntry[]>> {
     const response = await client.get('/company/audit-logs', { params });
+    return response.data;
+}
+
+async function getAuditFilterOptions(): Promise<ApiResponse<{ actionTypes: string[]; entityTypes: string[] }>> {
+    const response = await client.get('/company/audit-logs/filters');
     return response.data;
 }
 
@@ -466,14 +466,14 @@ export interface RbacRole {
     description?: string;
     isSystem: boolean;
     userCount?: number;
-    permissions: RolePermission[];
+    permissions: string[] | RolePermission[];
     createdAt?: string;
 }
 
 export interface CreateRolePayload {
     name: string;
     description?: string;
-    permissions: RolePermission[];
+    permissions: string[];
 }
 
 async function listRoles(): Promise<ApiResponse<RbacRole[]>> {
@@ -529,6 +529,7 @@ export const companyAdminApi = {
     updateUser,
     updateUserStatus,
     listAuditLogs,
+    getAuditFilterOptions,
     getCompanyActivity,
     listRoles,
     createRole,

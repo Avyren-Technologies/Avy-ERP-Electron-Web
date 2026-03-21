@@ -69,7 +69,7 @@ export function FeatureToggleScreen() {
         (async () => {
             setLoadingToggles(true);
             try {
-                const { data } = await client.get(`/feature-toggles/user/${selectedUserId}`);
+                const { data } = await client.get('/feature-toggles', { params: { userId: selectedUserId } });
                 setToggles(data?.data ?? data ?? []);
             } catch {
                 setToggles([]);
@@ -83,10 +83,13 @@ export function FeatureToggleScreen() {
         if (toggle.source === "role") return; // Can't override role-inherited
         setSaving(toggle.id);
         try {
-            await client.patch(`/feature-toggles/${toggle.id}`, { enabled: !toggle.enabled });
-            setToggles((prev) =>
-                prev.map((t) => (t.id === toggle.id ? { ...t, enabled: !t.enabled } : t))
+            const updatedToggles = toggles.map((t) =>
+                t.id === toggle.id ? { ...t, enabled: !t.enabled } : t
             );
+            await client.put(`/feature-toggles/user/${selectedUserId}`, {
+                toggles: updatedToggles.map((t) => ({ featureKey: t.featureKey, enabled: t.enabled })),
+            });
+            setToggles(updatedToggles);
             showSuccess("Toggle Updated", `${toggle.label} is now ${!toggle.enabled ? "enabled" : "disabled"}.`);
         } catch (err) {
             showApiError(err);

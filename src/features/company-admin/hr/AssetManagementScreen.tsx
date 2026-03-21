@@ -141,8 +141,13 @@ export function AssetManagementScreen() {
     };
     const handleSaveCat = async () => {
         try {
-            if (catEditingId) { await updateCat.mutateAsync({ id: catEditingId, data: catForm }); showSuccess("Category Updated", `${catForm.name} updated.`); }
-            else { await createCat.mutateAsync(catForm); showSuccess("Category Created", `${catForm.name} created.`); }
+            const catPayload = {
+                ...catForm,
+                depreciationRate: catForm.depreciationRate ? Number(catForm.depreciationRate) : undefined,
+                usefulLife: catForm.usefulLife ? Number(catForm.usefulLife) : undefined,
+            };
+            if (catEditingId) { await updateCat.mutateAsync({ id: catEditingId, data: catPayload }); showSuccess("Category Updated", `${catForm.name} updated.`); }
+            else { await createCat.mutateAsync(catPayload); showSuccess("Category Created", `${catForm.name} created.`); }
             setCatModalOpen(false);
         } catch (err) { showApiError(err); }
     };
@@ -165,8 +170,16 @@ export function AssetManagementScreen() {
     };
     const handleSaveAsset = async () => {
         try {
-            if (assetEditingId) { await updateAsset.mutateAsync({ id: assetEditingId, data: assetForm }); showSuccess("Asset Updated", `${assetForm.name} updated.`); }
-            else { await createAsset.mutateAsync(assetForm); showSuccess("Asset Created", `${assetForm.name} created.`); }
+            const payload: any = {
+                name: assetForm.name,
+                categoryId: assetForm.categoryId,
+                serialNumber: assetForm.serialNumber || undefined,
+                purchaseDate: assetForm.purchaseDate || undefined,
+                purchaseValue: assetForm.purchaseCost ? Number(assetForm.purchaseCost) : undefined,
+                condition: assetForm.condition?.toUpperCase() || undefined,
+            };
+            if (assetEditingId) { await updateAsset.mutateAsync({ id: assetEditingId, data: payload }); showSuccess("Asset Updated", `${assetForm.name} updated.`); }
+            else { await createAsset.mutateAsync(payload); showSuccess("Asset Created", `${assetForm.name} created.`); }
             setAssetModalOpen(false);
         } catch (err) { showApiError(err); }
     };
@@ -183,8 +196,14 @@ export function AssetManagementScreen() {
     };
     const handleSaveAssign = async () => {
         try {
+            const payload: any = {
+                assetId: assignForm.assetId,
+                employeeId: assignForm.employeeId,
+                issueDate: assignForm.assignedDate,
+                notes: assignForm.notes || undefined,
+            };
             if (assignEditingId) { await updateAssign.mutateAsync({ id: assignEditingId, data: assignForm }); showSuccess("Assignment Updated", "Asset assignment updated."); }
-            else { await createAssign.mutateAsync(assignForm); showSuccess("Asset Assigned", "Asset has been assigned to the employee."); }
+            else { await createAssign.mutateAsync(payload); showSuccess("Asset Assigned", "Asset has been assigned to the employee."); }
             setAssignModalOpen(false);
         } catch (err) { showApiError(err); }
     };

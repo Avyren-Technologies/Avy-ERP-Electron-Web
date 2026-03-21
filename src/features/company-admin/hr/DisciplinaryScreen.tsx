@@ -149,10 +149,28 @@ export function DisciplinaryScreen() {
         });
         setModalOpen(true);
     };
+    const typeToEnum: Record<string, string> = {
+        "Verbal Warning": "VERBAL_WARNING",
+        "Written Warning": "WRITTEN_WARNING",
+        "Final Warning": "SHOW_CAUSE",
+        "Suspension": "SUSPENSION",
+        "Demotion": "PIP",
+        "Pay Cut": "PIP",
+        "Probation": "PIP",
+        "Termination": "TERMINATION",
+    };
+
     const handleSave = async () => {
         try {
-            if (editingId) { await updateAction.mutateAsync({ id: editingId, data: form }); showSuccess("Action Updated", "Disciplinary action has been updated."); }
-            else { await createAction.mutateAsync(form); showSuccess("Action Created", "Disciplinary action has been recorded."); }
+            const payload: any = {
+                employeeId: form.employeeId,
+                type: typeToEnum[form.type] || "WRITTEN_WARNING",
+                charges: [form.subject, form.description].filter(Boolean).join(" - ") || form.subject || form.description,
+                replyDueBy: form.reviewDate || undefined,
+                issuedBy: form.issuedById || undefined,
+            };
+            if (editingId) { await updateAction.mutateAsync({ id: editingId, data: payload }); showSuccess("Action Updated", "Disciplinary action has been updated."); }
+            else { await createAction.mutateAsync(payload); showSuccess("Action Created", "Disciplinary action has been recorded."); }
             setModalOpen(false);
         } catch (err) { showApiError(err); }
     };

@@ -132,9 +132,9 @@ function formatINR(value: number | string | undefined | null): string {
 /* ── Constants ── */
 
 const PF_TIERS = [
-    { value: "Tier-I", label: "Tier I - Basic (up to 15K)" },
-    { value: "Tier-II", label: "Tier II - Full PF on actual" },
-    { value: "Exempt", label: "Exempt" },
+    { value: "Applicable", label: "Applicable" },
+    { value: "Not Applicable", label: "Not Applicable" },
+    { value: "Optional", label: "Optional" },
 ];
 
 const EMPTY_GRADE = {
@@ -198,14 +198,18 @@ export function GradeScreen() {
 
     const handleSave = async () => {
         try {
-            const payload = {
-                ...form,
-                ctcMin: form.ctcMin ? parseFloat(form.ctcMin) : null,
-                ctcMax: form.ctcMax ? parseFloat(form.ctcMax) : null,
-                hraPercent: form.hraPercent ? parseFloat(form.hraPercent) : null,
-                probationMonths: form.probationMonths ? parseInt(form.probationMonths, 10) : null,
-                noticeDays: form.noticeDays ? parseInt(form.noticeDays, 10) : null,
+            const payload: Record<string, any> = {
+                code: form.code,
+                name: form.name,
+                status: form.status,
             };
+            if (form.ctcMin) payload.ctcMin = parseFloat(form.ctcMin);
+            if (form.ctcMax) payload.ctcMax = parseFloat(form.ctcMax);
+            if (form.hraPercent) payload.hraPercent = parseFloat(form.hraPercent);
+            if (form.pfTier) payload.pfTier = form.pfTier;
+            if (form.probationMonths) payload.probationMonths = parseInt(form.probationMonths, 10);
+            if (form.noticeDays) payload.noticeDays = parseInt(form.noticeDays, 10);
+
             if (editingId) {
                 await updateMutation.mutateAsync({ id: editingId, data: payload });
                 showSuccess("Grade Updated", `${form.name} has been updated.`);

@@ -85,18 +85,24 @@ function SelectField({
 }
 
 function PatternBadge({ pattern }: { pattern: string }) {
-    const p = pattern?.toLowerCase();
+    const p = pattern?.toUpperCase();
+    const label =
+        p === "MON_FRI" ? "Mon\u2013Fri"
+        : p === "MON_SAT" ? "Mon\u2013Sat"
+        : p === "MON_SAT_ALT" ? "Mon\u2013Sat (Alt)"
+        : p === "CUSTOM" ? "Custom"
+        : pattern;
     const cls =
-        p === "fixed"
+        p === "MON_FRI"
             ? "bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50"
-            : p === "rotating"
+            : p === "MON_SAT" || p === "MON_SAT_ALT"
             ? "bg-accent-50 text-accent-700 border-accent-200 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50"
-            : p === "flexible"
+            : p === "CUSTOM"
             ? "bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50"
             : "bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700";
     return (
         <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border", cls)}>
-            {pattern}
+            {label}
         </span>
     );
 }
@@ -114,25 +120,18 @@ const WEEKDAYS = [
 ];
 
 const PATTERNS = [
-    { value: "Fixed", label: "Fixed" },
-    { value: "Rotating", label: "Rotating" },
-    { value: "Flexible", label: "Flexible" },
-];
-
-const EMPLOYEE_TYPES_OPTIONS = [
-    { value: "Permanent", label: "Permanent" },
-    { value: "Contract", label: "Contract" },
-    { value: "Trainee", label: "Trainee" },
-    { value: "All", label: "All" },
+    { value: "MON_FRI", label: "Mon\u2013Fri" },
+    { value: "MON_SAT", label: "Mon\u2013Sat" },
+    { value: "MON_SAT_ALT", label: "Mon\u2013Sat (Alt)" },
+    { value: "CUSTOM", label: "Custom" },
 ];
 
 const EMPTY_ROSTER = {
     name: "",
-    pattern: "Fixed",
+    pattern: "MON_FRI",
     weekOff1: "Sunday",
     weekOff2: "",
-    employeeTypes: "All",
-    effectiveDate: "",
+    effectiveFrom: "",
     isDefault: false,
 };
 
@@ -168,11 +167,10 @@ export function RosterScreen() {
         setEditingId(roster.id);
         setForm({
             name: roster.name ?? "",
-            pattern: roster.pattern ?? "Fixed",
+            pattern: roster.pattern ?? "MON_FRI",
             weekOff1: roster.weekOff1 ?? "Sunday",
             weekOff2: roster.weekOff2 ?? "",
-            employeeTypes: roster.employeeTypes ?? "All",
-            effectiveDate: roster.effectiveDate ?? "",
+            effectiveFrom: roster.effectiveFrom ? roster.effectiveFrom.substring(0, 10) : "",
             isDefault: roster.isDefault ?? false,
         });
         setModalOpen(true);
@@ -180,11 +178,19 @@ export function RosterScreen() {
 
     const handleSave = async () => {
         try {
+            const payload = {
+                name: form.name,
+                pattern: form.pattern,
+                weekOff1: form.weekOff1 || undefined,
+                weekOff2: form.weekOff2 || undefined,
+                effectiveFrom: form.effectiveFrom,
+                isDefault: form.isDefault,
+            };
             if (editingId) {
-                await updateMutation.mutateAsync({ id: editingId, data: form });
+                await updateMutation.mutateAsync({ id: editingId, data: payload });
                 showSuccess("Roster Updated", `${form.name} has been updated.`);
             } else {
-                await createMutation.mutateAsync(form);
+                await createMutation.mutateAsync(payload);
                 showSuccess("Roster Created", `${form.name} has been added.`);
             }
             setModalOpen(false);
@@ -250,15 +256,14 @@ export function RosterScreen() {
                     <SkeletonTable rows={5} cols={7} />
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse min-w-[950px]">
+                        <table className="w-full text-left border-collapse min-w-[850px]">
                             <thead>
                                 <tr className="bg-neutral-50/50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
                                     <th className="py-4 px-6 font-bold">Name</th>
                                     <th className="py-4 px-6 font-bold text-center">Pattern</th>
                                     <th className="py-4 px-6 font-bold">Week Off 1</th>
                                     <th className="py-4 px-6 font-bold">Week Off 2</th>
-                                    <th className="py-4 px-6 font-bold">Employee Types</th>
-                                    <th className="py-4 px-6 font-bold">Effective Date</th>
+                                    <th className="py-4 px-6 font-bold">Effective From</th>
                                     <th className="py-4 px-6 font-bold text-center">Default</th>
                                     <th className="py-4 px-6 font-bold text-right">Actions</th>
                                 </tr>
@@ -278,13 +283,12 @@ export function RosterScreen() {
                                             </div>
                                         </td>
                                         <td className="py-4 px-6 text-center">
-                                            <PatternBadge pattern={r.pattern ?? "Fixed"} />
+                                            <PatternBadge pattern={r.pattern ?? "MON_FRI"} />
                                         </td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{r.weekOff1 ?? "\u2014"}</td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{r.weekOff2 || "\u2014"}</td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{r.employeeTypes ?? "All"}</td>
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                            {r.effectiveDate ? new Date(r.effectiveDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "\u2014"}
+                                            {r.effectiveFrom ? new Date(r.effectiveFrom).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "\u2014"}
                                         </td>
                                         <td className="py-4 px-6 text-center">
                                             {r.isDefault ? (
@@ -307,7 +311,7 @@ export function RosterScreen() {
                                 ))}
                                 {filtered.length === 0 && !isLoading && (
                                     <tr>
-                                        <td colSpan={8}>
+                                        <td colSpan={7}>
                                             <EmptyState icon="list" title="No rosters found" message="Add a roster pattern to get started." action={{ label: "Add Roster", onClick: openCreate }} />
                                         </td>
                                     </tr>
@@ -351,13 +355,7 @@ export function RosterScreen() {
                                     placeholder="None"
                                 />
                             </div>
-                            <SelectField
-                                label="Employee Types"
-                                value={form.employeeTypes}
-                                onChange={(v) => updateField("employeeTypes", v)}
-                                options={EMPLOYEE_TYPES_OPTIONS}
-                            />
-                            <FormField label="Effective Date" value={form.effectiveDate} onChange={(v) => updateField("effectiveDate", v)} type="date" />
+                            <FormField label="Effective From" value={form.effectiveFrom} onChange={(v) => updateField("effectiveFrom", v)} type="date" />
                             <div className="flex items-center justify-between px-1">
                                 <label className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Default Roster</label>
                                 <button

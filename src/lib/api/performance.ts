@@ -120,7 +120,7 @@ async function publishAppraisalEntry(id: string): Promise<ApiResponse<any>> {
 }
 
 async function getCalibrationData(cycleId: string): Promise<ApiResponse<any>> {
-    const response = await client.get(`/hr/appraisal-entries/calibration/${cycleId}`);
+    const response = await client.get(`/hr/appraisal-cycles/${cycleId}/calibration`);
     return response.data;
 }
 
@@ -132,27 +132,27 @@ async function listFeedback360(params?: {
     cycleId?: string;
     employeeId?: string;
 }): Promise<ApiResponse<any>> {
-    const response = await client.get('/hr/feedback-360', { params });
+    const response = await client.get('/hr/feedback360', { params });
     return response.data;
 }
 
 async function createFeedback360(data: any): Promise<ApiResponse<any>> {
-    const response = await client.post('/hr/feedback-360', data);
+    const response = await client.post('/hr/feedback360', data);
     return response.data;
 }
 
 async function getFeedback360(id: string): Promise<ApiResponse<any>> {
-    const response = await client.get(`/hr/feedback-360/${id}`);
+    const response = await client.get(`/hr/feedback360/${id}`);
     return response.data;
 }
 
 async function updateFeedback360(id: string, data: any): Promise<ApiResponse<any>> {
-    const response = await client.patch(`/hr/feedback-360/${id}`, data);
+    const response = await client.patch(`/hr/feedback360/${id}`, data);
     return response.data;
 }
 
 async function getFeedback360Report(employeeId: string, cycleId: string): Promise<ApiResponse<any>> {
-    const response = await client.get(`/hr/feedback-360/report/${employeeId}/${cycleId}`);
+    const response = await client.get(`/hr/feedback360/report/${employeeId}/${cycleId}`);
     return response.data;
 }
 
@@ -260,7 +260,7 @@ async function getBenchStrength(): Promise<ApiResponse<any>> {
 // ── Performance Dashboard ──
 
 async function getPerformanceDashboard(): Promise<ApiResponse<any>> {
-    const response = await client.get('/hr/performance/dashboard');
+    const response = await client.get('/hr/performance-dashboard');
     return response.data;
 }
 

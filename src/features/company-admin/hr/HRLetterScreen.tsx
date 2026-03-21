@@ -52,7 +52,7 @@ const AVAILABLE_TOKENS = [
     { token: "{{manager_name}}", desc: "Reporting manager" },
 ];
 
-const EMPTY_TEMPLATE = { name: "", type: "Offer Letter", subject: "", body: "", isActive: true };
+const EMPTY_TEMPLATE = { name: "", type: "Offer Letter", subject: "", bodyTemplate: "", isActive: true };
 const EMPTY_LETTER = { templateId: "", employeeId: "", effectiveDate: "", customFields: "{}" };
 
 const formatDate = (d: string | null | undefined) => {
@@ -104,13 +104,19 @@ export function HRLetterScreen() {
     const openCreateTpl = () => { setTplEditingId(null); setTplForm({ ...EMPTY_TEMPLATE }); setTplModalOpen(true); };
     const openEditTpl = (t: any) => {
         setTplEditingId(t.id);
-        setTplForm({ name: t.name ?? "", type: t.type ?? "Offer Letter", subject: t.subject ?? "", body: t.body ?? "", isActive: t.isActive ?? true });
+        setTplForm({ name: t.name ?? "", type: t.type ?? "Offer Letter", subject: t.subject ?? "", bodyTemplate: t.bodyTemplate ?? t.body ?? "", isActive: t.isActive ?? true });
         setTplModalOpen(true);
     };
     const handleSaveTpl = async () => {
         try {
-            if (tplEditingId) { await updateTpl.mutateAsync({ id: tplEditingId, data: tplForm }); showSuccess("Template Updated", `${tplForm.name} updated.`); }
-            else { await createTpl.mutateAsync(tplForm); showSuccess("Template Created", `${tplForm.name} created.`); }
+            const payload: any = {
+                type: tplForm.type,
+                name: tplForm.name,
+                bodyTemplate: tplForm.bodyTemplate,
+                isActive: tplForm.isActive,
+            };
+            if (tplEditingId) { await updateTpl.mutateAsync({ id: tplEditingId, data: payload }); showSuccess("Template Updated", `${tplForm.name} updated.`); }
+            else { await createTpl.mutateAsync(payload); showSuccess("Template Created", `${tplForm.name} created.`); }
             setTplModalOpen(false);
         } catch (err) { showApiError(err); }
     };
@@ -312,7 +318,7 @@ export function HRLetterScreen() {
                             </div>
                             <div>
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Body (use tokens like {"{{employee_name}}"})</label>
-                                <textarea value={tplForm.body} onChange={(e) => updateTplField("body", e.target.value)} rows={10} placeholder="Dear {{employee_name}},&#10;&#10;We are pleased to offer you the position of {{designation}} in the {{department}} department..." className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all resize-none font-mono text-xs leading-relaxed" />
+                                <textarea value={tplForm.bodyTemplate} onChange={(e) => updateTplField("bodyTemplate", e.target.value)} rows={10} placeholder="Dear {{employee_name}},&#10;&#10;We are pleased to offer you the position of {{designation}} in the {{department}} department..." className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all resize-none font-mono text-xs leading-relaxed" />
                             </div>
                             <div className="flex items-center justify-between py-2 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl px-4 border border-neutral-200 dark:border-neutral-700">
                                 <span className="text-sm font-medium text-primary-950 dark:text-white">Active</span>

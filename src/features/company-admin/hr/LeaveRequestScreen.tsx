@@ -156,10 +156,10 @@ const STATUS_FILTERS = ["All", "Pending", "Approved", "Rejected", "Cancelled"];
 const EMPTY_REQUEST = {
     employeeId: "",
     leaveTypeId: "",
-    startDate: "",
-    endDate: "",
-    halfDayStart: false,
-    halfDayEnd: false,
+    fromDate: "",
+    toDate: "",
+    isHalfDay: false,
+    halfDayType: "" as "" | "FIRST_HALF" | "SECOND_HALF",
     reason: "",
 };
 
@@ -226,7 +226,7 @@ export function LeaveRequestScreen() {
         return eName?.includes(s) || ltName?.includes(s);
     }).filter((r: any) => {
         if (!dateFilter) return true;
-        return r.startDate?.startsWith(dateFilter) || r.endDate?.startsWith(dateFilter);
+        return (r.fromDate ?? r.startDate)?.startsWith(dateFilter) || (r.toDate ?? r.endDate)?.startsWith(dateFilter);
     });
 
     const openApply = () => {
@@ -236,7 +236,20 @@ export function LeaveRequestScreen() {
 
     const handleApply = async () => {
         try {
-            await createMutation.mutateAsync(form);
+            const days = calcDays(form.fromDate, form.toDate, form.isHalfDay, false);
+            const payload: any = {
+                employeeId: form.employeeId,
+                leaveTypeId: form.leaveTypeId,
+                fromDate: form.fromDate,
+                toDate: form.toDate,
+                days,
+                isHalfDay: form.isHalfDay,
+                reason: form.reason,
+            };
+            if (form.isHalfDay && form.halfDayType) {
+                payload.halfDayType = form.halfDayType;
+            }
+            await createMutation.mutateAsync(payload);
             showSuccess("Leave Applied", "Leave request has been submitted.");
             setModalOpen(false);
         } catch (err) {
@@ -278,7 +291,7 @@ export function LeaveRequestScreen() {
 
     const saving = createMutation.isPending;
     const updateField = (key: string, value: any) => setForm((p) => ({ ...p, [key]: value }));
-    const computedDays = calcDays(form.startDate, form.endDate, form.halfDayStart, form.halfDayEnd);
+    const computedDays = calcDays(form.fromDate, form.toDate, form.isHalfDay, false);
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -408,11 +421,11 @@ export function LeaveRequestScreen() {
                                     <div className="grid grid-cols-2 gap-2 text-xs mb-4">
                                         <div>
                                             <span className="text-neutral-400">From</span>
-                                            <p className="font-semibold text-primary-950 dark:text-white">{formatDate(req.startDate)}</p>
+                                            <p className="font-semibold text-primary-950 dark:text-white">{formatDate(req.fromDate)}</p>
                                         </div>
                                         <div>
                                             <span className="text-neutral-400">To</span>
-                                            <p className="font-semibold text-primary-950 dark:text-white">{formatDate(req.endDate)}</p>
+                                            <p className="font-semibold text-primary-950 dark:text-white">{formatDate(req.toDate)}</p>
                                         </div>
                                         <div>
                                             <span className="text-neutral-400">Days</span>
@@ -491,8 +504,8 @@ export function LeaveRequestScreen() {
                                                 </div>
                                             </td>
                                             <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{leaveTypeName(req.leaveTypeId)}</td>
-                                            <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(req.startDate)}</td>
-                                            <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(req.endDate)}</td>
+                                            <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(req.fromDate)}</td>
+                                            <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(req.toDate)}</td>
                                             <td className="py-4 px-6 text-center font-semibold text-primary-950 dark:text-white">{req.days ?? "\u2014"}</td>
                                             <td className="py-4 px-6 text-center"><RequestStatusBadge status={req.status ?? "Pending"} /></td>
                                             <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{req.approverName || req.approverId || "\u2014"}</td>
@@ -576,14 +589,32 @@ export function LeaveRequestScreen() {
                                 placeholder="Select leave type..."
                             />
                             <div className="grid grid-cols-2 gap-4">
-                                <FormField label="Start Date" value={form.startDate} onChange={(v) => updateField("startDate", v)} type="date" />
-                                <FormField label="End Date" value={form.endDate} onChange={(v) => updateField("endDate", v)} type="date" />
+                                <FormField label="From Date" value={form.fromDate} onChange={(v) => updateField("fromDate", v)} type="date" />
+                                <FormField label="To Date" value={form.toDate} onChange={(v) => updateField("toDate", v)} type="date" />
                             </div>
                             <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-4 border border-neutral-200 dark:border-neutral-700 space-y-1">
-                                <ToggleSwitch label="Half Day (Start)" checked={form.halfDayStart} onChange={(v) => updateField("halfDayStart", v)} />
-                                <ToggleSwitch label="Half Day (End)" checked={form.halfDayEnd} onChange={(v) => updateField("halfDayEnd", v)} />
+                                <ToggleSwitch label="Half Day" checked={form.isHalfDay} onChange={(v) => { updateField("isHalfDay", v); if (v) updateField("halfDayType", "FIRST_HALF"); else updateField("halfDayType", ""); }} />
+                                {form.isHalfDay && (
+                                    <div className="flex gap-2 pt-1">
+                                        {[{ value: "FIRST_HALF", label: "First Half" }, { value: "SECOND_HALF", label: "Second Half" }].map((opt) => (
+                                            <button
+                                                key={opt.value}
+                                                type="button"
+                                                onClick={() => updateField("halfDayType", opt.value)}
+                                                className={cn(
+                                                    "flex-1 py-2 rounded-lg text-xs font-bold border transition-all text-center",
+                                                    form.halfDayType === opt.value
+                                                        ? "bg-primary-50 text-primary-700 border-primary-300 dark:bg-primary-900/30 dark:text-primary-400 dark:border-primary-700"
+                                                        : "bg-white text-neutral-500 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700"
+                                                )}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
-                            {form.startDate && form.endDate && (
+                            {form.fromDate && form.toDate && (
                                 <div className="bg-primary-50 dark:bg-primary-900/20 rounded-xl p-4 border border-primary-200 dark:border-primary-800/50 text-center">
                                     <span className="text-xs font-semibold text-primary-600 dark:text-primary-400 uppercase">Total Days</span>
                                     <p className="text-2xl font-bold text-primary-700 dark:text-primary-300 mt-1">{computedDays}</p>
@@ -649,7 +680,7 @@ export function LeaveRequestScreen() {
                     <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200">
                         <h2 className="text-lg font-bold text-warning-700 dark:text-warning-400 mb-2">Cancel Leave Request?</h2>
                         <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                            This will cancel the leave request for <strong>{employeeName(cancelTarget.employeeId)}</strong> ({formatDate(cancelTarget.startDate)} - {formatDate(cancelTarget.endDate)}).
+                            This will cancel the leave request for <strong>{employeeName(cancelTarget.employeeId)}</strong> ({formatDate(cancelTarget.fromDate)} - {formatDate(cancelTarget.toDate)}).
                         </p>
                         <div className="flex gap-3 mt-6">
                             <button onClick={() => setCancelTarget(null)} className="flex-1 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Back</button>
@@ -687,11 +718,11 @@ export function LeaveRequestScreen() {
                                 </div>
                                 <div>
                                     <span className="text-xs text-neutral-400 block mb-0.5">From</span>
-                                    <p className="font-semibold text-primary-950 dark:text-white">{formatDate(detailTarget.startDate)}</p>
+                                    <p className="font-semibold text-primary-950 dark:text-white">{formatDate(detailTarget.fromDate)}</p>
                                 </div>
                                 <div>
                                     <span className="text-xs text-neutral-400 block mb-0.5">To</span>
-                                    <p className="font-semibold text-primary-950 dark:text-white">{formatDate(detailTarget.endDate)}</p>
+                                    <p className="font-semibold text-primary-950 dark:text-white">{formatDate(detailTarget.toDate)}</p>
                                 </div>
                                 <div>
                                     <span className="text-xs text-neutral-400 block mb-0.5">Days</span>

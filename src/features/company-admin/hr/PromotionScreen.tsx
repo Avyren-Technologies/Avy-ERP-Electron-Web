@@ -55,8 +55,8 @@ const STATUS_FILTERS = [
 ];
 
 const EMPTY_FORM = {
-    employeeId: "", toDesignation: "", toGrade: "", newCTC: 0,
-    effectiveDate: "", reason: "", linkedAppraisal: "",
+    employeeId: "", toDesignationId: "", toGradeId: "", newCtc: 0,
+    effectiveDate: "", reason: "", appraisalEntryId: "",
 };
 
 /* ── Screen ── */
@@ -101,7 +101,16 @@ export function PromotionScreen() {
 
     const handleCreate = async () => {
         try {
-            await createMutation.mutateAsync(form);
+            const payload: any = {
+                employeeId: form.employeeId,
+                toDesignationId: form.toDesignationId,
+                effectiveDate: form.effectiveDate,
+            };
+            if (form.toGradeId) payload.toGradeId = form.toGradeId;
+            if (form.newCtc) payload.newCtc = Number(form.newCtc);
+            if (form.reason) payload.reason = form.reason;
+            if (form.appraisalEntryId) payload.appraisalEntryId = form.appraisalEntryId;
+            await createMutation.mutateAsync(payload);
             showSuccess("Promotion Initiated", "Employee promotion has been submitted.");
             setModalOpen(false);
         } catch (err) { showApiError(err); }
@@ -260,14 +269,14 @@ export function PromotionScreen() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">To Designation *</label>
-                                    <select value={form.toDesignation} onChange={(e) => updateField("toDesignation", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
+                                    <select value={form.toDesignationId} onChange={(e) => updateField("toDesignationId", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
                                         <option value="">Select...</option>
                                         {designations.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
                                     </select>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">To Grade</label>
-                                    <select value={form.toGrade} onChange={(e) => updateField("toGrade", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
+                                    <select value={form.toGradeId} onChange={(e) => updateField("toGradeId", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
                                         <option value="">Select...</option>
                                         {grades.map((g: any) => <option key={g.id} value={g.id}>{g.name}</option>)}
                                     </select>
@@ -276,7 +285,7 @@ export function PromotionScreen() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">New CTC (optional)</label>
-                                    <input type="number" value={form.newCTC || ""} onChange={(e) => updateField("newCTC", Number(e.target.value))} min={0} placeholder="1200000" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                    <input type="number" value={form.newCtc || ""} onChange={(e) => updateField("newCtc", Number(e.target.value))} min={0} placeholder="1200000" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Effective Date *</label>
@@ -289,7 +298,7 @@ export function PromotionScreen() {
                             </div>
                             <div>
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Linked Appraisal (optional)</label>
-                                <input type="text" value={form.linkedAppraisal} onChange={(e) => updateField("linkedAppraisal", e.target.value)} placeholder="Appraisal cycle name or ID" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                <input type="text" value={form.appraisalEntryId} onChange={(e) => updateField("appraisalEntryId", e.target.value)} placeholder="Appraisal entry ID" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
                             </div>
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">

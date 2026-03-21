@@ -80,7 +80,15 @@ export function BankConfigScreen() {
 
     const handleSave = async () => {
         try {
-            await updateMutation.mutateAsync(config);
+            // Map frontend field names to backend expected names
+            const payload = {
+                ...config,
+                branchName: config.branch ?? config.branchName,
+                autoPushOnApproval: config.autoPush ?? config.autoPushOnApproval,
+            };
+            delete payload.branch;
+            delete payload.autoPush;
+            await updateMutation.mutateAsync(payload);
             showSuccess("Bank Config Saved", "Bank configuration has been updated.");
             setHasChanges(false);
         } catch (err) { showApiError(err); }

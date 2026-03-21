@@ -74,19 +74,21 @@ function SectionLabel({ title }: { title: string }) {
 
 interface StructureComponent {
     componentId: string;
-    method: string;
+    calculationMethod: string;
     value: number;
+    formula?: string;
 }
 
 const CALC_METHODS = [
-    { value: "fixed", label: "Fixed" },
-    { value: "percentage_of_ctc", label: "% of CTC" },
-    { value: "percentage_of_basic", label: "% of Basic" },
+    { value: "FIXED", label: "Fixed" },
+    { value: "PERCENT_OF_BASIC", label: "% of Basic" },
+    { value: "PERCENT_OF_GROSS", label: "% of Gross" },
+    { value: "FORMULA", label: "Formula" },
 ];
 
 const CTC_BASIS_OPTIONS = [
-    { value: "annual", label: "Annual CTC" },
-    { value: "monthly", label: "Monthly Gross" },
+    { value: "CTC", label: "Annual CTC" },
+    { value: "TAKE_HOME", label: "Take Home" },
 ];
 
 /* ── Empty form ── */
@@ -94,11 +96,12 @@ const CTC_BASIS_OPTIONS = [
 const EMPTY_STRUCTURE = {
     name: "",
     code: "",
-    ctcBasis: "annual",
-    applicableGrades: [] as string[],
-    applicableDesignations: [] as string[],
-    applicableEmployeeTypes: [] as string[],
+    ctcBasis: "CTC",
+    applicableGradeIds: [] as string[],
+    applicableDesignationIds: [] as string[],
+    applicableTypeIds: [] as string[],
     components: [] as StructureComponent[],
+    isActive: true,
 };
 
 /* ── Screen ── */
@@ -137,22 +140,38 @@ export function SalaryStructureScreen() {
         setForm({
             name: s.name ?? "",
             code: s.code ?? "",
-            ctcBasis: s.ctcBasis ?? "annual",
-            applicableGrades: s.applicableGrades ?? [],
-            applicableDesignations: s.applicableDesignations ?? [],
-            applicableEmployeeTypes: s.applicableEmployeeTypes ?? [],
-            components: (s.components ?? []).map((c: any) => ({ componentId: c.componentId ?? "", method: c.method ?? "fixed", value: c.value ?? 0 })),
+            ctcBasis: s.ctcBasis ?? "CTC",
+            applicableGradeIds: s.applicableGradeIds ?? [],
+            applicableDesignationIds: s.applicableDesignationIds ?? [],
+            applicableTypeIds: s.applicableTypeIds ?? [],
+            components: (s.components ?? []).map((c: any) => ({ componentId: c.componentId ?? "", calculationMethod: c.calculationMethod ?? "FIXED", value: c.value ?? 0, formula: c.formula ?? "" })),
+            isActive: s.isActive ?? true,
         });
         setModalOpen(true);
     };
 
     const handleSave = async () => {
         try {
+            const payload = {
+                name: form.name,
+                code: form.code,
+                ctcBasis: form.ctcBasis,
+                applicableGradeIds: form.applicableGradeIds.length > 0 ? form.applicableGradeIds : undefined,
+                applicableDesignationIds: form.applicableDesignationIds.length > 0 ? form.applicableDesignationIds : undefined,
+                applicableTypeIds: form.applicableTypeIds.length > 0 ? form.applicableTypeIds : undefined,
+                components: form.components.map((c) => ({
+                    componentId: c.componentId,
+                    calculationMethod: c.calculationMethod,
+                    value: c.value || undefined,
+                    formula: c.calculationMethod === "FORMULA" ? c.formula : undefined,
+                })),
+                isActive: form.isActive,
+            };
             if (editingId) {
-                await updateMutation.mutateAsync({ id: editingId, data: form });
+                await updateMutation.mutateAsync({ id: editingId, data: payload });
                 showSuccess("Structure Updated", `${form.name} has been updated.`);
             } else {
-                await createMutation.mutateAsync(form);
+                await createMutation.mutateAsync(payload);
                 showSuccess("Structure Created", `${form.name} has been added.`);
             }
             setModalOpen(false);
@@ -171,7 +190,7 @@ export function SalaryStructureScreen() {
     const saving = createMutation.isPending || updateMutation.isPending;
     const updateField = (key: string, value: any) => setForm((p) => ({ ...p, [key]: value }));
 
-    const addComponentRow = () => { setForm((p) => ({ ...p, components: [...p.components, { componentId: "", method: "fixed", value: 0 }] })); };
+    const addComponentRow = () => { setForm((p) => ({ ...p, components: [...p.components, { componentId: "", calculationMethod: "FIXED", value: 0, formula: "" }] })); };
     const removeComponentRow = (i: number) => { setForm((p) => ({ ...p, components: p.components.filter((_, idx) => idx !== i) })); };
     const updateComponentRow = (i: number, key: string, value: any) => {
         setForm((p) => ({ ...p, components: p.components.map((c, idx) => idx === i ? { ...c, [key]: value } : c) }));
@@ -187,9 +206,9 @@ export function SalaryStructureScreen() {
         return form.components.map((c) => {
             const comp = salaryComponents.find((sc: any) => sc.id === c.componentId);
             let monthly = 0;
-            if (c.method === "fixed") monthly = c.value;
-            else if (c.method === "percentage_of_basic") monthly = (basicAmt * c.value) / 100;
-            else if (c.method === "percentage_of_ctc") monthly = c.value; // needs CTC context
+            if (c.calculationMethod === "FIXED") monthly = c.value;
+            else if (c.calculationMethod === "PERCENT_OF_BASIC") monthly = (basicAmt * c.value) / 100;
+            else if (c.calculationMethod === "PERCENT_OF_GROSS") monthly = c.value; // needs Gross context
             return { name: comp?.name ?? "Unknown", monthly };
         });
     };
@@ -256,20 +275,20 @@ export function SalaryStructureScreen() {
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{s.code || "\u2014"}</td>
                                         <td className="py-4 px-6">
                                             <div className="flex flex-wrap gap-1">
-                                                {(s.applicableGrades ?? []).slice(0, 3).map((g: string) => (
+                                                {(s.applicableGradeIds ?? []).slice(0, 3).map((g: string) => (
                                                     <span key={g} className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 border border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50">{grades.find((gr: any) => gr.id === g)?.name ?? g}</span>
                                                 ))}
-                                                {(s.applicableGrades ?? []).length > 3 && <span className="text-[10px] font-bold text-neutral-400">+{(s.applicableGrades ?? []).length - 3}</span>}
-                                                {(s.applicableGrades ?? []).length === 0 && <span className="text-xs text-neutral-400">All</span>}
+                                                {(s.applicableGradeIds ?? []).length > 3 && <span className="text-[10px] font-bold text-neutral-400">+{(s.applicableGradeIds ?? []).length - 3}</span>}
+                                                {(s.applicableGradeIds ?? []).length === 0 && <span className="text-xs text-neutral-400">All</span>}
                                             </div>
                                         </td>
                                         <td className="py-4 px-6">
                                             <div className="flex flex-wrap gap-1">
-                                                {(s.applicableDesignations ?? []).slice(0, 3).map((d: string) => (
+                                                {(s.applicableDesignationIds ?? []).slice(0, 3).map((d: string) => (
                                                     <span key={d} className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-info-50 text-info-700 border border-info-200 dark:bg-info-900/20 dark:text-info-400 dark:border-info-800/50">{designations.find((ds: any) => ds.id === d)?.name ?? d}</span>
                                                 ))}
-                                                {(s.applicableDesignations ?? []).length > 3 && <span className="text-[10px] font-bold text-neutral-400">+{(s.applicableDesignations ?? []).length - 3}</span>}
-                                                {(s.applicableDesignations ?? []).length === 0 && <span className="text-xs text-neutral-400">All</span>}
+                                                {(s.applicableDesignationIds ?? []).length > 3 && <span className="text-[10px] font-bold text-neutral-400">+{(s.applicableDesignationIds ?? []).length - 3}</span>}
+                                                {(s.applicableDesignationIds ?? []).length === 0 && <span className="text-xs text-neutral-400">All</span>}
                                             </div>
                                         </td>
                                         <td className="py-4 px-6 text-center font-semibold text-primary-950 dark:text-white">{(s.components ?? []).length}</td>
@@ -308,9 +327,9 @@ export function SalaryStructureScreen() {
                             </div>
 
                             <SectionLabel title="Applicability" />
-                            <MultiSelectField label="Grades" selected={form.applicableGrades} onChange={(v) => updateField("applicableGrades", v)} options={grades.map((g: any) => ({ value: g.id ?? g.code, label: g.name }))} />
-                            <MultiSelectField label="Designations" selected={form.applicableDesignations} onChange={(v) => updateField("applicableDesignations", v)} options={designations.map((d: any) => ({ value: d.id ?? d.code, label: d.name }))} />
-                            <MultiSelectField label="Employee Types" selected={form.applicableEmployeeTypes} onChange={(v) => updateField("applicableEmployeeTypes", v)} options={empTypes.map((e: any) => ({ value: e.id ?? e.code, label: e.name }))} />
+                            <MultiSelectField label="Grades" selected={form.applicableGradeIds} onChange={(v) => updateField("applicableGradeIds", v)} options={grades.map((g: any) => ({ value: g.id ?? g.code, label: g.name }))} />
+                            <MultiSelectField label="Designations" selected={form.applicableDesignationIds} onChange={(v) => updateField("applicableDesignationIds", v)} options={designations.map((d: any) => ({ value: d.id ?? d.code, label: d.name }))} />
+                            <MultiSelectField label="Employee Types" selected={form.applicableTypeIds} onChange={(v) => updateField("applicableTypeIds", v)} options={empTypes.map((e: any) => ({ value: e.id ?? e.code, label: e.name }))} />
 
                             <SectionLabel title="Component Breakup" />
                             <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
@@ -333,7 +352,7 @@ export function SalaryStructureScreen() {
                                                     </select>
                                                 </td>
                                                 <td className="py-2 px-4">
-                                                    <select value={row.method} onChange={(e) => updateComponentRow(i, "method", e.target.value)} className="w-full px-2 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:text-white">
+                                                    <select value={row.calculationMethod} onChange={(e) => updateComponentRow(i, "calculationMethod", e.target.value)} className="w-full px-2 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:text-white">
                                                         {CALC_METHODS.map((m) => (<option key={m.value} value={m.value}>{m.label}</option>))}
                                                     </select>
                                                 </td>

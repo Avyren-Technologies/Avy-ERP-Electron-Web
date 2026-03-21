@@ -69,7 +69,7 @@ const EMPTY_POLICY = {
     maxTenureMonths: 0,
     interestRate: 0,
     emiCapPercent: 0,
-    status: "Active",
+    isActive: true,
 };
 
 /* ── Screen ── */
@@ -104,18 +104,27 @@ export function LoanPolicyScreen() {
             maxTenureMonths: p.maxTenureMonths ?? 0,
             interestRate: p.interestRate ?? 0,
             emiCapPercent: p.emiCapPercent ?? 0,
-            status: p.status ?? "Active",
+            isActive: p.isActive ?? true,
         });
         setModalOpen(true);
     };
 
     const handleSave = async () => {
         try {
+            const payload = {
+                name: form.name,
+                code: form.code,
+                maxAmount: form.maxAmount || undefined,
+                maxTenureMonths: form.maxTenureMonths || undefined,
+                interestRate: form.interestRate,
+                emiCapPercent: form.emiCapPercent || undefined,
+                isActive: form.isActive,
+            };
             if (editingId) {
-                await updateMutation.mutateAsync({ id: editingId, data: form });
+                await updateMutation.mutateAsync({ id: editingId, data: payload });
                 showSuccess("Policy Updated", `${form.name} has been updated.`);
             } else {
-                await createMutation.mutateAsync(form);
+                await createMutation.mutateAsync(payload);
                 showSuccess("Policy Created", `${form.name} has been added.`);
             }
             setModalOpen(false);
@@ -197,7 +206,7 @@ export function LoanPolicyScreen() {
                                         <td className="py-4 px-6 text-center text-neutral-600 dark:text-neutral-400">{p.maxTenureMonths ?? 0} mo</td>
                                         <td className="py-4 px-6 text-center text-neutral-600 dark:text-neutral-400">{p.interestRate ?? 0}%</td>
                                         <td className="py-4 px-6 text-center text-neutral-600 dark:text-neutral-400">{p.emiCapPercent ?? 0}%</td>
-                                        <td className="py-4 px-6 text-center"><StatusBadge status={p.status ?? "Active"} /></td>
+                                        <td className="py-4 px-6 text-center"><StatusBadge status={p.isActive !== false ? "Active" : "Inactive"} /></td>
                                         <td className="py-4 px-6 text-right">
                                             <div className="flex items-center justify-end gap-1">
                                                 <button onClick={() => openEdit(p)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit"><Edit3 size={15} /></button>
@@ -236,7 +245,16 @@ export function LoanPolicyScreen() {
                                 <NumberField label="Interest Rate (%)" value={form.interestRate} onChange={(v) => updateField("interestRate", v)} min={0} max={100} step="0.01" />
                                 <NumberField label="EMI Cap (% of Gross)" value={form.emiCapPercent} onChange={(v) => updateField("emiCapPercent", v)} min={0} max={100} />
                             </div>
-                            <SelectField label="Status" value={form.status} onChange={(v) => updateField("status", v)} options={[{ value: "Active", label: "Active" }, { value: "Inactive", label: "Inactive" }]} />
+                            <div className="flex items-center justify-between py-2">
+                                <span className="text-sm font-medium text-primary-950 dark:text-white">Active</span>
+                                <button
+                                    type="button"
+                                    onClick={() => updateField("isActive", !form.isActive)}
+                                    className={cn("w-10 h-6 rounded-full transition-colors relative", form.isActive ? "bg-primary-600" : "bg-neutral-300 dark:bg-neutral-700")}
+                                >
+                                    <div className={cn("w-4 h-4 rounded-full bg-white absolute top-1 transition-all", form.isActive ? "left-5" : "left-1")} />
+                                </button>
+                            </div>
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
                             <button onClick={() => setModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>

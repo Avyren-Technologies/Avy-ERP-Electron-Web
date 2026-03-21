@@ -103,7 +103,7 @@ export interface CreateCostCentrePayload {
     budget?: number;
 }
 
-export type EmployeeStatus = 'ACTIVE' | 'PROBATION' | 'NOTICE_PERIOD' | 'SUSPENDED' | 'EXITED';
+export type EmployeeStatus = 'ACTIVE' | 'PROBATION' | 'CONFIRMED' | 'ON_NOTICE' | 'SUSPENDED' | 'EXITED';
 export type Gender = 'MALE' | 'FEMALE' | 'OTHER';
 export type MaritalStatus = 'SINGLE' | 'MARRIED' | 'DIVORCED' | 'WIDOWED';
 

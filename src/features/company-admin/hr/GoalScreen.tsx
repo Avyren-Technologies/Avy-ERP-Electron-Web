@@ -28,10 +28,9 @@ import { showSuccess, showApiError } from "@/lib/toast";
 /* ── Constants ── */
 
 const GOAL_LEVELS = [
-    { value: "organization", label: "Organization" },
-    { value: "department", label: "Department" },
-    { value: "team", label: "Team" },
-    { value: "individual", label: "Individual" },
+    { value: "COMPANY", label: "Company" },
+    { value: "DEPARTMENT", label: "Department" },
+    { value: "INDIVIDUAL", label: "Individual" },
 ];
 
 const GOAL_STATUSES = ["All", "Draft", "Active", "Completed", "Cancelled"];
@@ -39,17 +38,17 @@ const GOAL_STATUSES = ["All", "Draft", "Active", "Completed", "Cancelled"];
 const EMPTY_FORM = {
     title: "",
     description: "",
-    level: "individual",
+    level: "INDIVIDUAL",
     cycleId: "",
     employeeId: "",
-    department: "",
+    departmentId: "",
     weightage: 0,
     targetValue: "",
-    targetUnit: "",
+    kpiMetric: "",
     achievedValue: "",
     dueDate: "",
     parentGoalId: "",
-    status: "Draft",
+    status: "DRAFT",
 };
 
 /* ── Helpers ── */
@@ -162,28 +161,41 @@ export function GoalScreen() {
         setForm({
             title: g.title ?? "",
             description: g.description ?? "",
-            level: g.level ?? "individual",
+            level: g.level ?? "INDIVIDUAL",
             cycleId: g.cycleId ?? "",
             employeeId: g.employeeId ?? "",
-            department: g.department ?? "",
+            departmentId: g.departmentId ?? "",
             weightage: g.weightage ?? 0,
             targetValue: String(g.targetValue ?? ""),
-            targetUnit: g.targetUnit ?? "",
+            kpiMetric: g.kpiMetric ?? "",
             achievedValue: String(g.achievedValue ?? ""),
             dueDate: g.dueDate ?? "",
             parentGoalId: g.parentGoalId ?? "",
-            status: g.status ?? "Draft",
+            status: g.status ?? "DRAFT",
         });
         setModalOpen(true);
     };
 
     const handleSave = async () => {
         try {
+            const payload: any = {
+                ...form,
+                weightage: Number(form.weightage) || 0,
+                targetValue: form.targetValue ? Number(form.targetValue) : undefined,
+            };
+            // Remove empty optional strings
+            if (!payload.employeeId) delete payload.employeeId;
+            if (!payload.departmentId) delete payload.departmentId;
+            if (!payload.parentGoalId) delete payload.parentGoalId;
+            if (!payload.kpiMetric) delete payload.kpiMetric;
+            if (!payload.description) delete payload.description;
+            delete payload.achievedValue;
+            delete payload.dueDate;
             if (editingId) {
-                await updateMutation.mutateAsync({ id: editingId, data: form });
+                await updateMutation.mutateAsync({ id: editingId, data: payload });
                 showSuccess("Goal Updated", `"${form.title}" has been updated.`);
             } else {
-                await createMutation.mutateAsync(form);
+                await createMutation.mutateAsync(payload);
                 showSuccess("Goal Created", `"${form.title}" has been created.`);
             }
             setModalOpen(false);
@@ -406,8 +418,8 @@ export function GoalScreen() {
                                     <input type="text" value={form.targetValue} onChange={(e) => updateField("targetValue", e.target.value)} placeholder="e.g., 100" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Unit</label>
-                                    <input type="text" value={form.targetUnit} onChange={(e) => updateField("targetUnit", e.target.value)} placeholder="e.g., %" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">KPI Metric</label>
+                                    <input type="text" value={form.kpiMetric} onChange={(e) => updateField("kpiMetric", e.target.value)} placeholder="e.g., %" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Due Date</label>
@@ -423,7 +435,7 @@ export function GoalScreen() {
                             <div>
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Status</label>
                                 <select value={form.status} onChange={(e) => updateField("status", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
-                                    {["Draft", "Active", "Completed", "Cancelled"].map((s) => <option key={s} value={s}>{s}</option>)}
+                                    {[{ v: "DRAFT", l: "Draft" }, { v: "ACTIVE", l: "Active" }, { v: "COMPLETED", l: "Completed" }, { v: "CANCELLED", l: "Cancelled" }].map((s) => <option key={s.v} value={s.v}>{s.l}</option>)}
                                 </select>
                             </div>
                         </div>

@@ -146,7 +146,7 @@ const EMPTY_DESIG = {
     departmentId: "",
     gradeId: "",
     jobLevel: "",
-    isManagerial: false,
+    managerialFlag: false,
     reportsTo: "",
     probationDays: "",
     status: "Active",
@@ -197,7 +197,7 @@ export function DesignationScreen() {
             departmentId: desig.departmentId ?? "",
             gradeId: desig.gradeId ?? "",
             jobLevel: desig.jobLevel ?? "",
-            isManagerial: desig.isManagerial ?? false,
+            managerialFlag: desig.managerialFlag ?? false,
             reportsTo: desig.reportsTo ?? "",
             probationDays: desig.probationDays?.toString() ?? "",
             status: desig.status ?? "Active",
@@ -207,10 +207,18 @@ export function DesignationScreen() {
 
     const handleSave = async () => {
         try {
-            const payload = {
-                ...form,
-                probationDays: form.probationDays ? parseInt(form.probationDays, 10) : null,
+            const payload: Record<string, any> = {
+                name: form.name,
+                code: form.code,
+                managerialFlag: form.managerialFlag,
+                status: form.status,
             };
+            if (form.departmentId) payload.departmentId = form.departmentId;
+            if (form.gradeId) payload.gradeId = form.gradeId;
+            if (form.jobLevel) payload.jobLevel = form.jobLevel;
+            if (form.reportsTo) payload.reportsTo = form.reportsTo;
+            if (form.probationDays) payload.probationDays = parseInt(form.probationDays, 10);
+
             if (editingId) {
                 await updateMutation.mutateAsync({ id: editingId, data: payload });
                 showSuccess("Designation Updated", `${form.name} has been updated.`);
@@ -340,7 +348,7 @@ export function DesignationScreen() {
                                             )}
                                         </td>
                                         <td className="py-4 px-6 text-center">
-                                            {desig.isManagerial ? (
+                                            {desig.managerialFlag ? (
                                                 <Check size={16} className="inline text-success-600 dark:text-success-400" />
                                             ) : (
                                                 <span className="text-neutral-300 dark:text-neutral-600">{"\u2014"}</span>
@@ -416,7 +424,7 @@ export function DesignationScreen() {
                                 />
                                 <FormField label="Probation Days" value={form.probationDays} onChange={(v) => updateField("probationDays", v)} placeholder="e.g. 180" type="number" />
                             </div>
-                            <ToggleSwitch label="Managerial Role" checked={form.isManagerial} onChange={(v) => updateField("isManagerial", v)} />
+                            <ToggleSwitch label="Managerial Role" checked={form.managerialFlag} onChange={(v) => updateField("managerialFlag", v)} />
                             <FormField label="Reports To" value={form.reportsTo} onChange={(v) => updateField("reportsTo", v)} placeholder="Reporting designation or name" />
                             <SelectField
                                 label="Status"

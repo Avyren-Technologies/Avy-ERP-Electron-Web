@@ -151,8 +151,12 @@ export function GrievanceScreen() {
     };
     const handleSaveCat = async () => {
         try {
-            if (catEditingId) { await updateCat.mutateAsync({ id: catEditingId, data: catForm }); showSuccess("Category Updated", `${catForm.name} updated.`); }
-            else { await createCat.mutateAsync(catForm); showSuccess("Category Created", `${catForm.name} created.`); }
+            const payload: any = {
+                name: catForm.name,
+                slaHours: (catForm.slaDays || 7) * 24,
+            };
+            if (catEditingId) { await updateCat.mutateAsync({ id: catEditingId, data: payload }); showSuccess("Category Updated", `${catForm.name} updated.`); }
+            else { await createCat.mutateAsync(payload); showSuccess("Category Created", `${catForm.name} created.`); }
             setCatModalOpen(false);
         } catch (err) { showApiError(err); }
     };
@@ -175,8 +179,25 @@ export function GrievanceScreen() {
     };
     const handleSaveCase = async () => {
         try {
-            if (caseEditingId) { await updateCase.mutateAsync({ id: caseEditingId, data: caseForm }); showSuccess("Case Updated", "Grievance case updated."); }
-            else { await createCase.mutateAsync(caseForm); showSuccess("Case Filed", "Grievance case has been filed."); }
+            if (caseEditingId) {
+                const updatePayload: any = {
+                    description: caseForm.description || undefined,
+                    status: caseForm.status?.toUpperCase() || undefined,
+                    resolution: caseForm.resolution || undefined,
+                    resolvedBy: caseForm.assignedTo || undefined,
+                };
+                await updateCase.mutateAsync({ id: caseEditingId, data: updatePayload });
+                showSuccess("Case Updated", "Grievance case updated.");
+            } else {
+                const createPayload: any = {
+                    categoryId: caseForm.categoryId,
+                    description: [caseForm.subject, caseForm.description].filter(Boolean).join(" - "),
+                    isAnonymous: caseForm.isAnonymous,
+                    employeeId: caseForm.isAnonymous ? undefined : (caseForm.employeeId || undefined),
+                };
+                await createCase.mutateAsync(createPayload);
+                showSuccess("Case Filed", "Grievance case has been filed.");
+            }
             setCaseModalOpen(false);
         } catch (err) { showApiError(err); }
     };

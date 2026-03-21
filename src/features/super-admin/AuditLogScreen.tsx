@@ -1,9 +1,32 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Search, Filter, Calendar, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAuditLogs, useAuditFilterOptions } from '@/features/super-admin/api/use-audit-queries';
+import { useAuditFilterOptions } from '@/features/super-admin/api/use-audit-queries';
+import { useAuthStore } from '@/store/useAuthStore';
+import { auditApi } from '@/lib/api/audit';
+import { companyAdminApi } from '@/lib/api/company-admin';
+
+function useRoleAwareAuditFilterOptions(isCompanyAdmin: boolean) {
+    return useQuery({
+        queryKey: ['audit-logs', 'filters', isCompanyAdmin ? 'company' : 'platform'],
+        queryFn: () => isCompanyAdmin
+            ? companyAdminApi.getAuditFilterOptions()
+            : auditApi.getFilterOptions(),
+        staleTime: 5 * 60 * 1000,
+    });
+}
 import { SkeletonTable } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
+
+function useRoleAwareAuditLogs(isCompanyAdmin: boolean, params: Record<string, unknown>) {
+    return useQuery({
+        queryKey: ['audit-logs', isCompanyAdmin ? 'company' : 'platform', params],
+        queryFn: () => isCompanyAdmin
+            ? companyAdminApi.listAuditLogs(params as any)
+            : auditApi.listAuditLogs(params as any),
+    });
+}
 
 function getActionBadgeStyle(action: string): string {
     const upper = action.toUpperCase();
@@ -36,6 +59,9 @@ function formatTimestamp(ts: string): string {
 }
 
 export function AuditLogScreen() {
+    const userRole = useAuthStore((s) => s.userRole);
+    const isCompanyAdmin = userRole === 'company-admin';
+
     const [search, setSearch] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [activeAction, setActiveAction] = useState('All');
@@ -53,7 +79,7 @@ export function AuditLogScreen() {
         return () => clearTimeout(timer);
     }, [search]);
 
-    const { data: filterData } = useAuditFilterOptions();
+    const { data: filterData } = useRoleAwareAuditFilterOptions(isCompanyAdmin);
     const actionTypes: string[] = filterData?.data?.actionTypes ?? [];
 
     const params = useMemo(() => ({
@@ -65,7 +91,8 @@ export function AuditLogScreen() {
         dateTo: dateTo || undefined,
     }), [page, limit, debouncedSearch, activeAction, dateFrom, dateTo]);
 
-    const { data, isLoading, isError } = useAuditLogs(params);
+    // Use company-scoped audit endpoint for company-admin, platform endpoint for super-admin
+    const { data, isLoading, isError } = useRoleAwareAuditLogs(isCompanyAdmin, params);
 
     const logs: any[] = data?.data ?? [];
     const meta = data?.meta;

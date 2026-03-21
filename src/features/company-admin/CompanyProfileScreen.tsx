@@ -9,7 +9,18 @@ import {
     CheckCircle2,
     Loader2,
     X,
+    Calendar,
+    Settings2,
+    Sliders,
+    CreditCard,
+    Users,
+    Hash,
+    AlertCircle,
+    Contact,
+    Clock,
+    ArrowRight,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useCompanyProfile } from "@/features/company-admin/api/use-company-admin-queries";
 import { useUpdateProfileSection } from "@/features/company-admin/api/use-company-admin-mutations";
@@ -146,6 +157,44 @@ function FormField({ label, value, onChange, placeholder, mono = false }: {
     );
 }
 
+function BooleanBadge({ label, enabled }: { label: string; enabled?: boolean }) {
+    return (
+        <span className={cn(
+            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border",
+            enabled
+                ? "bg-success-50 dark:bg-success-900/20 text-success-700 dark:text-success-400 border-success-100 dark:border-success-800/50"
+                : "bg-neutral-50 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 border-neutral-100 dark:border-neutral-700"
+        )}>
+            <span className={cn("w-1.5 h-1.5 rounded-full", enabled ? "bg-success-500" : "bg-neutral-300 dark:bg-neutral-600")} />
+            {label}
+        </span>
+    );
+}
+
+function StatCard({ label, count, icon: Icon, to }: {
+    label: string;
+    count: number;
+    icon: React.ComponentType<{ className?: string; size?: number }>;
+    to: string;
+}) {
+    const navigate = useNavigate();
+    return (
+        <button
+            onClick={() => navigate(to)}
+            className="flex items-center gap-4 p-4 bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm hover:border-primary-200 dark:hover:border-primary-700 hover:shadow-md transition-all group text-left w-full"
+        >
+            <div className="w-10 h-10 rounded-xl bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
+                <Icon size={18} className="text-primary-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+                <p className="text-2xl font-bold text-primary-950 dark:text-white">{count}</p>
+                <p className="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">{label}</p>
+            </div>
+            <ArrowRight size={16} className="text-neutral-300 dark:text-neutral-600 group-hover:text-primary-500 transition-colors flex-shrink-0" />
+        </button>
+    );
+}
+
 // ── Main Screen ──
 
 export function CompanyProfileScreen() {
@@ -209,9 +258,20 @@ export function CompanyProfileScreen() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Company Profile</h1>
-                <p className="text-neutral-500 dark:text-neutral-400 mt-1">View and manage your company information</p>
+            <div className="flex items-center gap-5">
+                {profile?.logoUrl ? (
+                    <img src={profile.logoUrl} alt="Company Logo" className="w-20 h-20 rounded-2xl object-contain border border-neutral-200 dark:border-neutral-700" />
+                ) : (
+                    <div className="w-20 h-20 rounded-2xl bg-primary-100 dark:bg-primary-900/40 flex items-center justify-center border border-primary-200 dark:border-primary-800 flex-shrink-0">
+                        <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">
+                            {(profile?.displayName || profile?.name || "C").slice(0, 2).toUpperCase()}
+                        </span>
+                    </div>
+                )}
+                <div>
+                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Company Profile</h1>
+                    <p className="text-neutral-500 dark:text-neutral-400 mt-1">View and manage your company information</p>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -220,9 +280,12 @@ export function CompanyProfileScreen() {
                     {/* Company Identity (read-only) */}
                     <SectionCard title="Company Identity" icon={Building2}>
                         <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                            <DetailField label="Company Name" value={profile.name} />
                             <DetailField label="Company Code" value={profile.companyCode} mono />
                             <DetailField label="Industry" value={profile.industry} />
                             <DetailField label="Business Type" value={profile.businessType} />
+                            <DetailField label="Company Size" value={profile.size} />
+                            <DetailField label="Employee Count" value={profile.employeeCount?.toString()} />
                             <DetailField label="CIN" value={profile.cin} mono />
                             <DetailField label="Incorporation Date" value={profile.incorporationDate} />
                             <DetailField label="Status" value={profile.wizardStatus} />
@@ -238,6 +301,8 @@ export function CompanyProfileScreen() {
                             <DetailField label="PF Reg. No." value={profile.pfRegNo} mono />
                             <DetailField label="ESI Code" value={profile.esiCode} mono />
                             <DetailField label="PT Registration" value={profile.ptReg} mono />
+                            <DetailField label="LWF Registration" value={profile.lwfrNo} mono />
+                            <DetailField label="ROC State" value={profile.rocState} />
                         </div>
                     </SectionCard>
 
@@ -246,7 +311,6 @@ export function CompanyProfileScreen() {
                         <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                             <DetailField label="Website" value={profile.website} />
                             <DetailField label="Email Domain" value={profile.emailDomain ? `@${profile.emailDomain}` : null} mono />
-                            <DetailField label="Employee Count" value={profile.employeeCount} />
                         </div>
                     </SectionCard>
                 </div>
@@ -257,7 +321,7 @@ export function CompanyProfileScreen() {
                     <SectionCard
                         title="Display & Legal Name"
                         icon={Edit3}
-                        onEdit={() => openEdit("names", {
+                        onEdit={() => openEdit("identity", {
                             displayName: profile.displayName ?? "",
                             legalName: profile.legalName ?? "",
                             shortName: profile.shortName ?? "",
@@ -274,15 +338,18 @@ export function CompanyProfileScreen() {
                     <SectionCard
                         title="Registered Address"
                         icon={MapPin}
-                        onEdit={() => openEdit("registeredAddress", {
-                            line1: regAddress.line1 ?? "",
-                            line2: regAddress.line2 ?? "",
-                            city: regAddress.city ?? "",
-                            district: regAddress.district ?? "",
-                            state: regAddress.state ?? "",
-                            country: regAddress.country ?? "",
-                            pin: regAddress.pin ?? "",
-                            stdCode: regAddress.stdCode ?? "",
+                        onEdit={() => openEdit("address", {
+                            registered: {
+                                line1: regAddress.line1 ?? "",
+                                line2: regAddress.line2 ?? "",
+                                city: regAddress.city ?? "",
+                                district: regAddress.district ?? "",
+                                state: regAddress.state ?? "",
+                                country: regAddress.country ?? "",
+                                pin: regAddress.pin ?? "",
+                                stdCode: regAddress.stdCode ?? "",
+                            },
+                            sameAsRegistered: profile.sameAsRegistered ?? false,
                         })}
                     >
                         {regAddress.line1 ? (
@@ -305,14 +372,17 @@ export function CompanyProfileScreen() {
                     <SectionCard
                         title="Corporate Address"
                         icon={MapPin}
-                        onEdit={() => openEdit("corporateAddress", {
-                            line1: corpAddress.line1 ?? "",
-                            line2: corpAddress.line2 ?? "",
-                            city: corpAddress.city ?? "",
-                            district: corpAddress.district ?? "",
-                            state: corpAddress.state ?? "",
-                            country: corpAddress.country ?? "",
-                            pin: corpAddress.pin ?? "",
+                        onEdit={() => openEdit("address", {
+                            sameAsRegistered: false,
+                            corporate: {
+                                line1: corpAddress.line1 ?? "",
+                                line2: corpAddress.line2 ?? "",
+                                city: corpAddress.city ?? "",
+                                district: corpAddress.district ?? "",
+                                state: corpAddress.state ?? "",
+                                country: corpAddress.country ?? "",
+                                pin: corpAddress.pin ?? "",
+                            },
                         })}
                     >
                         {profile.sameAsRegistered ? (
@@ -335,10 +405,111 @@ export function CompanyProfileScreen() {
                 </div>
             </div>
 
+            {/* ── Fiscal Config ── */}
+            {profile.fiscalConfig && (
+                <SectionCard title="Fiscal Configuration" icon={Calendar}>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-4">
+                        <DetailField label="FY Type" value={profile.fiscalConfig.fyType} />
+                        <DetailField label="Timezone" value={profile.fiscalConfig.timezone} />
+                        <DetailField label="Payroll Frequency" value={profile.fiscalConfig.payrollFreq} />
+                        <DetailField label="Cutoff Day" value={profile.fiscalConfig.cutoffDay?.toString()} />
+                        <DetailField label="Disbursement Day" value={profile.fiscalConfig.disbursementDay?.toString()} />
+                        <DetailField label="Week Start" value={profile.fiscalConfig.weekStart} />
+                        <DetailField label="Working Days" value={Array.isArray(profile.fiscalConfig.workingDays) ? profile.fiscalConfig.workingDays.join(", ") : profile.fiscalConfig.workingDays} />
+                    </div>
+                </SectionCard>
+            )}
+
+            {/* ── Preferences ── */}
+            {profile.preferences && (
+                <SectionCard title="Preferences" icon={Settings2}>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-4 mb-5">
+                        <DetailField label="Currency" value={profile.preferences.currency} />
+                        <DetailField label="Language" value={profile.preferences.language} />
+                        <DetailField label="Date Format" value={profile.preferences.dateFormat} mono />
+                        <DetailField label="Time Format" value={profile.preferences.timeFormat} mono />
+                        <DetailField label="Number Format" value={profile.preferences.numberFormat} mono />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <BooleanBadge label="ESS Portal" enabled={profile.preferences.ess} />
+                        <BooleanBadge label="Mobile App" enabled={profile.preferences.mobileApp} />
+                        <BooleanBadge label="Web App" enabled={profile.preferences.webApp} />
+                        <BooleanBadge label="Email Notifications" enabled={profile.preferences.emailNotif} />
+                        <BooleanBadge label="Biometric" enabled={profile.preferences.biometric} />
+                        <BooleanBadge label="Geo Fencing" enabled={profile.preferences.geoFencing} />
+                        <BooleanBadge label="Multi-Currency" enabled={profile.preferences.multiCurrency} />
+                        <BooleanBadge label="Multi-Language" enabled={profile.preferences.multiLanguage} />
+                    </div>
+                </SectionCard>
+            )}
+
+            {/* ── System Controls ── */}
+            {profile.systemControls && (
+                <SectionCard title="System Controls" icon={Sliders}>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {Object.entries(profile.systemControls as Record<string, boolean | string | number>).map(([key, value]) => {
+                            const label = key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase()).trim();
+                            const isBoolean = typeof value === "boolean";
+                            return isBoolean ? (
+                                <div key={key} className="flex items-center gap-2 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-100 dark:border-neutral-700">
+                                    <span className={cn("w-2 h-2 rounded-full flex-shrink-0", value ? "bg-success-500" : "bg-neutral-300 dark:bg-neutral-600")} />
+                                    <span className="text-xs font-semibold text-primary-950 dark:text-white truncate">{label}</span>
+                                </div>
+                            ) : (
+                                <div key={key} className="px-3 py-2 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-100 dark:border-neutral-700">
+                                    <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">{label}</p>
+                                    <p className="text-xs font-semibold text-primary-950 dark:text-white truncate">{String(value)}</p>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </SectionCard>
+            )}
+
+            {/* ── Subscription Info ── */}
+            {profile.tenant && (() => {
+                const sub = profile.tenant.subscriptions?.[0];
+                return (
+                    <SectionCard title="Subscription" icon={CreditCard}>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-4">
+                            <DetailField label="Tenant Status" value={profile.tenant.status} />
+                            <DetailField label="Plan" value={sub?.planId ?? "—"} />
+                            <DetailField label="User Tier" value={sub?.userTier ?? "—"} />
+                            <DetailField label="Billing Type" value={sub?.billingType ?? "—"} />
+                            <DetailField label="Subscription Status" value={sub?.status ?? "—"} />
+                            <DetailField label="Trial Ends" value={sub?.trialEndsAt ? new Date(sub.trialEndsAt).toLocaleDateString() : "—"} />
+                        </div>
+                        {sub?.modules && (
+                            <div className="mt-4">
+                                <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">Active Modules</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {Object.entries(sub.modules).filter(([, v]) => v).map(([mod]) => (
+                                        <span key={mod} className="px-2.5 py-1 text-xs font-bold rounded-lg bg-success-50 dark:bg-success-900/30 text-success-700 dark:text-success-300 capitalize">{mod}</span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </SectionCard>
+                );
+            })()}
+
+            {/* ── Quick Stats / Summary Cards ── */}
+            <div>
+                <h2 className="text-sm font-bold text-primary-950 dark:text-white mb-4 uppercase tracking-wider">Quick Navigation</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <StatCard label="Locations" count={profile?.locations?.length || 0} icon={MapPin} to="/app/company/locations" />
+                    <StatCard label="Contacts" count={profile?.contacts?.length || 0} icon={Contact} to="/app/company/contacts" />
+                    <StatCard label="Shifts" count={profile?.shifts?.length || 0} icon={Clock} to="/app/company/shifts" />
+                    <StatCard label="Users" count={profile?.users?.length || 0} icon={Users} to="/app/company/users" />
+                    <StatCard label="No Series" count={profile?.noSeries?.length || 0} icon={Hash} to="/app/company/no-series" />
+                    <StatCard label="IOT Reasons" count={profile?.iotReasons?.length || 0} icon={AlertCircle} to="/app/company/iot-reasons" />
+                </div>
+            </div>
+
             {/* ── Edit Modals ── */}
-            {/* Names */}
+            {/* Identity (Names) */}
             <EditModal
-                open={editSection === "names"}
+                open={editSection === "identity"}
                 onClose={closeEdit}
                 title="Edit Company Names"
                 onSave={handleSave}
@@ -351,47 +522,47 @@ export function CompanyProfileScreen() {
 
             {/* Registered Address */}
             <EditModal
-                open={editSection === "registeredAddress"}
+                open={editSection === "address" && !!editForm.registered}
                 onClose={closeEdit}
                 title="Edit Registered Address"
                 onSave={handleSave}
                 saving={updateMutation.isPending}
             >
-                <FormField label="Address Line 1" value={editForm.line1 ?? ""} onChange={(v) => updateField("line1", v)} />
-                <FormField label="Address Line 2" value={editForm.line2 ?? ""} onChange={(v) => updateField("line2", v)} />
+                <FormField label="Address Line 1" value={editForm.registered?.line1 ?? ""} onChange={(v) => setEditForm((prev) => ({ ...prev, registered: { ...prev.registered, line1: v } }))} />
+                <FormField label="Address Line 2" value={editForm.registered?.line2 ?? ""} onChange={(v) => setEditForm((prev) => ({ ...prev, registered: { ...prev.registered, line2: v } }))} />
                 <div className="grid grid-cols-2 gap-4">
-                    <FormField label="City" value={editForm.city ?? ""} onChange={(v) => updateField("city", v)} />
-                    <FormField label="District" value={editForm.district ?? ""} onChange={(v) => updateField("district", v)} />
+                    <FormField label="City" value={editForm.registered?.city ?? ""} onChange={(v) => setEditForm((prev) => ({ ...prev, registered: { ...prev.registered, city: v } }))} />
+                    <FormField label="District" value={editForm.registered?.district ?? ""} onChange={(v) => setEditForm((prev) => ({ ...prev, registered: { ...prev.registered, district: v } }))} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                    <FormField label="State" value={editForm.state ?? ""} onChange={(v) => updateField("state", v)} />
-                    <FormField label="PIN Code" value={editForm.pin ?? ""} onChange={(v) => updateField("pin", v)} mono />
+                    <FormField label="State" value={editForm.registered?.state ?? ""} onChange={(v) => setEditForm((prev) => ({ ...prev, registered: { ...prev.registered, state: v } }))} />
+                    <FormField label="PIN Code" value={editForm.registered?.pin ?? ""} onChange={(v) => setEditForm((prev) => ({ ...prev, registered: { ...prev.registered, pin: v } }))} mono />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                    <FormField label="Country" value={editForm.country ?? ""} onChange={(v) => updateField("country", v)} />
-                    <FormField label="STD Code" value={editForm.stdCode ?? ""} onChange={(v) => updateField("stdCode", v)} mono />
+                    <FormField label="Country" value={editForm.registered?.country ?? ""} onChange={(v) => setEditForm((prev) => ({ ...prev, registered: { ...prev.registered, country: v } }))} />
+                    <FormField label="STD Code" value={editForm.registered?.stdCode ?? ""} onChange={(v) => setEditForm((prev) => ({ ...prev, registered: { ...prev.registered, stdCode: v } }))} mono />
                 </div>
             </EditModal>
 
             {/* Corporate Address */}
             <EditModal
-                open={editSection === "corporateAddress"}
+                open={editSection === "address" && !!editForm.corporate}
                 onClose={closeEdit}
                 title="Edit Corporate Address"
                 onSave={handleSave}
                 saving={updateMutation.isPending}
             >
-                <FormField label="Address Line 1" value={editForm.line1 ?? ""} onChange={(v) => updateField("line1", v)} />
-                <FormField label="Address Line 2" value={editForm.line2 ?? ""} onChange={(v) => updateField("line2", v)} />
+                <FormField label="Address Line 1" value={editForm.corporate?.line1 ?? ""} onChange={(v) => setEditForm((prev) => ({ ...prev, corporate: { ...prev.corporate, line1: v } }))} />
+                <FormField label="Address Line 2" value={editForm.corporate?.line2 ?? ""} onChange={(v) => setEditForm((prev) => ({ ...prev, corporate: { ...prev.corporate, line2: v } }))} />
                 <div className="grid grid-cols-2 gap-4">
-                    <FormField label="City" value={editForm.city ?? ""} onChange={(v) => updateField("city", v)} />
-                    <FormField label="District" value={editForm.district ?? ""} onChange={(v) => updateField("district", v)} />
+                    <FormField label="City" value={editForm.corporate?.city ?? ""} onChange={(v) => setEditForm((prev) => ({ ...prev, corporate: { ...prev.corporate, city: v } }))} />
+                    <FormField label="District" value={editForm.corporate?.district ?? ""} onChange={(v) => setEditForm((prev) => ({ ...prev, corporate: { ...prev.corporate, district: v } }))} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                    <FormField label="State" value={editForm.state ?? ""} onChange={(v) => updateField("state", v)} />
-                    <FormField label="PIN Code" value={editForm.pin ?? ""} onChange={(v) => updateField("pin", v)} mono />
+                    <FormField label="State" value={editForm.corporate?.state ?? ""} onChange={(v) => setEditForm((prev) => ({ ...prev, corporate: { ...prev.corporate, state: v } }))} />
+                    <FormField label="PIN Code" value={editForm.corporate?.pin ?? ""} onChange={(v) => setEditForm((prev) => ({ ...prev, corporate: { ...prev.corporate, pin: v } }))} mono />
                 </div>
-                <FormField label="Country" value={editForm.country ?? ""} onChange={(v) => updateField("country", v)} />
+                <FormField label="Country" value={editForm.corporate?.country ?? ""} onChange={(v) => setEditForm((prev) => ({ ...prev, corporate: { ...prev.corporate, country: v } }))} />
             </EditModal>
         </div>
     );

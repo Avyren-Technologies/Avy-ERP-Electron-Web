@@ -123,17 +123,18 @@ const YEARS = [CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1];
 const EMPTY_HOLIDAY = {
     name: "",
     date: "",
-    type: "National",
-    branchScope: "All",
-    optional: false,
+    type: "NATIONAL",
+    description: "",
+    isOptional: false,
+    maxOptionalSlots: 0,
 };
 
 const HOLIDAY_TYPES = [
-    { value: "National", label: "National" },
-    { value: "Gazetted", label: "Gazetted" },
-    { value: "Restricted", label: "Restricted" },
-    { value: "Optional", label: "Optional" },
-    { value: "Company", label: "Company" },
+    { value: "NATIONAL", label: "National" },
+    { value: "REGIONAL", label: "Regional" },
+    { value: "COMPANY", label: "Company" },
+    { value: "OPTIONAL", label: "Optional" },
+    { value: "RESTRICTED", label: "Restricted" },
 ];
 
 /* ── Screen ── */
@@ -173,21 +174,31 @@ export function HolidayScreen() {
         setEditingId(holiday.id);
         setForm({
             name: holiday.name ?? "",
-            date: holiday.date ?? "",
-            type: holiday.type ?? "National",
-            branchScope: holiday.branchScope ?? "All",
-            optional: holiday.optional ?? false,
+            date: holiday.date ? holiday.date.substring(0, 10) : "",
+            type: holiday.type ?? "NATIONAL",
+            description: holiday.description ?? "",
+            isOptional: holiday.isOptional ?? false,
+            maxOptionalSlots: holiday.maxOptionalSlots ?? 0,
         });
         setModalOpen(true);
     };
 
     const handleSave = async () => {
         try {
+            const payload = {
+                name: form.name,
+                date: form.date,
+                type: form.type,
+                year: selectedYear,
+                description: form.description || undefined,
+                isOptional: form.isOptional,
+                maxOptionalSlots: form.isOptional && form.maxOptionalSlots > 0 ? form.maxOptionalSlots : undefined,
+            };
             if (editingId) {
-                await updateMutation.mutateAsync({ id: editingId, data: { ...form, year: selectedYear } });
+                await updateMutation.mutateAsync({ id: editingId, data: payload });
                 showSuccess("Holiday Updated", `${form.name} has been updated.`);
             } else {
-                await createMutation.mutateAsync({ ...form, year: selectedYear });
+                await createMutation.mutateAsync(payload);
                 showSuccess("Holiday Created", `${form.name} has been added.`);
             }
             setModalOpen(false);
@@ -297,7 +308,7 @@ export function HolidayScreen() {
                                     <th className="py-4 px-6 font-bold">Name</th>
                                     <th className="py-4 px-6 font-bold">Date</th>
                                     <th className="py-4 px-6 font-bold text-center">Type</th>
-                                    <th className="py-4 px-6 font-bold">Branch Scope</th>
+                                    <th className="py-4 px-6 font-bold">Description</th>
                                     <th className="py-4 px-6 font-bold text-center">Optional</th>
                                     <th className="py-4 px-6 font-bold text-right">Actions</th>
                                 </tr>
@@ -320,11 +331,11 @@ export function HolidayScreen() {
                                             {h.date ? new Date(h.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "\u2014"}
                                         </td>
                                         <td className="py-4 px-6 text-center">
-                                            <TypeBadge type={h.type ?? "National"} />
+                                            <TypeBadge type={h.type ?? "NATIONAL"} />
                                         </td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{h.branchScope ?? "All"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{h.description || "\u2014"}</td>
                                         <td className="py-4 px-6 text-center">
-                                            <CheckBadge checked={h.optional ?? false} />
+                                            <CheckBadge checked={h.isOptional ?? false} />
                                         </td>
                                         <td className="py-4 px-6 text-right">
                                             <div className="flex items-center justify-end gap-1">
@@ -370,18 +381,18 @@ export function HolidayScreen() {
                                 onChange={(v) => updateField("type", v)}
                                 options={HOLIDAY_TYPES}
                             />
-                            <FormField label="Branch Scope" value={form.branchScope} onChange={(v) => updateField("branchScope", v)} placeholder="All, or specific branch names" />
+                            <FormField label="Description" value={form.description} onChange={(v) => updateField("description", v)} placeholder="Optional description" />
                             <div className="flex items-center justify-between px-1">
                                 <label className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Optional Holiday</label>
                                 <button
                                     type="button"
-                                    onClick={() => updateField("optional", !form.optional)}
+                                    onClick={() => updateField("isOptional", !form.isOptional)}
                                     className={cn(
                                         "w-11 h-6 rounded-full transition-colors relative flex-shrink-0",
-                                        form.optional ? "bg-success-500" : "bg-neutral-300 dark:bg-neutral-700"
+                                        form.isOptional ? "bg-success-500" : "bg-neutral-300 dark:bg-neutral-700"
                                     )}
                                 >
-                                    <div className={cn("w-[18px] h-[18px] rounded-full bg-white absolute top-[3px] transition-all shadow-sm", form.optional ? "left-[22px]" : "left-[3px]")} />
+                                    <div className={cn("w-[18px] h-[18px] rounded-full bg-white absolute top-[3px] transition-all shadow-sm", form.isOptional ? "left-[22px]" : "left-[3px]")} />
                                 </button>
                             </div>
                         </div>

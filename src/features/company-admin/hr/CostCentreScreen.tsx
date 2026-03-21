@@ -9,6 +9,7 @@ import {
     Search,
 } from "lucide-react";
 import { useDepartments, useCostCentres } from "@/features/company-admin/api/use-hr-queries";
+import { useCompanyLocations } from "@/features/company-admin/api/use-company-admin-queries";
 import {
     useCreateCostCentre,
     useUpdateCostCentre,
@@ -109,7 +110,7 @@ const EMPTY_CC = {
     code: "",
     name: "",
     departmentId: "",
-    location: "",
+    locationId: "",
     annualBudget: "",
     glAccountCode: "",
 };
@@ -119,6 +120,7 @@ const EMPTY_CC = {
 export function CostCentreScreen() {
     const { data, isLoading, isError } = useCostCentres();
     const deptQuery = useDepartments();
+    const locQuery = useCompanyLocations();
     const createMutation = useCreateCostCentre();
     const updateMutation = useUpdateCostCentre();
     const deleteMutation = useDeleteCostCentre();
@@ -131,6 +133,7 @@ export function CostCentreScreen() {
 
     const costCentres: any[] = data?.data ?? [];
     const departments: any[] = deptQuery.data?.data ?? [];
+    const locations: any[] = locQuery.data?.data ?? [];
 
     const filtered = costCentres.filter((c: any) => {
         if (!search) return true;
@@ -154,7 +157,7 @@ export function CostCentreScreen() {
             code: cc.code ?? "",
             name: cc.name ?? "",
             departmentId: cc.departmentId ?? "",
-            location: cc.location ?? "",
+            locationId: cc.locationId ?? "",
             annualBudget: cc.annualBudget?.toString() ?? "",
             glAccountCode: cc.glAccountCode ?? "",
         });
@@ -163,10 +166,15 @@ export function CostCentreScreen() {
 
     const handleSave = async () => {
         try {
-            const payload = {
-                ...form,
-                annualBudget: form.annualBudget ? parseFloat(form.annualBudget) : null,
+            const payload: Record<string, any> = {
+                code: form.code,
+                name: form.name,
             };
+            if (form.departmentId) payload.departmentId = form.departmentId;
+            if (form.locationId) payload.locationId = form.locationId;
+            if (form.annualBudget) payload.annualBudget = parseFloat(form.annualBudget);
+            if (form.glAccountCode) payload.glAccountCode = form.glAccountCode;
+
             if (editingId) {
                 await updateMutation.mutateAsync({ id: editingId, data: payload });
                 showSuccess("Cost Centre Updated", `${form.name} has been updated.`);
@@ -195,11 +203,7 @@ export function CostCentreScreen() {
     const updateField = (key: string, value: any) => setForm((p) => ({ ...p, [key]: value }));
 
     const deptName = (id: string) => departments.find((d: any) => d.id === id)?.name ?? "\u2014";
-
-    // Build location options from existing data
-    const locations = Array.from(new Set(costCentres.map((c: any) => c.location).filter(Boolean))).map(
-        (loc) => ({ value: loc, label: loc })
-    );
+    const locName = (id: string) => locations.find((l: any) => l.id === id)?.name ?? "\u2014";
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -272,7 +276,7 @@ export function CostCentreScreen() {
                                         </td>
                                         <td className="py-4 px-6 font-bold text-primary-950 dark:text-white">{cc.name}</td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{deptName(cc.departmentId)}</td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{cc.location || "\u2014"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{cc.location?.name || locName(cc.locationId) || "\u2014"}</td>
                                         <td className="py-4 px-6 text-right font-semibold text-primary-950 dark:text-white">
                                             {formatINR(cc.annualBudget)}
                                         </td>
@@ -324,7 +328,13 @@ export function CostCentreScreen() {
                                 placeholder="Select department..."
                                 options={departments.map((d: any) => ({ value: d.id, label: d.name }))}
                             />
-                            <FormField label="Location" value={form.location} onChange={(v) => updateField("location", v)} placeholder="e.g. Mumbai HQ" />
+                            <SelectField
+                                label="Location"
+                                value={form.locationId}
+                                onChange={(v) => updateField("locationId", v)}
+                                placeholder="Select location..."
+                                options={locations.map((l: any) => ({ value: l.id, label: l.name }))}
+                            />
                             <FormField label="Annual Budget" value={form.annualBudget} onChange={(v) => updateField("annualBudget", v)} placeholder="e.g. 5000000" type="number" prefix={"\u20B9"} />
                             <FormField label="GL Account Code" value={form.glAccountCode} onChange={(v) => updateField("glAccountCode", v)} placeholder="e.g. 4100-001" />
                         </div>

@@ -62,10 +62,10 @@ const BALANCE_COLORS: Record<string, { bg: string; text: string; icon: string }>
 
 const EMPTY_FORM = {
     leaveTypeId: "",
-    startDate: "",
-    endDate: "",
-    halfDayStart: false,
-    halfDayEnd: false,
+    fromDate: "",
+    toDate: "",
+    isHalfDay: false,
+    halfDayType: "" as "" | "FIRST_HALF" | "SECOND_HALF",
     reason: "",
 };
 
@@ -86,9 +86,31 @@ export function MyLeaveScreen() {
 
     const leaveTypeName = (id: string) => leaveTypes.find((lt: any) => lt.id === id)?.name ?? id;
 
+    const computeDays = () => {
+        if (!form.fromDate || !form.toDate) return 0;
+        const from = new Date(form.fromDate);
+        const to = new Date(form.toDate);
+        const diffMs = to.getTime() - from.getTime();
+        let days = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1);
+        if (form.isHalfDay) days = 0.5;
+        return days;
+    };
+
     const handleApply = async () => {
         try {
-            await applyMutation.mutateAsync(form);
+            const days = computeDays();
+            const payload: any = {
+                leaveTypeId: form.leaveTypeId,
+                fromDate: form.fromDate,
+                toDate: form.toDate,
+                days,
+                isHalfDay: form.isHalfDay,
+                reason: form.reason,
+            };
+            if (form.isHalfDay && form.halfDayType) {
+                payload.halfDayType = form.halfDayType;
+            }
+            await applyMutation.mutateAsync(payload);
             showSuccess("Leave Applied", "Your leave request has been submitted for approval.");
             setModalOpen(false);
         } catch (err) {
@@ -176,8 +198,8 @@ export function MyLeaveScreen() {
                                 {requests.map((r: any) => (
                                     <tr key={r.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
                                         <td className="py-4 px-6 font-bold text-primary-950 dark:text-white">{leaveTypeName(r.leaveTypeId)}</td>
-                                        <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(r.startDate)}</td>
-                                        <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(r.endDate)}</td>
+                                        <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(r.fromDate ?? r.startDate)}</td>
+                                        <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(r.toDate ?? r.endDate)}</td>
                                         <td className="py-4 px-6 text-center font-semibold text-primary-950 dark:text-white">{r.days ?? "\u2014"}</td>
                                         <td className="py-4 px-6 text-center"><StatusBadge status={r.status ?? "Pending"} /></td>
                                         <td className="py-4 px-6 text-neutral-500 dark:text-neutral-400 text-xs truncate max-w-[200px]">{r.reason || "\u2014"}</td>
@@ -209,27 +231,40 @@ export function MyLeaveScreen() {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Start Date</label>
-                                    <input type="date" value={form.startDate} onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">From Date</label>
+                                    <input type="date" value={form.fromDate} onChange={(e) => setForm((p) => ({ ...p, fromDate: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">End Date</label>
-                                    <input type="date" value={form.endDate} onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">To Date</label>
+                                    <input type="date" value={form.toDate} onChange={(e) => setForm((p) => ({ ...p, toDate: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
                                 </div>
                             </div>
-                            <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-4 border border-neutral-200 dark:border-neutral-700 space-y-1">
+                            <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-4 border border-neutral-200 dark:border-neutral-700 space-y-2">
                                 <div className="flex items-center justify-between py-2">
-                                    <span className="text-sm font-medium text-primary-950 dark:text-white">Half Day (Start)</span>
-                                    <button type="button" onClick={() => setForm((p) => ({ ...p, halfDayStart: !p.halfDayStart }))} className={cn("w-10 h-6 rounded-full transition-colors relative", form.halfDayStart ? "bg-primary-600" : "bg-neutral-300 dark:bg-neutral-700")}>
-                                        <div className={cn("w-4 h-4 rounded-full bg-white absolute top-1 transition-all", form.halfDayStart ? "left-5" : "left-1")} />
+                                    <span className="text-sm font-medium text-primary-950 dark:text-white">Half Day</span>
+                                    <button type="button" onClick={() => setForm((p) => ({ ...p, isHalfDay: !p.isHalfDay, halfDayType: !p.isHalfDay ? "FIRST_HALF" : "" }))} className={cn("w-10 h-6 rounded-full transition-colors relative", form.isHalfDay ? "bg-primary-600" : "bg-neutral-300 dark:bg-neutral-700")}>
+                                        <div className={cn("w-4 h-4 rounded-full bg-white absolute top-1 transition-all", form.isHalfDay ? "left-5" : "left-1")} />
                                     </button>
                                 </div>
-                                <div className="flex items-center justify-between py-2">
-                                    <span className="text-sm font-medium text-primary-950 dark:text-white">Half Day (End)</span>
-                                    <button type="button" onClick={() => setForm((p) => ({ ...p, halfDayEnd: !p.halfDayEnd }))} className={cn("w-10 h-6 rounded-full transition-colors relative", form.halfDayEnd ? "bg-primary-600" : "bg-neutral-300 dark:bg-neutral-700")}>
-                                        <div className={cn("w-4 h-4 rounded-full bg-white absolute top-1 transition-all", form.halfDayEnd ? "left-5" : "left-1")} />
-                                    </button>
-                                </div>
+                                {form.isHalfDay && (
+                                    <div className="flex gap-2 pt-1">
+                                        {[{ value: "FIRST_HALF", label: "First Half" }, { value: "SECOND_HALF", label: "Second Half" }].map((opt) => (
+                                            <button
+                                                key={opt.value}
+                                                type="button"
+                                                onClick={() => setForm((p) => ({ ...p, halfDayType: opt.value as "FIRST_HALF" | "SECOND_HALF" }))}
+                                                className={cn(
+                                                    "flex-1 py-2 rounded-lg text-xs font-bold border transition-all text-center",
+                                                    form.halfDayType === opt.value
+                                                        ? "bg-primary-50 text-primary-700 border-primary-300 dark:bg-primary-900/30 dark:text-primary-400 dark:border-primary-700"
+                                                        : "bg-white text-neutral-500 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700"
+                                                )}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                             <div>
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Reason</label>

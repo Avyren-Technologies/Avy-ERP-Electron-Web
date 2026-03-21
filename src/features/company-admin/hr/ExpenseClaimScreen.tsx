@@ -129,8 +129,16 @@ export function ExpenseClaimScreen() {
 
     const handleSave = async () => {
         try {
-            if (editingId) { await updateClaim.mutateAsync({ id: editingId, data: form }); showSuccess("Claim Updated", `${form.title} updated.`); }
-            else { await createClaim.mutateAsync(form); showSuccess("Claim Created", `${form.title} submitted.`); }
+            const payload: any = {
+                employeeId: form.employeeId,
+                title: form.title,
+                amount: Number(form.amount) || 0,
+                category: form.category,
+                description: form.description || undefined,
+                tripDate: form.expenseDate || undefined,
+            };
+            if (editingId) { await updateClaim.mutateAsync({ id: editingId, data: payload }); showSuccess("Claim Updated", `${form.title} updated.`); }
+            else { await createClaim.mutateAsync(payload); showSuccess("Claim Created", `${form.title} submitted.`); }
             setModalOpen(false);
         } catch (err) { showApiError(err); }
     };

@@ -26,7 +26,7 @@ import {
     useCandidates,
     useInterviews,
 } from "@/features/company-admin/api/use-recruitment-queries";
-import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
+import { useEmployees, useDepartments, useDesignations } from "@/features/company-admin/api/use-hr-queries";
 import {
     useCreateRequisition,
     useUpdateRequisition,
@@ -204,6 +204,8 @@ export function RequisitionScreen() {
     const candQuery = useCandidates(selectedReqId ? { requisitionId: selectedReqId } : undefined);
     const intQuery = useInterviews(selectedReqId ? { requisitionId: selectedReqId } : undefined);
     const employeesQuery = useEmployees();
+    const departmentsQuery = useDepartments();
+    const designationsQuery = useDesignations();
 
     /* Mutations */
     const createReq = useCreateRequisition();
@@ -218,6 +220,8 @@ export function RequisitionScreen() {
     const candidates: any[] = candQuery.data?.data ?? [];
     const interviews: any[] = intQuery.data?.data ?? [];
     const employees: any[] = employeesQuery.data?.data ?? [];
+    const departments: any[] = departmentsQuery.data?.data ?? [];
+    const designations: any[] = designationsQuery.data?.data ?? [];
 
     const employeeName = (id: string) => {
         const emp = employees.find((e: any) => e.id === id);
@@ -265,11 +269,22 @@ export function RequisitionScreen() {
     };
     const handleSaveReq = async () => {
         try {
+            const payload: any = {
+                title: reqForm.title,
+                departmentId: reqForm.department || undefined,
+                designationId: reqForm.hiringManagerId ? undefined : undefined,
+                openings: Number(reqForm.positions) || 1,
+                description: reqForm.description || undefined,
+                budgetMin: reqForm.minSalary ? Number(reqForm.minSalary) : undefined,
+                budgetMax: reqForm.maxSalary ? Number(reqForm.maxSalary) : undefined,
+                targetDate: reqForm.deadline || undefined,
+                approvedBy: reqForm.hiringManagerId || undefined,
+            };
             if (reqEditingId) {
-                await updateReq.mutateAsync({ id: reqEditingId, data: reqForm });
+                await updateReq.mutateAsync({ id: reqEditingId, data: payload });
                 showSuccess("Requisition Updated", `${reqForm.title} has been updated.`);
             } else {
-                await createReq.mutateAsync(reqForm);
+                await createReq.mutateAsync(payload);
                 showSuccess("Requisition Created", `${reqForm.title} has been created.`);
             }
             setReqModalOpen(false);
@@ -303,12 +318,21 @@ export function RequisitionScreen() {
     };
     const handleSaveCand = async () => {
         try {
+            const fullName = [candForm.firstName, candForm.lastName].filter(Boolean).join(" ");
+            const payload: any = {
+                requisitionId: candForm.requisitionId,
+                name: fullName,
+                email: candForm.email,
+                phone: candForm.phone || undefined,
+                source: candForm.source || undefined,
+                notes: candForm.notes || undefined,
+            };
             if (candEditingId) {
-                await updateCand.mutateAsync({ id: candEditingId, data: candForm });
-                showSuccess("Candidate Updated", `${candForm.firstName} ${candForm.lastName} updated.`);
+                await updateCand.mutateAsync({ id: candEditingId, data: payload });
+                showSuccess("Candidate Updated", `${fullName} updated.`);
             } else {
-                await createCand.mutateAsync(candForm);
-                showSuccess("Candidate Added", `${candForm.firstName} ${candForm.lastName} added.`);
+                await createCand.mutateAsync(payload);
+                showSuccess("Candidate Added", `${fullName} added.`);
             }
             setCandModalOpen(false);
         } catch (err) { showApiError(err); }
@@ -332,11 +356,19 @@ export function RequisitionScreen() {
     };
     const handleSaveInt = async () => {
         try {
+            const payload: any = {
+                candidateId: intForm.candidateId,
+                round: intForm.type,
+                panelists: intForm.interviewerIds?.length ? intForm.interviewerIds : undefined,
+                scheduledAt: intForm.scheduledAt,
+                duration: intForm.duration || undefined,
+                meetingLink: intForm.meetingLink || undefined,
+            };
             if (intEditingId) {
-                await updateInt.mutateAsync({ id: intEditingId, data: intForm });
+                await updateInt.mutateAsync({ id: intEditingId, data: payload });
                 showSuccess("Interview Updated", "Interview has been updated.");
             } else {
-                await createInt.mutateAsync(intForm);
+                await createInt.mutateAsync(payload);
                 showSuccess("Interview Scheduled", "Interview has been scheduled.");
             }
             setIntModalOpen(false);
@@ -619,7 +651,10 @@ export function RequisitionScreen() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Department</label>
-                                    <input type="text" value={reqForm.department} onChange={(e) => updateReqField("department", e.target.value)} placeholder="Engineering" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                    <select value={reqForm.department} onChange={(e) => updateReqField("department", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
+                                        <option value="">Select department...</option>
+                                        {departments.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                    </select>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Positions</label>

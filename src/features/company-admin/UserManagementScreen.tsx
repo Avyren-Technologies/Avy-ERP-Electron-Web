@@ -68,6 +68,9 @@ function UserModal({ editingId, form, updateField, onClose, onSave, saving }: {
                         <FormField label="Last Name" value={form.lastName} onChange={(v) => updateField("lastName", v)} placeholder="Last name" />
                     </div>
                     <FormField label="Email" value={form.email} onChange={(v) => updateField("email", v)} type="email" placeholder="user@company.com" />
+                    {!editingId && (
+                        <FormField label="Password" value={form.password} onChange={(v) => updateField("password", v)} type="password" placeholder="Min 6 characters" />
+                    )}
                     <div>
                         <label htmlFor="user-role" className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Role</label>
                         <select
@@ -120,6 +123,7 @@ const EMPTY_USER = {
     firstName: "",
     lastName: "",
     email: "",
+    password: "",
     role: "operator",
     department: "",
     location: "",
@@ -164,6 +168,7 @@ export function UserManagementScreen() {
             firstName: user.firstName ?? "",
             lastName: user.lastName ?? "",
             email: user.email ?? "",
+            password: "",
             role: user.role ?? "operator",
             department: user.department ?? "",
             location: user.location ?? "",
@@ -177,6 +182,7 @@ export function UserManagementScreen() {
         if (!form.email.trim()) return "Email is required.";
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(form.email.trim())) return "Please enter a valid email address.";
+        if (!editingId && form.password.length < 6) return "Password must be at least 6 characters.";
         return null;
     };
 
@@ -188,10 +194,12 @@ export function UserManagementScreen() {
         }
         try {
             if (editingId) {
-                await updateMutation.mutateAsync({ id: editingId, data: form });
+                const { password: _pw, department: _dept, location: _loc, ...updateData } = form;
+                await updateMutation.mutateAsync({ id: editingId, data: updateData });
                 showSuccess("User Updated", `${form.firstName} ${form.lastName} has been updated.`);
             } else {
-                await createMutation.mutateAsync(form);
+                const { department: _dept, location: _loc, ...createData } = form;
+                await createMutation.mutateAsync(createData);
                 showSuccess("User Created", `${form.firstName} ${form.lastName} has been added.`);
             }
             setModalOpen(false);
@@ -215,7 +223,14 @@ export function UserManagementScreen() {
 
     const formatDate = (d: string | null | undefined) => {
         if (!d) return "\u2014";
-        return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+        return new Date(d).toLocaleString("en-IN", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+        });
     };
 
     return (
@@ -322,7 +337,9 @@ export function UserManagementScreen() {
                                                 </span>
                                             </td>
                                             <td className="py-4 px-6"><StatusBadge active={isActive} /></td>
-                                            <td className="py-4 px-6 text-neutral-500 dark:text-neutral-400 text-xs">{formatDate(user.lastLoginAt)}</td>
+                                            <td className="py-4 px-6 text-neutral-500 dark:text-neutral-400 text-xs">
+                                                {formatDate(user.lastLoginAt ?? user.lastLogin)}
+                                            </td>
                                             <td className="py-4 px-6 text-right">
                                                 <div className="flex items-center justify-end gap-1">
                                                     <button onClick={() => openEdit(user)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit" aria-label={`Edit ${fullName}`}>

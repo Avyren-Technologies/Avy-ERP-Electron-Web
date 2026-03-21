@@ -33,6 +33,7 @@ import {
     useEmployeeDocuments,
     useEmployeeTimeline,
 } from "@/features/company-admin/api/use-hr-queries";
+import { useCompanyLocations, useCompanyShifts } from "@/features/company-admin/api/use-company-admin-queries";
 import {
     useCreateEmployee,
     useUpdateEmployee,
@@ -173,7 +174,7 @@ const EMPTY_PROFESSIONAL = {
     joiningDate: "", employeeTypeId: "", departmentId: "",
     designationId: "", gradeId: "",
     reportingManagerId: "", functionalManagerId: "",
-    workType: "On-site", shiftId: "", locationId: "",
+    workType: "ON_SITE", shiftId: "", locationId: "",
     costCentreId: "", noticePeriod: "", probationEndDate: "",
 };
 
@@ -185,7 +186,7 @@ const EMPTY_SALARY = {
 const EMPTY_BANK = {
     ifscCode: "", bankName: "", branchName: "",
     accountNumber: "", confirmAccountNumber: "",
-    accountType: "Savings",
+    accountType: "SAVINGS",
 };
 
 const EMPTY_DOCUMENTS = {
@@ -220,6 +221,8 @@ export function EmployeeProfileScreen() {
     const employeeTypesQuery = useEmployeeTypes();
     const costCentresQuery = useCostCentres();
     const employeesQuery = useEmployees({ limit: 500 });
+    const locationsQuery = useCompanyLocations();
+    const shiftsQuery = useCompanyShifts();
     const docsQuery = useEmployeeDocuments(isNew ? "" : id!);
     const timelineQuery = useEmployeeTimeline(isNew ? "" : id!);
 
@@ -235,6 +238,8 @@ export function EmployeeProfileScreen() {
     const gradeOptions = useMemo(() => (gradesQuery.data?.data ?? []).map((g: any) => ({ value: g.id, label: g.name })), [gradesQuery.data]);
     const empTypeOptions = useMemo(() => (employeeTypesQuery.data?.data ?? []).map((t: any) => ({ value: t.id, label: t.name })), [employeeTypesQuery.data]);
     const costCentreOptions = useMemo(() => (costCentresQuery.data?.data ?? []).map((c: any) => ({ value: c.id, label: `${c.code ?? ""} - ${c.name}` })), [costCentresQuery.data]);
+    const locationOptions = useMemo(() => (locationsQuery.data?.data ?? []).map((l: any) => ({ value: l.id, label: l.name })), [locationsQuery.data]);
+    const shiftOptions = useMemo(() => (shiftsQuery.data?.data ?? []).map((s: any) => ({ value: s.id, label: s.name })), [shiftsQuery.data]);
     const managerOptions = useMemo(() => (employeesQuery.data?.data ?? []).filter((e: any) => e.id !== id).map((e: any) => ({ value: e.id, label: [e.firstName, e.lastName].filter(Boolean).join(" ") || e.officialEmail || e.id })), [employeesQuery.data, id]);
 
     // Populate from API
@@ -246,17 +251,17 @@ export function EmployeeProfileScreen() {
             firstName: emp.firstName ?? "",
             middleName: emp.middleName ?? "",
             lastName: emp.lastName ?? "",
-            dob: emp.dob ?? "",
+            dob: emp.dateOfBirth ? new Date(emp.dateOfBirth).toISOString().split("T")[0] : "",
             gender: emp.gender ?? "",
             maritalStatus: emp.maritalStatus ?? "",
             bloodGroup: emp.bloodGroup ?? "",
-            fatherName: emp.fatherName ?? "",
-            motherName: emp.motherName ?? "",
+            fatherName: emp.fatherMotherName?.split(" / ")?.[0] ?? "",
+            motherName: emp.fatherMotherName?.split(" / ")?.[1] ?? "",
             nationality: emp.nationality ?? "Indian",
             religion: emp.religion ?? "",
             category: emp.category ?? "",
             personalMobile: emp.personalMobile ?? "",
-            altMobile: emp.altMobile ?? "",
+            altMobile: emp.alternativeMobile ?? "",
             personalEmail: emp.personalEmail ?? "",
             officialEmail: emp.officialEmail ?? "",
             currentAddress: {
@@ -273,50 +278,50 @@ export function EmployeeProfileScreen() {
                 state: emp.permanentAddress?.state ?? "",
                 pin: emp.permanentAddress?.pin ?? "",
             },
-            sameAsCurrent: emp.sameAsCurrent ?? false,
-            emergencyName: emp.emergencyName ?? "",
-            emergencyRelation: emp.emergencyRelation ?? "",
-            emergencyMobile: emp.emergencyMobile ?? "",
+            sameAsCurrent: false,
+            emergencyName: emp.emergencyContactName ?? "",
+            emergencyRelation: emp.emergencyContactRelation ?? "",
+            emergencyMobile: emp.emergencyContactMobile ?? "",
         });
 
         setProfessional({
-            joiningDate: emp.joiningDate ?? "",
+            joiningDate: emp.joiningDate ? new Date(emp.joiningDate).toISOString().split("T")[0] : "",
             employeeTypeId: emp.employeeTypeId ?? "",
             departmentId: emp.departmentId ?? "",
             designationId: emp.designationId ?? "",
             gradeId: emp.gradeId ?? "",
             reportingManagerId: emp.reportingManagerId ?? "",
             functionalManagerId: emp.functionalManagerId ?? "",
-            workType: emp.workType ?? "On-site",
+            workType: emp.workType ?? "ON_SITE",
             shiftId: emp.shiftId ?? "",
             locationId: emp.locationId ?? "",
             costCentreId: emp.costCentreId ?? "",
-            noticePeriod: emp.noticePeriod?.toString() ?? "",
-            probationEndDate: emp.probationEndDate ?? "",
+            noticePeriod: emp.noticePeriodDays?.toString() ?? "",
+            probationEndDate: emp.probationEndDate ? new Date(emp.probationEndDate).toISOString().split("T")[0] : "",
         });
 
         setSalary({
-            annualCTC: emp.annualCTC?.toString() ?? "",
+            annualCTC: emp.annualCtc?.toString() ?? "",
             paymentMode: emp.paymentMode ?? "NEFT",
             salaryStructure: emp.salaryStructure ?? null,
         });
 
         setBank({
-            ifscCode: emp.ifscCode ?? "",
+            ifscCode: emp.bankIfscCode ?? "",
             bankName: emp.bankName ?? "",
-            branchName: emp.branchName ?? "",
-            accountNumber: emp.accountNumber ?? "",
-            confirmAccountNumber: emp.accountNumber ?? "",
-            accountType: emp.accountType ?? "Savings",
+            branchName: emp.bankBranch ?? "",
+            accountNumber: emp.bankAccountNumber ?? "",
+            confirmAccountNumber: emp.bankAccountNumber ?? "",
+            accountType: emp.accountType ?? "SAVINGS",
         });
 
         setDocuments({
-            pan: emp.pan ?? "",
-            aadhaar: emp.aadhaar ?? "",
+            pan: emp.panNumber ?? "",
+            aadhaar: emp.aadhaarNumber ?? "",
             uan: emp.uan ?? "",
-            esiIp: emp.esiIp ?? "",
-            passport: emp.passport ?? "",
-            dl: emp.dl ?? "",
+            esiIp: emp.esiIpNumber ?? "",
+            passport: emp.passportNumber ?? "",
+            dl: emp.drivingLicence ?? "",
             voterId: emp.voterId ?? "",
         });
     }, [employeeQuery.data, isNew]);
@@ -334,15 +339,81 @@ export function EmployeeProfileScreen() {
     const saving = createMutation.isPending || updateMutation.isPending;
 
     const handleSave = async () => {
-        const payload = {
-            ...personal,
-            ...professional,
-            ...salary,
-            ...bank,
-            ...documents,
-            noticePeriod: professional.noticePeriod ? parseInt(professional.noticePeriod) : undefined,
-            annualCTC: salary.annualCTC ? parseFloat(salary.annualCTC) : undefined,
+        // Map frontend field names to backend schema field names
+        const payload: Record<string, any> = {
+            // Personal
+            firstName: personal.firstName,
+            lastName: personal.lastName,
+            dateOfBirth: personal.dob,
+            personalMobile: personal.personalMobile,
+            personalEmail: personal.personalEmail,
+            emergencyContactName: personal.emergencyName,
+            emergencyContactRelation: personal.emergencyRelation,
+            emergencyContactMobile: personal.emergencyMobile,
+            // Professional (required)
+            joiningDate: professional.joiningDate,
+            employeeTypeId: professional.employeeTypeId,
+            departmentId: professional.departmentId,
+            designationId: professional.designationId,
         };
+
+        // Gender and marital status (already using backend enum values)
+        if (personal.gender) payload.gender = personal.gender;
+        if (personal.maritalStatus) payload.maritalStatus = personal.maritalStatus;
+
+        // Optional personal fields
+        if (personal.middleName) payload.middleName = personal.middleName;
+        if (personal.bloodGroup) payload.bloodGroup = personal.bloodGroup;
+        // Combine father/mother into fatherMotherName
+        const parentNames = [personal.fatherName, personal.motherName].filter(Boolean).join(" / ");
+        if (parentNames) payload.fatherMotherName = parentNames;
+        if (personal.nationality) payload.nationality = personal.nationality;
+        if (personal.religion) payload.religion = personal.religion;
+        if (personal.category) payload.category = personal.category;
+        if (personal.altMobile) payload.alternativeMobile = personal.altMobile;
+        if (personal.officialEmail) payload.officialEmail = personal.officialEmail;
+
+        // Addresses
+        if (personal.currentAddress?.line1) payload.currentAddress = personal.currentAddress;
+        if (personal.sameAsCurrent) {
+            payload.permanentAddress = personal.currentAddress;
+        } else if (personal.permanentAddress?.line1) {
+            payload.permanentAddress = personal.permanentAddress;
+        }
+
+        // Optional professional fields
+        if (professional.gradeId) payload.gradeId = professional.gradeId;
+        if (professional.reportingManagerId) payload.reportingManagerId = professional.reportingManagerId;
+        if (professional.functionalManagerId) payload.functionalManagerId = professional.functionalManagerId;
+        if (professional.shiftId) payload.shiftId = professional.shiftId;
+        if (professional.costCentreId) payload.costCentreId = professional.costCentreId;
+        if (professional.locationId) payload.locationId = professional.locationId;
+        if (professional.noticePeriod) payload.noticePeriodDays = parseInt(professional.noticePeriod);
+
+        // Work type (already using backend enum values)
+        if (professional.workType) payload.workType = professional.workType;
+
+        // Salary
+        if (salary.annualCTC) payload.annualCtc = parseFloat(salary.annualCTC);
+        if (salary.paymentMode) payload.paymentMode = salary.paymentMode;
+        if (salary.salaryStructure) payload.salaryStructure = salary.salaryStructure;
+
+        // Bank
+        if (bank.accountNumber) payload.bankAccountNumber = bank.accountNumber;
+        if (bank.ifscCode) payload.bankIfscCode = bank.ifscCode;
+        if (bank.bankName) payload.bankName = bank.bankName;
+        if (bank.branchName) payload.bankBranch = bank.branchName;
+        if (bank.accountType) payload.accountType = bank.accountType;
+
+        // Statutory documents
+        if (documents.pan) payload.panNumber = documents.pan;
+        if (documents.aadhaar) payload.aadhaarNumber = documents.aadhaar;
+        if (documents.uan) payload.uan = documents.uan;
+        if (documents.esiIp) payload.esiIpNumber = documents.esiIp;
+        if (documents.passport) payload.passportNumber = documents.passport;
+        if (documents.dl) payload.drivingLicence = documents.dl;
+        if (documents.voterId) payload.voterId = documents.voterId;
+
         try {
             if (isNew) {
                 const result = await createMutation.mutateAsync(payload);
@@ -519,15 +590,16 @@ export function EmployeeProfileScreen() {
                                 <FormField label="Last Name" value={personal.lastName} onChange={(v) => updatePersonal("lastName", v)} placeholder="Last name" disabled={!editing} />
                                 <FormField label="Date of Birth" value={personal.dob} onChange={(v) => updatePersonal("dob", v)} type="date" disabled={!editing} />
                                 <SelectField label="Gender" value={personal.gender} onChange={(v) => updatePersonal("gender", v)} disabled={!editing} options={[
-                                    { value: "Male", label: "Male" },
-                                    { value: "Female", label: "Female" },
-                                    { value: "Other", label: "Other" },
+                                    { value: "MALE", label: "Male" },
+                                    { value: "FEMALE", label: "Female" },
+                                    { value: "NON_BINARY", label: "Non-Binary" },
+                                    { value: "PREFER_NOT_TO_SAY", label: "Prefer Not to Say" },
                                 ]} />
                                 <SelectField label="Marital Status" value={personal.maritalStatus} onChange={(v) => updatePersonal("maritalStatus", v)} disabled={!editing} options={[
-                                    { value: "Single", label: "Single" },
-                                    { value: "Married", label: "Married" },
-                                    { value: "Divorced", label: "Divorced" },
-                                    { value: "Widowed", label: "Widowed" },
+                                    { value: "SINGLE", label: "Single" },
+                                    { value: "MARRIED", label: "Married" },
+                                    { value: "DIVORCED", label: "Divorced" },
+                                    { value: "WIDOWED", label: "Widowed" },
                                 ]} />
                             </div>
 
@@ -626,7 +698,7 @@ export function EmployeeProfileScreen() {
                                 <SelectField label="Grade" value={professional.gradeId} onChange={(v) => updateProfessional("gradeId", v)} options={gradeOptions} disabled={!editing} placeholder="Select grade..." />
                                 <SelectField label="Reporting Manager" value={professional.reportingManagerId} onChange={(v) => updateProfessional("reportingManagerId", v)} options={managerOptions} disabled={!editing} placeholder="Search manager..." />
                                 <SelectField label="Functional Manager" value={professional.functionalManagerId} onChange={(v) => updateProfessional("functionalManagerId", v)} options={managerOptions} disabled={!editing} placeholder="Search manager..." />
-                                <SelectField label="Location" value={professional.locationId} onChange={(v) => updateProfessional("locationId", v)} options={[]} disabled={!editing} placeholder="Select location..." />
+                                <SelectField label="Location" value={professional.locationId} onChange={(v) => updateProfessional("locationId", v)} options={locationOptions} disabled={!editing} placeholder="Select location..." />
                             </div>
 
                             <RadioGroup
@@ -634,9 +706,9 @@ export function EmployeeProfileScreen() {
                                 value={professional.workType}
                                 onChange={(v) => updateProfessional("workType", v)}
                                 options={[
-                                    { value: "On-site", label: "On-site" },
-                                    { value: "Remote", label: "Remote" },
-                                    { value: "Hybrid", label: "Hybrid" },
+                                    { value: "ON_SITE", label: "On-site" },
+                                    { value: "REMOTE", label: "Remote" },
+                                    { value: "HYBRID", label: "Hybrid" },
                                 ]}
                                 disabled={!editing}
                             />
@@ -662,7 +734,7 @@ export function EmployeeProfileScreen() {
                                 options={[
                                     { value: "NEFT", label: "NEFT" },
                                     { value: "IMPS", label: "IMPS" },
-                                    { value: "Cheque", label: "Cheque" },
+                                    { value: "CHEQUE", label: "Cheque" },
                                 ]}
                                 disabled={!editing}
                             />
@@ -728,8 +800,8 @@ export function EmployeeProfileScreen() {
                                 value={bank.accountType}
                                 onChange={(v) => updateBank("accountType", v)}
                                 options={[
-                                    { value: "Savings", label: "Savings" },
-                                    { value: "Current", label: "Current" },
+                                    { value: "SAVINGS", label: "Savings" },
+                                    { value: "CURRENT", label: "Current" },
                                 ]}
                                 disabled={!editing}
                             />
@@ -892,13 +964,13 @@ export function EmployeeProfileScreen() {
                                     <ChevronDown size={14} />
                                 </button>
                                 <div className="absolute right-0 bottom-full mb-2 w-48 bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-xl hidden group-hover:block z-10">
-                                    <button onClick={() => handleStatusAction("ACTIVE")} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-t-xl transition-colors">
+                                    <button onClick={() => handleStatusAction("CONFIRMED" as EmployeeStatus)} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-t-xl transition-colors">
                                         Confirm Employee
                                     </button>
-                                    <button onClick={() => handleStatusAction("SUSPENDED")} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-warning-600 dark:text-warning-400 hover:bg-warning-50 dark:hover:bg-warning-900/20 transition-colors">
+                                    <button onClick={() => handleStatusAction("SUSPENDED" as EmployeeStatus)} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-warning-600 dark:text-warning-400 hover:bg-warning-50 dark:hover:bg-warning-900/20 transition-colors">
                                         Suspend
                                     </button>
-                                    <button onClick={() => handleStatusAction("NOTICE_PERIOD")} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-danger-600 dark:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-b-xl transition-colors">
+                                    <button onClick={() => handleStatusAction("ON_NOTICE" as EmployeeStatus)} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-danger-600 dark:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-b-xl transition-colors">
                                         Initiate Exit
                                     </button>
                                 </div>

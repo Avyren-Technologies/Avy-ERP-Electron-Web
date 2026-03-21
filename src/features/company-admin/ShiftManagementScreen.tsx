@@ -68,8 +68,8 @@ export function ShiftManagementScreen() {
         setEditingId(shift.id);
         setForm({
             name: shift.name ?? "",
-            fromTime: shift.startTime ?? shift.fromTime ?? "",
-            toTime: shift.endTime ?? shift.toTime ?? "",
+            fromTime: shift.fromTime ?? shift.startTime ?? "",
+            toTime: shift.toTime ?? shift.endTime ?? "",
             noShuffle: shift.noShuffle ?? false,
             downtimeSlots: shift.downtimeSlots ?? [],
         });
@@ -79,12 +79,10 @@ export function ShiftManagementScreen() {
     const handleSave = async () => {
         try {
             if (editingId) {
-                const { fromTime: from, toTime: to, ...updateRest } = form;
-                await updateMutation.mutateAsync({ id: editingId, data: { ...updateRest, startTime: from, endTime: to } });
+                await updateMutation.mutateAsync({ id: editingId, data: form });
                 showSuccess("Shift Updated", `${form.name} has been updated.`);
             } else {
-                const { fromTime, toTime, ...rest } = form;
-                await createMutation.mutateAsync({ ...rest, startTime: fromTime, endTime: toTime });
+                await createMutation.mutateAsync(form);
                 showSuccess("Shift Created", `${form.name} has been added.`);
             }
             setModalOpen(false);

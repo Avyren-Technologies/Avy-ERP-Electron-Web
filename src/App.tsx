@@ -129,6 +129,13 @@ import { SkillScreen } from "./features/company-admin/hr/SkillScreen";
 import { SuccessionScreen } from "./features/company-admin/hr/SuccessionScreen";
 import { PerformanceDashboardScreen } from "./features/company-admin/hr/PerformanceDashboardScreen";
 
+// Operations Module Screens
+import { InventoryScreen } from "./features/inventory/InventoryScreen";
+import { ProductionScreen } from "./features/production/ProductionScreen";
+import { MaintenanceScreen } from "./features/maintenance/MaintenanceScreen";
+import { WorkOrdersScreen } from "./features/maintenance/WorkOrdersScreen";
+import { MachineRegistryScreen } from "./features/maintenance/MachineRegistryScreen";
+
 // Placeholder components to prevent router crashes before we build them
 const Placeholder = ({ name }: { name: string }) => (
   <div className="flex items-center justify-center p-12 h-full">
@@ -301,6 +308,12 @@ function App() {
         <Route path="company/hr/skills" element={<RequireRole roles={['company-admin']}><SkillScreen /></RequireRole>} />
         <Route path="company/hr/succession" element={<RequireRole roles={['company-admin']}><SuccessionScreen /></RequireRole>} />
         <Route path="company/hr/performance-dashboard" element={<RequireRole roles={['company-admin']}><PerformanceDashboardScreen /></RequireRole>} />
+        {/* Operations module routes */}
+        <Route path="inventory" element={<RequireRole roles={['super-admin', 'company-admin']}><InventoryScreen /></RequireRole>} />
+        <Route path="production" element={<RequireRole roles={['super-admin', 'company-admin']}><ProductionScreen /></RequireRole>} />
+        <Route path="maintenance" element={<RequireRole roles={['super-admin', 'company-admin']}><MaintenanceScreen /></RequireRole>} />
+        <Route path="maintenance/orders" element={<RequireRole roles={['super-admin', 'company-admin']}><WorkOrdersScreen /></RequireRole>} />
+        <Route path="maintenance/machines" element={<RequireRole roles={['super-admin', 'company-admin']}><MachineRegistryScreen /></RequireRole>} />
         {/* Super-admin + company-admin routes */}
         <Route path="modules" element={<RequireRole roles={['super-admin', 'company-admin']}><ModuleCatalogueScreen /></RequireRole>} />
         <Route path="monitor" element={<RequireRole roles={['super-admin', 'company-admin']}><PlatformMonitorScreen /></RequireRole>} />

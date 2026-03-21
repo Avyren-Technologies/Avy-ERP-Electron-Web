@@ -9,7 +9,7 @@ import {
     CheckCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useSalaryHolds } from "@/features/company-admin/api/use-payroll-run-queries";
+import { useSalaryHolds, usePayrollRuns } from "@/features/company-admin/api/use-payroll-run-queries";
 import { useCreateSalaryHold, useReleaseSalaryHold } from "@/features/company-admin/api/use-payroll-run-mutations";
 import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
 import { SkeletonTable } from "@/components/ui/Skeleton";
@@ -26,18 +26,17 @@ const MONTHS = [
 const formatCurrency = (v: number) => `\u20B9${(v ?? 0).toLocaleString("en-IN")}`;
 
 const HOLD_TYPES = [
-    { value: "full", label: "Full Salary" },
-    { value: "partial", label: "Partial" },
-    { value: "component", label: "Specific Components" },
+    { value: "FULL", label: "Full Salary" },
+    { value: "PARTIAL", label: "Partial" },
 ];
 
 function HoldTypeBadge({ type }: { type: string }) {
+    const t = type?.toUpperCase();
     const colorMap: Record<string, string> = {
-        full: "bg-danger-50 text-danger-700 border-danger-200 dark:bg-danger-900/20 dark:text-danger-400 dark:border-danger-800/50",
-        partial: "bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50",
-        component: "bg-info-50 text-info-700 border-info-200 dark:bg-info-900/20 dark:text-info-400 dark:border-info-800/50",
+        FULL: "bg-danger-50 text-danger-700 border-danger-200 dark:bg-danger-900/20 dark:text-danger-400 dark:border-danger-800/50",
+        PARTIAL: "bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50",
     };
-    const cls = colorMap[type?.toLowerCase()] ?? "bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700";
+    const cls = colorMap[t] ?? "bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700";
     return (
         <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize", cls)}>
             {type || "Full"}
@@ -46,12 +45,11 @@ function HoldTypeBadge({ type }: { type: string }) {
 }
 
 const EMPTY_HOLD = {
+    payrollRunId: "",
     employeeId: "",
-    holdType: "full",
+    holdType: "FULL",
     reason: "",
-    components: "",
-    month: new Date().getMonth() + 1,
-    year: new Date().getFullYear(),
+    heldComponents: "",
 };
 
 /* ── Screen ── */
@@ -64,11 +62,13 @@ export function SalaryHoldScreen() {
 
     const holdsQuery = useSalaryHolds();
     const employeesQuery = useEmployees();
+    const payrollRunsQuery = usePayrollRuns();
     const createMutation = useCreateSalaryHold();
     const releaseMutation = useReleaseSalaryHold();
 
     const holds: any[] = holdsQuery.data?.data ?? [];
     const employees: any[] = employeesQuery.data?.data ?? [];
+    const payrollRuns: any[] = payrollRunsQuery.data?.data ?? [];
 
     const getEmployeeName = (id: string) => {
         const e = employees.find((emp: any) => emp.id === id);
@@ -87,8 +87,13 @@ export function SalaryHoldScreen() {
     const handleCreate = async () => {
         try {
             await createMutation.mutateAsync({
-                ...form,
-                components: form.components ? form.components.split(",").map((s: string) => s.trim()).filter(Boolean) : undefined,
+                payrollRunId: form.payrollRunId,
+                employeeId: form.employeeId,
+                holdType: form.holdType,
+                reason: form.reason,
+                heldComponents: form.holdType === "PARTIAL" && form.heldComponents
+                    ? form.heldComponents.split(",").map((s: string) => s.trim()).filter(Boolean)
+                    : undefined,
             });
             showSuccess("Hold Created", "Salary hold has been created.");
             setModalOpen(false);
@@ -171,7 +176,7 @@ export function SalaryHoldScreen() {
                                             </td>
                                             <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 max-w-[200px] truncate">{h.reason || "\u2014"}</td>
                                             <td className="py-4 px-6 text-xs text-neutral-500 dark:text-neutral-400">
-                                                {h.components && h.components.length > 0 ? h.components.join(", ") : "\u2014"}
+                                                {h.heldComponents && h.heldComponents.length > 0 ? h.heldComponents.join(", ") : "\u2014"}
                                             </td>
                                             <td className="py-4 px-6 text-center">
                                                 {isReleased ? (
@@ -223,6 +228,15 @@ export function SalaryHoldScreen() {
                         </div>
                         <div className="p-6 overflow-y-auto flex-1 space-y-4">
                             <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Payroll Run</label>
+                                <select value={form.payrollRunId} onChange={(e) => updateField("payrollRunId", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
+                                    <option value="">Select payroll run...</option>
+                                    {payrollRuns.map((r: any) => (
+                                        <option key={r.id} value={r.id}>{r.month && r.year ? `${MONTHS[(r.month ?? 1) - 1]} ${r.year}` : r.id}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Employee</label>
                                 <select value={form.employeeId} onChange={(e) => updateField("employeeId", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
                                     <option value="">Select employee...</option>
@@ -231,28 +245,16 @@ export function SalaryHoldScreen() {
                                     ))}
                                 </select>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Month</label>
-                                    <select value={form.month} onChange={(e) => updateField("month", Number(e.target.value))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
-                                        {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Year</label>
-                                    <input type="number" value={form.year} onChange={(e) => updateField("year", Number(e.target.value))} min={2020} max={2040} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
-                                </div>
-                            </div>
                             <div>
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Hold Type</label>
                                 <select value={form.holdType} onChange={(e) => updateField("holdType", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
                                     {HOLD_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                                 </select>
                             </div>
-                            {form.holdType === "component" && (
+                            {form.holdType === "PARTIAL" && (
                                 <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Components (comma-separated)</label>
-                                    <input type="text" value={form.components} onChange={(e) => updateField("components", e.target.value)} placeholder="e.g. Basic, HRA, DA" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Held Components (comma-separated codes)</label>
+                                    <input type="text" value={form.heldComponents} onChange={(e) => updateField("heldComponents", e.target.value)} placeholder="e.g. BASIC, HRA, DA" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
                                 </div>
                             )}
                             <div>

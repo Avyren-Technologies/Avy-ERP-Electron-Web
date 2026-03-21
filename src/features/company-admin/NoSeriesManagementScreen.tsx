@@ -89,24 +89,26 @@ export function NoSeriesManagementScreen() {
     const openEdit = (ns: any) => {
         setEditingId(ns.id);
         setForm({
-            code: ns.code ?? ns.prefix ?? "",
+            code: ns.code ?? "",
             description: ns.description ?? "",
-            linkedScreen: ns.linkedScreen ?? ns.module ?? "",
+            linkedScreen: ns.linkedScreen ?? "",
             prefix: ns.prefix ?? "",
             suffix: ns.suffix ?? "",
-            numberCount: String(ns.padLength ?? ns.numberCount ?? 5),
-            startNumber: String(ns.nextNumber ?? ns.startNumber ?? 1),
+            numberCount: String(ns.numberCount ?? 5),
+            startNumber: String(ns.startNumber ?? 1),
         });
         setModalOpen(true);
     };
 
     const handleSave = async () => {
         const payload = {
-            module: form.linkedScreen,
+            code: form.code,
+            linkedScreen: form.linkedScreen,
+            description: form.description || undefined,
             prefix: form.prefix,
-            suffix: form.suffix,
-            padLength: parseInt(form.numberCount) || 5,
-            nextNumber: parseInt(form.startNumber) || 1,
+            suffix: form.suffix || undefined,
+            numberCount: parseInt(form.numberCount) || 5,
+            startNumber: parseInt(form.startNumber) || 1,
         };
         try {
             if (editingId) {

@@ -30,9 +30,9 @@ import { showSuccess, showApiError } from "@/lib/toast";
 /* ── Constants ── */
 
 const FREQUENCIES = [
-    { value: "annual", label: "Annual" },
-    { value: "semi-annual", label: "Semi-Annual" },
-    { value: "quarterly", label: "Quarterly" },
+    { value: "ANNUAL", label: "Annual" },
+    { value: "SEMI_ANNUAL", label: "Semi-Annual" },
+    { value: "QUARTERLY", label: "Quarterly" },
 ];
 
 const RATING_SCALES = [
@@ -45,10 +45,10 @@ const STATUS_FILTERS = ["All", "Draft", "Active", "Published", "Closed"];
 
 const EMPTY_FORM = {
     name: "",
-    periodStart: "",
-    periodEnd: "",
-    frequency: "annual",
-    ratingScale: "5",
+    startDate: "",
+    endDate: "",
+    frequency: "ANNUAL",
+    ratingScale: 5,
     kraWeightage: 70,
     competencyWeightage: 30,
     bellCurveEnabled: false,
@@ -56,6 +56,7 @@ const EMPTY_FORM = {
     selfReviewEnabled: true,
     managerReviewEnabled: true,
     peerReviewEnabled: false,
+    midYearReview: false,
     status: "Draft",
 };
 
@@ -135,10 +136,10 @@ export function AppraisalCycleScreen() {
         setEditingId(c.id);
         setForm({
             name: c.name ?? "",
-            periodStart: c.periodStart ?? "",
-            periodEnd: c.periodEnd ?? "",
-            frequency: c.frequency ?? "annual",
-            ratingScale: String(c.ratingScale ?? 5),
+            startDate: c.startDate ?? c.periodStart ?? "",
+            endDate: c.endDate ?? c.periodEnd ?? "",
+            frequency: c.frequency ?? "ANNUAL",
+            ratingScale: c.ratingScale ?? 5,
             kraWeightage: c.kraWeightage ?? 70,
             competencyWeightage: c.competencyWeightage ?? 30,
             bellCurveEnabled: c.bellCurveEnabled ?? false,
@@ -146,6 +147,7 @@ export function AppraisalCycleScreen() {
             selfReviewEnabled: c.selfReviewEnabled ?? true,
             managerReviewEnabled: c.managerReviewEnabled ?? true,
             peerReviewEnabled: c.peerReviewEnabled ?? false,
+            midYearReview: c.midYearReview ?? false,
             status: c.status ?? "Draft",
         });
         setModalOpen(true);
@@ -153,11 +155,25 @@ export function AppraisalCycleScreen() {
 
     const handleSave = async () => {
         try {
+            const payload: any = {
+                name: form.name,
+                startDate: form.startDate,
+                endDate: form.endDate,
+                frequency: form.frequency,
+                ratingScale: Number(form.ratingScale) || 5,
+                kraWeightage: Number(form.kraWeightage) || 70,
+                competencyWeightage: Number(form.competencyWeightage) || 30,
+                midYearReview: form.midYearReview ?? false,
+            };
+            if (form.bellCurveEnabled) {
+                payload.forcedDistribution = true;
+                payload.bellCurve = form.bellCurveDistribution;
+            }
             if (editingId) {
-                await updateMutation.mutateAsync({ id: editingId, data: form });
+                await updateMutation.mutateAsync({ id: editingId, data: payload });
                 showSuccess("Cycle Updated", `${form.name} has been updated.`);
             } else {
-                await createMutation.mutateAsync(form);
+                await createMutation.mutateAsync(payload);
                 showSuccess("Cycle Created", `${form.name} has been created.`);
             }
             setModalOpen(false);
@@ -261,7 +277,7 @@ export function AppraisalCycleScreen() {
                                                 <span className="font-bold text-primary-950 dark:text-white">{c.name}</span>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs font-mono">{c.periodStart && c.periodEnd ? `${c.periodStart} \u2014 ${c.periodEnd}` : "\u2014"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs font-mono">{(c.startDate || c.periodStart) && (c.endDate || c.periodEnd) ? `${c.startDate || c.periodStart} \u2014 ${c.endDate || c.periodEnd}` : "\u2014"}</td>
                                         <td className="py-4 px-6"><span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-accent-50 text-accent-700 border-accent-200 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50 capitalize">{c.frequency || "annual"}</span></td>
                                         <td className="py-4 px-6 text-center font-semibold text-primary-950 dark:text-white">1\u2013{c.ratingScale ?? 5}</td>
                                         <td className="py-4 px-6 text-center text-xs text-neutral-600 dark:text-neutral-400">{c.kraWeightage ?? 70}% / {c.competencyWeightage ?? 30}%</td>
@@ -311,12 +327,12 @@ export function AppraisalCycleScreen() {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Period Start</label>
-                                    <input type="date" value={form.periodStart} onChange={(e) => updateField("periodStart", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Start Date</label>
+                                    <input type="date" value={form.startDate} onChange={(e) => updateField("startDate", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Period End</label>
-                                    <input type="date" value={form.periodEnd} onChange={(e) => updateField("periodEnd", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">End Date</label>
+                                    <input type="date" value={form.endDate} onChange={(e) => updateField("endDate", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
@@ -328,7 +344,7 @@ export function AppraisalCycleScreen() {
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Rating Scale</label>
-                                    <select value={form.ratingScale} onChange={(e) => updateField("ratingScale", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
+                                    <select value={form.ratingScale} onChange={(e) => updateField("ratingScale", Number(e.target.value))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
                                         {RATING_SCALES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                                     </select>
                                 </div>

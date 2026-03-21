@@ -148,8 +148,8 @@ const EMPTY_EMPTYPE = {
     pfApplicable: true,
     esiApplicable: true,
     ptApplicable: true,
-    gratuityApplicable: false,
-    bonusApplicable: false,
+    gratuityEligible: false,
+    bonusEligible: false,
     status: "Active",
 };
 
@@ -192,8 +192,8 @@ export function EmployeeTypeScreen() {
             pfApplicable: et.pfApplicable ?? false,
             esiApplicable: et.esiApplicable ?? false,
             ptApplicable: et.ptApplicable ?? false,
-            gratuityApplicable: et.gratuityApplicable ?? false,
-            bonusApplicable: et.bonusApplicable ?? false,
+            gratuityEligible: et.gratuityEligible ?? false,
+            bonusEligible: et.bonusEligible ?? false,
             status: et.status ?? "Active",
         });
         setModalOpen(true);
@@ -303,8 +303,8 @@ export function EmployeeTypeScreen() {
                                         <td className="py-4 px-6 text-center"><StatutoryBadge enabled={et.pfApplicable} /></td>
                                         <td className="py-4 px-6 text-center"><StatutoryBadge enabled={et.esiApplicable} /></td>
                                         <td className="py-4 px-6 text-center"><StatutoryBadge enabled={et.ptApplicable} /></td>
-                                        <td className="py-4 px-6 text-center"><StatutoryBadge enabled={et.gratuityApplicable} /></td>
-                                        <td className="py-4 px-6 text-center"><StatutoryBadge enabled={et.bonusApplicable} /></td>
+                                        <td className="py-4 px-6 text-center"><StatutoryBadge enabled={et.gratuityEligible} /></td>
+                                        <td className="py-4 px-6 text-center"><StatutoryBadge enabled={et.bonusEligible} /></td>
                                         <td className="py-4 px-6 text-center">
                                             <StatusBadge status={et.status ?? "Active"} />
                                         </td>
@@ -355,8 +355,8 @@ export function EmployeeTypeScreen() {
                                     <ToggleSwitch label="Provident Fund (PF)" checked={form.pfApplicable} onChange={(v) => updateField("pfApplicable", v)} />
                                     <ToggleSwitch label="ESI (Employee State Insurance)" checked={form.esiApplicable} onChange={(v) => updateField("esiApplicable", v)} />
                                     <ToggleSwitch label="Professional Tax (PT)" checked={form.ptApplicable} onChange={(v) => updateField("ptApplicable", v)} />
-                                    <ToggleSwitch label="Gratuity" checked={form.gratuityApplicable} onChange={(v) => updateField("gratuityApplicable", v)} />
-                                    <ToggleSwitch label="Bonus" checked={form.bonusApplicable} onChange={(v) => updateField("bonusApplicable", v)} />
+                                    <ToggleSwitch label="Gratuity" checked={form.gratuityEligible} onChange={(v) => updateField("gratuityEligible", v)} />
+                                    <ToggleSwitch label="Bonus" checked={form.bonusEligible} onChange={(v) => updateField("bonusEligible", v)} />
                                 </div>
                             </div>
 

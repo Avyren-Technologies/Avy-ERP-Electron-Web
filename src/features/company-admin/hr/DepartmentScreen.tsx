@@ -109,7 +109,7 @@ const EMPTY_DEPT = {
     name: "",
     code: "",
     parentId: "",
-    headEmployee: "",
+    headEmployeeId: "",
     costCentreCode: "",
     status: "Active",
 };
@@ -153,7 +153,7 @@ export function DepartmentScreen() {
             name: dept.name ?? "",
             code: dept.code ?? "",
             parentId: dept.parentId ?? "",
-            headEmployee: dept.headEmployee ?? "",
+            headEmployeeId: dept.headEmployeeId ?? "",
             costCentreCode: dept.costCentreCode ?? "",
             status: dept.status ?? "Active",
         });
@@ -162,11 +162,20 @@ export function DepartmentScreen() {
 
     const handleSave = async () => {
         try {
+            const payload: Record<string, any> = {
+                name: form.name,
+                code: form.code,
+                status: form.status,
+            };
+            if (form.parentId) payload.parentId = form.parentId;
+            if (form.headEmployeeId) payload.headEmployeeId = form.headEmployeeId;
+            if (form.costCentreCode) payload.costCentreCode = form.costCentreCode;
+
             if (editingId) {
-                await updateMutation.mutateAsync({ id: editingId, data: form });
+                await updateMutation.mutateAsync({ id: editingId, data: payload });
                 showSuccess("Department Updated", `${form.name} has been updated.`);
             } else {
-                await createMutation.mutateAsync(form);
+                await createMutation.mutateAsync(payload);
                 showSuccess("Department Created", `${form.name} has been added.`);
             }
             setModalOpen(false);
@@ -263,7 +272,7 @@ export function DepartmentScreen() {
                                         </td>
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{dept.code || "\u2014"}</td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{parentName(dept.parentId)}</td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{dept.headEmployee || "\u2014"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{dept.headEmployeeId || "\u2014"}</td>
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{dept.costCentreCode || "\u2014"}</td>
                                         <td className="py-4 px-6 text-center">
                                             <StatusBadge status={dept.status ?? "Active"} />
@@ -321,7 +330,7 @@ export function DepartmentScreen() {
                                     .filter((d: any) => d.id !== editingId)
                                     .map((d: any) => ({ value: d.id, label: d.name }))}
                             />
-                            <FormField label="Head Employee" value={form.headEmployee} onChange={(v) => updateField("headEmployee", v)} placeholder="Department head name" />
+                            <FormField label="Head Employee ID" value={form.headEmployeeId} onChange={(v) => updateField("headEmployeeId", v)} placeholder="Employee ID (optional)" />
                             <SelectField
                                 label="Cost Centre"
                                 value={form.costCentreCode}
