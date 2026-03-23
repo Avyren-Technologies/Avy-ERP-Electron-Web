@@ -572,6 +572,7 @@ export interface MyInvoice {
     id: string;
     invoiceNumber?: string;
     invoiceType?: string;
+    date?: string;
     createdAt?: string;
     dueDate?: string;
     amount: number;

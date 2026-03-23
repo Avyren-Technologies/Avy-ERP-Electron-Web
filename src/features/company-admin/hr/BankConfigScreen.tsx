@@ -81,13 +81,12 @@ export function BankConfigScreen() {
     const handleSave = async () => {
         try {
             // Map frontend field names to backend expected names
-            const payload = {
+            const mappedPayload: Record<string, any> = {
                 ...config,
                 branchName: config.branch ?? config.branchName,
                 autoPushOnApproval: config.autoPush ?? config.autoPushOnApproval,
             };
-            delete payload.branch;
-            delete payload.autoPush;
+            const { branch, autoPush, ...payload } = mappedPayload;
             await updateMutation.mutateAsync(payload);
             showSuccess("Bank Config Saved", "Bank configuration has been updated.");
             setHasChanges(false);
