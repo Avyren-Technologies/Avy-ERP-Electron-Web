@@ -18,7 +18,7 @@ import {
     Settings2, GitBranch, Mail, BellRing, FileCheck, UserCircle, CalendarOff,
     Target, Flag, MessageSquare, Star, Brain, GitFork,
     UserPlus, GraduationCap, Award, FileSignature, AlertTriangle, Gavel,
-    ArrowLeftRight,
+    ArrowLeftRight, LogIn,
 } from 'lucide-react';
 import { useAuthStore, getUserInitials, getDisplayName } from '@/store/useAuthStore';
 import { useNavigate } from 'react-router-dom';
@@ -453,6 +453,11 @@ const NAV_CONFIG: NavSection[] = [
                 icon: Clock,
                 label: 'My Attendance',
                 path: '/app/company/hr/my-attendance',
+            },
+            {
+                icon: LogIn,
+                label: 'Shift Check-In',
+                path: '/app/company/hr/shift-check-in',
             },
             {
                 icon: Users,

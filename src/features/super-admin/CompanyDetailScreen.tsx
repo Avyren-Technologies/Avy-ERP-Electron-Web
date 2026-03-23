@@ -11,6 +11,7 @@ import {
     ChevronDown, ChevronUp, Star, Shield, Clock, Settings,
     Landmark, CheckCircle2, XCircle, ExternalLink, Edit3, RefreshCw,
     Hash, UserPlus, Activity, Layers, Loader2, History, Inbox,
+    Play, Zap, RotateCcw,
 } from 'lucide-react';
 import { useTenantDetail, useUpdateCompanyStatus, useDeleteCompany } from '@/features/super-admin/api/use-tenant-queries';
 import { useEntityAuditLogs } from '@/features/super-admin/api/use-audit-queries';
@@ -427,15 +428,23 @@ export function CompanyDetailScreen() {
     }, 0);
     const totalMonthly = totalMonthlyModules + tierBasePrice;
 
-    const handleSuspend = async () => {
+    const VALID_TRANSITIONS: Record<string, string[]> = {
+        Draft: ['Pilot', 'Active'],
+        Pilot: ['Active', 'Inactive'],
+        Active: ['Inactive'],
+        Inactive: ['Active'],
+    };
+
+    const currentStatus = (TENANT.wizardStatus ?? 'Draft') as string;
+    const allowedTransitions = VALID_TRANSITIONS[currentStatus] ?? [];
+
+    const [showStatusConfirm, setShowStatusConfirm] = useState<string | null>(null);
+
+    const handleStatusChange = async (newStatus: string) => {
         if (!id) return;
-        const currentStatus = TENANT.wizardStatus;
-        await statusMutation.mutateAsync({ companyId: id, status: 'Inactive' });
-        if (currentStatus === 'Inactive' || currentStatus === 'Suspended') {
-            showSuccess('Status Updated', 'Company has been activated.');
-        } else {
-            showSuccess('Status Updated', 'Company has been suspended.');
-        }
+        setShowStatusConfirm(null);
+        await statusMutation.mutateAsync({ companyId: id, status: newStatus });
+        showSuccess('Status Updated', `Company status changed to ${newStatus}.`);
     };
 
     const handleDelete = async () => {
@@ -1312,6 +1321,64 @@ export function CompanyDetailScreen() {
                     {/* --- Audit History (collapsible) --- */}
                     <AuditHistorySection companyId={id ?? ''} expanded={expandedSections.audit} onToggle={() => toggle('audit')} />
 
+                    {/* --- Status Management --- */}
+                    <Card>
+                        <CardBody>
+                            <SectionHeader icon={Activity} title="Status Management" subtitle="Change company lifecycle status" />
+                            <div className="mt-5 space-y-4">
+                                {/* Current Status */}
+                                <div className="flex items-center justify-between p-4 rounded-xl bg-neutral-50 border border-neutral-100 dark:bg-neutral-800 dark:border-neutral-800">
+                                    <div>
+                                        <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1 dark:text-neutral-500">Current Status</p>
+                                        <StatusPill status={currentStatus} />
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-1 dark:text-neutral-500">Available Transitions</p>
+                                        <p className="text-sm font-semibold text-neutral-600 dark:text-neutral-300">
+                                            {allowedTransitions.length > 0 ? allowedTransitions.join(', ') : 'None'}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Transition Buttons */}
+                                {allowedTransitions.length > 0 && (
+                                    <div className="flex flex-wrap gap-2">
+                                        {allowedTransitions.includes('Pilot') && (
+                                            <button
+                                                onClick={() => setShowStatusConfirm('Pilot')}
+                                                disabled={statusMutation.isPending}
+                                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-info-200 bg-info-50 text-info-700 text-sm font-bold hover:bg-info-100 transition-colors dark:bg-info-900/20 dark:border-info-800/50 dark:text-info-400 disabled:opacity-50"
+                                            >
+                                                <Zap size={14} />
+                                                Move to Pilot
+                                            </button>
+                                        )}
+                                        {allowedTransitions.includes('Active') && (
+                                            <button
+                                                onClick={() => setShowStatusConfirm('Active')}
+                                                disabled={statusMutation.isPending}
+                                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-success-200 bg-success-50 text-success-700 text-sm font-bold hover:bg-success-100 transition-colors dark:bg-success-900/20 dark:border-success-800/50 dark:text-success-400 disabled:opacity-50"
+                                            >
+                                                {currentStatus === 'Inactive' ? <RotateCcw size={14} /> : <Play size={14} />}
+                                                {currentStatus === 'Inactive' ? 'Reactivate' : 'Activate'}
+                                            </button>
+                                        )}
+                                        {allowedTransitions.includes('Inactive') && (
+                                            <button
+                                                onClick={() => setShowStatusConfirm('Inactive')}
+                                                disabled={statusMutation.isPending}
+                                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-danger-200 bg-danger-50 text-danger-700 text-sm font-bold hover:bg-danger-100 transition-colors dark:bg-danger-900/20 dark:border-danger-800/50 dark:text-danger-400 disabled:opacity-50"
+                                            >
+                                                <PowerOff size={14} />
+                                                Deactivate
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </CardBody>
+                    </Card>
+
                     {/* --- Danger Zone --- */}
                     <Card className="border-danger-200 dark:border-danger-800/50">
                         <div className="px-5 pt-4 pb-2">
@@ -1319,21 +1386,10 @@ export function CompanyDetailScreen() {
                                 <div className="w-8 h-8 rounded-lg bg-danger-50 flex items-center justify-center dark:bg-danger-900/20">
                                     <AlertTriangle size={15} className="text-danger-500" />
                                 </div>
-                                <h3 className="text-sm font-bold text-danger-900">Tenant Actions</h3>
+                                <h3 className="text-sm font-bold text-danger-900 dark:text-danger-400">Danger Zone</h3>
                             </div>
                         </div>
-                        <CardBody className="pt-3 space-y-2">
-                            <button
-                                onClick={handleSuspend}
-                                disabled={statusMutation.isPending}
-                                className="w-full flex items-center justify-between px-4 py-3 bg-white border border-danger-100 hover:bg-danger-50 text-danger-700 rounded-xl transition-colors text-sm font-bold group dark:bg-danger-900/20 dark:border-danger-800/50 dark:text-danger-400 disabled:opacity-50"
-                            >
-                                <div className="flex items-center gap-2">
-                                    <PowerOff size={14} />
-                                    {statusMutation.isPending ? 'Suspending...' : 'Suspend Access'}
-                                </div>
-                                <span className="text-[10px] bg-warning-100 text-warning-700 px-2 py-0.5 rounded font-bold dark:bg-warning-900/30 dark:text-warning-400">Reversible</span>
-                            </button>
+                        <CardBody className="pt-3">
                             <button
                                 onClick={() => setShowDeleteConfirm(true)}
                                 disabled={deleteMutation.isPending}
@@ -1374,6 +1430,55 @@ export function CompanyDetailScreen() {
                                 className="flex-1 py-3 rounded-xl bg-danger-600 text-white text-sm font-bold hover:bg-danger-700 disabled:opacity-50"
                             >
                                 {deleteMutation.isPending ? 'Deleting...' : 'Delete Forever'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ===== STATUS CHANGE CONFIRMATION MODAL ===== */}
+            {showStatusConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200 dark:bg-neutral-900">
+                        <h2 className={cn(
+                            'text-lg font-bold mb-2',
+                            showStatusConfirm === 'Inactive' ? 'text-danger-700 dark:text-danger-400' :
+                            showStatusConfirm === 'Active' ? 'text-success-700 dark:text-success-400' :
+                            'text-info-700 dark:text-info-400'
+                        )}>
+                            {showStatusConfirm === 'Inactive' ? 'Deactivate Company?' :
+                             showStatusConfirm === 'Active' && currentStatus === 'Inactive' ? 'Reactivate Company?' :
+                             `Change Status to ${showStatusConfirm}?`}
+                        </h2>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                            {showStatusConfirm === 'Inactive'
+                                ? `This will deactivate ${TENANT.displayName || TENANT.name}. All users will immediately lose access.`
+                                : showStatusConfirm === 'Active' && currentStatus === 'Inactive'
+                                ? `This will reactivate ${TENANT.displayName || TENANT.name}. Users will regain access immediately.`
+                                : showStatusConfirm === 'Pilot'
+                                ? `This will move ${TENANT.displayName || TENANT.name} to Pilot status for trial evaluation.`
+                                : `This will change the status of ${TENANT.displayName || TENANT.name} to ${showStatusConfirm}.`}
+                        </p>
+                        <div className="flex gap-3 mt-6">
+                            <button
+                                type="button"
+                                onClick={() => setShowStatusConfirm(null)}
+                                className="flex-1 py-3 rounded-xl border border-neutral-200 text-sm font-bold text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-300 dark:bg-neutral-800"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleStatusChange(showStatusConfirm)}
+                                disabled={statusMutation.isPending}
+                                className={cn(
+                                    'flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-50',
+                                    showStatusConfirm === 'Inactive' ? 'bg-danger-600 hover:bg-danger-700' :
+                                    showStatusConfirm === 'Active' ? 'bg-success-600 hover:bg-success-700' :
+                                    'bg-info-600 hover:bg-info-700'
+                                )}
+                            >
+                                {statusMutation.isPending ? 'Updating...' : 'Confirm'}
                             </button>
                         </div>
                     </div>

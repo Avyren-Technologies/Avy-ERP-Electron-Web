@@ -20,6 +20,9 @@ import {
     Mail,
     MapPin,
     Camera,
+    Eye,
+    EyeOff,
+    KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -213,6 +216,14 @@ export function EmployeeProfileScreen() {
     const [bank, setBank] = useState({ ...EMPTY_BANK });
     const [documents, setDocuments] = useState({ ...EMPTY_DOCUMENTS });
     const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
+
+    // Login account state (only for new employees)
+    const [createUserAccount, setCreateUserAccount] = useState(false);
+    const [userPassword, setUserPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [userRole, setUserRole] = useState("EMPLOYEE");
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     // Queries
     const employeeQuery = useEmployee(isNew ? "" : id!);
@@ -419,6 +430,25 @@ export function EmployeeProfileScreen() {
         if (documents.passport) payload.passportNumber = documents.passport;
         if (documents.dl) payload.drivingLicence = documents.dl;
         if (documents.voterId) payload.voterId = documents.voterId;
+
+        // Include user account fields if creating a new employee with login
+        if (isNew && createUserAccount) {
+            if (!personal.officialEmail) {
+                showApiError({ message: "Official Email is required when creating a login account." });
+                return;
+            }
+            if (!userPassword || userPassword.length < 6) {
+                showApiError({ message: "Password must be at least 6 characters." });
+                return;
+            }
+            if (userPassword !== confirmPassword) {
+                showApiError({ message: "Passwords do not match." });
+                return;
+            }
+            payload.createUserAccount = true;
+            payload.userPassword = userPassword;
+            payload.userRole = userRole;
+        }
 
         try {
             if (isNew) {
@@ -714,6 +744,72 @@ export function EmployeeProfileScreen() {
                                 <FormField label="Relation" value={personal.emergencyRelation} onChange={(v) => updatePersonal("emergencyRelation", v)} placeholder="e.g. Spouse, Parent" disabled={!editing} />
                                 <FormField label="Mobile" value={personal.emergencyMobile} onChange={(v) => updatePersonal("emergencyMobile", v)} placeholder="+91 98765 43210" disabled={!editing} />
                             </div>
+
+                            {/* Create Login Account — only for new employees */}
+                            {isNew && (
+                                <>
+                                    <SectionTitle title="Create Login Account" icon={KeyRound} />
+                                    <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-700 space-y-4">
+                                        <label className="flex items-center gap-3 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={createUserAccount}
+                                                onChange={(e) => setCreateUserAccount(e.target.checked)}
+                                                className="w-4 h-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                                            />
+                                            <span className="text-sm font-semibold text-primary-950 dark:text-white">Enable login for this employee</span>
+                                        </label>
+                                        {!personal.officialEmail && createUserAccount && (
+                                            <div className="flex items-center gap-2 px-3 py-2 bg-warning-50 dark:bg-warning-900/20 rounded-lg border border-warning-200 dark:border-warning-800/50">
+                                                <AlertCircle size={13} className="text-warning-500 flex-shrink-0" />
+                                                <p className="text-xs font-semibold text-warning-700 dark:text-warning-400">Official Email (above) is required to create a login account.</p>
+                                            </div>
+                                        )}
+                                        {createUserAccount && (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="relative">
+                                                    <FormField label="Password" value={userPassword} onChange={setUserPassword} placeholder="Min 6 characters" type={showPassword ? "text" : "password"} />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowPassword((v) => !v)}
+                                                        className="absolute right-3 top-8 p-1 text-neutral-400 hover:text-neutral-600 transition-colors"
+                                                    >
+                                                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                                    </button>
+                                                </div>
+                                                <div className="relative">
+                                                    <FormField label="Confirm Password" value={confirmPassword} onChange={setConfirmPassword} placeholder="Re-enter password" type={showConfirmPassword ? "text" : "password"} />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowConfirmPassword((v) => !v)}
+                                                        className="absolute right-3 top-8 p-1 text-neutral-400 hover:text-neutral-600 transition-colors"
+                                                    >
+                                                        {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                                    </button>
+                                                </div>
+                                                <SelectField
+                                                    label="Role"
+                                                    value={userRole}
+                                                    onChange={setUserRole}
+                                                    options={[
+                                                        { value: "EMPLOYEE", label: "Employee" },
+                                                        { value: "MANAGER", label: "Manager" },
+                                                        { value: "HR", label: "HR" },
+                                                        { value: "COMPANY_ADMIN", label: "Company Admin" },
+                                                    ]}
+                                                    placeholder="Select role..."
+                                                />
+                                            </div>
+                                        )}
+                                        {createUserAccount && confirmPassword && userPassword !== confirmPassword && (
+                                            <p className="text-xs font-semibold text-danger-600">Passwords do not match.</p>
+                                        )}
+                                        {createUserAccount && userPassword && userPassword.length < 6 && (
+                                            <p className="text-xs font-semibold text-danger-600">Password must be at least 6 characters.</p>
+                                        )}
+                                    </div>
+                                </>
+                            )}
                         </div>
                     )}
 

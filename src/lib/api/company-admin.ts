@@ -513,7 +513,7 @@ export interface CatalogueModule {
 }
 
 async function getModuleCatalogue(): Promise<ApiResponse<CatalogueModule[]>> {
-    const response = await client.get('/company/modules/catalogue');
+    const response = await client.get('/modules/catalogue');
     return response.data;
 }
 

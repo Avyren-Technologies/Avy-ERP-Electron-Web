@@ -99,6 +99,7 @@ import { MyPayslipsScreen } from "./features/company-admin/hr/MyPayslipsScreen";
 import { MyLeaveScreen } from "./features/company-admin/hr/MyLeaveScreen";
 import { MyAttendanceScreen } from "./features/company-admin/hr/MyAttendanceScreen";
 import { TeamViewScreen } from "./features/company-admin/hr/TeamViewScreen";
+import { ShiftCheckInScreen } from "./features/company-admin/hr/ShiftCheckInScreen";
 
 // HR Recruitment & Training Screens
 import { RequisitionScreen } from "./features/company-admin/hr/RequisitionScreen";
@@ -287,6 +288,7 @@ function App() {
         <Route path="company/hr/my-payslips" element={<RequireRole roles={['company-admin']}><MyPayslipsScreen /></RequireRole>} />
         <Route path="company/hr/my-leave" element={<RequireRole roles={['company-admin']}><MyLeaveScreen /></RequireRole>} />
         <Route path="company/hr/my-attendance" element={<RequireRole roles={['company-admin']}><MyAttendanceScreen /></RequireRole>} />
+        <Route path="company/hr/shift-check-in" element={<RequireRole roles={['company-admin']}><ShiftCheckInScreen /></RequireRole>} />
         <Route path="company/hr/team-view" element={<RequireRole roles={['company-admin']}><TeamViewScreen /></RequireRole>} />
         {/* Company-admin Recruitment & Training routes */}
         <Route path="company/hr/requisitions" element={<RequireRole roles={['company-admin']}><RequisitionScreen /></RequireRole>} />

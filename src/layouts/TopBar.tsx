@@ -91,6 +91,7 @@ const PAGE_TITLES: Record<string, { title: string; subtitle?: string }> = {
     '/app/company/hr/my-payslips': { title: 'My Payslips', subtitle: 'View and download your payslips' },
     '/app/company/hr/my-leave': { title: 'My Leave', subtitle: 'Leave balances, applications, and history' },
     '/app/company/hr/my-attendance': { title: 'My Attendance', subtitle: 'Attendance records and regularization' },
+    '/app/company/hr/shift-check-in': { title: 'Shift Check-In', subtitle: 'Clock in and out of your shift with GPS tracking' },
     '/app/company/hr/team-view': { title: 'Team View', subtitle: 'Manager self-service: team, approvals, and calendar' },
     // Recruitment & Training
     '/app/company/hr/requisitions': { title: 'Job Requisitions', subtitle: 'Create and manage hiring requisitions' },
