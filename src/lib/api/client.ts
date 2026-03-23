@@ -2,7 +2,7 @@ import axios from 'axios';
 
 import { showError, showWarning } from '@/lib/toast';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://avy-erp-api.avyren.in/api/v1/';
 
 // Separate instance for refresh calls — avoids interceptor infinite loops
 const refreshClient = axios.create({
