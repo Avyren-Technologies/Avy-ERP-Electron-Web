@@ -5,6 +5,7 @@ import { AuthLayout } from "./layouts/AuthLayout";
 import { DashboardLayout } from "./layouts/DashboardLayout";
 import { useAuthStore } from "./store/useAuthStore";
 import type { UserRole } from "./store/useAuthStore";
+import { checkPermission } from "./lib/api/auth";
 import { NoPermissionScreen } from "./features/shared/NoPermissionScreen";
 
 // Screens (Implemented)
@@ -92,6 +93,9 @@ import { ApprovalRequestScreen } from "./features/company-admin/hr/ApprovalReque
 import { NotificationTemplateScreen } from "./features/company-admin/hr/NotificationTemplateScreen";
 import { NotificationRuleScreen } from "./features/company-admin/hr/NotificationRuleScreen";
 import { ITDeclarationScreen } from "./features/company-admin/hr/ITDeclarationScreen";
+
+// Help & Support
+import { HelpSupportScreen } from "./features/help/HelpSupportScreen";
 
 // HR Self-Service Screens
 import { MyProfileScreen } from "./features/company-admin/hr/MyProfileScreen";
@@ -182,6 +186,15 @@ const RequireRole = ({ children, roles }: { children: React.ReactNode; roles: Us
   return children;
 };
 
+// Permission Guard — renders NoPermissionScreen if user lacks the required permission
+const RequirePermission = ({ children, permission }: { children: React.ReactNode; permission: string }) => {
+  const permissions = useAuthStore((s) => s.permissions) || [];
+  if (!checkPermission(permissions, permission)) {
+    return <NoPermissionScreen />;
+  }
+  return <>{children}</>;
+};
+
 function RoleBasedDashboard() {
   const userRole = useAuthStore((s) => s.userRole);
   if (userRole === 'company-admin') return <CompanyAdminDashboard />;
@@ -225,98 +238,98 @@ function App() {
         <Route path="billing/subscriptions/:companyId" element={<RequireRole roles={['super-admin']}><SubscriptionDetailScreen /></RequireRole>} />
         <Route path="reports/audit" element={<RequireRole roles={['super-admin', 'company-admin']}><AuditLogScreen /></RequireRole>} />
         {/* Company-admin-only routes */}
-        <Route path="company/profile" element={<RequireRole roles={['company-admin']}><CompanyProfileScreen /></RequireRole>} />
-        <Route path="company/locations" element={<RequireRole roles={['company-admin']}><LocationManagementScreen /></RequireRole>} />
-        <Route path="company/shifts" element={<RequireRole roles={['company-admin']}><ShiftManagementScreen /></RequireRole>} />
-        <Route path="company/contacts" element={<RequireRole roles={['company-admin']}><ContactManagementScreen /></RequireRole>} />
-        <Route path="company/no-series" element={<RequireRole roles={['company-admin']}><NoSeriesManagementScreen /></RequireRole>} />
-        <Route path="company/iot-reasons" element={<RequireRole roles={['company-admin']}><IOTReasonManagementScreen /></RequireRole>} />
-        <Route path="company/controls" element={<RequireRole roles={['company-admin']}><SystemControlsScreen /></RequireRole>} />
-        <Route path="company/settings" element={<RequireRole roles={['company-admin']}><CompanySettingsScreen /></RequireRole>} />
-        <Route path="company/users" element={<RequireRole roles={['company-admin']}><UserManagementScreen /></RequireRole>} />
-        <Route path="company/roles" element={<RequireRole roles={['company-admin']}><RoleManagementScreen /></RequireRole>} />
-        <Route path="company/feature-toggles" element={<RequireRole roles={['company-admin']}><FeatureToggleScreen /></RequireRole>} />
+        <Route path="company/profile" element={<RequirePermission permission="company:read"><CompanyProfileScreen /></RequirePermission>} />
+        <Route path="company/locations" element={<RequirePermission permission="company:read"><LocationManagementScreen /></RequirePermission>} />
+        <Route path="company/shifts" element={<RequirePermission permission="company:read"><ShiftManagementScreen /></RequirePermission>} />
+        <Route path="company/contacts" element={<RequirePermission permission="company:read"><ContactManagementScreen /></RequirePermission>} />
+        <Route path="company/no-series" element={<RequirePermission permission="company:read"><NoSeriesManagementScreen /></RequirePermission>} />
+        <Route path="company/iot-reasons" element={<RequirePermission permission="company:read"><IOTReasonManagementScreen /></RequirePermission>} />
+        <Route path="company/controls" element={<RequirePermission permission="company:configure"><SystemControlsScreen /></RequirePermission>} />
+        <Route path="company/settings" element={<RequirePermission permission="company:read"><CompanySettingsScreen /></RequirePermission>} />
+        <Route path="company/users" element={<RequirePermission permission="user:read"><UserManagementScreen /></RequirePermission>} />
+        <Route path="company/roles" element={<RequirePermission permission="role:read"><RoleManagementScreen /></RequirePermission>} />
+        <Route path="company/feature-toggles" element={<RequirePermission permission="role:read"><FeatureToggleScreen /></RequirePermission>} />
         {/* Company-admin Billing routes */}
         <Route path="company/billing" element={<RequireRole roles={['company-admin']}><BillingDashboardScreen /></RequireRole>} />
         <Route path="company/billing/invoices" element={<RequireRole roles={['company-admin']}><MyInvoicesScreen /></RequireRole>} />
         <Route path="company/billing/payments" element={<RequireRole roles={['company-admin']}><MyPaymentsScreen /></RequireRole>} />
         {/* Company-admin HR routes */}
-        <Route path="company/hr/departments" element={<RequireRole roles={['company-admin']}><DepartmentScreen /></RequireRole>} />
-        <Route path="company/hr/designations" element={<RequireRole roles={['company-admin']}><DesignationScreen /></RequireRole>} />
-        <Route path="company/hr/grades" element={<RequireRole roles={['company-admin']}><GradeScreen /></RequireRole>} />
-        <Route path="company/hr/employee-types" element={<RequireRole roles={['company-admin']}><EmployeeTypeScreen /></RequireRole>} />
-        <Route path="company/hr/cost-centres" element={<RequireRole roles={['company-admin']}><CostCentreScreen /></RequireRole>} />
-        <Route path="company/hr/employees" element={<RequireRole roles={['company-admin']}><EmployeeDirectoryScreen /></RequireRole>} />
-        <Route path="company/hr/employees/:id" element={<RequireRole roles={['company-admin']}><EmployeeProfileScreen /></RequireRole>} />
+        <Route path="company/hr/departments" element={<RequirePermission permission="hr:read"><DepartmentScreen /></RequirePermission>} />
+        <Route path="company/hr/designations" element={<RequirePermission permission="hr:read"><DesignationScreen /></RequirePermission>} />
+        <Route path="company/hr/grades" element={<RequirePermission permission="hr:read"><GradeScreen /></RequirePermission>} />
+        <Route path="company/hr/employee-types" element={<RequirePermission permission="hr:read"><EmployeeTypeScreen /></RequirePermission>} />
+        <Route path="company/hr/cost-centres" element={<RequirePermission permission="hr:read"><CostCentreScreen /></RequirePermission>} />
+        <Route path="company/hr/employees" element={<RequirePermission permission="hr:read"><EmployeeDirectoryScreen /></RequirePermission>} />
+        <Route path="company/hr/employees/:id" element={<RequirePermission permission="hr:read"><EmployeeProfileScreen /></RequirePermission>} />
         {/* Company-admin Attendance routes */}
-        <Route path="company/hr/attendance" element={<RequireRole roles={['company-admin']}><AttendanceDashboardScreen /></RequireRole>} />
-        <Route path="company/hr/holidays" element={<RequireRole roles={['company-admin']}><HolidayScreen /></RequireRole>} />
-        <Route path="company/hr/rosters" element={<RequireRole roles={['company-admin']}><RosterScreen /></RequireRole>} />
-        <Route path="company/hr/attendance-rules" element={<RequireRole roles={['company-admin']}><AttendanceRulesScreen /></RequireRole>} />
-        <Route path="company/hr/attendance-overrides" element={<RequireRole roles={['company-admin']}><AttendanceOverrideScreen /></RequireRole>} />
-        <Route path="company/hr/overtime-rules" element={<RequireRole roles={['company-admin']}><OvertimeRulesScreen /></RequireRole>} />
+        <Route path="company/hr/attendance" element={<RequirePermission permission="hr:read"><AttendanceDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/holidays" element={<RequirePermission permission="hr:read"><HolidayScreen /></RequirePermission>} />
+        <Route path="company/hr/rosters" element={<RequirePermission permission="hr:read"><RosterScreen /></RequirePermission>} />
+        <Route path="company/hr/attendance-rules" element={<RequirePermission permission="hr:read"><AttendanceRulesScreen /></RequirePermission>} />
+        <Route path="company/hr/attendance-overrides" element={<RequirePermission permission="hr:read"><AttendanceOverrideScreen /></RequirePermission>} />
+        <Route path="company/hr/overtime-rules" element={<RequirePermission permission="hr:read"><OvertimeRulesScreen /></RequirePermission>} />
         {/* Company-admin Leave Management routes */}
-        <Route path="company/hr/leave-types" element={<RequireRole roles={['company-admin']}><LeaveTypeScreen /></RequireRole>} />
-        <Route path="company/hr/leave-policies" element={<RequireRole roles={['company-admin']}><LeavePolicyScreen /></RequireRole>} />
-        <Route path="company/hr/leave-requests" element={<RequireRole roles={['company-admin']}><LeaveRequestScreen /></RequireRole>} />
-        <Route path="company/hr/leave-balances" element={<RequireRole roles={['company-admin']}><LeaveBalanceScreen /></RequireRole>} />
+        <Route path="company/hr/leave-types" element={<RequirePermission permission="hr:read"><LeaveTypeScreen /></RequirePermission>} />
+        <Route path="company/hr/leave-policies" element={<RequirePermission permission="hr:read"><LeavePolicyScreen /></RequirePermission>} />
+        <Route path="company/hr/leave-requests" element={<RequirePermission permission="hr:read"><LeaveRequestScreen /></RequirePermission>} />
+        <Route path="company/hr/leave-balances" element={<RequirePermission permission="hr:read"><LeaveBalanceScreen /></RequirePermission>} />
         {/* Company-admin Payroll & Compliance routes */}
-        <Route path="company/hr/salary-components" element={<RequireRole roles={['company-admin']}><SalaryComponentScreen /></RequireRole>} />
-        <Route path="company/hr/salary-structures" element={<RequireRole roles={['company-admin']}><SalaryStructureScreen /></RequireRole>} />
-        <Route path="company/hr/employee-salary" element={<RequireRole roles={['company-admin']}><EmployeeSalaryScreen /></RequireRole>} />
-        <Route path="company/hr/statutory-config" element={<RequireRole roles={['company-admin']}><StatutoryConfigScreen /></RequireRole>} />
-        <Route path="company/hr/tax-config" element={<RequireRole roles={['company-admin']}><TaxConfigScreen /></RequireRole>} />
-        <Route path="company/hr/bank-config" element={<RequireRole roles={['company-admin']}><BankConfigScreen /></RequireRole>} />
-        <Route path="company/hr/loan-policies" element={<RequireRole roles={['company-admin']}><LoanPolicyScreen /></RequireRole>} />
-        <Route path="company/hr/loans" element={<RequireRole roles={['company-admin']}><LoanScreen /></RequireRole>} />
+        <Route path="company/hr/salary-components" element={<RequirePermission permission="hr:read"><SalaryComponentScreen /></RequirePermission>} />
+        <Route path="company/hr/salary-structures" element={<RequirePermission permission="hr:read"><SalaryStructureScreen /></RequirePermission>} />
+        <Route path="company/hr/employee-salary" element={<RequirePermission permission="hr:read"><EmployeeSalaryScreen /></RequirePermission>} />
+        <Route path="company/hr/statutory-config" element={<RequirePermission permission="hr:configure"><StatutoryConfigScreen /></RequirePermission>} />
+        <Route path="company/hr/tax-config" element={<RequirePermission permission="hr:configure"><TaxConfigScreen /></RequirePermission>} />
+        <Route path="company/hr/bank-config" element={<RequirePermission permission="hr:configure"><BankConfigScreen /></RequirePermission>} />
+        <Route path="company/hr/loan-policies" element={<RequirePermission permission="hr:read"><LoanPolicyScreen /></RequirePermission>} />
+        <Route path="company/hr/loans" element={<RequirePermission permission="hr:read"><LoanScreen /></RequirePermission>} />
         {/* Company-admin Payroll Operations routes */}
-        <Route path="company/hr/payroll-runs" element={<RequireRole roles={['company-admin']}><PayrollRunScreen /></RequireRole>} />
-        <Route path="company/hr/payslips" element={<RequireRole roles={['company-admin']}><PayslipScreen /></RequireRole>} />
-        <Route path="company/hr/salary-holds" element={<RequireRole roles={['company-admin']}><SalaryHoldScreen /></RequireRole>} />
-        <Route path="company/hr/salary-revisions" element={<RequireRole roles={['company-admin']}><SalaryRevisionScreen /></RequireRole>} />
-        <Route path="company/hr/statutory-filings" element={<RequireRole roles={['company-admin']}><StatutoryFilingScreen /></RequireRole>} />
-        <Route path="company/hr/payroll-reports" element={<RequireRole roles={['company-admin']}><PayrollReportScreen /></RequireRole>} />
+        <Route path="company/hr/payroll-runs" element={<RequirePermission permission="hr:read"><PayrollRunScreen /></RequirePermission>} />
+        <Route path="company/hr/payslips" element={<RequirePermission permission="hr:read"><PayslipScreen /></RequirePermission>} />
+        <Route path="company/hr/salary-holds" element={<RequirePermission permission="hr:read"><SalaryHoldScreen /></RequirePermission>} />
+        <Route path="company/hr/salary-revisions" element={<RequirePermission permission="hr:read"><SalaryRevisionScreen /></RequirePermission>} />
+        <Route path="company/hr/statutory-filings" element={<RequirePermission permission="hr:read"><StatutoryFilingScreen /></RequirePermission>} />
+        <Route path="company/hr/payroll-reports" element={<RequirePermission permission="hr:read"><PayrollReportScreen /></RequirePermission>} />
         {/* Company-admin ESS & Workflow routes */}
-        <Route path="company/hr/ess-config" element={<RequireRole roles={['company-admin']}><EssConfigScreen /></RequireRole>} />
-        <Route path="company/hr/approval-workflows" element={<RequireRole roles={['company-admin']}><ApprovalWorkflowScreen /></RequireRole>} />
-        <Route path="company/hr/approval-requests" element={<RequireRole roles={['company-admin']}><ApprovalRequestScreen /></RequireRole>} />
-        <Route path="company/hr/notification-templates" element={<RequireRole roles={['company-admin']}><NotificationTemplateScreen /></RequireRole>} />
-        <Route path="company/hr/notification-rules" element={<RequireRole roles={['company-admin']}><NotificationRuleScreen /></RequireRole>} />
-        <Route path="company/hr/it-declarations" element={<RequireRole roles={['company-admin']}><ITDeclarationScreen /></RequireRole>} />
+        <Route path="company/hr/ess-config" element={<RequirePermission permission="hr:configure"><EssConfigScreen /></RequirePermission>} />
+        <Route path="company/hr/approval-workflows" element={<RequirePermission permission="hr:configure"><ApprovalWorkflowScreen /></RequirePermission>} />
+        <Route path="company/hr/approval-requests" element={<RequirePermission permission="hr:read"><ApprovalRequestScreen /></RequirePermission>} />
+        <Route path="company/hr/notification-templates" element={<RequirePermission permission="hr:configure"><NotificationTemplateScreen /></RequirePermission>} />
+        <Route path="company/hr/notification-rules" element={<RequirePermission permission="hr:configure"><NotificationRuleScreen /></RequirePermission>} />
+        <Route path="company/hr/it-declarations" element={<RequirePermission permission="hr:read"><ITDeclarationScreen /></RequirePermission>} />
         {/* Company-admin Self-Service routes */}
-        <Route path="company/hr/my-profile" element={<RequireRole roles={['company-admin']}><MyProfileScreen /></RequireRole>} />
-        <Route path="company/hr/my-payslips" element={<RequireRole roles={['company-admin']}><MyPayslipsScreen /></RequireRole>} />
-        <Route path="company/hr/my-leave" element={<RequireRole roles={['company-admin']}><MyLeaveScreen /></RequireRole>} />
-        <Route path="company/hr/my-attendance" element={<RequireRole roles={['company-admin']}><MyAttendanceScreen /></RequireRole>} />
-        <Route path="company/hr/shift-check-in" element={<RequireRole roles={['company-admin']}><ShiftCheckInScreen /></RequireRole>} />
-        <Route path="company/hr/team-view" element={<RequireRole roles={['company-admin']}><TeamViewScreen /></RequireRole>} />
+        <Route path="company/hr/my-profile" element={<RequirePermission permission="hr:read"><MyProfileScreen /></RequirePermission>} />
+        <Route path="company/hr/my-payslips" element={<RequirePermission permission="hr:read"><MyPayslipsScreen /></RequirePermission>} />
+        <Route path="company/hr/my-leave" element={<RequirePermission permission="hr:read"><MyLeaveScreen /></RequirePermission>} />
+        <Route path="company/hr/my-attendance" element={<RequirePermission permission="hr:read"><MyAttendanceScreen /></RequirePermission>} />
+        <Route path="company/hr/shift-check-in" element={<RequirePermission permission="hr:read"><ShiftCheckInScreen /></RequirePermission>} />
+        <Route path="company/hr/team-view" element={<RequirePermission permission="hr:read"><TeamViewScreen /></RequirePermission>} />
         {/* Company-admin Recruitment & Training routes */}
-        <Route path="company/hr/requisitions" element={<RequireRole roles={['company-admin']}><RequisitionScreen /></RequireRole>} />
-        <Route path="company/hr/candidates" element={<RequireRole roles={['company-admin']}><CandidateScreen /></RequireRole>} />
-        <Route path="company/hr/training" element={<RequireRole roles={['company-admin']}><TrainingCatalogueScreen /></RequireRole>} />
-        <Route path="company/hr/training-nominations" element={<RequireRole roles={['company-admin']}><TrainingNominationScreen /></RequireRole>} />
+        <Route path="company/hr/requisitions" element={<RequirePermission permission="hr:read"><RequisitionScreen /></RequirePermission>} />
+        <Route path="company/hr/candidates" element={<RequirePermission permission="hr:read"><CandidateScreen /></RequirePermission>} />
+        <Route path="company/hr/training" element={<RequirePermission permission="hr:read"><TrainingCatalogueScreen /></RequirePermission>} />
+        <Route path="company/hr/training-nominations" element={<RequirePermission permission="hr:read"><TrainingNominationScreen /></RequirePermission>} />
         {/* Company-admin Exit & Separation routes */}
-        <Route path="company/hr/exit-requests" element={<RequireRole roles={['company-admin']}><ExitRequestScreen /></RequireRole>} />
-        <Route path="company/hr/clearance-dashboard" element={<RequireRole roles={['company-admin']}><ClearanceDashboardScreen /></RequireRole>} />
-        <Route path="company/hr/fnf-settlement" element={<RequireRole roles={['company-admin']}><FnFSettlementScreen /></RequireRole>} />
+        <Route path="company/hr/exit-requests" element={<RequirePermission permission="hr:read"><ExitRequestScreen /></RequirePermission>} />
+        <Route path="company/hr/clearance-dashboard" element={<RequirePermission permission="hr:read"><ClearanceDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/fnf-settlement" element={<RequirePermission permission="hr:read"><FnFSettlementScreen /></RequirePermission>} />
         {/* Company-admin Advanced HR routes */}
-        <Route path="company/hr/assets" element={<RequireRole roles={['company-admin']}><AssetManagementScreen /></RequireRole>} />
-        <Route path="company/hr/expenses" element={<RequireRole roles={['company-admin']}><ExpenseClaimScreen /></RequireRole>} />
-        <Route path="company/hr/hr-letters" element={<RequireRole roles={['company-admin']}><HRLetterScreen /></RequireRole>} />
-        <Route path="company/hr/grievances" element={<RequireRole roles={['company-admin']}><GrievanceScreen /></RequireRole>} />
-        <Route path="company/hr/disciplinary" element={<RequireRole roles={['company-admin']}><DisciplinaryScreen /></RequireRole>} />
+        <Route path="company/hr/assets" element={<RequirePermission permission="hr:read"><AssetManagementScreen /></RequirePermission>} />
+        <Route path="company/hr/expenses" element={<RequirePermission permission="hr:read"><ExpenseClaimScreen /></RequirePermission>} />
+        <Route path="company/hr/hr-letters" element={<RequirePermission permission="hr:read"><HRLetterScreen /></RequirePermission>} />
+        <Route path="company/hr/grievances" element={<RequirePermission permission="hr:read"><GrievanceScreen /></RequirePermission>} />
+        <Route path="company/hr/disciplinary" element={<RequirePermission permission="hr:read"><DisciplinaryScreen /></RequirePermission>} />
         {/* Company-admin Transfer, Promotion & Delegation routes */}
-        <Route path="company/hr/transfers" element={<RequireRole roles={['company-admin']}><TransferScreen /></RequireRole>} />
-        <Route path="company/hr/promotions" element={<RequireRole roles={['company-admin']}><PromotionScreen /></RequireRole>} />
-        <Route path="company/hr/delegates" element={<RequireRole roles={['company-admin']}><DelegateScreen /></RequireRole>} />
+        <Route path="company/hr/transfers" element={<RequirePermission permission="hr:read"><TransferScreen /></RequirePermission>} />
+        <Route path="company/hr/promotions" element={<RequirePermission permission="hr:read"><PromotionScreen /></RequirePermission>} />
+        <Route path="company/hr/delegates" element={<RequirePermission permission="hr:read"><DelegateScreen /></RequirePermission>} />
         {/* Company-admin Performance Management routes */}
-        <Route path="company/hr/appraisal-cycles" element={<RequireRole roles={['company-admin']}><AppraisalCycleScreen /></RequireRole>} />
-        <Route path="company/hr/goals" element={<RequireRole roles={['company-admin']}><GoalScreen /></RequireRole>} />
-        <Route path="company/hr/feedback-360" element={<RequireRole roles={['company-admin']}><Feedback360Screen /></RequireRole>} />
-        <Route path="company/hr/ratings" element={<RequireRole roles={['company-admin']}><RatingsScreen /></RequireRole>} />
-        <Route path="company/hr/skills" element={<RequireRole roles={['company-admin']}><SkillScreen /></RequireRole>} />
-        <Route path="company/hr/succession" element={<RequireRole roles={['company-admin']}><SuccessionScreen /></RequireRole>} />
-        <Route path="company/hr/performance-dashboard" element={<RequireRole roles={['company-admin']}><PerformanceDashboardScreen /></RequireRole>} />
+        <Route path="company/hr/appraisal-cycles" element={<RequirePermission permission="hr:read"><AppraisalCycleScreen /></RequirePermission>} />
+        <Route path="company/hr/goals" element={<RequirePermission permission="hr:read"><GoalScreen /></RequirePermission>} />
+        <Route path="company/hr/feedback-360" element={<RequirePermission permission="hr:read"><Feedback360Screen /></RequirePermission>} />
+        <Route path="company/hr/ratings" element={<RequirePermission permission="hr:read"><RatingsScreen /></RequirePermission>} />
+        <Route path="company/hr/skills" element={<RequirePermission permission="hr:read"><SkillScreen /></RequirePermission>} />
+        <Route path="company/hr/succession" element={<RequirePermission permission="hr:read"><SuccessionScreen /></RequirePermission>} />
+        <Route path="company/hr/performance-dashboard" element={<RequirePermission permission="hr:read"><PerformanceDashboardScreen /></RequirePermission>} />
         {/* Operations module routes */}
         <Route path="inventory" element={<RequireRole roles={['super-admin', 'company-admin']}><InventoryScreen /></RequireRole>} />
         <Route path="production" element={<RequireRole roles={['super-admin', 'company-admin']}><ProductionScreen /></RequireRole>} />
@@ -327,6 +340,7 @@ function App() {
         <Route path="modules" element={<RequireRole roles={['super-admin', 'company-admin']}><ModuleCatalogueScreen /></RequireRole>} />
         <Route path="monitor" element={<RequireRole roles={['super-admin', 'company-admin']}><PlatformMonitorScreen /></RequireRole>} />
         {/* All authenticated users */}
+        <Route path="help" element={<HelpSupportScreen />} />
         <Route path="notifications" element={<Placeholder name="Notifications" />} />
         <Route path="settings" element={<Placeholder name="Settings" />} />
       </Route>

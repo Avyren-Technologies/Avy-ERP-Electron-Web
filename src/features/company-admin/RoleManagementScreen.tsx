@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
     Shield,
     Plus,
@@ -11,63 +11,36 @@ import {
     Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useRbacRoles } from "@/features/company-admin/api/use-company-admin-queries";
+import { useRbacRoles, usePermissionCatalogue, useReferenceRoles } from "@/features/company-admin/api/use-company-admin-queries";
 import { useCreateRole, useUpdateRole, useDeleteRole } from "@/features/company-admin/api/use-company-admin-mutations";
-import type { RbacRole, RolePermission } from "@/lib/api/company-admin";
+import type { RbacRole } from "@/lib/api/company-admin";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
 
-// ── Module list for permission matrix ──
-
-const MODULES = [
-    "Dashboard",
-    "HR Management",
-    "Attendance",
-    "Payroll",
-    "Production",
-    "Quality",
-    "Inventory",
-    "Maintenance",
-    "Reports",
-    "Settings",
-];
-
-const ACTIONS = ["view", "create", "edit", "delete", "approve"] as const;
-
-const ROLE_TEMPLATES: Record<string, Partial<Record<string, boolean>>> = {
-    admin: Object.fromEntries(MODULES.flatMap((m) => ACTIONS.map((a) => [`${m}.${a}`, true]))),
-    manager: Object.fromEntries(MODULES.flatMap((m) => ACTIONS.filter((a) => a !== "delete").map((a) => [`${m}.${a}`, true]))),
-    operator: Object.fromEntries(MODULES.flatMap((m) => ["view", "create"].map((a) => [`${m}.${a}`, true]))),
-    viewer: Object.fromEntries(MODULES.map((m) => [`${m}.view`, true])),
-};
-
-function buildPermissions(matrix: Record<string, boolean>): string[] {
+function buildPermissions(
+    matrix: Record<string, boolean>,
+    modules: Array<{ module: string; actions: string[] }>,
+): string[] {
     const result: string[] = [];
-    MODULES.forEach((mod) => {
-        ACTIONS.forEach((action) => {
-            if (matrix[`${mod}.${action}`]) {
-                result.push(`${mod}.${action}`);
+    modules.forEach((mod) => {
+        mod.actions.forEach((action) => {
+            const key = `${mod.module}:${action}`;
+            if (matrix[key]) {
+                result.push(key);
             }
         });
     });
     return result;
 }
 
-function flattenPermissions(permissions: string[] | RolePermission[]): Record<string, boolean> {
+function flattenPermissions(permissions: string[] | unknown[]): Record<string, boolean> {
     const result: Record<string, boolean> = {};
     if (!permissions || permissions.length === 0) return result;
-    // Handle string[] format from backend
+    // Handle string[] format from backend (e.g. "hr:read", "user:create")
     if (typeof permissions[0] === 'string') {
         (permissions as string[]).forEach((p) => {
             result[p] = true;
-        });
-    } else {
-        // Handle legacy RolePermission[] format
-        (permissions as RolePermission[]).forEach((p) => {
-            ACTIONS.forEach((a) => {
-                result[`${p.module}.${a}`] = p[a] ?? false;
-            });
         });
     }
     return result;
@@ -75,11 +48,48 @@ function flattenPermissions(permissions: string[] | RolePermission[]): Record<st
 
 export function RoleManagementScreen() {
     const { data: rolesData, isLoading: loading, isError: error } = useRbacRoles();
+    const { data: catalogueData, isLoading: catalogueLoading } = usePermissionCatalogue();
+    const { data: referenceData } = useReferenceRoles();
     const createMutation = useCreateRole();
     const updateMutation = useUpdateRole();
     const deleteMutation = useDeleteRole();
 
     const roles: RbacRole[] = rolesData?.data ?? [];
+
+    // Permission catalogue from API — filter out platform module
+    const catalogueModules = useMemo(() => {
+        const modules = catalogueData?.data?.modules ?? [];
+        return modules.filter((m) => m.module !== 'platform');
+    }, [catalogueData]);
+
+    // Collect unique action names across all modules for table header
+    const allActions = useMemo(() => {
+        const actionSet = new Set<string>();
+        catalogueModules.forEach((mod) => {
+            mod.actions.forEach((a) => actionSet.add(a));
+        });
+        return Array.from(actionSet);
+    }, [catalogueModules]);
+
+    // Reference roles as templates — backend returns Record<name, {description, permissions}>
+    const roleTemplates = useMemo(() => {
+        const refs = referenceData?.data;
+        if (!refs || typeof refs !== 'object') return {};
+        const templates: Record<string, Record<string, boolean>> = {};
+        // Handle both array format [{name, permissions}] and object format {name: {permissions}}
+        if (Array.isArray(refs)) {
+            refs.forEach((ref: any) => {
+                templates[ref.name] = {};
+                (ref.permissions ?? []).forEach((p: string) => { templates[ref.name][p] = true; });
+            });
+        } else {
+            Object.entries(refs).forEach(([name, value]: [string, any]) => {
+                templates[name] = {};
+                (value.permissions ?? []).forEach((p: string) => { templates[name][p] = true; });
+            });
+        }
+        return templates;
+    }, [referenceData]);
 
     const [search, setSearch] = useState("");
 
@@ -116,7 +126,7 @@ export function RoleManagementScreen() {
     };
 
     const applyTemplate = (templateKey: string) => {
-        setMatrix({ ...ROLE_TEMPLATES[templateKey] } as Record<string, boolean>);
+        setMatrix({ ...roleTemplates[templateKey] } as Record<string, boolean>);
     };
 
     const togglePermission = (key: string) => {
@@ -124,7 +134,7 @@ export function RoleManagementScreen() {
     };
 
     const handleSave = async () => {
-        const permissions = buildPermissions(matrix);
+        const permissions = buildPermissions(matrix, catalogueModules);
         const payload = { name: formName, description: formDescription, permissions };
         try {
             if (editingId) {
@@ -252,65 +262,80 @@ export function RoleManagementScreen() {
                                 </div>
                             </div>
 
-                            {/* Role Templates */}
-                            <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">Apply Template</label>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    {Object.keys(ROLE_TEMPLATES).map((key) => (
-                                        <button
-                                            key={key}
-                                            onClick={() => applyTemplate(key)}
-                                            className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-primary-50 hover:text-primary-600 hover:border-primary-200 dark:hover:bg-primary-900/20 dark:hover:text-primary-400 transition-colors"
-                                        >
-                                            {key.charAt(0).toUpperCase() + key.slice(1)}
-                                        </button>
-                                    ))}
+                            {/* Role Templates from reference roles */}
+                            {Object.keys(roleTemplates).length > 0 && (
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">Apply Template</label>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        {Object.keys(roleTemplates).map((key) => (
+                                            <button
+                                                key={key}
+                                                onClick={() => applyTemplate(key)}
+                                                className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-primary-50 hover:text-primary-600 hover:border-primary-200 dark:hover:bg-primary-900/20 dark:hover:text-primary-400 transition-colors"
+                                            >
+                                                {key.charAt(0).toUpperCase() + key.slice(1)}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Permission Matrix */}
                             <div>
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">Permission Matrix</label>
-                                <div className="border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden">
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-left border-collapse">
-                                            <thead>
-                                                <tr className="bg-neutral-50 dark:bg-neutral-800/50">
-                                                    <th className="py-3 px-4 text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">Module</th>
-                                                    {ACTIONS.map((a) => (
-                                                        <th key={a} className="py-3 px-3 text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider text-center">{a}</th>
-                                                    ))}
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {MODULES.map((mod, i) => (
-                                                    <tr key={mod} className={cn(i < MODULES.length - 1 && "border-b border-neutral-100 dark:border-neutral-800")}>
-                                                        <td className="py-2.5 px-4 text-xs font-semibold text-primary-950 dark:text-white">{mod}</td>
-                                                        {ACTIONS.map((action) => {
-                                                            const key = `${mod}.${action}`;
-                                                            const checked = matrix[key] ?? false;
-                                                            return (
-                                                                <td key={action} className="py-2.5 px-3 text-center">
-                                                                    <button
-                                                                        onClick={() => togglePermission(key)}
-                                                                        className={cn(
-                                                                            "w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors",
-                                                                            checked
-                                                                                ? "bg-primary-600 border-primary-600 text-white"
-                                                                                : "border-neutral-300 dark:border-neutral-600 hover:border-primary-400"
-                                                                        )}
-                                                                    >
-                                                                        {checked && <CheckSquare size={12} />}
-                                                                    </button>
-                                                                </td>
-                                                            );
-                                                        })}
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                                {catalogueLoading ? (
+                                    <div className="flex items-center gap-2 text-sm text-neutral-400 py-6 justify-center">
+                                        <Loader2 size={14} className="animate-spin" /> Loading permissions...
                                     </div>
-                                </div>
+                                ) : catalogueModules.length === 0 ? (
+                                    <div className="text-sm text-neutral-400 py-6 text-center">No permission modules available.</div>
+                                ) : (
+                                    <div className="border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden">
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left border-collapse">
+                                                <thead>
+                                                    <tr className="bg-neutral-50 dark:bg-neutral-800/50">
+                                                        <th className="py-3 px-4 text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">Module</th>
+                                                        {allActions.map((a) => (
+                                                            <th key={a} className="py-3 px-3 text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider text-center">{a}</th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {catalogueModules.map((mod, i) => (
+                                                        <tr key={mod.module} className={cn(i < catalogueModules.length - 1 && "border-b border-neutral-100 dark:border-neutral-800")}>
+                                                            <td className="py-2.5 px-4 text-xs font-semibold text-primary-950 dark:text-white">{mod.label}</td>
+                                                            {allActions.map((action) => {
+                                                                const hasAction = mod.actions.includes(action);
+                                                                const key = `${mod.module}:${action}`;
+                                                                const checked = matrix[key] ?? false;
+                                                                return (
+                                                                    <td key={action} className="py-2.5 px-3 text-center">
+                                                                        {hasAction ? (
+                                                                            <button
+                                                                                onClick={() => togglePermission(key)}
+                                                                                className={cn(
+                                                                                    "w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors",
+                                                                                    checked
+                                                                                        ? "bg-primary-600 border-primary-600 text-white"
+                                                                                        : "border-neutral-300 dark:border-neutral-600 hover:border-primary-400"
+                                                                                )}
+                                                                            >
+                                                                                {checked && <CheckSquare size={12} />}
+                                                                            </button>
+                                                                        ) : (
+                                                                            <span className="text-neutral-200 dark:text-neutral-700">&mdash;</span>
+                                                                        )}
+                                                                    </td>
+                                                                );
+                                                            })}
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">

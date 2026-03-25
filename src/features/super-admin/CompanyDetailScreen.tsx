@@ -312,6 +312,7 @@ export function CompanyDetailScreen() {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [editSection, setEditSection] = useState<string | null>(null);
     const [editData, setEditData] = useState<Record<string, any> | null>(null);
+    const [showStatusConfirm, setShowStatusConfirm] = useState<string | null>(null);
 
     const openEdit = (section: string, sectionData: Record<string, any>) => {
         setEditSection(section);
@@ -437,8 +438,6 @@ export function CompanyDetailScreen() {
 
     const currentStatus = (TENANT.wizardStatus ?? 'Draft') as string;
     const allowedTransitions = VALID_TRANSITIONS[currentStatus] ?? [];
-
-    const [showStatusConfirm, setShowStatusConfirm] = useState<string | null>(null);
 
     const handleStatusChange = async (newStatus: string) => {
         if (!id) return;

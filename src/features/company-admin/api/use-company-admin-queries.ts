@@ -23,6 +23,9 @@ export const companyAdminKeys = {
     myInvoices: (params?: Record<string, unknown>) => [...companyAdminKeys.all, 'my-invoices', params] as const,
     myInvoiceDetail: (id: string) => [...companyAdminKeys.all, 'my-invoice', id] as const,
     myPayments: (params?: Record<string, unknown>) => [...companyAdminKeys.all, 'my-payments', params] as const,
+    permissionCatalogue: () => [...companyAdminKeys.all, 'permission-catalogue'] as const,
+    referenceRoles: () => [...companyAdminKeys.all, 'reference-roles'] as const,
+    featureToggleCatalogue: () => [...companyAdminKeys.all, 'feature-toggle-catalogue'] as const,
 };
 
 export function useCompanyProfile() {
@@ -188,5 +191,29 @@ export function useMyPayments(params?: {
     return useQuery({
         queryKey: companyAdminKeys.myPayments(params as Record<string, unknown>),
         queryFn: () => companyAdminApi.getMyPayments(params),
+    });
+}
+
+export function usePermissionCatalogue() {
+    return useQuery({
+        queryKey: companyAdminKeys.permissionCatalogue(),
+        queryFn: () => companyAdminApi.getPermissionCatalogue(),
+        staleTime: 5 * 60 * 1000, // 5 minutes — catalogue rarely changes
+    });
+}
+
+export function useReferenceRoles() {
+    return useQuery({
+        queryKey: companyAdminKeys.referenceRoles(),
+        queryFn: () => companyAdminApi.getReferenceRoles(),
+        staleTime: 5 * 60 * 1000,
+    });
+}
+
+export function useFeatureToggleCatalogue() {
+    return useQuery({
+        queryKey: companyAdminKeys.featureToggleCatalogue(),
+        queryFn: () => companyAdminApi.getFeatureToggleCatalogue(),
+        staleTime: 5 * 60 * 1000,
     });
 }

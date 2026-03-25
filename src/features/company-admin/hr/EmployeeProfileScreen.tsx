@@ -23,6 +23,7 @@ import {
     Eye,
     EyeOff,
     KeyRound,
+    Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -36,7 +37,7 @@ import {
     useEmployeeDocuments,
     useEmployeeTimeline,
 } from "@/features/company-admin/api/use-hr-queries";
-import { useCompanyLocations, useCompanyShifts } from "@/features/company-admin/api/use-company-admin-queries";
+import { useCompanyLocations, useCompanyShifts, useRbacRoles } from "@/features/company-admin/api/use-company-admin-queries";
 import {
     useCreateEmployee,
     useUpdateEmployee,
@@ -71,12 +72,27 @@ function FormField({ label, value, onChange, placeholder, type = "text", disable
     );
 }
 
-function SelectField({ label, value, onChange, options, placeholder, disabled = false }: {
+function SelectField({ label, value, onChange, options, placeholder, disabled = false, createLink }: {
     label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; placeholder?: string; disabled?: boolean;
+    createLink?: { href: string; label: string };
 }) {
+    const navigate = useNavigate();
     return (
         <div>
-            <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">{label}</label>
+            <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">{label}</label>
+                {createLink && !disabled && (
+                    <button
+                        type="button"
+                        onClick={() => navigate(createLink.href)}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
+                        title={createLink.label}
+                    >
+                        <Plus size={14} />
+                        <span>Create</span>
+                    </button>
+                )}
+            </div>
             <select
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
@@ -86,7 +102,7 @@ function SelectField({ label, value, onChange, options, placeholder, disabled = 
                     disabled && "opacity-60 cursor-not-allowed"
                 )}
             >
-                <option value="">{placeholder ?? "Select..."}</option>
+                <option value="">{options.length === 0 && createLink ? `No ${label.toLowerCase()}s — create one` : (placeholder ?? "Select...")}</option>
                 {options.map((o) => (
                     <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
@@ -221,7 +237,7 @@ export function EmployeeProfileScreen() {
     const [createUserAccount, setCreateUserAccount] = useState(false);
     const [userPassword, setUserPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
-    const [userRole, setUserRole] = useState("EMPLOYEE");
+    const [userRole, setUserRole] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -235,6 +251,7 @@ export function EmployeeProfileScreen() {
     const employeesQuery = useEmployees({ limit: 500 });
     const locationsQuery = useCompanyLocations();
     const shiftsQuery = useCompanyShifts();
+    const rolesQuery = useRbacRoles();
     const docsQuery = useEmployeeDocuments(isNew ? "" : id!);
     const timelineQuery = useEmployeeTimeline(isNew ? "" : id!);
 
@@ -447,7 +464,7 @@ export function EmployeeProfileScreen() {
             }
             payload.createUserAccount = true;
             payload.userPassword = userPassword;
-            payload.userRole = userRole;
+            if (userRole) payload.userRole = userRole;
         }
 
         try {
@@ -791,13 +808,10 @@ export function EmployeeProfileScreen() {
                                                     label="Role"
                                                     value={userRole}
                                                     onChange={setUserRole}
-                                                    options={[
-                                                        { value: "EMPLOYEE", label: "Employee" },
-                                                        { value: "MANAGER", label: "Manager" },
-                                                        { value: "HR", label: "HR" },
-                                                        { value: "COMPANY_ADMIN", label: "Company Admin" },
-                                                    ]}
-                                                    placeholder="Select role..."
+                                                    options={(rolesQuery.data?.data || [])
+                                                        .map((r: any) => ({ value: r.id, label: r.name }))}
+                                                    placeholder={rolesQuery.isError ? "Failed to load roles" : rolesQuery.isLoading ? "Loading roles..." : "Select role..."}
+                                                    createLink={{ href: "/app/company/roles", label: "Create Role" }}
                                                 />
                                             </div>
                                         )}
@@ -818,13 +832,14 @@ export function EmployeeProfileScreen() {
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FormField label="Joining Date" value={professional.joiningDate} onChange={(v) => updateProfessional("joiningDate", v)} type="date" disabled={!editing} />
-                                <SelectField label="Employee Type" value={professional.employeeTypeId} onChange={(v) => updateProfessional("employeeTypeId", v)} options={empTypeOptions} disabled={!editing} placeholder="Select type..." />
-                                <SelectField label="Department" value={professional.departmentId} onChange={(v) => updateProfessional("departmentId", v)} options={deptOptions} disabled={!editing} placeholder="Select department..." />
-                                <SelectField label="Designation" value={professional.designationId} onChange={(v) => updateProfessional("designationId", v)} options={desigOptions} disabled={!editing} placeholder="Select designation..." />
-                                <SelectField label="Grade" value={professional.gradeId} onChange={(v) => updateProfessional("gradeId", v)} options={gradeOptions} disabled={!editing} placeholder="Select grade..." />
+                                <SelectField label="Employee Type" value={professional.employeeTypeId} onChange={(v) => updateProfessional("employeeTypeId", v)} options={empTypeOptions} disabled={!editing} placeholder="Select type..." createLink={{ href: "/app/company/hr/employee-types", label: "Create Employee Type" }} />
+                                <SelectField label="Department" value={professional.departmentId} onChange={(v) => updateProfessional("departmentId", v)} options={deptOptions} disabled={!editing} placeholder="Select department..." createLink={{ href: "/app/company/hr/departments", label: "Create Department" }} />
+                                <SelectField label="Designation" value={professional.designationId} onChange={(v) => updateProfessional("designationId", v)} options={desigOptions} disabled={!editing} placeholder="Select designation..." createLink={{ href: "/app/company/hr/designations", label: "Create Designation" }} />
+                                <SelectField label="Grade" value={professional.gradeId} onChange={(v) => updateProfessional("gradeId", v)} options={gradeOptions} disabled={!editing} placeholder="Select grade..." createLink={{ href: "/app/company/hr/grades", label: "Create Grade" }} />
                                 <SelectField label="Reporting Manager" value={professional.reportingManagerId} onChange={(v) => updateProfessional("reportingManagerId", v)} options={managerOptions} disabled={!editing} placeholder="Search manager..." />
                                 <SelectField label="Functional Manager" value={professional.functionalManagerId} onChange={(v) => updateProfessional("functionalManagerId", v)} options={managerOptions} disabled={!editing} placeholder="Search manager..." />
-                                <SelectField label="Location" value={professional.locationId} onChange={(v) => updateProfessional("locationId", v)} options={locationOptions} disabled={!editing} placeholder="Select location..." />
+                                <SelectField label="Location" value={professional.locationId} onChange={(v) => updateProfessional("locationId", v)} options={locationOptions} disabled={!editing} placeholder="Select location..." createLink={{ href: "/app/company/locations", label: "Create Location" }} />
+                                <SelectField label="Shift" value={professional.shiftId} onChange={(v) => updateProfessional("shiftId", v)} options={shiftOptions} disabled={!editing} placeholder="Select shift..." createLink={{ href: "/app/company/shifts", label: "Create Shift" }} />
                             </div>
 
                             <RadioGroup
@@ -840,7 +855,7 @@ export function EmployeeProfileScreen() {
                             />
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <SelectField label="Cost Centre" value={professional.costCentreId} onChange={(v) => updateProfessional("costCentreId", v)} options={costCentreOptions} disabled={!editing} placeholder="Select cost centre..." />
+                                <SelectField label="Cost Centre" value={professional.costCentreId} onChange={(v) => updateProfessional("costCentreId", v)} options={costCentreOptions} disabled={!editing} placeholder="Select cost centre..." createLink={{ href: "/app/company/hr/cost-centres", label: "Create Cost Centre" }} />
                                 <FormField label="Notice Period (days)" value={professional.noticePeriod} onChange={(v) => updateProfessional("noticePeriod", v)} type="number" placeholder="e.g. 90" disabled={!editing} />
                                 <FormField label="Probation End Date" value={professional.probationEndDate} onChange={() => {}} type="date" disabled mono />
                             </div>

@@ -12,8 +12,9 @@ import {
     Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useCompanyUsers } from "@/features/company-admin/api/use-company-admin-queries";
-import { useCreateUser, useUpdateUser, useUpdateUserStatus } from "@/features/company-admin/api/use-company-admin-mutations";
+import { useCompanyUsers, useRbacRoles, useCompanyLocations } from "@/features/company-admin/api/use-company-admin-queries";
+import { useDepartments } from "@/features/company-admin/api/use-hr-queries";
+import { useCreateUser, useUpdateUser, useUpdateUserStatus, useAssignRole } from "@/features/company-admin/api/use-company-admin-mutations";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { CompanyUser, PaginationMeta } from "@/lib/api/company-admin";
@@ -38,13 +39,16 @@ function FormField({ label, value, onChange, placeholder, type = "text" }: {
     );
 }
 
-function UserModal({ editingId, form, updateField, onClose, onSave, saving }: {
+function UserModal({ editingId, form, updateField, onClose, onSave, saving, dynamicRoles, departments, locations }: {
     editingId: string | null;
     form: typeof EMPTY_USER;
     updateField: (key: string, value: string) => void;
     onClose: () => void;
     onSave: () => void;
     saving: boolean;
+    dynamicRoles: Array<{ id: string; name: string }>;
+    departments: Array<{ id: string; name: string }>;
+    locations: Array<{ id: string; name: string }>;
 }) {
     const handleEscKey = useCallback((e: KeyboardEvent) => {
         if (e.key === 'Escape') onClose();
@@ -79,15 +83,45 @@ function UserModal({ editingId, form, updateField, onClose, onSave, saving }: {
                             onChange={(e) => updateField("role", e.target.value)}
                             className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
                         >
-                            <option value="admin">Admin</option>
-                            <option value="manager">Manager</option>
-                            <option value="operator">Operator</option>
-                            <option value="viewer">Viewer</option>
+                            <option value="">Select role...</option>
+                            {dynamicRoles.length > 0 ? (
+                                dynamicRoles.map((r) => (
+                                    <option key={r.id} value={r.id}>{r.name}</option>
+                                ))
+                            ) : (
+                                <option value="" disabled>Loading roles...</option>
+                            )}
                         </select>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                        <FormField label="Department" value={form.department} onChange={(v) => updateField("department", v)} placeholder="e.g. Engineering" />
-                        <FormField label="Location" value={form.location} onChange={(v) => updateField("location", v)} placeholder="e.g. HQ" />
+                        <div>
+                            <label htmlFor="user-department" className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Department</label>
+                            <select
+                                id="user-department"
+                                value={form.department}
+                                onChange={(e) => updateField("department", e.target.value)}
+                                className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                            >
+                                <option value="">Select department...</option>
+                                {departments.map((d) => (
+                                    <option key={d.id} value={d.name}>{d.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="user-location" className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Location</label>
+                            <select
+                                id="user-location"
+                                value={form.location}
+                                onChange={(e) => updateField("location", e.target.value)}
+                                className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                            >
+                                <option value="">Select location...</option>
+                                {locations.map((l) => (
+                                    <option key={l.id} value={l.name}>{l.name}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
                 </div>
                 <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
@@ -116,7 +150,6 @@ function StatusBadge({ active }: { active: boolean }) {
     );
 }
 
-const ROLE_FILTERS = ["All", "admin", "manager", "operator", "viewer"];
 const STATUS_FILTERS = ["All", "Active", "Inactive"];
 
 const EMPTY_USER = {
@@ -136,6 +169,15 @@ export function UserManagementScreen() {
     const [page, setPage] = useState(1);
     const limit = 25;
 
+    const { data: rolesData } = useRbacRoles();
+    const dynamicRoles: Array<{ id: string; name: string }> = (rolesData?.data ?? []).map((r) => ({ id: r.id, name: r.name }));
+    const roleFilterOptions = ["All", ...dynamicRoles.map((r) => r.name)];
+
+    const { data: departmentsData } = useDepartments();
+    const departmentsList: Array<{ id: string; name: string }> = (departmentsData?.data ?? []).map((d: any) => ({ id: d.id, name: d.name }));
+    const { data: locationsData } = useCompanyLocations();
+    const locationsList: Array<{ id: string; name: string }> = (locationsData?.data ?? []).map((l: any) => ({ id: l.id, name: l.name }));
+
     const { data, isLoading, isError } = useCompanyUsers({
         search: search || undefined,
         role: roleFilter === "All" ? undefined : roleFilter,
@@ -147,6 +189,7 @@ export function UserManagementScreen() {
     const createMutation = useCreateUser();
     const updateMutation = useUpdateUser();
     const statusMutation = useUpdateUserStatus();
+    const assignRoleMutation = useAssignRole();
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -194,8 +237,12 @@ export function UserManagementScreen() {
         }
         try {
             if (editingId) {
-                const { password: _pw, department: _dept, location: _loc, ...updateData } = form;
+                const { password: _pw, department: _dept, location: _loc, role: selectedRole, ...updateData } = form;
                 await updateMutation.mutateAsync({ id: editingId, data: updateData });
+                // Assign role via RBAC endpoint if a dynamic role is selected
+                if (selectedRole && dynamicRoles.some((r) => r.id === selectedRole)) {
+                    await assignRoleMutation.mutateAsync({ userId: editingId, roleId: selectedRole });
+                }
                 showSuccess("User Updated", `${form.firstName} ${form.lastName} has been updated.`);
             } else {
                 const { department: _dept, location: _loc, ...createData } = form;
@@ -267,8 +314,8 @@ export function UserManagementScreen() {
                             onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
                             className="px-3 py-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm font-semibold text-neutral-700 dark:text-neutral-300 focus:outline-none"
                         >
-                            {ROLE_FILTERS.map((f) => (
-                                <option key={f} value={f}>{f === "All" ? "All Roles" : f.charAt(0).toUpperCase() + f.slice(1)}</option>
+                            {roleFilterOptions.map((f) => (
+                                <option key={f} value={f}>{f === "All" ? "All Roles" : f}</option>
                             ))}
                         </select>
                     </div>
@@ -393,6 +440,9 @@ export function UserManagementScreen() {
                     onClose={() => setModalOpen(false)}
                     onSave={handleSave}
                     saving={saving}
+                    dynamicRoles={dynamicRoles}
+                    departments={departmentsList}
+                    locations={locationsList}
                 />
             )}
         </div>

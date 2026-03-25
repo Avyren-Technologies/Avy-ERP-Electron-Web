@@ -460,6 +460,37 @@ export interface RolePermission {
     approve: boolean;
 }
 
+// ── Permission Catalogue ──
+
+export interface PermissionModuleEntry {
+    module: string;
+    label: string;
+    actions: string[];
+}
+
+export interface PermissionCatalogue {
+    permissions: string[];
+    modules: PermissionModuleEntry[];
+}
+
+// ── Feature Toggle Catalogue ──
+
+export interface FeatureToggleCatalogueItem {
+    key: string;
+    label: string;
+    description?: string;
+    module?: string;
+    defaultEnabled?: boolean;
+}
+
+// ── Reference Roles ──
+
+export interface ReferenceRole {
+    name: string;
+    description?: string;
+    permissions: string[];
+}
+
 export interface RbacRole {
     id: string;
     name: string;
@@ -645,6 +676,34 @@ async function getMyCostBreakdown(): Promise<ApiResponse<CostBreakdown>> {
     return response.data;
 }
 
+// ── Permission Catalogue ──
+
+async function getPermissionCatalogue(): Promise<ApiResponse<PermissionCatalogue>> {
+    const response = await client.get('/rbac/permissions');
+    return response.data;
+}
+
+// ── Reference Roles ──
+
+async function getReferenceRoles(): Promise<ApiResponse<ReferenceRole[]>> {
+    const response = await client.get('/rbac/reference-roles');
+    return response.data;
+}
+
+// ── Role Assignment ──
+
+async function assignRole(userId: string, roleId: string): Promise<ApiResponse<void>> {
+    const response = await client.post('/rbac/roles/assign', { userId, roleId });
+    return response.data;
+}
+
+// ── Feature Toggle Catalogue ──
+
+async function getFeatureToggleCatalogue(): Promise<ApiResponse<FeatureToggleCatalogueItem[]>> {
+    const response = await client.get('/feature-toggles/catalogue');
+    return response.data;
+}
+
 export const companyAdminApi = {
     getProfile,
     updateProfileSection,
@@ -690,4 +749,8 @@ export const companyAdminApi = {
     getMyInvoiceDetail,
     getMyPayments,
     getMyCostBreakdown,
+    getPermissionCatalogue,
+    getReferenceRoles,
+    assignRole,
+    getFeatureToggleCatalogue,
 };

@@ -275,3 +275,17 @@ export function useDeleteRole() {
         },
     });
 }
+
+// ── Role Assignment ──
+
+export function useAssignRole() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ userId, roleId }: { userId: string; roleId: string }) =>
+            companyAdminApi.assignRole(userId, roleId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: companyAdminKeys.users() });
+            queryClient.invalidateQueries({ queryKey: companyAdminKeys.roles() });
+        },
+    });
+}

@@ -24,6 +24,7 @@ import {
 } from "@/features/company-admin/api/use-transfer-mutations";
 import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
 import { useDepartments, useDesignations } from "@/features/company-admin/api/use-hr-queries";
+import { useCompanyLocations } from "@/features/company-admin/api/use-company-admin-queries";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
@@ -92,6 +93,7 @@ export function TransferScreen() {
     const employeesQuery = useEmployees();
     const departmentsQuery = useDepartments();
     const designationsQuery = useDesignations();
+    const locationsQuery = useCompanyLocations();
 
     const createMutation = useCreateTransfer();
     const approveMutation = useApproveTransfer();
@@ -103,6 +105,7 @@ export function TransferScreen() {
     const employees: any[] = employeesQuery.data?.data ?? [];
     const departments: any[] = departmentsQuery.data?.data ?? [];
     const designations: any[] = designationsQuery.data?.data ?? [];
+    const locations: any[] = locationsQuery.data?.data ?? [];
 
     const getEmployeeName = (id: string) => {
         const e = employees.find((emp: any) => emp.id === id);
@@ -303,7 +306,10 @@ export function TransferScreen() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">To Location</label>
-                                    <input type="text" value={form.toLocationId} onChange={(e) => updateField("toLocationId", e.target.value)} placeholder="e.g. Mumbai Office" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                    <select value={form.toLocationId} onChange={(e) => updateField("toLocationId", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
+                                        <option value="">Select...</option>
+                                        {locations.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                                    </select>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Effective Date *</label>
