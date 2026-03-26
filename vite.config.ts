@@ -1,7 +1,20 @@
 import { defineConfig } from 'vite'
+import fs from 'node:fs'
 import path from 'node:path'
 import react from '@vitejs/plugin-react'
 import electron from 'vite-plugin-electron/simple'
+
+const spaFallbackPlugin = () => ({
+  name: 'spa-fallback-404',
+  apply: 'build' as const,
+  closeBundle() {
+    const distIndex = path.resolve(__dirname, 'dist/index.html')
+    const dist404 = path.resolve(__dirname, 'dist/404.html')
+    if (fs.existsSync(distIndex)) {
+      fs.copyFileSync(distIndex, dist404)
+    }
+  },
+})
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -16,6 +29,7 @@ export default defineConfig({
       },
       renderer: process.env.NODE_ENV === 'test' ? undefined : {},
     }),
+    spaFallbackPlugin(),
   ],
   resolve: {
     alias: {
