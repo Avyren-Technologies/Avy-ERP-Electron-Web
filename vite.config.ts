@@ -18,6 +18,7 @@ const spaFallbackPlugin = () => ({
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: '/',
   plugins: [
     react(),
     electron({
