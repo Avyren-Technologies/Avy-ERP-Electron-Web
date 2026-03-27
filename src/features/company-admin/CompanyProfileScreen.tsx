@@ -19,13 +19,18 @@ import {
     Contact,
     Clock,
     ArrowRight,
+    Lock,
+    Plus,
+    Minus,
+    ExternalLink,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useCompanyProfile } from "@/features/company-admin/api/use-company-admin-queries";
-import { useUpdateProfileSection } from "@/features/company-admin/api/use-company-admin-mutations";
+import { useUpdateProfileSection, useAddLocationModules, useRemoveLocationModule } from "@/features/company-admin/api/use-company-admin-mutations";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { showSuccess, showApiError } from "@/lib/toast";
+import { MODULE_CATALOGUE, FY_OPTIONS, MONTHS } from "@/features/super-admin/tenant-onboarding/constants";
 
 // ── Primitives ──
 
@@ -200,9 +205,22 @@ function StatCard({ label, count, icon: Icon, to }: {
 export function CompanyProfileScreen() {
     const { data, isLoading, isError } = useCompanyProfile();
     const updateMutation = useUpdateProfileSection();
+    const addModulesMutation = useAddLocationModules();
+    const removeModuleMutation = useRemoveLocationModule();
+    const navigate = useNavigate();
 
     const [editSection, setEditSection] = useState<string | null>(null);
     const [editForm, setEditForm] = useState<Record<string, any>>({});
+    const [confirmAction, setConfirmAction] = useState<{
+        type: 'add' | 'remove';
+        locationId: string;
+        locationName: string;
+        moduleId: string;
+        moduleName: string;
+        modulePrice: number;
+        autoDeps: string[];
+    } | null>(null);
+    const [moduleError, setModuleError] = useState<string | null>(null);
 
     const profile = data?.data as any;
 
@@ -409,7 +427,16 @@ export function CompanyProfileScreen() {
             {profile.fiscalConfig && (
                 <SectionCard title="Fiscal Configuration" icon={Calendar}>
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-4">
-                        <DetailField label="FY Type" value={profile.fiscalConfig.fyType} />
+                        <DetailField label="Financial Year" value={(() => {
+                            const fc = profile.fiscalConfig;
+                            const fyOpt = FY_OPTIONS.find((o) => o.key === fc.fyType);
+                            if (fc.fyType === 'custom' && fc.fyCustomStartMonth && fc.fyCustomEndMonth) {
+                                const startMonth = MONTHS.find((m) => m.key === fc.fyCustomStartMonth || m.label === fc.fyCustomStartMonth);
+                                const endMonth = MONTHS.find((m) => m.key === fc.fyCustomEndMonth || m.label === fc.fyCustomEndMonth);
+                                return `${startMonth?.label ?? fc.fyCustomStartMonth} – ${endMonth?.label ?? fc.fyCustomEndMonth}`;
+                            }
+                            return fyOpt?.label ?? fc.fyType;
+                        })()} />
                         <DetailField label="Timezone" value={profile.fiscalConfig.timezone} />
                         <DetailField label="Payroll Frequency" value={profile.fiscalConfig.payrollFreq} />
                         <DetailField label="Cutoff Day" value={profile.fiscalConfig.cutoffDay?.toString()} />
@@ -479,14 +506,106 @@ export function CompanyProfileScreen() {
                             <DetailField label="Subscription Status" value={sub?.status ?? "—"} />
                             <DetailField label="Trial Ends" value={sub?.trialEndsAt ? new Date(sub.trialEndsAt).toLocaleDateString() : "—"} />
                         </div>
-                        {sub?.modules && (
-                            <div className="mt-4">
-                                <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">Active Modules</p>
-                                <div className="flex flex-wrap gap-2">
-                                    {Object.entries(sub.modules).filter(([, v]) => v).map(([mod]) => (
-                                        <span key={mod} className="px-2.5 py-1 text-xs font-bold rounded-lg bg-success-50 dark:bg-success-900/30 text-success-700 dark:text-success-300 capitalize">{mod}</span>
-                                    ))}
-                                </div>
+                        {/* Interactive Module Management per Location */}
+                        {profile.locations && profile.locations.length > 0 && (
+                            <div className="mt-5 space-y-6">
+                                {profile.locations.map((loc: any) => {
+                                    const locModuleIds: string[] = (loc.moduleIds as string[] | null) ?? [];
+                                    const isOneTimeBilling = loc.billingType !== 'monthly' && loc.billingType !== 'annual' && (loc.oneTimeLicenseFee > 0 || (!loc.billingType && profile.tenant?.subscriptions?.[0]?.billingType !== 'monthly' && profile.tenant?.subscriptions?.[0]?.billingType !== 'annual'));
+                                    return (
+                                        <div key={loc.id}>
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <span className="px-2.5 py-1 text-[10px] font-bold rounded-md bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 uppercase tracking-wider">{loc.name}</span>
+                                                {loc.isHQ && <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-warning-100 dark:bg-warning-900/30 text-warning-700 dark:text-warning-300">HQ</span>}
+                                            </div>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                {MODULE_CATALOGUE.map((mod) => {
+                                                    const isActive = locModuleIds.includes(mod.id);
+                                                    const isMasters = mod.id === 'masters';
+                                                    const depNames = mod.dependencies.map((depId) => MODULE_CATALOGUE.find((m) => m.id === depId)?.name ?? depId);
+                                                    // Find auto-dependencies that would be added
+                                                    const missingDeps = mod.dependencies.filter((depId) => !locModuleIds.includes(depId));
+                                                    const autoDeps = missingDeps.map((depId) => MODULE_CATALOGUE.find((m) => m.id === depId)?.name ?? depId);
+
+                                                    return (
+                                                        <div
+                                                            key={mod.id}
+                                                            className={cn(
+                                                                "rounded-xl p-3 transition-all",
+                                                                isMasters
+                                                                    ? "border-2 border-primary-200 dark:border-primary-700 bg-primary-50/30 dark:bg-primary-900/20"
+                                                                    : isActive
+                                                                        ? "border-2 border-success-300 dark:border-success-700 bg-success-50/50 dark:bg-success-900/20"
+                                                                        : "border border-dashed border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/50"
+                                                            )}
+                                                        >
+                                                            <div className="flex items-start justify-between gap-2">
+                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                    <span className="text-base flex-shrink-0">{mod.icon}</span>
+                                                                    <div className="min-w-0">
+                                                                        <p className="text-xs font-bold text-primary-950 dark:text-white truncate">{mod.name}</p>
+                                                                        <p className="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500">
+                                                                            {"\u20B9"}{mod.price.toLocaleString('en-IN')}/mo
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                                {isMasters ? (
+                                                                    <span className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400 flex-shrink-0">
+                                                                        <Lock size={9} />
+                                                                        Required
+                                                                    </span>
+                                                                ) : isOneTimeBilling ? (
+                                                                    <button
+                                                                        onClick={() => navigate('/app/help', { state: { prefill: { subject: `${isActive ? 'Remove' : 'Add'} module: ${mod.name}`, message: `I would like to ${isActive ? 'remove' : 'add'} the "${mod.name}" module for location "${loc.name}".`, category: 'billing' } } })}
+                                                                        className={cn(
+                                                                            "flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-full flex-shrink-0 transition-colors",
+                                                                            isActive
+                                                                                ? "bg-warning-50 dark:bg-warning-900/30 text-warning-700 dark:text-warning-400 hover:bg-warning-100"
+                                                                                : "bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200"
+                                                                        )}
+                                                                    >
+                                                                        <ExternalLink size={10} />
+                                                                        {isActive ? 'Request Remove' : 'Request Add'}
+                                                                    </button>
+                                                                ) : (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setModuleError(null);
+                                                                            setConfirmAction({
+                                                                                type: isActive ? 'remove' : 'add',
+                                                                                locationId: loc.id,
+                                                                                locationName: loc.name,
+                                                                                moduleId: mod.id,
+                                                                                moduleName: mod.name,
+                                                                                modulePrice: mod.price,
+                                                                                autoDeps: isActive ? [] : autoDeps,
+                                                                            });
+                                                                        }}
+                                                                        disabled={addModulesMutation.isPending || removeModuleMutation.isPending}
+                                                                        className={cn(
+                                                                            "flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-full flex-shrink-0 transition-colors disabled:opacity-50",
+                                                                            isActive
+                                                                                ? "bg-danger-50 dark:bg-danger-900/30 text-danger-700 dark:text-danger-400 hover:bg-danger-100"
+                                                                                : "bg-success-50 dark:bg-success-900/30 text-success-700 dark:text-success-400 hover:bg-success-100"
+                                                                        )}
+                                                                    >
+                                                                        {isActive ? <Minus size={10} /> : <Plus size={10} />}
+                                                                        {isActive ? 'Remove' : 'Add'}
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                            {depNames.length > 0 && (
+                                                                <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-1.5 pl-7">
+                                                                    Requires: {depNames.join(', ')}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
                     </SectionCard>
@@ -564,6 +683,121 @@ export function CompanyProfileScreen() {
                 </div>
                 <FormField label="Country" value={editForm.corporate?.country ?? ""} onChange={(v) => setEditForm((prev) => ({ ...prev, corporate: { ...prev.corporate, country: v } }))} />
             </EditModal>
+
+            {/* Module Add/Remove Confirmation Modal */}
+            {confirmAction && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" role="dialog" aria-modal="true">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in-95 duration-200">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
+                            <h2 className="text-lg font-bold text-primary-950 dark:text-white">
+                                {confirmAction.type === 'add' ? 'Add Module' : 'Remove Module'}
+                            </h2>
+                            <button onClick={() => { setConfirmAction(null); setModuleError(null); }} aria-label="Close" className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div className="flex items-center gap-3">
+                                <span className="text-2xl">{MODULE_CATALOGUE.find((m) => m.id === confirmAction.moduleId)?.icon ?? '📦'}</span>
+                                <div>
+                                    <p className="text-sm font-bold text-primary-950 dark:text-white">{confirmAction.moduleName}</p>
+                                    <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                                        for {confirmAction.locationName}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {confirmAction.type === 'add' && (
+                                <>
+                                    <div className="bg-info-50 dark:bg-info-900/20 rounded-xl px-4 py-3 border border-info-100 dark:border-info-800/50">
+                                        <p className="text-xs font-semibold text-info-700 dark:text-info-400">
+                                            This will add {"\u20B9"}{confirmAction.modulePrice.toLocaleString('en-IN')}/mo to your billing.
+                                        </p>
+                                    </div>
+                                    {confirmAction.autoDeps.length > 0 && (
+                                        <div className="bg-warning-50 dark:bg-warning-900/20 rounded-xl px-4 py-3 border border-warning-100 dark:border-warning-800/50">
+                                            <p className="text-xs font-semibold text-warning-700 dark:text-warning-400">
+                                                Auto-adding dependencies: {confirmAction.autoDeps.join(', ')}
+                                            </p>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+
+                            {confirmAction.type === 'remove' && (
+                                <div className="bg-danger-50 dark:bg-danger-900/20 rounded-xl px-4 py-3 border border-danger-100 dark:border-danger-800/50">
+                                    <p className="text-xs font-semibold text-danger-700 dark:text-danger-400">
+                                        This module will be deactivated for this location. Any associated data will be retained.
+                                    </p>
+                                </div>
+                            )}
+
+                            {moduleError && (
+                                <div className="bg-danger-50 dark:bg-danger-900/20 rounded-xl px-4 py-3 border border-danger-200 dark:border-danger-800">
+                                    <div className="flex items-start gap-2">
+                                        <AlertCircle size={14} className="text-danger-500 mt-0.5 flex-shrink-0" />
+                                        <p className="text-xs font-semibold text-danger-700 dark:text-danger-400">{moduleError}</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
+                            <button
+                                onClick={() => { setConfirmAction(null); setModuleError(null); }}
+                                className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    setModuleError(null);
+                                    try {
+                                        if (confirmAction.type === 'add') {
+                                            const missingDeps = MODULE_CATALOGUE.find((m) => m.id === confirmAction.moduleId)?.dependencies.filter((depId) => {
+                                                const loc = profile.locations?.find((l: any) => l.id === confirmAction.locationId);
+                                                const locMods: string[] = (loc?.moduleIds as string[] | null) ?? [];
+                                                return !locMods.includes(depId);
+                                            }) ?? [];
+                                            const allModuleIds = [confirmAction.moduleId, ...missingDeps];
+                                            await addModulesMutation.mutateAsync({ locationId: confirmAction.locationId, moduleIds: allModuleIds });
+                                            showSuccess('Module Added', `${confirmAction.moduleName} has been activated.`);
+                                        } else {
+                                            await removeModuleMutation.mutateAsync({ locationId: confirmAction.locationId, moduleId: confirmAction.moduleId });
+                                            showSuccess('Module Removed', `${confirmAction.moduleName} has been deactivated.`);
+                                        }
+                                        setConfirmAction(null);
+                                    } catch (err: any) {
+                                        if (err?.response?.status === 409) {
+                                            const dependents = err?.response?.data?.dependents ?? err?.response?.data?.message ?? 'Other modules depend on this module.';
+                                            const msg = typeof dependents === 'string'
+                                                ? dependents
+                                                : Array.isArray(dependents)
+                                                    ? `Cannot remove: required by ${dependents.join(', ')}`
+                                                    : 'Cannot remove: other modules depend on this module.';
+                                            setModuleError(msg);
+                                        } else {
+                                            showApiError(err);
+                                            setConfirmAction(null);
+                                        }
+                                    }
+                                }}
+                                disabled={addModulesMutation.isPending || removeModuleMutation.isPending}
+                                className={cn(
+                                    "flex-1 py-2.5 rounded-xl text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2",
+                                    confirmAction.type === 'add'
+                                        ? "bg-success-600 hover:bg-success-700"
+                                        : "bg-danger-600 hover:bg-danger-700"
+                                )}
+                            >
+                                {(addModulesMutation.isPending || removeModuleMutation.isPending) && <Loader2 size={14} className="animate-spin" />}
+                                {(addModulesMutation.isPending || removeModuleMutation.isPending)
+                                    ? 'Processing...'
+                                    : confirmAction.type === 'add' ? 'Confirm Add' : 'Confirm Remove'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
