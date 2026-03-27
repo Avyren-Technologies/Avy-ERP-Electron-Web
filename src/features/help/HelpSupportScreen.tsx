@@ -37,6 +37,7 @@ import {
     useCreateSupportTicket,
 } from "@/features/company-admin/api";
 import { showSuccess, showApiError } from "@/lib/toast";
+import { useTicketSocket } from "@/hooks/useTicketSocket";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -794,6 +795,8 @@ function HelpCenterTab() {
 
 export function HelpSupportScreen() {
     const [activeTab, setActiveTab] = useState<"tickets" | "help">("tickets");
+
+    useTicketSocket(undefined, undefined, false);
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 max-w-5xl">

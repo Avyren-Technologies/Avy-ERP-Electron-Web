@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     ArrowLeft, MessageSquare, Send, Zap, CheckCircle2, XCircle,
-    Building2, Clock, Tag, AlertTriangle, Loader2, User,
+    Building2, Clock, Tag, AlertTriangle, Loader2, User, Check,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePlatformSupportTicket } from '@/features/super-admin/api/use-support-queries';
@@ -12,6 +12,7 @@ import {
     useApproveModuleChange,
     useRejectModuleChange,
 } from '@/features/super-admin/api/use-support-mutations';
+import { useTicketSocket } from '@/hooks/useTicketSocket';
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -35,9 +36,9 @@ const CATEGORY_LABELS: Record<string, string> = {
 const STATUS_TRANSITIONS: Record<string, string[]> = {
     OPEN: ['IN_PROGRESS', 'WAITING_ON_CUSTOMER', 'RESOLVED', 'CLOSED'],
     IN_PROGRESS: ['WAITING_ON_CUSTOMER', 'RESOLVED', 'CLOSED'],
-    WAITING_ON_CUSTOMER: ['IN_PROGRESS', 'RESOLVED', 'CLOSED'],
-    RESOLVED: ['CLOSED', 'OPEN'],
-    CLOSED: ['OPEN'],
+    WAITING_ON_CUSTOMER: ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'],
+    RESOLVED: ['CLOSED'],
+    CLOSED: [],
 };
 
 function getStatusStyle(status: string): string {
@@ -98,6 +99,32 @@ function formatTimestamp(ts: string): string {
     }
 }
 
+function formatDateSeparator(dateStr: string): string {
+    const d = new Date(dateStr);
+    const now = new Date();
+    if (d.toDateString() === now.toDateString()) return 'Today';
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    return d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function shouldShowDateSeparator(messages: any[], index: number): boolean {
+    if (index === 0) return true;
+    const prev = new Date(messages[index - 1].createdAt).toDateString();
+    const curr = new Date(messages[index].createdAt).toDateString();
+    return prev !== curr;
+}
+
+function isSameSenderGroup(messages: any[], index: number): boolean {
+    if (index === 0) return false;
+    const prev = messages[index - 1];
+    const curr = messages[index];
+    if (prev.isSystemMessage || curr.isSystemMessage) return false;
+    if ((prev.senderRole === 'SYSTEM') || (curr.senderRole === 'SYSTEM')) return false;
+    return prev.senderRole === curr.senderRole && prev.senderUserId === curr.senderUserId;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
@@ -118,6 +145,9 @@ export function SupportTicketDetailScreen() {
     const [showRejectInput, setShowRejectInput] = useState(false);
 
     const chatEndRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLTextAreaElement>(null);
+
+    useTicketSocket(id, undefined, true);
 
     const ticket = data?.data;
     const messages: any[] = ticket?.messages ?? [];
@@ -140,7 +170,10 @@ export function SupportTicketDetailScreen() {
     const handleSendMessage = () => {
         if (!messageBody.trim() || !id) return;
         replyMutation.mutate({ id, body: messageBody.trim() }, {
-            onSuccess: () => setMessageBody(''),
+            onSuccess: () => {
+                setMessageBody('');
+                inputRef.current?.focus();
+            },
         });
     };
 
@@ -352,37 +385,55 @@ export function SupportTicketDetailScreen() {
                             )}
 
                             {messages.map((msg: any, idx: number) => {
-                                const isSystem = msg.senderType === 'SYSTEM';
-                                const isSuperAdmin = msg.senderType === 'SUPER_ADMIN' || msg.senderRole === 'super-admin';
-
-                                if (isSystem) {
-                                    return (
-                                        <div key={msg.id ?? idx} className="text-center">
-                                            <p className="text-xs text-neutral-400 dark:text-neutral-500 italic font-medium">{msg.body}</p>
-                                            <p className="text-[10px] text-neutral-300 dark:text-neutral-600 mt-0.5">{formatTimestamp(msg.createdAt)}</p>
-                                        </div>
-                                    );
-                                }
+                                const isSystem = msg.senderRole === 'SYSTEM' || msg.isSystemMessage;
+                                const isSuperAdmin = msg.senderRole === 'SUPER_ADMIN';
+                                const showDateSep = shouldShowDateSeparator(messages, idx);
+                                const sameGroup = isSameSenderGroup(messages, idx);
 
                                 return (
-                                    <div key={msg.id ?? idx} className={cn('flex', isSuperAdmin ? 'justify-end' : 'justify-start')}>
-                                        <div className={cn(
-                                            'max-w-[75%] rounded-2xl px-4 py-3 shadow-sm',
-                                            isSuperAdmin
-                                                ? 'bg-primary-600 text-white rounded-br-md'
-                                                : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 rounded-bl-md',
-                                        )}>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <User className={cn('w-3.5 h-3.5', isSuperAdmin ? 'text-primary-200' : 'text-neutral-400 dark:text-neutral-500')} />
-                                                <span className={cn('text-xs font-semibold', isSuperAdmin ? 'text-primary-200' : 'text-neutral-500 dark:text-neutral-400')}>
-                                                    {msg.senderName ?? (isSuperAdmin ? 'You' : 'Company Admin')}
+                                    <div key={msg.id ?? idx}>
+                                        {/* Date separator */}
+                                        {showDateSep && (
+                                            <div className="flex items-center justify-center py-3">
+                                                <div className="flex-1 border-t border-neutral-200 dark:border-neutral-700" />
+                                                <span className="px-3 text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
+                                                    {formatDateSeparator(msg.createdAt)}
                                                 </span>
+                                                <div className="flex-1 border-t border-neutral-200 dark:border-neutral-700" />
                                             </div>
-                                            <p className="text-sm whitespace-pre-wrap">{msg.body}</p>
-                                            <p className={cn('text-[10px] mt-1.5', isSuperAdmin ? 'text-primary-200' : 'text-neutral-400 dark:text-neutral-500')}>
-                                                {formatTimestamp(msg.createdAt)}
-                                            </p>
-                                        </div>
+                                        )}
+
+                                        {isSystem ? (
+                                            <div className="text-center">
+                                                <p className="text-xs text-neutral-400 dark:text-neutral-500 italic font-medium">{msg.body}</p>
+                                                <p className="text-[10px] text-neutral-300 dark:text-neutral-600 mt-0.5">{formatTimestamp(msg.createdAt)}</p>
+                                            </div>
+                                        ) : (
+                                            <div className={cn('flex', isSuperAdmin ? 'justify-end' : 'justify-start', sameGroup ? 'mt-1' : 'mt-3')}>
+                                                <div className={cn(
+                                                    'max-w-[75%] rounded-2xl px-4 py-3 shadow-sm',
+                                                    isSuperAdmin
+                                                        ? 'bg-primary-600 text-white rounded-br-md'
+                                                        : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 rounded-bl-md',
+                                                )}>
+                                                    {!sameGroup && (
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <User className={cn('w-3.5 h-3.5', isSuperAdmin ? 'text-primary-200' : 'text-neutral-400 dark:text-neutral-500')} />
+                                                            <span className={cn('text-xs font-semibold', isSuperAdmin ? 'text-primary-200' : 'text-neutral-500 dark:text-neutral-400')}>
+                                                                {msg.senderName ?? (isSuperAdmin ? 'You' : 'Company Admin')}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    <p className="text-sm whitespace-pre-wrap">{msg.body}</p>
+                                                    <div className={cn('flex items-center gap-1 mt-1.5', isSuperAdmin ? 'justify-end' : '')}>
+                                                        <p className={cn('text-[10px]', isSuperAdmin ? 'text-primary-200' : 'text-neutral-400 dark:text-neutral-500')}>
+                                                            {formatTimestamp(msg.createdAt)}
+                                                        </p>
+                                                        {isSuperAdmin && <Check className="w-3 h-3 text-primary-200" />}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}
@@ -395,6 +446,7 @@ export function SupportTicketDetailScreen() {
                             <div className="p-4 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50">
                                 <div className="flex items-end gap-3">
                                     <textarea
+                                        ref={inputRef}
                                         value={messageBody}
                                         onChange={(e) => setMessageBody(e.target.value)}
                                         placeholder="Type your reply..."

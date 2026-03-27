@@ -7,6 +7,7 @@ import {
     XCircle,
     Package,
     MapPin,
+    Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -16,6 +17,7 @@ import {
 } from "@/features/company-admin/api";
 import { useAuthStore } from "@/store/useAuthStore";
 import { showSuccess, showApiError } from "@/lib/toast";
+import { useTicketSocket } from "@/hooks/useTicketSocket";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -37,6 +39,7 @@ interface TicketData {
     category: string;
     status: string;
     priority: string;
+    companyId?: string;
     createdByUserId: string;
     createdByName: string;
     metadata?: {
@@ -102,6 +105,33 @@ function formatTime(dateStr: string): string {
     if (d.toDateString() === yesterday.toDateString()) return `Yesterday ${time}`;
 
     return `${d.toLocaleDateString([], { day: "numeric", month: "short" })} ${time}`;
+}
+
+function formatDateSeparator(dateStr: string): string {
+    const d = new Date(dateStr);
+    const now = new Date();
+    if (d.toDateString() === now.toDateString()) return "Today";
+
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
+
+    return d.toLocaleDateString([], { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+}
+
+function shouldShowDateSeparator(messages: SupportMessage[], index: number): boolean {
+    if (index === 0) return true;
+    const prev = new Date(messages[index - 1].createdAt).toDateString();
+    const curr = new Date(messages[index].createdAt).toDateString();
+    return prev !== curr;
+}
+
+function isSameSenderGroup(messages: SupportMessage[], index: number): boolean {
+    if (index === 0) return false;
+    const prev = messages[index - 1];
+    const curr = messages[index];
+    if (prev.isSystemMessage || curr.isSystemMessage) return false;
+    return prev.senderRole === curr.senderRole && prev.senderUserId === curr.senderUserId;
 }
 
 /* ------------------------------------------------------------------ */
@@ -184,8 +214,11 @@ export function TicketChatScreen() {
     const [message, setMessage] = useState("");
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLTextAreaElement>(null);
 
     const ticket: TicketData | null = data?.ticket ?? data ?? null;
+
+    useTicketSocket(id, ticket?.companyId);
     const messages: SupportMessage[] = ticket?.messages ?? [];
     const isClosed = ticket?.status === "CLOSED";
 
@@ -202,7 +235,10 @@ export function TicketChatScreen() {
         sendMutation.mutate(
             { id, body },
             {
-                onSuccess: () => setMessage(""),
+                onSuccess: () => {
+                    setMessage("");
+                    inputRef.current?.focus();
+                },
                 onError: (err) => showApiError(err),
             },
         );
@@ -314,39 +350,59 @@ export function TicketChatScreen() {
                     </div>
                 )}
 
-                {messages.map((msg) => {
-                    // System message
-                    if (msg.isSystemMessage) {
-                        return (
-                            <div key={msg.id} className="flex justify-center py-1">
-                                <p className="text-xs text-neutral-400 dark:text-neutral-500 italic text-center max-w-md">
-                                    {msg.body}
-                                </p>
-                            </div>
-                        );
-                    }
-
-                    const own = isOwnMessage(msg);
+                {messages.map((msg, index) => {
+                    const showDateSep = shouldShowDateSeparator(messages, index);
+                    const sameGroup = isSameSenderGroup(messages, index);
 
                     return (
-                        <div key={msg.id} className={cn("flex", own ? "justify-end" : "justify-start")}>
-                            <div className={cn("max-w-[75%]", own ? "items-end" : "items-start")}>
-                                <div
-                                    className={cn(
-                                        "px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap",
-                                        own
-                                            ? "bg-primary-600 text-white rounded-br-md"
-                                            : "bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white rounded-bl-md",
-                                    )}
-                                >
-                                    {msg.body}
+                        <div key={msg.id}>
+                            {/* Date separator */}
+                            {showDateSep && (
+                                <div className="flex items-center justify-center py-3">
+                                    <div className="flex-1 border-t border-neutral-200 dark:border-neutral-700" />
+                                    <span className="px-3 text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
+                                        {formatDateSeparator(msg.createdAt)}
+                                    </span>
+                                    <div className="flex-1 border-t border-neutral-200 dark:border-neutral-700" />
                                 </div>
-                                <div className={cn("flex items-center gap-1.5 mt-1 px-1", own ? "justify-end" : "justify-start")}>
-                                    <span className="text-[10px] font-medium text-neutral-400">{msg.senderName}</span>
-                                    <span className="text-[10px] text-neutral-300 dark:text-neutral-600">{"\u00B7"}</span>
-                                    <span className="text-[10px] text-neutral-400">{formatTime(msg.createdAt)}</span>
+                            )}
+
+                            {/* System message */}
+                            {msg.isSystemMessage ? (
+                                <div className="flex justify-center py-1">
+                                    <p className="text-xs text-neutral-400 dark:text-neutral-500 italic text-center max-w-md">
+                                        {msg.body}
+                                    </p>
                                 </div>
-                            </div>
+                            ) : (() => {
+                                const own = isOwnMessage(msg);
+                                return (
+                                    <div className={cn("flex", own ? "justify-end" : "justify-start", sameGroup ? "mt-1" : "mt-3")}>
+                                        <div className={cn("max-w-[75%]", own ? "items-end" : "items-start")}>
+                                            <div
+                                                className={cn(
+                                                    "px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap",
+                                                    own
+                                                        ? "bg-primary-600 text-white rounded-br-md"
+                                                        : "bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white rounded-bl-md",
+                                                )}
+                                            >
+                                                {msg.body}
+                                            </div>
+                                            <div className={cn("flex items-center gap-1.5 mt-1 px-1", own ? "justify-end" : "justify-start")}>
+                                                {!sameGroup && (
+                                                    <>
+                                                        <span className="text-[10px] font-medium text-neutral-400">{msg.senderName}</span>
+                                                        <span className="text-[10px] text-neutral-300 dark:text-neutral-600">{"\u00B7"}</span>
+                                                    </>
+                                                )}
+                                                <span className="text-[10px] text-neutral-400">{formatTime(msg.createdAt)}</span>
+                                                {own && <Check className="w-3 h-3 text-neutral-400" />}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </div>
                     );
                 })}
@@ -363,6 +419,7 @@ export function TicketChatScreen() {
                 ) : (
                     <div className="flex items-end gap-2">
                         <textarea
+                            ref={inputRef}
                             value={message}
                             onChange={(e) => setMessage(e.target.value)}
                             onKeyDown={handleKeyDown}

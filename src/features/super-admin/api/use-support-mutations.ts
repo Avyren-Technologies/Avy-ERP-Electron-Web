@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supportApi } from '@/lib/api/support';
 import { platformSupportKeys } from './use-support-queries';
+import { companyAdminKeys } from '@/features/company-admin/api/use-company-admin-queries';
 
 export function useReplySupportTicket() {
     const qc = useQueryClient();
@@ -9,6 +10,7 @@ export function useReplySupportTicket() {
             supportApi.replyToTicket(id, { body }),
         onSuccess: (_, vars) => {
             qc.invalidateQueries({ queryKey: platformSupportKeys.ticket(vars.id) });
+            qc.invalidateQueries({ queryKey: companyAdminKeys.supportTicket(vars.id) });
         },
     });
 }
@@ -18,8 +20,12 @@ export function useUpdateTicketStatus() {
     return useMutation({
         mutationFn: ({ id, status }: { id: string; status: string }) =>
             supportApi.updateTicketStatus(id, { status }),
-        onSuccess: () => {
+        onSuccess: (_, vars) => {
             qc.invalidateQueries({ queryKey: platformSupportKeys.tickets() });
+            qc.invalidateQueries({ queryKey: platformSupportKeys.ticket(vars.id) });
+            qc.invalidateQueries({ queryKey: platformSupportKeys.stats() });
+            qc.invalidateQueries({ queryKey: companyAdminKeys.supportTickets() });
+            qc.invalidateQueries({ queryKey: companyAdminKeys.supportTicket(vars.id) });
         },
     });
 }
@@ -31,6 +37,9 @@ export function useApproveModuleChange() {
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: platformSupportKeys.tickets() });
             qc.invalidateQueries({ queryKey: platformSupportKeys.stats() });
+            qc.invalidateQueries({ queryKey: companyAdminKeys.supportTickets() });
+            qc.invalidateQueries({ queryKey: companyAdminKeys.locations() });
+            qc.invalidateQueries({ queryKey: companyAdminKeys.profile() });
         },
     });
 }
@@ -43,6 +52,7 @@ export function useRejectModuleChange() {
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: platformSupportKeys.tickets() });
             qc.invalidateQueries({ queryKey: platformSupportKeys.stats() });
+            qc.invalidateQueries({ queryKey: companyAdminKeys.supportTickets() });
         },
     });
 }
