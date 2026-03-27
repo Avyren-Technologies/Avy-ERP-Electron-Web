@@ -26,6 +26,8 @@ export const companyAdminKeys = {
     permissionCatalogue: () => [...companyAdminKeys.all, 'permission-catalogue'] as const,
     referenceRoles: () => [...companyAdminKeys.all, 'reference-roles'] as const,
     featureToggleCatalogue: () => [...companyAdminKeys.all, 'feature-toggle-catalogue'] as const,
+    supportTickets: (params?: Record<string, unknown>) => [...companyAdminKeys.all, 'support-tickets', params] as const,
+    supportTicket: (id: string) => [...companyAdminKeys.all, 'support-ticket', id] as const,
 };
 
 export function useCompanyProfile() {
@@ -215,5 +217,23 @@ export function useFeatureToggleCatalogue() {
         queryKey: companyAdminKeys.featureToggleCatalogue(),
         queryFn: () => companyAdminApi.getFeatureToggleCatalogue(),
         staleTime: 5 * 60 * 1000,
+    });
+}
+
+// ── Support Tickets ──
+
+export function useSupportTickets(params?: { status?: string; category?: string; search?: string; page?: number }) {
+    return useQuery({
+        queryKey: companyAdminKeys.supportTickets(params as Record<string, unknown>),
+        queryFn: () => companyAdminApi.listSupportTickets(params),
+    });
+}
+
+export function useSupportTicket(id: string) {
+    return useQuery({
+        queryKey: companyAdminKeys.supportTicket(id),
+        queryFn: () => companyAdminApi.getSupportTicket(id),
+        enabled: !!id,
+        refetchInterval: 10000,
     });
 }

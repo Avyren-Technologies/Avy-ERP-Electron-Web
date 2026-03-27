@@ -461,3 +461,17 @@ export {
     useCreateDelegate,
     useRevokeDelegate,
 } from './use-transfer-mutations';
+
+// Support & Module CRUD
+export {
+    useSupportTickets,
+    useSupportTicket,
+} from './use-company-admin-queries';
+
+export {
+    useCreateSupportTicket,
+    useSendSupportMessage,
+    useCloseSupportTicket,
+    useAddLocationModules,
+    useRemoveLocationModule,
+} from './use-company-admin-mutations';

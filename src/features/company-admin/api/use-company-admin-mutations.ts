@@ -289,3 +289,65 @@ export function useAssignRole() {
         },
     });
 }
+
+// ── Support Tickets ──
+
+export function useCreateSupportTicket() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: { subject: string; category?: string; priority?: string; message: string; metadata?: Record<string, unknown> }) =>
+            companyAdminApi.createSupportTicket(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: companyAdminKeys.supportTickets() });
+        },
+    });
+}
+
+export function useSendSupportMessage() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, body }: { id: string; body: string }) =>
+            companyAdminApi.sendSupportMessage(id, { body }),
+        onSuccess: (_, vars) => {
+            queryClient.invalidateQueries({ queryKey: companyAdminKeys.supportTicket(vars.id) });
+        },
+    });
+}
+
+export function useCloseSupportTicket() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => companyAdminApi.closeSupportTicket(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: companyAdminKeys.supportTickets() });
+        },
+    });
+}
+
+// ── Module CRUD ──
+
+export function useAddLocationModules() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ locationId, moduleIds }: { locationId: string; moduleIds: string[] }) =>
+            companyAdminApi.addLocationModules(locationId, { moduleIds }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: companyAdminKeys.locations() });
+            queryClient.invalidateQueries({ queryKey: companyAdminKeys.profile() });
+            queryClient.invalidateQueries({ queryKey: companyAdminKeys.moduleCatalogue() });
+        },
+    });
+}
+
+export function useRemoveLocationModule() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ locationId, moduleId }: { locationId: string; moduleId: string }) =>
+            companyAdminApi.removeLocationModule(locationId, moduleId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: companyAdminKeys.locations() });
+            queryClient.invalidateQueries({ queryKey: companyAdminKeys.profile() });
+            queryClient.invalidateQueries({ queryKey: companyAdminKeys.moduleCatalogue() });
+        },
+    });
+}

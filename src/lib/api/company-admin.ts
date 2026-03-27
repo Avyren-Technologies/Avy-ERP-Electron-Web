@@ -753,4 +753,22 @@ export const companyAdminApi = {
     getReferenceRoles,
     assignRole,
     getFeatureToggleCatalogue,
+
+    // ── Support Tickets ──
+    createSupportTicket: (data: { subject: string; category?: string; priority?: string; message: string; metadata?: Record<string, unknown> }) =>
+        client.post('/company/support/tickets', data).then(r => r.data),
+    listSupportTickets: (params?: { status?: string; category?: string; search?: string; page?: number; limit?: number }) =>
+        client.get('/company/support/tickets', { params }).then(r => r.data),
+    getSupportTicket: (id: string) =>
+        client.get(`/company/support/tickets/${id}`).then(r => r.data),
+    sendSupportMessage: (id: string, data: { body: string }) =>
+        client.post(`/company/support/tickets/${id}/messages`, data).then(r => r.data),
+    closeSupportTicket: (id: string) =>
+        client.patch(`/company/support/tickets/${id}/close`).then(r => r.data),
+
+    // ── Module CRUD ──
+    addLocationModules: (locationId: string, data: { moduleIds: string[] }) =>
+        client.post(`/company/locations/${locationId}/modules`, data).then(r => r.data),
+    removeLocationModule: (locationId: string, moduleId: string) =>
+        client.delete(`/company/locations/${locationId}/modules/${moduleId}`).then(r => r.data),
 };
