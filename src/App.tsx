@@ -96,6 +96,11 @@ import { ITDeclarationScreen } from "./features/company-admin/hr/ITDeclarationSc
 
 // Help & Support
 import { HelpSupportScreen } from "./features/help/HelpSupportScreen";
+import { TicketChatScreen } from "./features/support/TicketChatScreen";
+
+// Super-admin Support
+import { SupportDashboardScreen } from "./features/super-admin/support/SupportDashboardScreen";
+import { SupportTicketDetailScreen } from "./features/super-admin/support/SupportTicketDetailScreen";
 
 // HR Self-Service Screens
 import { MyProfileScreen } from "./features/company-admin/hr/MyProfileScreen";
@@ -237,6 +242,8 @@ function App() {
         <Route path="billing/payments" element={<RequireRole roles={['super-admin']}><PaymentHistoryScreen /></RequireRole>} />
         <Route path="billing/subscriptions/:companyId" element={<RequireRole roles={['super-admin']}><SubscriptionDetailScreen /></RequireRole>} />
         <Route path="reports/audit" element={<RequireRole roles={['super-admin', 'company-admin']}><AuditLogScreen /></RequireRole>} />
+        <Route path="support" element={<RequireRole roles={['super-admin']}><SupportDashboardScreen /></RequireRole>} />
+        <Route path="support/ticket/:id" element={<RequireRole roles={['super-admin']}><SupportTicketDetailScreen /></RequireRole>} />
         {/* Company-admin-only routes */}
         <Route path="company/profile" element={<RequirePermission permission="company:read"><CompanyProfileScreen /></RequirePermission>} />
         <Route path="company/locations" element={<RequirePermission permission="company:read"><LocationManagementScreen /></RequirePermission>} />
@@ -340,6 +347,7 @@ function App() {
         <Route path="modules" element={<RequireRole roles={['super-admin', 'company-admin']}><ModuleCatalogueScreen /></RequireRole>} />
         <Route path="monitor" element={<RequireRole roles={['super-admin', 'company-admin']}><PlatformMonitorScreen /></RequireRole>} />
         {/* All authenticated users */}
+        <Route path="help/ticket/:id" element={<TicketChatScreen />} />
         <Route path="help" element={<HelpSupportScreen />} />
         <Route path="notifications" element={<Placeholder name="Notifications" />} />
         <Route path="settings" element={<Placeholder name="Settings" />} />
