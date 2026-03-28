@@ -18,7 +18,7 @@ function formatCurrency(amount: number): string {
 }
 
 function formatDate(dateStr?: string): string {
-    if (!dateStr) return "\u2014";
+    if (!dateStr) return "—";
     return new Date(dateStr).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
@@ -41,7 +41,7 @@ function getMethodIcon(method?: string) {
 }
 
 function getMethodLabel(method?: string): string {
-    if (!method) return "\u2014";
+    if (!method) return "—";
     return method.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
@@ -60,7 +60,7 @@ function PaymentStatusBadge({ status }: { status?: string }) {
     const label = s.charAt(0).toUpperCase() + s.slice(1);
     return (
         <span className={cn("inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border", c.bg, c.text)}>
-            {label || "\u2014"}
+            {label || "—"}
         </span>
     );
 }
@@ -119,7 +119,7 @@ export function MyPaymentsScreen() {
                                     return (
                                         <tr key={pmt.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
                                             <td className="py-4 px-6 text-neutral-600 dark:text-neutral-300 font-medium">{formatDate(pmt.paidAt ?? pmt.createdAt)}</td>
-                                            <td className="py-4 px-6 font-bold text-primary-950 dark:text-white">{pmt.invoice?.invoiceNumber ?? pmt.invoiceId ?? "\u2014"}</td>
+                                            <td className="py-4 px-6 font-bold text-primary-950 dark:text-white">{pmt.invoice?.invoiceNumber ?? pmt.invoiceId ?? "—"}</td>
                                             <td className="py-4 px-6 font-bold text-primary-950 dark:text-white">{formatCurrency(pmt.amount)}</td>
                                             <td className="py-4 px-6">
                                                 <div className="flex items-center gap-2">
@@ -130,7 +130,7 @@ export function MyPaymentsScreen() {
                                                 </div>
                                             </td>
                                             <td className="py-4 px-6 text-neutral-500 dark:text-neutral-400 font-mono text-xs">
-                                                {pmt.reference ?? "\u2014"}
+                                                {pmt.reference ?? "—"}
                                             </td>
                                             <td className="py-4 px-6">
                                                 <PaymentStatusBadge status={pmt.status} />

@@ -486,7 +486,7 @@ export function LeaveTypeScreen() {
                                                 <span className="font-bold text-primary-950 dark:text-white">{lt.name}</span>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{lt.code || "\u2014"}</td>
+                                        <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{lt.code || "—"}</td>
                                         <td className="py-4 px-6"><CategoryBadge category={lt.category} /></td>
                                         <td className="py-4 px-6 text-center font-semibold text-primary-950 dark:text-white">{lt.annualEntitlement ?? 0}</td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs capitalize">{lt.accrualFrequency || "monthly"}</td>

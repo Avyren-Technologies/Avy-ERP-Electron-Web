@@ -32,7 +32,7 @@ import { showSuccess, showApiError } from "@/lib/toast";
 /* ── Helpers ── */
 
 const formatDate = (d: string | null | undefined) => {
-    if (!d) return "\u2014";
+    if (!d) return "—";
     return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 };
 
@@ -235,10 +235,10 @@ export function TransferScreen() {
                                                     <span className="font-bold text-primary-950 dark:text-white">{r.employeeName || getEmployeeName(r.employeeId)}</span>
                                                 </div>
                                             </td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{r.fromDepartment || "\u2014"}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{r.fromDepartment || "—"}</td>
                                             <td className="py-4 px-6"><ArrowRight size={14} className="text-neutral-300" /></td>
-                                            <td className="py-4 px-6 font-semibold text-primary-700 dark:text-primary-400 text-xs">{r.toDepartment || "\u2014"}</td>
-                                            <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{r.toLocation || "\u2014"}</td>
+                                            <td className="py-4 px-6 font-semibold text-primary-700 dark:text-primary-400 text-xs">{r.toDepartment || "—"}</td>
+                                            <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{r.toLocation || "—"}</td>
                                             <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(r.effectiveDate)}</td>
                                             <td className="py-4 px-6 text-center"><TypeBadge type={r.transferType ?? "Lateral"} /></td>
                                             <td className="py-4 px-6 text-center"><TransferStatusBadge status={r.status ?? "Requested"} /></td>
@@ -371,10 +371,10 @@ export function TransferScreen() {
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div><span className="text-xs text-neutral-400 block mb-0.5">Employee</span><p className="font-bold text-primary-950 dark:text-white">{detailTarget.employeeName || getEmployeeName(detailTarget.employeeId)}</p></div>
                                 <div><span className="text-xs text-neutral-400 block mb-0.5">Transfer Type</span><p className="font-bold text-primary-950 dark:text-white">{detailTarget.transferType || "Lateral"}</p></div>
-                                <div><span className="text-xs text-neutral-400 block mb-0.5">From Dept</span><p className="font-semibold text-neutral-600 dark:text-neutral-400">{detailTarget.fromDepartment || "\u2014"}</p></div>
-                                <div><span className="text-xs text-neutral-400 block mb-0.5">To Dept</span><p className="font-semibold text-primary-700 dark:text-primary-400">{detailTarget.toDepartment || "\u2014"}</p></div>
-                                <div><span className="text-xs text-neutral-400 block mb-0.5">From Location</span><p className="font-semibold text-neutral-600 dark:text-neutral-400">{detailTarget.fromLocation || "\u2014"}</p></div>
-                                <div><span className="text-xs text-neutral-400 block mb-0.5">To Location</span><p className="font-semibold text-primary-700 dark:text-primary-400">{detailTarget.toLocation || "\u2014"}</p></div>
+                                <div><span className="text-xs text-neutral-400 block mb-0.5">From Dept</span><p className="font-semibold text-neutral-600 dark:text-neutral-400">{detailTarget.fromDepartment || "—"}</p></div>
+                                <div><span className="text-xs text-neutral-400 block mb-0.5">To Dept</span><p className="font-semibold text-primary-700 dark:text-primary-400">{detailTarget.toDepartment || "—"}</p></div>
+                                <div><span className="text-xs text-neutral-400 block mb-0.5">From Location</span><p className="font-semibold text-neutral-600 dark:text-neutral-400">{detailTarget.fromLocation || "—"}</p></div>
+                                <div><span className="text-xs text-neutral-400 block mb-0.5">To Location</span><p className="font-semibold text-primary-700 dark:text-primary-400">{detailTarget.toLocation || "—"}</p></div>
                                 <div><span className="text-xs text-neutral-400 block mb-0.5">Effective Date</span><p className="font-semibold text-primary-950 dark:text-white">{formatDate(detailTarget.effectiveDate)}</p></div>
                             </div>
                             {detailTarget.reason && <div><span className="text-xs text-neutral-400 block mb-0.5">Reason</span><p className="text-sm text-neutral-600 dark:text-neutral-400 italic">"{detailTarget.reason}"</p></div>}

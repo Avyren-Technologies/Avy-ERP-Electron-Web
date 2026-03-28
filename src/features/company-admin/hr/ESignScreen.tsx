@@ -180,9 +180,9 @@ export function ESignScreen() {
                                                 <span className="font-bold text-primary-950 dark:text-white">{r.letterType ?? "HR Letter"}</span>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6 text-neutral-700 dark:text-neutral-300 font-medium">{r.employeeName ?? "\u2014"}</td>
+                                        <td className="py-4 px-6 text-neutral-700 dark:text-neutral-300 font-medium">{r.employeeName ?? "—"}</td>
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                            {r.dispatchedAt ? new Date(r.dispatchedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "\u2014"}
+                                            {r.dispatchedAt ? new Date(r.dispatchedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
                                         </td>
                                         <td className="py-4 px-6 text-center">
                                             <StatusBadge status={r.status ?? "PENDING"} />

@@ -151,7 +151,7 @@ export function PayslipScreen() {
                                             </div>
                                         </td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">
-                                            {p.month && p.year ? `${MONTHS[(p.month ?? 1) - 1]} ${p.year}` : "\u2014"}
+                                            {p.month && p.year ? `${MONTHS[(p.month ?? 1) - 1]} ${p.year}` : "—"}
                                         </td>
                                         <td className="py-4 px-6 text-right font-mono font-semibold text-primary-950 dark:text-white">{formatCurrency(p.grossPay ?? p.gross ?? 0)}</td>
                                         <td className="py-4 px-6 text-right font-mono text-neutral-600 dark:text-neutral-400">{formatCurrency(p.totalDeductions ?? p.deductions ?? 0)}</td>
@@ -223,7 +223,7 @@ export function PayslipScreen() {
                                         </div>
                                         <div className="text-right">
                                             <p className="text-xs text-neutral-500 dark:text-neutral-400">Pay Period</p>
-                                            <p className="font-bold text-primary-950 dark:text-white">{detail.month && detail.year ? `${MONTHS[(detail.month ?? 1) - 1]} ${detail.year}` : "\u2014"}</p>
+                                            <p className="font-bold text-primary-950 dark:text-white">{detail.month && detail.year ? `${MONTHS[(detail.month ?? 1) - 1]} ${detail.year}` : "—"}</p>
                                         </div>
                                     </div>
 

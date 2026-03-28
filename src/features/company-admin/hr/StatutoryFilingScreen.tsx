@@ -29,7 +29,7 @@ import { showSuccess, showApiError } from "@/lib/toast";
 
 const formatCurrency = (v: number) => `\u20B9${(v ?? 0).toLocaleString("en-IN")}`;
 const formatDate = (d: string | null | undefined) => {
-    if (!d) return "\u2014";
+    if (!d) return "—";
     return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 };
 
@@ -255,7 +255,7 @@ export function StatutoryFilingScreen() {
                                     return (
                                         <tr key={f.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
                                             <td className="py-4 px-6 text-center"><FilingTypeBadge type={f.type ?? "PF"} /></td>
-                                            <td className="py-4 px-6 font-semibold text-primary-950 dark:text-white">{f.period || "\u2014"}</td>
+                                            <td className="py-4 px-6 font-semibold text-primary-950 dark:text-white">{f.period || "—"}</td>
                                             <td className="py-4 px-6 text-center"><FilingStatusBadge status={f.status ?? "pending"} /></td>
                                             <td className="py-4 px-6 text-right font-mono font-semibold text-primary-950 dark:text-white">{formatCurrency(f.amount ?? 0)}</td>
                                             <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(f.dueDate)}</td>

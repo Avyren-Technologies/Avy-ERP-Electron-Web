@@ -253,11 +253,11 @@ export function ProbationReviewScreen() {
                                                     <span className="font-bold text-primary-950 dark:text-white">{e.name}</span>
                                                 </div>
                                             </td>
-                                            <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{e.employeeId ?? "\u2014"}</td>
-                                            <td className="py-4 px-6 text-neutral-700 dark:text-neutral-300 text-xs">{e.department ?? "\u2014"}</td>
-                                            <td className="py-4 px-6 text-neutral-700 dark:text-neutral-300 text-xs">{e.designation ?? "\u2014"}</td>
+                                            <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{e.employeeId ?? "—"}</td>
+                                            <td className="py-4 px-6 text-neutral-700 dark:text-neutral-300 text-xs">{e.department ?? "—"}</td>
+                                            <td className="py-4 px-6 text-neutral-700 dark:text-neutral-300 text-xs">{e.designation ?? "—"}</td>
                                             <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                                {(e.probationEndDate ?? e.probationEnd) ? new Date(e.probationEndDate ?? e.probationEnd).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "\u2014"}
+                                                {(e.probationEndDate ?? e.probationEnd) ? new Date(e.probationEndDate ?? e.probationEnd).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
                                             </td>
                                             <td className="py-4 px-6 text-center">
                                                 <UrgencyBadge daysRemaining={days} />

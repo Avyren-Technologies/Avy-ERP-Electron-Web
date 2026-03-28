@@ -153,7 +153,7 @@ export function Form16Screen() {
                             <>
                                 <div className="flex items-center justify-between py-2 px-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg">
                                     <span className="text-xs text-neutral-500">Employees</span>
-                                    <span className="text-xs font-bold text-primary-950 dark:text-white">{form16Filings[0]?.employeeCount ?? "\u2014"}</span>
+                                    <span className="text-xs font-bold text-primary-950 dark:text-white">{form16Filings[0]?.employeeCount ?? "—"}</span>
                                 </div>
                                 <div className="flex items-center justify-between py-2 px-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg">
                                     <span className="text-xs text-neutral-500">Status</span>
@@ -221,11 +221,11 @@ export function Form16Screen() {
                             <>
                                 <div className="flex items-center justify-between py-2 px-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg">
                                     <span className="text-xs text-neutral-500">Deductees</span>
-                                    <span className="text-xs font-bold text-primary-950 dark:text-white">{form24QFilings[0]?.deducteeCount ?? "\u2014"}</span>
+                                    <span className="text-xs font-bold text-primary-950 dark:text-white">{form24QFilings[0]?.deducteeCount ?? "—"}</span>
                                 </div>
                                 <div className="flex items-center justify-between py-2 px-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg">
                                     <span className="text-xs text-neutral-500">Total TDS</span>
-                                    <span className="text-xs font-bold text-primary-950 dark:text-white">{form24QFilings[0]?.totalTds ? `\u20B9${Number(form24QFilings[0].totalTds).toLocaleString("en-IN")}` : "\u2014"}</span>
+                                    <span className="text-xs font-bold text-primary-950 dark:text-white">{form24QFilings[0]?.totalTds ? `\u20B9${Number(form24QFilings[0].totalTds).toLocaleString("en-IN")}` : "—"}</span>
                                 </div>
                             </>
                         )}
@@ -276,16 +276,16 @@ export function Form16Screen() {
                                         <td className="py-4 px-6">
                                             <TypeBadge type={f.type ?? f.formType ?? "Form 16"} />
                                         </td>
-                                        <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{f.financialYear ?? "\u2014"}</td>
-                                        <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{f.quarter ? `Q${f.quarter}` : "\u2014"}</td>
+                                        <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{f.financialYear ?? "—"}</td>
+                                        <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{f.quarter ? `Q${f.quarter}` : "—"}</td>
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                            {f.createdAt ? new Date(f.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "\u2014"}
+                                            {f.createdAt ? new Date(f.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
                                         </td>
                                         <td className="py-4 px-6 text-center">
                                             <StatusBadge status={f.status ?? "Pending"} />
                                         </td>
                                         <td className="py-4 px-6 text-right font-mono text-xs text-neutral-700 dark:text-neutral-300">
-                                            {f.employeeCount ?? f.deducteeCount ?? f.recordCount ?? "\u2014"}
+                                            {f.employeeCount ?? f.deducteeCount ?? f.recordCount ?? "—"}
                                         </td>
                                     </tr>
                                 ))}

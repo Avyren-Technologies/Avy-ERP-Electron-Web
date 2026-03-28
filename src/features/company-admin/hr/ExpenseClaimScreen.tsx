@@ -46,12 +46,12 @@ const EMPTY_CLAIM = {
 };
 
 const formatDate = (d: string | null | undefined) => {
-    if (!d) return "\u2014";
+    if (!d) return "—";
     return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 };
 
 const formatCurrency = (amt: any) => {
-    if (!amt) return "\u2014";
+    if (!amt) return "—";
     return `\u20B9${Number(amt).toLocaleString("en-IN")}`;
 };
 
@@ -236,12 +236,12 @@ export function ExpenseClaimScreen() {
                                                 <span className="font-bold text-primary-950 dark:text-white">{employeeName(c.employeeId)}</span>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{c.title || "\u2014"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{c.title || "—"}</td>
                                         <td className="py-4 px-6"><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-accent-50 text-accent-700 border border-accent-200 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50">{c.category}</span></td>
                                         <td className="py-4 px-6 text-right font-bold text-primary-950 dark:text-white">{formatCurrency(c.amount)}</td>
                                         <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(c.expenseDate)}</td>
                                         <td className="py-4 px-6 text-center"><ClaimStatusBadge status={c.status ?? "Draft"} /></td>
-                                        <td className="py-4 px-6 text-xs text-neutral-500 dark:text-neutral-400">{c.projectCode || "\u2014"}</td>
+                                        <td className="py-4 px-6 text-xs text-neutral-500 dark:text-neutral-400">{c.projectCode || "—"}</td>
                                         <td className="py-4 px-6 text-right">
                                             <div className="flex items-center justify-end gap-1">
                                                 <button onClick={() => setDetailTarget(c)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="View"><Eye size={15} /></button>
@@ -345,7 +345,7 @@ export function ExpenseClaimScreen() {
                                 <div><span className="text-xs text-neutral-400 block mb-0.5">Employee</span><p className="font-bold text-primary-950 dark:text-white">{employeeName(detailTarget.employeeId)}</p></div>
                                 <div><span className="text-xs text-neutral-400 block mb-0.5">Category</span><p className="font-bold text-primary-950 dark:text-white">{detailTarget.category}</p></div>
                                 <div><span className="text-xs text-neutral-400 block mb-0.5">Expense Date</span><p className="font-semibold text-primary-950 dark:text-white">{formatDate(detailTarget.expenseDate)}</p></div>
-                                <div><span className="text-xs text-neutral-400 block mb-0.5">Project</span><p className="font-semibold text-primary-950 dark:text-white">{detailTarget.projectCode || "\u2014"}</p></div>
+                                <div><span className="text-xs text-neutral-400 block mb-0.5">Project</span><p className="font-semibold text-primary-950 dark:text-white">{detailTarget.projectCode || "—"}</p></div>
                             </div>
                             {detailTarget.description && (
                                 <div><span className="text-xs text-neutral-400 block mb-0.5">Description</span><p className="text-sm text-neutral-600 dark:text-neutral-400">{detailTarget.description}</p></div>

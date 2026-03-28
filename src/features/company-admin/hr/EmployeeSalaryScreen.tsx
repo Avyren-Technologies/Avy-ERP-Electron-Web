@@ -217,7 +217,7 @@ export function EmployeeSalaryScreen() {
                                         <td className="py-4 px-6 text-right font-mono font-semibold text-primary-950 dark:text-white">₹{(s.annualCtc ?? 0).toLocaleString("en-IN")}</td>
                                         <td className="py-4 px-6 text-right font-mono text-neutral-600 dark:text-neutral-400">₹{Math.round((s.annualCtc ?? 0) / 12).toLocaleString("en-IN")}</td>
                                         <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{getStructureName(s.structureId)}</td>
-                                        <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{s.effectiveFrom || "\u2014"}</td>
+                                        <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{s.effectiveFrom || "—"}</td>
                                         <td className="py-4 px-6 text-center"><CurrentBadge isCurrent={s.isCurrent !== false} /></td>
                                         <td className="py-4 px-6 text-right">
                                             <button onClick={() => openEdit(s)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit"><Edit3 size={15} /></button>

@@ -8,6 +8,8 @@ import {
     CheckCircle,
     ArrowRightLeft,
     IndianRupee,
+    ChevronDown,
+    ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTravelAdvances } from "@/features/company-admin/api/use-payroll-queries";
@@ -15,6 +17,8 @@ import {
     useCreateTravelAdvance,
     useSettleTravelAdvance,
 } from "@/features/company-admin/api/use-payroll-mutations";
+import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
@@ -88,12 +92,26 @@ function SettledBadge({ settled }: { settled: boolean }) {
 
 /* ── Constants ── */
 
+const TRAVEL_MODES = [
+    { value: "FLIGHT", label: "Flight" },
+    { value: "TRAIN", label: "Train" },
+    { value: "BUS", label: "Bus" },
+    { value: "CAR", label: "Car" },
+    { value: "OTHER", label: "Other" },
+];
+
 const EMPTY_FORM = {
     employeeId: "",
-    employeeName: "",
     amount: "",
     tripPurpose: "",
-    estimatedDate: "",
+    tripDestination: "",
+    travelDateFrom: "",
+    travelDateTo: "",
+    travelMode: "",
+    accommodationEstimate: "",
+    transportEstimate: "",
+    mealsEstimate: "",
+    otherEstimate: "",
 };
 
 /* ── Screen ── */
@@ -102,6 +120,7 @@ export function TravelAdvanceScreen() {
     const [search, setSearch] = useState("");
     const [createModalOpen, setCreateModalOpen] = useState(false);
     const [form, setForm] = useState({ ...EMPTY_FORM });
+    const [showBreakdown, setShowBreakdown] = useState(false);
     const [settleTarget, setSettleTarget] = useState<any>(null);
     const [settleExpenseClaimId, setSettleExpenseClaimId] = useState("");
     const [settlementResult, setSettlementResult] = useState<any>(null);
@@ -109,8 +128,16 @@ export function TravelAdvanceScreen() {
     const { data, isLoading, isError } = useTravelAdvances();
     const createMutation = useCreateTravelAdvance();
     const settleMutation = useSettleTravelAdvance();
+    const { data: empData } = useEmployees();
 
+    const employees: any[] = (empData as any)?.data ?? empData ?? [];
     const advances: any[] = (data as any)?.data ?? [];
+
+    const employeeOptions = Array.isArray(employees) ? employees.map((e: any) => ({
+        value: e.id,
+        label: `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim() || e.id,
+        sublabel: e.employeeId ?? e.id,
+    })) : [];
 
     const filtered = advances.filter((a: any) => {
         if (!search) return true;
@@ -122,17 +149,35 @@ export function TravelAdvanceScreen() {
         );
     });
 
+    // Auto-calculate total from breakdown
+    const breakdownTotal =
+        (Number(form.accommodationEstimate) || 0) +
+        (Number(form.transportEstimate) || 0) +
+        (Number(form.mealsEstimate) || 0) +
+        (Number(form.otherEstimate) || 0);
+
     const handleCreate = async () => {
         try {
             await createMutation.mutateAsync({
                 employeeId: form.employeeId,
                 amount: Number(form.amount),
                 tripPurpose: form.tripPurpose,
-                estimatedDate: form.estimatedDate || undefined,
+                tripDestination: form.tripDestination || undefined,
+                travelDateFrom: form.travelDateFrom || undefined,
+                travelDateTo: form.travelDateTo || undefined,
+                travelMode: form.travelMode || undefined,
+                estimatedExpenses: showBreakdown ? {
+                    accommodation: Number(form.accommodationEstimate) || 0,
+                    transport: Number(form.transportEstimate) || 0,
+                    meals: Number(form.mealsEstimate) || 0,
+                    other: Number(form.otherEstimate) || 0,
+                    total: breakdownTotal,
+                } : undefined,
             });
             showSuccess("Advance Created", "Travel advance has been created.");
             setCreateModalOpen(false);
             setForm({ ...EMPTY_FORM });
+            setShowBreakdown(false);
         } catch (err) {
             showApiError(err);
         }
@@ -178,7 +223,7 @@ export function TravelAdvanceScreen() {
                     <p className="text-neutral-500 dark:text-neutral-400 mt-1">Manage employee travel advance requests and settlements</p>
                 </div>
                 <button
-                    onClick={() => { setForm({ ...EMPTY_FORM }); setCreateModalOpen(true); }}
+                    onClick={() => { setForm({ ...EMPTY_FORM }); setShowBreakdown(false); setCreateModalOpen(true); }}
                     className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none"
                 >
                     <Plus className="w-5 h-5" />
@@ -234,11 +279,11 @@ export function TravelAdvanceScreen() {
                                                 <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
                                                     <Plane className="w-4 h-4 text-primary-600 dark:text-primary-400" />
                                                 </div>
-                                                <span className="font-bold text-primary-950 dark:text-white">{a.employeeName ?? a.employeeId ?? "\u2014"}</span>
+                                                <span className="font-bold text-primary-950 dark:text-white">{a.employeeName ?? a.employeeId ?? "—"}</span>
                                             </div>
                                         </td>
                                         <td className="py-4 px-6 text-right font-bold text-primary-950 dark:text-white font-mono">{"\u20B9"}{Number(a.amount ?? 0).toLocaleString("en-IN")}</td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{a.tripPurpose || "\u2014"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{a.tripPurpose || "—"}</td>
                                         <td className="py-4 px-6 text-center"><StatusBadge status={a.status ?? "PENDING"} /></td>
                                         <td className="py-4 px-6 text-center"><SettledBadge settled={a.isSettled ?? a.settled ?? false} /></td>
                                         <td className="py-4 px-6 text-right">
@@ -272,7 +317,7 @@ export function TravelAdvanceScreen() {
             {/* ── Create Modal ── */}
             {createModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-lg animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-2xl animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
                             <h2 className="text-lg font-bold text-primary-950 dark:text-white">New Travel Advance</h2>
                             <button onClick={() => setCreateModalOpen(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
@@ -280,14 +325,65 @@ export function TravelAdvanceScreen() {
                             </button>
                         </div>
                         <div className="p-6 overflow-y-auto flex-1 space-y-4">
-                            <FormField label="Employee ID" value={form.employeeId} onChange={(v) => updateField("employeeId", v)} placeholder="Enter employee ID" required />
-                            <FormField label="Amount ({'\u20B9'})" value={form.amount} onChange={(v) => updateField("amount", v)} placeholder="10000" type="number" required />
+                            <SearchableSelect
+                                label="Employee"
+                                value={form.employeeId}
+                                onChange={(v) => updateField("employeeId", v)}
+                                options={employeeOptions}
+                                placeholder="Search employee..."
+                                required
+                            />
                             <FormField label="Trip Purpose" value={form.tripPurpose} onChange={(v) => updateField("tripPurpose", v)} placeholder="e.g. Client meeting in Mumbai" required />
-                            <FormField label="Estimated Travel Date" value={form.estimatedDate} onChange={(v) => updateField("estimatedDate", v)} type="date" />
+                            <FormField label="Trip Destination" value={form.tripDestination} onChange={(v) => updateField("tripDestination", v)} placeholder="e.g. Mumbai, Maharashtra" />
+                            <div className="grid grid-cols-2 gap-4">
+                                <FormField label="Travel From" value={form.travelDateFrom} onChange={(v) => updateField("travelDateFrom", v)} type="date" />
+                                <FormField label="Travel To" value={form.travelDateTo} onChange={(v) => updateField("travelDateTo", v)} type="date" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Travel Mode</label>
+                                    <select
+                                        value={form.travelMode}
+                                        onChange={(e) => updateField("travelMode", e.target.value)}
+                                        className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                                    >
+                                        <option value="">Select mode...</option>
+                                        {TRAVEL_MODES.map((m) => (
+                                            <option key={m.value} value={m.value}>{m.label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <FormField label={`Amount (\u20B9)`} value={form.amount} onChange={(v) => updateField("amount", v)} placeholder="10000" type="number" required />
+                            </div>
+
+                            {/* Estimated Expenses Breakdown */}
+                            <div className="border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden">
+                                <button
+                                    onClick={() => setShowBreakdown(!showBreakdown)}
+                                    className="w-full flex items-center justify-between px-4 py-3 bg-neutral-50 dark:bg-neutral-800 text-sm font-bold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
+                                >
+                                    <span>Estimated Expenses Breakdown (optional)</span>
+                                    {showBreakdown ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                </button>
+                                {showBreakdown && (
+                                    <div className="p-4 space-y-3">
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <FormField label="Accommodation" value={form.accommodationEstimate} onChange={(v) => updateField("accommodationEstimate", v)} placeholder="0" type="number" />
+                                            <FormField label="Transport" value={form.transportEstimate} onChange={(v) => updateField("transportEstimate", v)} placeholder="0" type="number" />
+                                            <FormField label="Meals" value={form.mealsEstimate} onChange={(v) => updateField("mealsEstimate", v)} placeholder="0" type="number" />
+                                            <FormField label="Other" value={form.otherEstimate} onChange={(v) => updateField("otherEstimate", v)} placeholder="0" type="number" />
+                                        </div>
+                                        <div className="flex justify-between items-center pt-2 border-t border-neutral-200 dark:border-neutral-700">
+                                            <span className="text-xs font-semibold text-neutral-500 uppercase">Estimated Total</span>
+                                            <span className="text-sm font-bold text-primary-700 dark:text-primary-400">{"\u20B9"}{breakdownTotal.toLocaleString("en-IN")}</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
                             <button onClick={() => setCreateModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
-                            <button onClick={handleCreate} disabled={createMutation.isPending} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                            <button onClick={handleCreate} disabled={createMutation.isPending || !form.employeeId || !form.amount || !form.tripPurpose} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                                 {createMutation.isPending && <Loader2 size={14} className="animate-spin" />}
                                 {createMutation.isPending ? "Creating..." : "Create Advance"}
                             </button>
@@ -312,6 +408,12 @@ export function TravelAdvanceScreen() {
                                 <p className="text-sm font-bold text-primary-950 dark:text-white">{settleTarget.employeeName ?? settleTarget.employeeId}</p>
                                 <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-3 mb-1">Advance Amount</p>
                                 <p className="text-lg font-bold text-primary-600 dark:text-primary-400">{"\u20B9"}{Number(settleTarget.amount ?? 0).toLocaleString("en-IN")}</p>
+                                {settleTarget.tripPurpose && (
+                                    <>
+                                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-3 mb-1">Trip Purpose</p>
+                                        <p className="text-sm text-primary-950 dark:text-white">{settleTarget.tripPurpose}</p>
+                                    </>
+                                )}
                             </div>
                             <FormField label="Expense Claim ID (optional)" value={settleExpenseClaimId} onChange={setSettleExpenseClaimId} placeholder="Link to an expense claim" />
                         </div>
@@ -336,7 +438,7 @@ export function TravelAdvanceScreen() {
                         <h2 className="text-lg font-bold text-primary-950 dark:text-white mb-4">Settlement Summary</h2>
                         <div className="space-y-3 text-left bg-neutral-50 dark:bg-neutral-800 rounded-xl p-4 mb-4">
                             <div className="flex justify-between text-sm">
-                                <span className="text-neutral-500 dark:text-neutral-400">Advance</span>
+                                <span className="text-neutral-500 dark:text-neutral-400">Original Advance</span>
                                 <span className="font-bold text-primary-950 dark:text-white">{"\u20B9"}{Number(settlementResult.advanceAmount ?? 0).toLocaleString("en-IN")}</span>
                             </div>
                             <div className="flex justify-between text-sm">

@@ -406,7 +406,7 @@ export function OnboardingScreen() {
                                                     <span className="font-bold text-primary-950 dark:text-white">{t.name}</span>
                                                 </div>
                                             </td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{t.description || "\u2014"}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{t.description || "—"}</td>
                                             <td className="py-4 px-6 text-center">
                                                 <span className="font-bold text-primary-700 dark:text-primary-400">
                                                     {Array.isArray(t.items) ? t.items.length : 0}
@@ -473,17 +473,17 @@ export function OnboardingScreen() {
                                                     <span className="font-bold text-primary-950 dark:text-white">{t.title ?? t.name}</span>
                                                 </div>
                                             </td>
-                                            <td className="py-4 px-6 text-neutral-700 dark:text-neutral-300 text-xs font-medium">{t.employeeName ?? t.employee?.name ?? "\u2014"}</td>
+                                            <td className="py-4 px-6 text-neutral-700 dark:text-neutral-300 text-xs font-medium">{t.employeeName ?? t.employee?.name ?? "—"}</td>
                                             <td className="py-4 px-6">
                                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-accent-50 text-accent-700 border-accent-200 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50">
-                                                    {t.department ?? "\u2014"}
+                                                    {t.department ?? "—"}
                                                 </span>
                                             </td>
                                             <td className="py-4 px-6 text-center">
                                                 <StatusBadge status={t.status ?? "PENDING"} />
                                             </td>
                                             <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                                {t.dueDate ? new Date(t.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "\u2014"}
+                                                {t.dueDate ? new Date(t.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
                                             </td>
                                             <td className="py-4 px-6 text-right">
                                                 {(t.status === "PENDING" || t.status === "pending") && (

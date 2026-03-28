@@ -175,7 +175,12 @@ export function ShiftManagementScreen() {
                                     <th className="py-4 px-6 font-bold">Name</th>
                                     <th className="py-4 px-6 font-bold">From Time</th>
                                     <th className="py-4 px-6 font-bold">To Time</th>
-                                    <th className="py-4 px-6 font-bold text-center">No Shuffle</th>
+                                    <th
+                                        className="py-4 px-6 font-bold text-center"
+                                        title="When enabled (Yes), automatic shift shuffling / rotation is turned off for this shift."
+                                    >
+                                        No Shuffle
+                                    </th>
                                     <th className="py-4 px-6 font-bold text-center">Downtime Slots</th>
                                     <th className="py-4 px-6 font-bold text-right">Actions</th>
                                 </tr>
@@ -199,7 +204,7 @@ export function ShiftManagementScreen() {
                                                 {shift.noShuffle ? (
                                                     <span className="text-[10px] font-bold bg-warning-50 text-warning-700 px-2 py-0.5 rounded border border-warning-100 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50">Yes</span>
                                                 ) : (
-                                                    <span className="text-neutral-300 dark:text-neutral-600">\u2014</span>
+                                                    <span className="text-[10px] font-bold bg-neutral-100 text-neutral-600 dark:bg-neutral-800/80 dark:text-neutral-400 px-2 py-0.5 rounded border border-neutral-200 dark:border-neutral-700">No</span>
                                                 )}
                                             </td>
                                             <td className="py-4 px-6 text-center">
@@ -247,7 +252,7 @@ export function ShiftManagementScreen() {
                                 <FormField label="From Time" value={form.fromTime} onChange={(v) => setForm((p) => ({ ...p, fromTime: v }))} type="time" />
                                 <FormField label="To Time" value={form.toTime} onChange={(v) => setForm((p) => ({ ...p, toTime: v }))} type="time" />
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-start gap-3">
                                 <button
                                     type="button"
                                     onClick={() => setForm((p) => ({ ...p, noShuffle: !p.noShuffle }))}
@@ -258,7 +263,12 @@ export function ShiftManagementScreen() {
                                 >
                                     <div className={cn("w-4 h-4 rounded-full bg-white absolute top-1 transition-all", form.noShuffle ? "left-5" : "left-1")} />
                                 </button>
-                                <span className="text-sm font-medium text-primary-950 dark:text-white">No Shuffle</span>
+                                <div>
+                                    <span className="text-sm font-medium text-primary-950 dark:text-white">No Shuffle</span>
+                                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 max-w-md">
+                                        When on, automatic shift rotation (shuffling) is disabled for assignments using this shift.
+                                    </p>
+                                </div>
                             </div>
 
                             {/* Downtime Slots */}

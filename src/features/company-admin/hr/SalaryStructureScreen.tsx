@@ -272,7 +272,7 @@ export function SalaryStructureScreen() {
                                                 <span className="font-bold text-primary-950 dark:text-white">{s.name}</span>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{s.code || "\u2014"}</td>
+                                        <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{s.code || "—"}</td>
                                         <td className="py-4 px-6">
                                             <div className="flex flex-wrap gap-1">
                                                 {(s.applicableGradeIds ?? []).slice(0, 3).map((g: string) => (
@@ -381,7 +381,7 @@ export function SalaryStructureScreen() {
                                         {computePreview().map((p, i) => (
                                             <div key={i} className="flex justify-between py-1.5 text-sm">
                                                 <span className="text-neutral-700 dark:text-neutral-300">{p.name}</span>
-                                                <span className="font-mono font-semibold text-primary-950 dark:text-white">{p.monthly > 0 ? `₹${p.monthly.toLocaleString("en-IN")}` : "\u2014"}</span>
+                                                <span className="font-mono font-semibold text-primary-950 dark:text-white">{p.monthly > 0 ? `₹${p.monthly.toLocaleString("en-IN")}` : "—"}</span>
                                             </div>
                                         ))}
                                         <div className="border-t border-primary-200 dark:border-primary-800/50 mt-2 pt-2 flex justify-between text-sm font-bold">

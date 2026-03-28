@@ -230,11 +230,9 @@ export function DataRetentionScreen() {
     const handleSavePolicy = async () => {
         try {
             await upsertPolicy.mutateAsync({
-                id: editingPolicy?.id,
-                category: pCategory,
+                dataCategory: pCategory,
                 retentionYears: Number(pYears),
-                action: pAction,
-                description: pDescription,
+                actionAfter: pAction,
             } as any);
             showSuccess(editingPolicy ? "Policy Updated" : "Policy Created", "Retention policy saved.");
             setPolicyModalOpen(false);
@@ -370,13 +368,13 @@ export function DataRetentionScreen() {
                                                     <span className="font-bold text-primary-950 dark:text-white">{p.category?.replace(/_/g, " ")}</span>
                                                 </div>
                                             </td>
-                                            <td className="py-4 px-6 text-center font-mono text-xs font-bold text-neutral-700 dark:text-neutral-300">{p.retentionYears ?? "\u2014"}</td>
+                                            <td className="py-4 px-6 text-center font-mono text-xs font-bold text-neutral-700 dark:text-neutral-300">{p.retentionYears ?? "—"}</td>
                                             <td className="py-4 px-6 text-center">
                                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700 uppercase">
                                                     {p.action}
                                                 </span>
                                             </td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{p.description || "\u2014"}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{p.description || "—"}</td>
                                             <td className="py-4 px-6 text-right">
                                                 <div className="flex items-center justify-end gap-1">
                                                     <button onClick={() => openEditPolicy(p)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors">
@@ -419,10 +417,10 @@ export function DataRetentionScreen() {
                                 <tbody className="text-sm">
                                     {filteredRequests.map((r: any) => (
                                         <tr key={r.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
-                                            <td className="py-4 px-6 font-bold text-primary-950 dark:text-white">{r.employeeName ?? "\u2014"}</td>
+                                            <td className="py-4 px-6 font-bold text-primary-950 dark:text-white">{r.employeeName ?? "—"}</td>
                                             <td className="py-4 px-6 text-center"><TypeBadge type={r.type ?? "ACCESS"} /></td>
                                             <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                                {r.createdAt ? new Date(r.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "\u2014"}
+                                                {r.createdAt ? new Date(r.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
                                             </td>
                                             <td className="py-4 px-6 text-center"><StatusBadge status={r.status ?? "PENDING"} /></td>
                                             <td className="py-4 px-6 text-right">

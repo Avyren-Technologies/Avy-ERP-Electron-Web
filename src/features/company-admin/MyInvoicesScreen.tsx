@@ -20,7 +20,7 @@ function formatCurrency(amount: number): string {
 }
 
 function formatDate(dateStr?: string): string {
-    if (!dateStr) return "\u2014";
+    if (!dateStr) return "—";
     return new Date(dateStr).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
@@ -95,7 +95,7 @@ function InvoiceDetailModal({ invoiceId, onClose }: { invoiceId: string; onClose
                                     <p className="text-sm font-bold text-primary-950 dark:text-white">
                                         {invoice.billingPeriodStart && invoice.billingPeriodEnd
                                             ? `${formatDate(invoice.billingPeriodStart)} - ${formatDate(invoice.billingPeriodEnd)}`
-                                            : "\u2014"}
+                                            : "—"}
                                     </p>
                                 </div>
                             </div>
@@ -119,7 +119,7 @@ function InvoiceDetailModal({ invoiceId, onClose }: { invoiceId: string; onClose
                                                     <td className="py-3 px-4 font-medium text-primary-950 dark:text-white">{item.description}</td>
                                                     <td className="py-3 px-4 text-right text-neutral-600 dark:text-neutral-300">{item.quantity}</td>
                                                     <td className="py-3 px-4 text-right text-neutral-600 dark:text-neutral-300">{formatCurrency(item.unitPrice)}</td>
-                                                    <td className="py-3 px-4 text-right text-neutral-500 dark:text-neutral-400">{item.gst != null ? formatCurrency(item.gst) : "\u2014"}</td>
+                                                    <td className="py-3 px-4 text-right text-neutral-500 dark:text-neutral-400">{item.gst != null ? formatCurrency(item.gst) : "—"}</td>
                                                     <td className="py-3 px-4 text-right font-bold text-primary-950 dark:text-white">{formatCurrency(item.amount)}</td>
                                                 </tr>
                                             ))}

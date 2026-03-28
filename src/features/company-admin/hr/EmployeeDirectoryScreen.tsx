@@ -53,7 +53,7 @@ function getInitials(firstName?: string, lastName?: string): string {
 }
 
 function formatDate(d: string | null | undefined) {
-    if (!d) return "\u2014";
+    if (!d) return "—";
     return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
@@ -170,7 +170,7 @@ export function EmployeeDirectoryScreen() {
                             </thead>
                             <tbody className="text-sm">
                                 {employees.map((emp: any) => {
-                                    const fullName = [emp.firstName, emp.middleName, emp.lastName].filter(Boolean).join(" ") || emp.fullName || "\u2014";
+                                    const fullName = [emp.firstName, emp.middleName, emp.lastName].filter(Boolean).join(" ") || emp.fullName || "—";
                                     return (
                                         <tr
                                             key={emp.id}
@@ -199,13 +199,13 @@ export function EmployeeDirectoryScreen() {
                                                 </div>
                                             </td>
                                             <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                                {emp.employeeCode || emp.employeeId || "\u2014"}
+                                                {emp.employeeCode || emp.employeeId || "—"}
                                             </td>
                                             <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">
-                                                {emp.departmentName || emp.department?.name || "\u2014"}
+                                                {emp.departmentName || emp.department?.name || "—"}
                                             </td>
                                             <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">
-                                                {emp.designationName || emp.designation?.name || "\u2014"}
+                                                {emp.designationName || emp.designation?.name || "—"}
                                             </td>
                                             <td className="py-4 px-6">
                                                 {emp.locationName || emp.location?.name ? (
@@ -214,7 +214,7 @@ export function EmployeeDirectoryScreen() {
                                                         <span>{emp.locationName || emp.location?.name}</span>
                                                     </div>
                                                 ) : (
-                                                    <span className="text-neutral-400">{"\u2014"}</span>
+                                                    <span className="text-neutral-400">{"—"}</span>
                                                 )}
                                             </td>
                                             <td className="py-4 px-6">

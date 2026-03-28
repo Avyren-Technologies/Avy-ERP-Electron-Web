@@ -211,7 +211,7 @@ export function RoleManagementScreen() {
                                                 <span className="font-bold text-primary-950 dark:text-white">{role.name}</span>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{role.description || "\u2014"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{role.description || "—"}</td>
                                         <td className="py-4 px-6 text-center">
                                             {role.isSystem ? (
                                                 <span className="text-[10px] font-bold bg-warning-50 text-warning-700 border border-warning-200 px-2 py-0.5 rounded-full dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50">System</span>

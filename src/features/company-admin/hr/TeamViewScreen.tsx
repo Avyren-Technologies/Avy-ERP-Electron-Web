@@ -28,7 +28,7 @@ import { showSuccess, showApiError } from "@/lib/toast";
 /* ── Helpers ── */
 
 const formatDate = (d: string | null | undefined) => {
-    if (!d) return "\u2014";
+    if (!d) return "—";
     return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 };
 
@@ -134,7 +134,7 @@ export function TeamViewScreen() {
                                         <div className="flex-1 min-w-0">
                                             <p className="font-bold text-primary-950 dark:text-white text-sm truncate">{name}</p>
                                             <div className="flex items-center gap-3 mt-0.5">
-                                                <span className="text-[10px] text-neutral-400 flex items-center gap-1"><Briefcase size={9} />{m.designation ?? m.jobTitle ?? "\u2014"}</span>
+                                                <span className="text-[10px] text-neutral-400 flex items-center gap-1"><Briefcase size={9} />{m.designation ?? m.jobTitle ?? "—"}</span>
                                                 <span className="text-[10px] text-neutral-400">{m.department ?? ""}</span>
                                             </div>
                                         </div>
@@ -244,9 +244,9 @@ export function TeamViewScreen() {
                                             <span className="text-sm font-semibold text-primary-950 dark:text-white flex-1 truncate">
                                                 {a.employeeName ?? "Employee"}
                                             </span>
-                                            <span className="text-[10px] text-neutral-400 font-mono">{a.checkIn ?? "\u2014"}</span>
+                                            <span className="text-[10px] text-neutral-400 font-mono">{a.checkIn ?? "—"}</span>
                                             <span className="text-[10px] text-neutral-300">/</span>
-                                            <span className="text-[10px] text-neutral-400 font-mono">{a.checkOut ?? "\u2014"}</span>
+                                            <span className="text-[10px] text-neutral-400 font-mono">{a.checkOut ?? "—"}</span>
                                         </div>
                                     ))}
                                 </div>

@@ -113,7 +113,7 @@ export function SuccessionScreen() {
 
     const employeeName = (id: string) => {
         const emp = employees.find((e: any) => e.id === id);
-        if (!emp) return id || "\u2014";
+        if (!emp) return id || "—";
         return [emp.firstName, emp.lastName].filter(Boolean).join(" ") || emp.fullName || emp.email || id;
     };
 
@@ -276,7 +276,7 @@ export function SuccessionScreen() {
                                                             <Shield className="w-4 h-4 text-accent-600 dark:text-accent-400" />
                                                         </div>
                                                         <div>
-                                                            <span className="font-bold text-primary-950 dark:text-white">{p.position || "\u2014"}</span>
+                                                            <span className="font-bold text-primary-950 dark:text-white">{p.position || "—"}</span>
                                                             {p.role && <p className="text-[10px] text-neutral-400">{p.role}</p>}
                                                         </div>
                                                     </div>
@@ -298,7 +298,7 @@ export function SuccessionScreen() {
                                                             </div>
                                                         ))}
                                                         {successors.length > 3 && <span className="text-[10px] text-neutral-400">+{successors.length - 3} more</span>}
-                                                        {successors.length === 0 && <span className="text-xs text-neutral-400">\u2014</span>}
+                                                        {successors.length === 0 && <span className="text-xs text-neutral-400">—</span>}
                                                     </div>
                                                 </td>
                                                 <td className="py-4 px-6 text-center">

@@ -28,9 +28,9 @@ import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Helpers ── */
 
-const formatCurrency = (v: number) => v > 0 ? `\u20B9${(v ?? 0).toLocaleString("en-IN")}` : "\u2014";
+const formatCurrency = (v: number) => v > 0 ? `\u20B9${(v ?? 0).toLocaleString("en-IN")}` : "—";
 const formatDate = (d: string | null | undefined) => {
-    if (!d) return "\u2014";
+    if (!d) return "—";
     return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 };
 
@@ -207,17 +207,17 @@ export function PromotionScreen() {
                                                     <span className="font-bold text-primary-950 dark:text-white">{r.employeeName || getEmployeeName(r.employeeId)}</span>
                                                 </div>
                                             </td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{r.fromDesignation || "\u2014"}</td>
-                                            <td className="py-4 px-6 font-semibold text-primary-700 dark:text-primary-400 text-xs">{r.toDesignation || "\u2014"}</td>
-                                            <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{r.fromGrade && r.toGrade ? `${r.fromGrade} \u2192 ${r.toGrade}` : "\u2014"}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{r.fromDesignation || "—"}</td>
+                                            <td className="py-4 px-6 font-semibold text-primary-700 dark:text-primary-400 text-xs">{r.toDesignation || "—"}</td>
+                                            <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{r.fromGrade && r.toGrade ? `${r.fromGrade} \u2192 ${r.toGrade}` : "—"}</td>
                                             <td className="py-4 px-6 text-right text-xs">
                                                 {r.currentCTC > 0 || r.newCTC > 0 ? (
                                                     <span><span className="text-neutral-500">{formatCurrency(r.currentCTC)}</span> <span className="text-neutral-400">{'\u2192'}</span> <span className="font-semibold text-success-700 dark:text-success-400">{formatCurrency(r.newCTC)}</span></span>
-                                                ) : "\u2014"}
+                                                ) : "—"}
                                             </td>
                                             <td className="py-4 px-6 text-right">
                                                 <span className={cn("text-xs font-bold", Number(incr) > 0 ? "text-success-600 dark:text-success-400" : "text-neutral-500")}>
-                                                    {Number(incr) > 0 ? `+${incr}%` : "\u2014"}
+                                                    {Number(incr) > 0 ? `+${incr}%` : "—"}
                                                 </span>
                                             </td>
                                             <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(r.effectiveDate)}</td>

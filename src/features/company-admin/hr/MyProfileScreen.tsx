@@ -19,18 +19,18 @@ import { showInfo } from "@/lib/toast";
 /* ── Helpers ── */
 
 const formatDate = (d: string | null | undefined) => {
-    if (!d) return "\u2014";
+    if (!d) return "—";
     return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 };
 
 const maskAccount = (acc: string | null | undefined) => {
-    if (!acc) return "\u2014";
+    if (!acc) return "—";
     if (acc.length <= 4) return acc;
     return "\u2022\u2022\u2022\u2022 \u2022\u2022\u2022\u2022 " + acc.slice(-4);
 };
 
 const maskPAN = (pan: string | null | undefined) => {
-    if (!pan) return "\u2014";
+    if (!pan) return "—";
     if (pan.length <= 4) return pan;
     return pan.slice(0, 2) + "\u2022\u2022\u2022\u2022\u2022" + pan.slice(-2);
 };
@@ -41,7 +41,7 @@ function InfoRow({ label, value }: { label: string; value: string | undefined | 
     return (
         <div className="flex items-center justify-between py-2.5 border-b border-neutral-100 dark:border-neutral-800/50 last:border-0">
             <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">{label}</span>
-            <span className="text-sm font-medium text-primary-950 dark:text-white text-right max-w-[60%] truncate">{value || "\u2014"}</span>
+            <span className="text-sm font-medium text-primary-950 dark:text-white text-right max-w-[60%] truncate">{value || "—"}</span>
         </div>
     );
 }
@@ -135,7 +135,7 @@ export function MyProfileScreen() {
                     </div>
                     <div>
                         <h2 className="text-xl font-bold text-primary-950 dark:text-white">{fullName}</h2>
-                        <p className="text-sm text-neutral-500 dark:text-neutral-400">{profile.designation ?? profile.jobTitle ?? "\u2014"}</p>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400">{profile.designation ?? profile.jobTitle ?? "—"}</p>
                         <div className="flex items-center gap-4 mt-2">
                             {profile.email && (
                                 <span className="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400">
@@ -200,7 +200,7 @@ export function MyProfileScreen() {
                 {/* Statutory Details (Masked) */}
                 <ProfileSection title="Statutory Details" icon={Shield}>
                     <InfoRow label="PAN" value={maskPAN(profile.pan)} />
-                    <InfoRow label="Aadhaar" value={profile.aadhaar ? "\u2022\u2022\u2022\u2022 \u2022\u2022\u2022\u2022 " + (profile.aadhaar ?? "").slice(-4) : "\u2014"} />
+                    <InfoRow label="Aadhaar" value={profile.aadhaar ? "\u2022\u2022\u2022\u2022 \u2022\u2022\u2022\u2022 " + (profile.aadhaar ?? "").slice(-4) : "—"} />
                     <InfoRow label="UAN" value={profile.uan} />
                     <InfoRow label="ESI Number" value={profile.esiNumber} />
                 </ProfileSection>

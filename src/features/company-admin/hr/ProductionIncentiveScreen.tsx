@@ -17,6 +17,7 @@ import {
     useProductionIncentiveConfigs,
     useProductionIncentiveRecords,
 } from "@/features/company-admin/api/use-production-incentive-queries";
+import { useDepartments } from "@/features/company-admin/api/use-hr-queries";
 import {
     useCreateProductionIncentiveConfig,
     useUpdateProductionIncentiveConfig,
@@ -67,28 +68,93 @@ function SelectField({
     onChange,
     options,
     placeholder,
+    searchable,
 }: {
     label: string;
     value: string;
     onChange: (v: string) => void;
     options: { value: string; label: string }[];
     placeholder?: string;
+    searchable?: boolean;
 }) {
+    const [searchTerm, setSearchTerm] = useState("");
+    const [isOpen, setIsOpen] = useState(false);
+
+    if (!searchable) {
+        return (
+            <div>
+                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
+                    {label}
+                </label>
+                <select
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                >
+                    <option value="">{placeholder ?? "Select..."}</option>
+                    {options.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                </select>
+            </div>
+        );
+    }
+
+    const filtered = options.filter((o) => o.label.toLowerCase().includes(searchTerm.toLowerCase()));
+    const selected = options.find((o) => o.value === value);
+
     return (
-        <div>
+        <div className="relative">
             <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
                 {label}
             </label>
-            <select
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm text-left focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all flex items-center justify-between"
             >
-                <option value="">{placeholder ?? "Select..."}</option>
-                {options.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-            </select>
+                <span className={selected ? "" : "text-neutral-400"}>{selected?.label ?? placeholder ?? "Select..."}</span>
+                <Search size={14} className="text-neutral-400" />
+            </button>
+            {isOpen && (
+                <div className="absolute z-50 mt-1 w-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl max-h-60 overflow-hidden">
+                    <div className="p-2 border-b border-neutral-100 dark:border-neutral-700">
+                        <input
+                            type="text"
+                            autoFocus
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Search..."
+                            className="w-full px-2.5 py-1.5 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary-500/20 dark:text-white"
+                        />
+                    </div>
+                    <div className="overflow-y-auto max-h-48">
+                        <button
+                            type="button"
+                            onClick={() => { onChange(""); setIsOpen(false); setSearchTerm(""); }}
+                            className="w-full text-left px-3 py-2 text-sm text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-700"
+                        >
+                            {placeholder ?? "None"}
+                        </button>
+                        {filtered.map((o) => (
+                            <button
+                                key={o.value}
+                                type="button"
+                                onClick={() => { onChange(o.value); setIsOpen(false); setSearchTerm(""); }}
+                                className={cn(
+                                    "w-full text-left px-3 py-2 text-sm hover:bg-neutral-50 dark:hover:bg-neutral-700 dark:text-white",
+                                    o.value === value && "bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 font-semibold"
+                                )}
+                            >
+                                {o.label}
+                            </button>
+                        ))}
+                        {filtered.length === 0 && (
+                            <div className="px-3 py-2 text-sm text-neutral-400 text-center">No results</div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -190,6 +256,9 @@ export function ProductionIncentiveScreen() {
     const [filterMonth, setFilterMonth] = useState(String(new Date().getMonth() + 1));
     const [filterYear, setFilterYear] = useState(String(CURRENT_YEAR));
 
+    const { data: deptData } = useDepartments();
+    const departments: any[] = (deptData as any)?.data ?? [];
+
     const { data: configData, isLoading: configLoading, isError: configError } = useProductionIncentiveConfigs();
     const { data: recordData, isLoading: recordLoading, isError: recordError } = useProductionIncentiveRecords({
         configId: filterConfig || undefined,
@@ -242,7 +311,7 @@ export function ProductionIncentiveScreen() {
                 name: form.name,
                 basis: form.basis,
                 cycle: form.cycle,
-                department: form.department || undefined,
+                departmentId: form.department || undefined,
                 isActive: form.isActive,
                 slabs: form.slabs.map((s) => ({
                     minOutput: Number(s.minOutput),
@@ -275,8 +344,12 @@ export function ProductionIncentiveScreen() {
     };
 
     const handleCompute = async () => {
+        if (!filterConfig) {
+            showApiError({ message: "Please select a configuration first before computing incentives." });
+            return;
+        }
         try {
-            await computeMutation.mutateAsync(filterConfig || "");
+            await computeMutation.mutateAsync(filterConfig);
             showSuccess("Incentives Computed", "Production incentives have been computed.");
         } catch (err) {
             showApiError(err);
@@ -284,8 +357,12 @@ export function ProductionIncentiveScreen() {
     };
 
     const handleMerge = async () => {
+        if (!filterConfig) {
+            showApiError({ message: "Please select a configuration first before merging to payroll." });
+            return;
+        }
         try {
-            await mergeMutation.mutateAsync(filterConfig || "");
+            await mergeMutation.mutateAsync(filterConfig);
             showSuccess("Merged to Payroll", "Production incentives have been merged to payroll.");
         } catch (err) {
             showApiError(err);
@@ -401,7 +478,7 @@ export function ProductionIncentiveScreen() {
                                                 <td className="py-4 px-6 text-center"><BasisBadge basis={c.basis ?? "SLAB"} /></td>
                                                 <td className="py-4 px-6 text-center text-neutral-600 dark:text-neutral-400 text-xs font-bold">{c.cycle ?? "MONTHLY"}</td>
                                                 <td className="py-4 px-6 text-center text-neutral-600 dark:text-neutral-400 font-bold">{c.slabs?.length ?? 0}</td>
-                                                <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{c.department || "\u2014"}</td>
+                                                <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{c.department || "—"}</td>
                                                 <td className="py-4 px-6 text-center"><ActiveBadge active={c.isActive ?? true} /></td>
                                                 <td className="py-4 px-6 text-right">
                                                     <div className="flex items-center justify-end gap-1">
@@ -441,7 +518,7 @@ export function ProductionIncentiveScreen() {
                         <div className="flex gap-3 mt-4">
                             <button
                                 onClick={handleCompute}
-                                disabled={computeMutation.isPending}
+                                disabled={computeMutation.isPending || !filterConfig}
                                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent-600 hover:bg-accent-700 text-white text-sm font-bold transition-all disabled:opacity-50"
                             >
                                 {computeMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Calculator className="w-4 h-4" />}
@@ -449,7 +526,7 @@ export function ProductionIncentiveScreen() {
                             </button>
                             <button
                                 onClick={handleMerge}
-                                disabled={mergeMutation.isPending}
+                                disabled={mergeMutation.isPending || !filterConfig}
                                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-success-600 hover:bg-success-700 text-white text-sm font-bold transition-all disabled:opacity-50"
                             >
                                 {mergeMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Merge className="w-4 h-4" />}
@@ -482,11 +559,11 @@ export function ProductionIncentiveScreen() {
                                     <tbody className="text-sm">
                                         {records.map((r: any, i: number) => (
                                             <tr key={r.id ?? i} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
-                                                <td className="py-4 px-6 font-bold text-primary-950 dark:text-white">{r.employeeName ?? r.employeeId ?? "\u2014"}</td>
+                                                <td className="py-4 px-6 font-bold text-primary-950 dark:text-white">{r.employeeName ?? r.employeeId ?? "—"}</td>
                                                 <td className="py-4 px-6 text-center text-neutral-600 dark:text-neutral-400 font-mono">{r.outputUnits ?? r.output ?? 0}</td>
                                                 <td className="py-4 px-6 text-right font-bold text-success-700 dark:text-success-400">{"\u20B9"}{Number(r.amount ?? r.incentiveAmount ?? 0).toLocaleString("en-IN")}</td>
                                                 <td className="py-4 px-6 text-center"><StatusBadge status={r.status ?? "DRAFT"} /></td>
-                                                <td className="py-4 px-6 text-xs text-neutral-500 dark:text-neutral-400">{r.configName ?? r.configId ?? "\u2014"}</td>
+                                                <td className="py-4 px-6 text-xs text-neutral-500 dark:text-neutral-400">{r.configName ?? r.configId ?? "—"}</td>
                                             </tr>
                                         ))}
                                         {records.length === 0 && !recordLoading && (
@@ -520,7 +597,7 @@ export function ProductionIncentiveScreen() {
                                 <SelectField label="Basis" value={form.basis} onChange={(v) => updateField("basis", v)} options={BASES} />
                                 <SelectField label="Cycle" value={form.cycle} onChange={(v) => updateField("cycle", v)} options={CYCLES} />
                             </div>
-                            <FormField label="Department" value={form.department} onChange={(v) => updateField("department", v)} placeholder="Optional department name" />
+                            <SelectField label="Department" value={form.department} onChange={(v) => updateField("department", v)} options={departments.map((d: any) => ({ value: d.id, label: d.name }))} placeholder="Select department (optional)" searchable />
                             <div className="flex items-center justify-between px-1">
                                 <label className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Active</label>
                                 <button

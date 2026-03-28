@@ -56,7 +56,7 @@ const EMPTY_TEMPLATE = { name: "", type: "Offer Letter", subject: "", bodyTempla
 const EMPTY_LETTER = { templateId: "", employeeId: "", effectiveDate: "", customFields: "{}" };
 
 const formatDate = (d: string | null | undefined) => {
-    if (!d) return "\u2014";
+    if (!d) return "—";
     return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 };
 
@@ -220,7 +220,7 @@ export function HRLetterScreen() {
                                                 </div>
                                             </td>
                                             <td className="py-4 px-6"><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-accent-50 text-accent-700 border border-accent-200 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50">{t.type}</span></td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs truncate max-w-[200px]">{t.subject || "\u2014"}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs truncate max-w-[200px]">{t.subject || "—"}</td>
                                             <td className="py-4 px-6 text-center">
                                                 {t.isActive !== false ? (
                                                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-success-50 text-success-700 border border-success-200 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50">Active</span>

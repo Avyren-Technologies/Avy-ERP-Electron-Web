@@ -22,7 +22,7 @@ import { showSuccess, showApiError } from "@/lib/toast";
 /* ── Helpers ── */
 
 const formatDate = (d: string | null | undefined) => {
-    if (!d) return "\u2014";
+    if (!d) return "—";
     return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 };
 
@@ -306,7 +306,7 @@ export function ApprovalRequestScreen() {
                                                     <div className="w-8 h-8 rounded-lg bg-accent-100 dark:bg-accent-900/30 flex items-center justify-center shrink-0 text-xs font-bold text-accent-700 dark:text-accent-400">
                                                         {(req.employeeName ?? "E").charAt(0)}
                                                     </div>
-                                                    <span className="font-bold text-primary-950 dark:text-white">{req.employeeName ?? "\u2014"}</span>
+                                                    <span className="font-bold text-primary-950 dark:text-white">{req.employeeName ?? "—"}</span>
                                                 </div>
                                             </td>
                                             <td className="py-4 px-6"><TypeBadge type={req.requestType} /></td>
@@ -317,7 +317,7 @@ export function ApprovalRequestScreen() {
                                                 </div>
                                             </td>
                                             <td className="py-4 px-6 text-center"><StatusBadge status={req.status ?? "Pending"} /></td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{req.currentApprover ?? "\u2014"}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{req.currentApprover ?? "—"}</td>
                                             <td className="py-4 px-6 text-right">
                                                 <div className="flex items-center justify-end gap-1">
                                                     <button onClick={() => setDetailTarget(req)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="View">
@@ -397,7 +397,7 @@ export function ApprovalRequestScreen() {
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div>
                                     <span className="text-xs text-neutral-400 block mb-0.5">Employee</span>
-                                    <p className="font-bold text-primary-950 dark:text-white">{detailTarget.employeeName ?? "\u2014"}</p>
+                                    <p className="font-bold text-primary-950 dark:text-white">{detailTarget.employeeName ?? "—"}</p>
                                 </div>
                                 <div>
                                     <span className="text-xs text-neutral-400 block mb-0.5">Request Type</span>
@@ -409,7 +409,7 @@ export function ApprovalRequestScreen() {
                                 </div>
                                 <div>
                                     <span className="text-xs text-neutral-400 block mb-0.5">Current Approver</span>
-                                    <p className="font-semibold text-primary-950 dark:text-white">{detailTarget.currentApprover ?? "\u2014"}</p>
+                                    <p className="font-semibold text-primary-950 dark:text-white">{detailTarget.currentApprover ?? "—"}</p>
                                 </div>
                             </div>
                             {detailTarget.description && (

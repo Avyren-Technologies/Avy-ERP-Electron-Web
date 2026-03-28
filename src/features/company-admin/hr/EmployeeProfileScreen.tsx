@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
     ArrowLeft,
@@ -45,6 +45,8 @@ import {
     useDeleteDocument,
 } from "@/features/company-admin/api/use-hr-mutations";
 import { SkeletonCard } from "@/components/ui/Skeleton";
+import { PhoneInput } from "@/components/ui/PhoneInput";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { showSuccess, showApiError } from "@/lib/toast";
 import type { EmployeeStatus } from "@/lib/api/hr";
 
@@ -162,6 +164,25 @@ function SectionTitle({ title, icon: Icon }: { title: string; icon: React.Compon
     );
 }
 
+/* ── Phone number parser: splits "+91XXXXXXXXXX" into code + phone ── */
+
+const KNOWN_CODES = ["+971", "+966", "+974", "+965", "+973", "+968", "+977", "+880", "+91", "+44", "+61", "+49", "+33", "+81", "+86", "+55", "+27", "+60", "+64", "+92", "+94", "+65", "+1"];
+
+function parsePhoneNumber(full: string): { code: string; phone: string } {
+    if (!full) return { code: "+91", phone: "" };
+    const trimmed = full.replace(/\s/g, "");
+    if (!trimmed.startsWith("+")) return { code: "+91", phone: trimmed };
+    // Try longest codes first
+    const sorted = [...KNOWN_CODES].sort((a, b) => b.length - a.length);
+    for (const code of sorted) {
+        if (trimmed.startsWith(code)) {
+            return { code, phone: trimmed.slice(code.length) };
+        }
+    }
+    // Fallback: assume first 3 chars are code
+    return { code: trimmed.slice(0, 3), phone: trimmed.slice(3) };
+}
+
 /* ── Tab definitions ── */
 
 const TABS = [
@@ -182,11 +203,13 @@ const EMPTY_PERSONAL = {
     dob: "", gender: "", maritalStatus: "",
     bloodGroup: "", fatherName: "", motherName: "",
     nationality: "Indian", religion: "", category: "",
-    personalMobile: "", altMobile: "", personalEmail: "", officialEmail: "",
+    personalMobile: "", personalMobileCountryCode: "+91",
+    altMobile: "", personalEmail: "", officialEmail: "",
     currentAddress: { line1: "", line2: "", city: "", state: "", pin: "" },
     permanentAddress: { line1: "", line2: "", city: "", state: "", pin: "" },
     sameAsCurrent: false,
-    emergencyName: "", emergencyRelation: "", emergencyMobile: "",
+    emergencyName: "", emergencyRelation: "",
+    emergencyMobile: "", emergencyMobileCountryCode: "+91",
 };
 
 const EMPTY_PROFESSIONAL = {
@@ -240,6 +263,17 @@ export function EmployeeProfileScreen() {
     const [userRole, setUserRole] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [userLocationId, setUserLocationId] = useState("");
+
+    // IFSC auto-fill state
+    const [ifscVerifying, setIfscVerifying] = useState(false);
+    const [ifscError, setIfscError] = useState("");
+
+    // Document proof uploads: keyed by document type
+    const [docUploads, setDocUploads] = useState<Record<string, { fileName: string; base64: string }>>({});
+
+    // Probation auto-calculation state
+    const [probationAutoCalculated, setProbationAutoCalculated] = useState(false);
 
     // Queries
     const employeeQuery = useEmployee(isNew ? "" : id!);
@@ -291,7 +325,8 @@ export function EmployeeProfileScreen() {
             nationality: emp.nationality ?? "Indian",
             religion: emp.religion ?? "",
             category: emp.category ?? "",
-            personalMobile: emp.personalMobile ?? "",
+            personalMobile: parsePhoneNumber(emp.personalMobile ?? "").phone,
+            personalMobileCountryCode: parsePhoneNumber(emp.personalMobile ?? "").code,
             altMobile: emp.alternativeMobile ?? "",
             personalEmail: emp.personalEmail ?? "",
             officialEmail: emp.officialEmail ?? "",
@@ -312,7 +347,8 @@ export function EmployeeProfileScreen() {
             sameAsCurrent: false,
             emergencyName: emp.emergencyContactName ?? "",
             emergencyRelation: emp.emergencyContactRelation ?? "",
-            emergencyMobile: emp.emergencyContactMobile ?? "",
+            emergencyMobile: parsePhoneNumber(emp.emergencyContactMobile ?? "").phone,
+            emergencyMobileCountryCode: parsePhoneNumber(emp.emergencyContactMobile ?? "").code,
         });
 
         setProfessional({
@@ -367,6 +403,65 @@ export function EmployeeProfileScreen() {
     const updateBank = (key: string, value: any) => setBank((p) => ({ ...p, [key]: value }));
     const updateDocuments = (key: string, value: any) => setDocuments((p) => ({ ...p, [key]: value }));
 
+    // IFSC auto-fill: fetch bank details when IFSC code is 11 chars
+    const fetchIfscDetails = useCallback(async (ifsc: string) => {
+        if (ifsc.length !== 11) {
+            setIfscError("");
+            return;
+        }
+        setIfscVerifying(true);
+        setIfscError("");
+        try {
+            const res = await fetch(`https://ifsc.razorpay.com/${ifsc}`);
+            if (!res.ok) throw new Error("Invalid IFSC");
+            const data = await res.json();
+            setBank((prev) => ({
+                ...prev,
+                bankName: data.BANK ?? prev.bankName,
+                branchName: [data.BRANCH, data.CITY, data.STATE].filter(Boolean).join(", ") || prev.branchName,
+            }));
+        } catch {
+            setIfscError("Could not verify IFSC code");
+        } finally {
+            setIfscVerifying(false);
+        }
+    }, []);
+
+    // Probation end date auto-calculation when designation changes
+    useEffect(() => {
+        if (!editing || !professional.designationId || !professional.joiningDate) return;
+        const designations: any[] = designationsQuery.data?.data ?? [];
+        const desig = designations.find((d: any) => d.id === professional.designationId);
+        if (desig?.probationPeriod && desig.probationPeriod > 0) {
+            const joining = new Date(professional.joiningDate);
+            if (!isNaN(joining.getTime())) {
+                const endDate = new Date(joining);
+                endDate.setDate(endDate.getDate() + desig.probationPeriod);
+                const formatted = endDate.toISOString().split("T")[0];
+                setProfessional((p) => ({ ...p, probationEndDate: formatted }));
+                setProbationAutoCalculated(true);
+            }
+        } else {
+            setProbationAutoCalculated(false);
+        }
+    }, [professional.designationId, professional.joiningDate, designationsQuery.data, editing]);
+
+    // Document file upload handler
+    const handleDocUpload = (docType: string, file: File) => {
+        if (file.size > 10 * 1024 * 1024) {
+            showApiError({ message: "File must be under 10 MB" });
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+            setDocUploads((prev) => ({
+                ...prev,
+                [docType]: { fileName: file.name, base64: reader.result as string },
+            }));
+        };
+        reader.readAsDataURL(file);
+    };
+
     const saving = createMutation.isPending || updateMutation.isPending;
 
     const handleSave = async () => {
@@ -376,11 +471,11 @@ export function EmployeeProfileScreen() {
             firstName: personal.firstName,
             lastName: personal.lastName,
             dateOfBirth: personal.dob,
-            personalMobile: personal.personalMobile,
+            personalMobile: personal.personalMobile ? personal.personalMobileCountryCode + personal.personalMobile : "",
             personalEmail: personal.personalEmail,
             emergencyContactName: personal.emergencyName,
             emergencyContactRelation: personal.emergencyRelation,
-            emergencyContactMobile: personal.emergencyMobile,
+            emergencyContactMobile: personal.emergencyMobile ? personal.emergencyMobileCountryCode + personal.emergencyMobile : "",
             // Professional (required)
             joiningDate: professional.joiningDate,
             employeeTypeId: professional.employeeTypeId,
@@ -448,6 +543,14 @@ export function EmployeeProfileScreen() {
         if (documents.dl) payload.drivingLicence = documents.dl;
         if (documents.voterId) payload.voterId = documents.voterId;
 
+        // Probation end date
+        if (professional.probationEndDate) payload.probationEndDate = professional.probationEndDate;
+
+        // Document proof uploads (base64)
+        if (Object.keys(docUploads).length > 0) {
+            payload.documentUploads = docUploads;
+        }
+
         // Include user account fields if creating a new employee with login
         if (isNew && createUserAccount) {
             if (!personal.officialEmail) {
@@ -465,6 +568,7 @@ export function EmployeeProfileScreen() {
             payload.createUserAccount = true;
             payload.userPassword = userPassword;
             if (userRole) payload.userRole = userRole;
+            if (userLocationId) payload.userLocationId = userLocationId;
         }
 
         try {
@@ -508,12 +612,12 @@ export function EmployeeProfileScreen() {
     };
 
     const formatDate = (d: string | null | undefined) => {
-        if (!d) return "\u2014";
+        if (!d) return "—";
         return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
     };
 
     const formatDateTime = (d: string | null | undefined) => {
-        if (!d) return "\u2014";
+        if (!d) return "—";
         return new Date(d).toLocaleDateString("en-IN", {
             day: "numeric", month: "short", year: "numeric",
             hour: "2-digit", minute: "2-digit",
@@ -586,7 +690,7 @@ export function EmployeeProfileScreen() {
             </div>
 
             {/* Tab Navigation */}
-            <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm">
                 <div className="flex overflow-x-auto border-b border-neutral-100 dark:border-neutral-800">
                     {(isNew ? TABS.filter((t) => t.key !== "timeline") : TABS).map((tab) => {
                         const Icon = tab.icon;
@@ -694,7 +798,15 @@ export function EmployeeProfileScreen() {
                             {/* Contact */}
                             <SectionTitle title="Contact Information" icon={Phone} />
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <FormField label="Personal Mobile" value={personal.personalMobile} onChange={(v) => updatePersonal("personalMobile", v)} placeholder="+91 98765 43210" disabled={!editing} />
+                                <PhoneInput
+                                    label="Personal Mobile"
+                                    countryCode={personal.personalMobileCountryCode}
+                                    phone={personal.personalMobile}
+                                    onCountryCodeChange={(v) => updatePersonal("personalMobileCountryCode", v)}
+                                    onPhoneChange={(v) => updatePersonal("personalMobile", v)}
+                                    placeholder="98765 43210"
+                                    disabled={!editing}
+                                />
                                 <FormField label="Alternate Mobile" value={personal.altMobile} onChange={(v) => updatePersonal("altMobile", v)} placeholder="Alternate number" disabled={!editing} />
                                 <FormField label="Personal Email" value={personal.personalEmail} onChange={(v) => updatePersonal("personalEmail", v)} type="email" placeholder="personal@email.com" disabled={!editing} />
                                 <FormField label="Official Email" value={personal.officialEmail} onChange={(v) => updatePersonal("officialEmail", v)} type="email" placeholder="name@company.com" disabled={!editing} />
@@ -759,7 +871,15 @@ export function EmployeeProfileScreen() {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <FormField label="Contact Name" value={personal.emergencyName} onChange={(v) => updatePersonal("emergencyName", v)} placeholder="Full name" disabled={!editing} />
                                 <FormField label="Relation" value={personal.emergencyRelation} onChange={(v) => updatePersonal("emergencyRelation", v)} placeholder="e.g. Spouse, Parent" disabled={!editing} />
-                                <FormField label="Mobile" value={personal.emergencyMobile} onChange={(v) => updatePersonal("emergencyMobile", v)} placeholder="+91 98765 43210" disabled={!editing} />
+                                <PhoneInput
+                                    label="Mobile"
+                                    countryCode={personal.emergencyMobileCountryCode}
+                                    phone={personal.emergencyMobile}
+                                    onCountryCodeChange={(v) => updatePersonal("emergencyMobileCountryCode", v)}
+                                    onPhoneChange={(v) => updatePersonal("emergencyMobile", v)}
+                                    placeholder="98765 43210"
+                                    disabled={!editing}
+                                />
                             </div>
 
                             {/* Create Login Account — only for new employees */}
@@ -813,6 +933,14 @@ export function EmployeeProfileScreen() {
                                                     placeholder={rolesQuery.isError ? "Failed to load roles" : rolesQuery.isLoading ? "Loading roles..." : "Select role..."}
                                                     createLink={{ href: "/app/company/roles", label: "Create Role" }}
                                                 />
+                                                <SearchableSelect
+                                                    label="Location / Branch"
+                                                    value={userLocationId}
+                                                    onChange={setUserLocationId}
+                                                    options={locationOptions}
+                                                    placeholder="Select location..."
+                                                    disabled={false}
+                                                />
                                             </div>
                                         )}
                                         {createUserAccount && confirmPassword && userPassword !== confirmPassword && (
@@ -857,7 +985,24 @@ export function EmployeeProfileScreen() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <SelectField label="Cost Centre" value={professional.costCentreId} onChange={(v) => updateProfessional("costCentreId", v)} options={costCentreOptions} disabled={!editing} placeholder="Select cost centre..." createLink={{ href: "/app/company/hr/cost-centres", label: "Create Cost Centre" }} />
                                 <FormField label="Notice Period (days)" value={professional.noticePeriod} onChange={(v) => updateProfessional("noticePeriod", v)} type="number" placeholder="e.g. 90" disabled={!editing} />
-                                <FormField label="Probation End Date" value={professional.probationEndDate} onChange={() => {}} type="date" disabled mono />
+                                <div>
+                                    <FormField
+                                        label="Probation End Date"
+                                        value={professional.probationEndDate}
+                                        onChange={(v) => {
+                                            updateProfessional("probationEndDate", v);
+                                            setProbationAutoCalculated(false);
+                                        }}
+                                        type="date"
+                                        disabled={!editing}
+                                        mono
+                                    />
+                                    {probationAutoCalculated && professional.probationEndDate && (
+                                        <p className="text-[10px] text-info-600 dark:text-info-400 mt-1 font-semibold">
+                                            Auto-calculated from designation probation period. You can override this date.
+                                        </p>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     )}
@@ -898,7 +1043,7 @@ export function EmployeeProfileScreen() {
                                                     <tr key={key} className="border-t border-neutral-200 dark:border-neutral-700">
                                                         <td className="py-2 px-4 text-neutral-700 dark:text-neutral-300 font-medium">{key}</td>
                                                         <td className="py-2 px-4 text-right font-mono text-neutral-600 dark:text-neutral-400">
-                                                            {typeof val === "number" ? (val / 12).toLocaleString("en-IN", { maximumFractionDigits: 0 }) : "\u2014"}
+                                                            {typeof val === "number" ? (val / 12).toLocaleString("en-IN", { maximumFractionDigits: 0 }) : "—"}
                                                         </td>
                                                         <td className="py-2 px-4 text-right font-mono text-neutral-600 dark:text-neutral-400">
                                                             {typeof val === "number" ? val.toLocaleString("en-IN") : String(val)}
@@ -922,7 +1067,29 @@ export function EmployeeProfileScreen() {
                     {activeTab === "bank" && (
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <FormField label="IFSC Code" value={bank.ifscCode} onChange={(v) => updateBank("ifscCode", v.toUpperCase())} placeholder="e.g. SBIN0001234" mono disabled={!editing} />
+                                <div>
+                                    <FormField
+                                        label="IFSC Code"
+                                        value={bank.ifscCode}
+                                        onChange={(v) => {
+                                            const upper = v.toUpperCase();
+                                            updateBank("ifscCode", upper);
+                                            fetchIfscDetails(upper);
+                                        }}
+                                        placeholder="e.g. SBIN0001234"
+                                        mono
+                                        disabled={!editing}
+                                    />
+                                    {ifscVerifying && (
+                                        <div className="flex items-center gap-1.5 mt-1">
+                                            <Loader2 size={12} className="animate-spin text-primary-500" />
+                                            <span className="text-[10px] font-semibold text-primary-600 dark:text-primary-400">Verifying IFSC...</span>
+                                        </div>
+                                    )}
+                                    {ifscError && (
+                                        <p className="text-[10px] font-semibold text-danger-600 dark:text-danger-400 mt-1">{ifscError}</p>
+                                    )}
+                                </div>
                                 <FormField label="Bank Name" value={bank.bankName} onChange={(v) => updateBank("bankName", v)} placeholder="Auto-filled from IFSC" disabled={!editing} />
                                 <FormField label="Branch Name" value={bank.branchName} onChange={(v) => updateBank("branchName", v)} placeholder="Auto-filled from IFSC" disabled={!editing} />
                             </div>
@@ -954,26 +1121,131 @@ export function EmployeeProfileScreen() {
                         <div className="space-y-6">
                             <SectionTitle title="Statutory IDs" icon={FileText} />
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <FormField label="PAN" value={documents.pan} onChange={(v) => updateDocuments("pan", v.toUpperCase())} placeholder="ABCDE1234F" mono disabled={!editing} />
-                                <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Aadhaar</label>
-                                    <input
-                                        type="text"
-                                        value={editing ? documents.aadhaar : maskAadhaar(documents.aadhaar)}
-                                        onChange={(e) => updateDocuments("aadhaar", e.target.value.replace(/\D/g, "").slice(0, 12))}
-                                        placeholder="1234 5678 9012"
-                                        disabled={!editing}
-                                        className={cn(
-                                            "w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all",
-                                            !editing && "opacity-60 cursor-not-allowed bg-neutral-100 dark:bg-neutral-800/50"
-                                        )}
-                                    />
+                                {/* PAN */}
+                                <div className="space-y-1.5">
+                                    <FormField label="PAN" value={documents.pan} onChange={(v) => updateDocuments("pan", v.toUpperCase())} placeholder="ABCDE1234F" mono disabled={!editing} />
+                                    {editing && (
+                                        <div className="flex items-center gap-2">
+                                            <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-neutral-300 dark:border-neutral-600 text-xs font-semibold text-neutral-500 dark:text-neutral-400 hover:border-primary-400 hover:text-primary-600 transition-all cursor-pointer">
+                                                <Upload size={12} />
+                                                {docUploads.pan ? docUploads.pan.fileName : "Upload proof"}
+                                                <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => e.target.files?.[0] && handleDocUpload("pan", e.target.files[0])} />
+                                            </label>
+                                            {docUploads.pan && (
+                                                <button onClick={() => setDocUploads((p) => { const n = { ...p }; delete n.pan; return n; })} className="text-danger-500 hover:text-danger-700 transition-colors"><Trash2 size={12} /></button>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
-                                <FormField label="UAN" value={documents.uan} onChange={(v) => updateDocuments("uan", v)} placeholder="Universal Account Number" mono disabled={!editing} />
-                                <FormField label="ESI IP Number" value={documents.esiIp} onChange={(v) => updateDocuments("esiIp", v)} placeholder="ESI Insurance Number" mono disabled={!editing} />
-                                <FormField label="Passport Number" value={documents.passport} onChange={(v) => updateDocuments("passport", v.toUpperCase())} placeholder="Passport" mono disabled={!editing} />
-                                <FormField label="Driving Licence" value={documents.dl} onChange={(v) => updateDocuments("dl", v.toUpperCase())} placeholder="DL Number" mono disabled={!editing} />
-                                <FormField label="Voter ID" value={documents.voterId} onChange={(v) => updateDocuments("voterId", v.toUpperCase())} placeholder="EPIC Number" mono disabled={!editing} />
+                                {/* Aadhaar */}
+                                <div className="space-y-1.5">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Aadhaar</label>
+                                        <input
+                                            type="text"
+                                            value={editing ? documents.aadhaar : maskAadhaar(documents.aadhaar)}
+                                            onChange={(e) => updateDocuments("aadhaar", e.target.value.replace(/\D/g, "").slice(0, 12))}
+                                            placeholder="1234 5678 9012"
+                                            disabled={!editing}
+                                            className={cn(
+                                                "w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all",
+                                                !editing && "opacity-60 cursor-not-allowed bg-neutral-100 dark:bg-neutral-800/50"
+                                            )}
+                                        />
+                                    </div>
+                                    {editing && (
+                                        <div className="flex items-center gap-2">
+                                            <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-neutral-300 dark:border-neutral-600 text-xs font-semibold text-neutral-500 dark:text-neutral-400 hover:border-primary-400 hover:text-primary-600 transition-all cursor-pointer">
+                                                <Upload size={12} />
+                                                {docUploads.aadhaar ? docUploads.aadhaar.fileName : "Upload proof"}
+                                                <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => e.target.files?.[0] && handleDocUpload("aadhaar", e.target.files[0])} />
+                                            </label>
+                                            {docUploads.aadhaar && (
+                                                <button onClick={() => setDocUploads((p) => { const n = { ...p }; delete n.aadhaar; return n; })} className="text-danger-500 hover:text-danger-700 transition-colors"><Trash2 size={12} /></button>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                {/* UAN */}
+                                <div className="space-y-1.5">
+                                    <FormField label="UAN" value={documents.uan} onChange={(v) => updateDocuments("uan", v)} placeholder="Universal Account Number" mono disabled={!editing} />
+                                    {editing && (
+                                        <div className="flex items-center gap-2">
+                                            <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-neutral-300 dark:border-neutral-600 text-xs font-semibold text-neutral-500 dark:text-neutral-400 hover:border-primary-400 hover:text-primary-600 transition-all cursor-pointer">
+                                                <Upload size={12} />
+                                                {docUploads.uan ? docUploads.uan.fileName : "Upload proof"}
+                                                <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => e.target.files?.[0] && handleDocUpload("uan", e.target.files[0])} />
+                                            </label>
+                                            {docUploads.uan && (
+                                                <button onClick={() => setDocUploads((p) => { const n = { ...p }; delete n.uan; return n; })} className="text-danger-500 hover:text-danger-700 transition-colors"><Trash2 size={12} /></button>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                {/* ESI IP */}
+                                <div className="space-y-1.5">
+                                    <FormField label="ESI IP Number" value={documents.esiIp} onChange={(v) => updateDocuments("esiIp", v)} placeholder="ESI Insurance Number" mono disabled={!editing} />
+                                    {editing && (
+                                        <div className="flex items-center gap-2">
+                                            <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-neutral-300 dark:border-neutral-600 text-xs font-semibold text-neutral-500 dark:text-neutral-400 hover:border-primary-400 hover:text-primary-600 transition-all cursor-pointer">
+                                                <Upload size={12} />
+                                                {docUploads.esiIp ? docUploads.esiIp.fileName : "Upload proof"}
+                                                <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => e.target.files?.[0] && handleDocUpload("esiIp", e.target.files[0])} />
+                                            </label>
+                                            {docUploads.esiIp && (
+                                                <button onClick={() => setDocUploads((p) => { const n = { ...p }; delete n.esiIp; return n; })} className="text-danger-500 hover:text-danger-700 transition-colors"><Trash2 size={12} /></button>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                {/* Passport */}
+                                <div className="space-y-1.5">
+                                    <FormField label="Passport Number" value={documents.passport} onChange={(v) => updateDocuments("passport", v.toUpperCase())} placeholder="Passport" mono disabled={!editing} />
+                                    {editing && (
+                                        <div className="flex items-center gap-2">
+                                            <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-neutral-300 dark:border-neutral-600 text-xs font-semibold text-neutral-500 dark:text-neutral-400 hover:border-primary-400 hover:text-primary-600 transition-all cursor-pointer">
+                                                <Upload size={12} />
+                                                {docUploads.passport ? docUploads.passport.fileName : "Upload proof"}
+                                                <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => e.target.files?.[0] && handleDocUpload("passport", e.target.files[0])} />
+                                            </label>
+                                            {docUploads.passport && (
+                                                <button onClick={() => setDocUploads((p) => { const n = { ...p }; delete n.passport; return n; })} className="text-danger-500 hover:text-danger-700 transition-colors"><Trash2 size={12} /></button>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                {/* Driving Licence */}
+                                <div className="space-y-1.5">
+                                    <FormField label="Driving Licence" value={documents.dl} onChange={(v) => updateDocuments("dl", v.toUpperCase())} placeholder="DL Number" mono disabled={!editing} />
+                                    {editing && (
+                                        <div className="flex items-center gap-2">
+                                            <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-neutral-300 dark:border-neutral-600 text-xs font-semibold text-neutral-500 dark:text-neutral-400 hover:border-primary-400 hover:text-primary-600 transition-all cursor-pointer">
+                                                <Upload size={12} />
+                                                {docUploads.dl ? docUploads.dl.fileName : "Upload proof"}
+                                                <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => e.target.files?.[0] && handleDocUpload("dl", e.target.files[0])} />
+                                            </label>
+                                            {docUploads.dl && (
+                                                <button onClick={() => setDocUploads((p) => { const n = { ...p }; delete n.dl; return n; })} className="text-danger-500 hover:text-danger-700 transition-colors"><Trash2 size={12} /></button>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                {/* Voter ID */}
+                                <div className="space-y-1.5">
+                                    <FormField label="Voter ID" value={documents.voterId} onChange={(v) => updateDocuments("voterId", v.toUpperCase())} placeholder="EPIC Number" mono disabled={!editing} />
+                                    {editing && (
+                                        <div className="flex items-center gap-2">
+                                            <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-neutral-300 dark:border-neutral-600 text-xs font-semibold text-neutral-500 dark:text-neutral-400 hover:border-primary-400 hover:text-primary-600 transition-all cursor-pointer">
+                                                <Upload size={12} />
+                                                {docUploads.voterId ? docUploads.voterId.fileName : "Upload proof"}
+                                                <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => e.target.files?.[0] && handleDocUpload("voterId", e.target.files[0])} />
+                                            </label>
+                                            {docUploads.voterId && (
+                                                <button onClick={() => setDocUploads((p) => { const n = { ...p }; delete n.voterId; return n; })} className="text-danger-500 hover:text-danger-700 transition-colors"><Trash2 size={12} /></button>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Uploaded Documents */}
@@ -994,8 +1266,8 @@ export function EmployeeProfileScreen() {
                                                 <tbody>
                                                     {empDocs.map((doc: any) => (
                                                         <tr key={doc.id} className="border-t border-neutral-200 dark:border-neutral-700">
-                                                            <td className="py-3 px-4 font-medium text-neutral-700 dark:text-neutral-300">{doc.type || doc.documentType || "\u2014"}</td>
-                                                            <td className="py-3 px-4 text-neutral-600 dark:text-neutral-400">{doc.fileName || doc.name || "\u2014"}</td>
+                                                            <td className="py-3 px-4 font-medium text-neutral-700 dark:text-neutral-300">{doc.type || doc.documentType || "—"}</td>
+                                                            <td className="py-3 px-4 text-neutral-600 dark:text-neutral-400">{doc.fileName || doc.name || "—"}</td>
                                                             <td className="py-3 px-4 text-neutral-500 dark:text-neutral-400 text-xs">{formatDate(doc.createdAt ?? doc.uploadedAt)}</td>
                                                             <td className="py-3 px-4 text-right">
                                                                 <div className="flex items-center justify-end gap-1">

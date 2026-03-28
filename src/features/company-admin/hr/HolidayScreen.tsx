@@ -328,12 +328,12 @@ export function HolidayScreen() {
                                             </div>
                                         </td>
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                            {h.date ? new Date(h.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "\u2014"}
+                                            {h.date ? new Date(h.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
                                         </td>
                                         <td className="py-4 px-6 text-center">
                                             <TypeBadge type={h.type ?? "NATIONAL"} />
                                         </td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{h.description || "\u2014"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{h.description || "—"}</td>
                                         <td className="py-4 px-6 text-center">
                                             <CheckBadge checked={h.isOptional ?? false} />
                                         </td>

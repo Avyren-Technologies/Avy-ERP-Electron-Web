@@ -34,7 +34,7 @@ const MONTHS = [
 
 const formatCurrency = (v: number) => `\u20B9${(v ?? 0).toLocaleString("en-IN")}`;
 const formatDate = (d: string | null | undefined) => {
-    if (!d) return "\u2014";
+    if (!d) return "—";
     return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 };
 
@@ -226,7 +226,7 @@ export function SalaryRevisionScreen() {
                                             </td>
                                             <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(r.effectiveDate)}</td>
                                             <td className="py-4 px-6 text-center"><RevisionStatusBadge status={r.status ?? "pending"} /></td>
-                                            <td className="py-4 px-6 text-right font-mono text-neutral-600 dark:text-neutral-400">{r.arrearsAmount ? formatCurrency(r.arrearsAmount) : "\u2014"}</td>
+                                            <td className="py-4 px-6 text-right font-mono text-neutral-600 dark:text-neutral-400">{r.arrearsAmount ? formatCurrency(r.arrearsAmount) : "—"}</td>
                                             <td className="py-4 px-6 text-right">
                                                 <div className="flex items-center justify-end gap-1">
                                                     <button onClick={() => setDetailId(r.id)} className="p-1.5 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="View Details">
@@ -347,7 +347,7 @@ export function SalaryRevisionScreen() {
                                         <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 p-3 text-center">
                                             <span className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase">Increment</span>
                                             <p className="text-lg font-bold text-accent-700 dark:text-accent-400 mt-1">
-                                                {detail.oldCTC > 0 ? `+${(((detail.newCTC - detail.oldCTC) / detail.oldCTC) * 100).toFixed(1)}%` : "\u2014"}
+                                                {detail.oldCTC > 0 ? `+${(((detail.newCTC - detail.oldCTC) / detail.oldCTC) * 100).toFixed(1)}%` : "—"}
                                             </p>
                                         </div>
                                     </div>

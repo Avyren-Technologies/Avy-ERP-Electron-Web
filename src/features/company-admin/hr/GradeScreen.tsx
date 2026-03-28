@@ -119,9 +119,9 @@ function StatusBadge({ status }: { status: string }) {
 /* ── Helpers ── */
 
 function formatINR(value: number | string | undefined | null): string {
-    if (value == null || value === "") return "\u2014";
+    if (value == null || value === "") return "—";
     const num = typeof value === "string" ? parseFloat(value) : value;
-    if (isNaN(num)) return "\u2014";
+    if (isNaN(num)) return "—";
     return new Intl.NumberFormat("en-IN", {
         style: "currency",
         currency: "INR",
@@ -310,10 +310,10 @@ export function GradeScreen() {
                                         </td>
                                         <td className="py-4 px-6 font-bold text-primary-950 dark:text-white">{grade.name}</td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">
-                                            {formatINR(grade.ctcMin)} {"\u2013"} {formatINR(grade.ctcMax)}
+                                            {formatINR(grade.ctcMin)} {"–"} {formatINR(grade.ctcMax)}
                                         </td>
                                         <td className="py-4 px-6 text-center text-neutral-600 dark:text-neutral-400">
-                                            {grade.hraPercent != null ? `${grade.hraPercent}%` : "\u2014"}
+                                            {grade.hraPercent != null ? `${grade.hraPercent}%` : "—"}
                                         </td>
                                         <td className="py-4 px-6 text-center">
                                             {grade.pfTier ? (
@@ -321,14 +321,14 @@ export function GradeScreen() {
                                                     {grade.pfTier}
                                                 </span>
                                             ) : (
-                                                <span className="text-neutral-300 dark:text-neutral-600">{"\u2014"}</span>
+                                                <span className="text-neutral-300 dark:text-neutral-600">{"—"}</span>
                                             )}
                                         </td>
                                         <td className="py-4 px-6 text-center text-neutral-600 dark:text-neutral-400">
-                                            {grade.probationMonths ? `${grade.probationMonths}m` : "\u2014"}
+                                            {grade.probationMonths ? `${grade.probationMonths}m` : "—"}
                                         </td>
                                         <td className="py-4 px-6 text-center text-neutral-600 dark:text-neutral-400">
-                                            {grade.noticeDays ? `${grade.noticeDays}d` : "\u2014"}
+                                            {grade.noticeDays ? `${grade.noticeDays}d` : "—"}
                                         </td>
                                         <td className="py-4 px-6 text-center">
                                             <StatusBadge status={grade.status ?? "Active"} />

@@ -15,7 +15,7 @@ function formatCurrency(amount: number): string {
 }
 
 function formatDate(dateStr?: string): string {
-    if (!dateStr) return "\u2014";
+    if (!dateStr) return "—";
     return new Date(dateStr).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
@@ -191,7 +191,7 @@ export function BillingDashboardScreen() {
                                         <td className="py-4 px-6 text-neutral-500 dark:text-neutral-400">
                                             {formatCurrency(mod.cataloguePrice)}/mo
                                         </td>
-                                        <td className="py-4 px-6 text-right text-neutral-600 dark:text-neutral-300">{mod.customPrice != null ? formatCurrency(mod.customPrice) : "\u2014"}</td>
+                                        <td className="py-4 px-6 text-right text-neutral-600 dark:text-neutral-300">{mod.customPrice != null ? formatCurrency(mod.customPrice) : "—"}</td>
                                         <td className="py-4 px-6 text-right font-bold text-primary-950 dark:text-white">{formatCurrency(mod.effectivePrice)}/mo</td>
                                     </tr>
                                 ))}

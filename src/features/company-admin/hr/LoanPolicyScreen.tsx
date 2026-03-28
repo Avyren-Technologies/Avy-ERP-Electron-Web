@@ -201,7 +201,7 @@ export function LoanPolicyScreen() {
                                                 <span className="font-bold text-primary-950 dark:text-white">{p.name}</span>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{p.code || "\u2014"}</td>
+                                        <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{p.code || "—"}</td>
                                         <td className="py-4 px-6 text-right font-mono font-semibold text-primary-950 dark:text-white">₹{(p.maxAmount ?? 0).toLocaleString("en-IN")}</td>
                                         <td className="py-4 px-6 text-center text-neutral-600 dark:text-neutral-400">{p.maxTenureMonths ?? 0} mo</td>
                                         <td className="py-4 px-6 text-center text-neutral-600 dark:text-neutral-400">{p.interestRate ?? 0}%</td>

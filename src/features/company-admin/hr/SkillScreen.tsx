@@ -146,7 +146,7 @@ export function SkillScreen() {
 
     const employeeName = (id: string) => {
         const emp = employees.find((e: any) => e.id === id);
-        if (!emp) return id || "\u2014";
+        if (!emp) return id || "—";
         return [emp.firstName, emp.lastName].filter(Boolean).join(" ") || emp.fullName || emp.email || id;
     };
 
@@ -293,7 +293,7 @@ export function SkillScreen() {
                                                     </div>
                                                 </td>
                                                 <td className="py-4 px-6"><CategoryBadge category={s.category ?? "TECHNICAL"} /></td>
-                                                <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs max-w-xs truncate">{s.description || "\u2014"}</td>
+                                                <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs max-w-xs truncate">{s.description || "—"}</td>
                                                 <td className="py-4 px-6 text-center">
                                                     <span className="text-xs font-bold text-primary-600 dark:text-primary-400">{mappingCount} {mappingCount === 1 ? "employee" : "employees"}</span>
                                                 </td>

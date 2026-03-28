@@ -43,7 +43,7 @@ function DetailField({ label, value, mono = false }: { label: string; value?: st
                 mono && "font-mono bg-neutral-50 dark:bg-neutral-800 px-2 py-1 rounded-lg border border-neutral-100 dark:border-neutral-800 text-xs inline-block",
                 !value && "text-neutral-300 dark:text-neutral-500 italic font-normal"
             )}>
-                {value || "\u2014"}
+                {value || "—"}
             </p>
         </div>
     );

@@ -344,14 +344,14 @@ export function BiometricDeviceScreen() {
                                                 <span className="font-bold text-primary-950 dark:text-white">{d.name}</span>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{d.brand ?? "\u2014"}</td>
-                                        <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{d.deviceId ?? "\u2014"}</td>
-                                        <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{d.ip ? `${d.ip}:${d.port}` : "\u2014"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{d.brand ?? "—"}</td>
+                                        <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{d.deviceId ?? "—"}</td>
+                                        <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{d.ip ? `${d.ip}:${d.port}` : "—"}</td>
                                         <td className="py-4 px-6 text-center">
                                             <StatusBadge status={d.status ?? "OFFLINE"} />
                                         </td>
                                         <td className="py-4 px-6 text-xs text-neutral-500 dark:text-neutral-400">
-                                            {d.lastSyncAt ? new Date(d.lastSyncAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "\u2014"}
+                                            {d.lastSyncAt ? new Date(d.lastSyncAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}
                                         </td>
                                         <td className="py-4 px-6 text-right">
                                             <div className="flex items-center justify-end gap-1">

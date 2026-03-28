@@ -122,7 +122,7 @@ export function GoalScreen() {
 
     const employeeName = (id: string) => {
         const emp = employees.find((e: any) => e.id === id);
-        if (!emp) return id || "\u2014";
+        if (!emp) return id || "—";
         return [emp.firstName, emp.lastName].filter(Boolean).join(" ") || emp.fullName || emp.email || id;
     };
 
@@ -238,7 +238,7 @@ export function GoalScreen() {
                     <td className="py-3 px-6"><LevelBadge level={g.level ?? "individual"} /></td>
                     <td className="py-3 px-6 text-xs text-neutral-600 dark:text-neutral-400">{employeeName(g.employeeId)}</td>
                     <td className="py-3 px-6 text-center text-xs font-semibold text-primary-950 dark:text-white">{g.weightage ?? 0}%</td>
-                    <td className="py-3 px-6 text-xs text-neutral-600 dark:text-neutral-400 text-center">{g.targetValue ?? "\u2014"} {g.targetUnit ?? ""}</td>
+                    <td className="py-3 px-6 text-xs text-neutral-600 dark:text-neutral-400 text-center">{g.targetValue ?? "—"} {g.targetUnit ?? ""}</td>
                     <td className="py-3 px-6 w-40"><ProgressBar achieved={Number(g.achievedValue ?? 0)} target={Number(g.targetValue ?? 0)} /></td>
                     <td className="py-3 px-6 text-center"><StatusBadge status={g.status ?? "Draft"} /></td>
                     <td className="py-3 px-6 text-right">
@@ -339,7 +339,7 @@ export function GoalScreen() {
                                             <td className="py-4 px-6"><LevelBadge level={g.level ?? "individual"} /></td>
                                             <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{employeeName(g.employeeId)}</td>
                                             <td className="py-4 px-6 text-center font-semibold text-primary-950 dark:text-white">{g.weightage ?? 0}%</td>
-                                            <td className="py-4 px-6 text-center text-xs text-neutral-600 dark:text-neutral-400">{g.targetValue ?? "\u2014"} {g.targetUnit ?? ""}</td>
+                                            <td className="py-4 px-6 text-center text-xs text-neutral-600 dark:text-neutral-400">{g.targetValue ?? "—"} {g.targetUnit ?? ""}</td>
                                             <td className="py-4 px-6 w-40"><ProgressBar achieved={Number(g.achievedValue ?? 0)} target={Number(g.targetValue ?? 0)} /></td>
                                             <td className="py-4 px-6 text-center"><StatusBadge status={g.status ?? "Draft"} /></td>
                                             <td className="py-4 px-6 text-right">

@@ -36,9 +36,9 @@ const FREQUENCIES = [
 ];
 
 const RATING_SCALES = [
-    { value: "3", label: "1\u20133 Scale" },
-    { value: "5", label: "1\u20135 Scale" },
-    { value: "10", label: "1\u201310 Scale" },
+    { value: "3", label: "1–3 Scale" },
+    { value: "5", label: "1–5 Scale" },
+    { value: "10", label: "1–10 Scale" },
 ];
 
 const STATUS_FILTERS = ["All", "Draft", "Active", "Published", "Closed"];
@@ -277,9 +277,9 @@ export function AppraisalCycleScreen() {
                                                 <span className="font-bold text-primary-950 dark:text-white">{c.name}</span>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs font-mono">{(c.startDate || c.periodStart) && (c.endDate || c.periodEnd) ? `${c.startDate || c.periodStart} \u2014 ${c.endDate || c.periodEnd}` : "\u2014"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs font-mono">{(c.startDate || c.periodStart) && (c.endDate || c.periodEnd) ? `${c.startDate || c.periodStart} — ${c.endDate || c.periodEnd}` : "—"}</td>
                                         <td className="py-4 px-6"><span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-accent-50 text-accent-700 border-accent-200 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50 capitalize">{c.frequency || "annual"}</span></td>
-                                        <td className="py-4 px-6 text-center font-semibold text-primary-950 dark:text-white">1\u2013{c.ratingScale ?? 5}</td>
+                                        <td className="py-4 px-6 text-center font-semibold text-primary-950 dark:text-white">1–{c.ratingScale ?? 5}</td>
                                         <td className="py-4 px-6 text-center text-xs text-neutral-600 dark:text-neutral-400">{c.kraWeightage ?? 70}% / {c.competencyWeightage ?? 30}%</td>
                                         <td className="py-4 px-6 text-center"><YesNoBadge enabled={c.bellCurveEnabled ?? false} /></td>
                                         <td className="py-4 px-6 text-center"><StatusBadge status={c.status ?? "Draft"} /></td>

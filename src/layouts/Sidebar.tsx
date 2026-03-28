@@ -7,7 +7,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
     LayoutDashboard, Building2, CreditCard, Blocks, Activity,
-    Settings, LogOut, ChevronLeft, ChevronRight, ChevronDown,
+    Settings, LogOut, ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
     Users, FileText, BarChart3, Package, Wrench, ClipboardList,
     ShieldCheck, Bell, HelpCircle, PanelLeftClose, PanelLeftOpen,
     MapPin, Clock, Hash, Cpu, SlidersHorizontal, UserCog, Shield, ToggleLeft,
@@ -431,6 +431,9 @@ export function Sidebar({ collapsed, onCollapse, role = 'super_admin', permissio
         }),
     })).filter((s) => s.items.length > 0);
 
+    // Collapsible bottom strip (Notifications / Settings / Help) when sidebar is expanded — default collapsed
+    const [bottomToolsOpen, setBottomToolsOpen] = useState(false);
+
     // Global Tooltip State for Collapsed Mode
     const [hoveredLabel, setHoveredLabel] = useState<string | null>(null);
     const [hoveredRect, setHoveredRect] = useState<DOMRect | null>(null);
@@ -639,60 +642,101 @@ export function Sidebar({ collapsed, onCollapse, role = 'super_admin', permissio
                 ))}
             </nav>
 
-            {/* ---- Bottom Items ---- */}
+            {/* ---- Bottom Items (collapsible when sidebar expanded) ---- */}
             <div className={cn(
-                'border-t border-neutral-100 dark:border-neutral-800 py-3 flex-shrink-0',
-                collapsed ? 'px-2' : 'px-3'
+                'border-t border-neutral-100 dark:border-neutral-800 flex-shrink-0',
+                collapsed ? 'py-3 px-2' : cn('px-3', bottomToolsOpen ? 'py-1.5' : 'py-0.5')
             )}>
-                {BOTTOM_NAV.map((item) => {
-                    const active = location.pathname === item.path;
-                    return (
-                        <NavLink
-                            key={item.path}
-                            to={item.path}
-                            onMouseEnter={(e) => handleMouseEnter(e, item.label)}
-                            onMouseLeave={handleMouseLeave}
-                            title={undefined}
-                            className={cn(
-                                'w-full flex items-center gap-3 rounded-xl transition-all duration-150 group relative mb-0.5',
-                                collapsed ? 'px-2.5 py-2.5 justify-center' : 'px-3 py-2.5',
-                                active
-                                    ? 'bg-primary-50 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
-                                    : 'text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-800 dark:hover:text-neutral-200'
-                            )}
-                        >
-                            <div className="relative flex-shrink-0">
-                                <item.icon
-                                    size={17}
-                                    strokeWidth={active ? 2.5 : 2}
-                                    className={active ? 'text-primary-600 dark:text-primary-400' : 'text-neutral-400 dark:text-neutral-500 group-hover:text-neutral-700 dark:group-hover:text-neutral-300'}
-                                />
-                                {item.badge !== undefined && (
-                                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-danger-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
-                                        {item.badge}
-                                    </span>
-                                )}
-                            </div>
-                            {!collapsed && (
-                                <>
-                                    <span className={cn('flex-1 text-sm font-medium', active && 'font-semibold')}>
-                                        {item.label}
-                                    </span>
-                                    {item.badge !== undefined && (
-                                        <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-danger-100 text-danger-700">
-                                            {item.badge}
-                                        </span>
+                {!collapsed && (
+                    <button
+                        type="button"
+                        onClick={() => setBottomToolsOpen((v) => !v)}
+                        aria-expanded={bottomToolsOpen}
+                        className={cn(
+                            'w-full flex text-left transition-colors',
+                            bottomToolsOpen
+                                ? 'items-start gap-2 rounded-xl px-2 py-1.5 mb-1 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800/80'
+                                : 'items-center gap-1.5 rounded-md px-1 py-0.5 mb-0 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50/80 dark:hover:bg-neutral-800/60',
+                            'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-neutral-900'
+                        )}
+                    >
+                        {bottomToolsOpen ? (
+                            <>
+                                <span className="flex-1 min-w-0 pt-0.5 text-[10px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
+                                    Quick access
+                                </span>
+                                <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300" aria-hidden>
+                                    <ChevronDown size={14} strokeWidth={2.25} />
+                                </span>
+                                <span className="sr-only">Collapse notifications, settings, and help</span>
+                            </>
+                        ) : (
+                            <>
+                                <p className="flex-1 min-w-0 text-[10px] leading-tight text-neutral-500 dark:text-neutral-400 line-clamp-2">
+                                    Quick links — click ↑ to open.
+                                </p>
+                                <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md bg-primary-50/80 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400" aria-hidden>
+                                    <ChevronUp size={12} strokeWidth={2.25} />
+                                </span>
+                                <span className="sr-only">Expand notifications, settings, and help</span>
+                            </>
+                        )}
+                    </button>
+                )}
+
+                {(collapsed || bottomToolsOpen) && (
+                    <div className={cn(!collapsed && 'pb-1')}>
+                        {BOTTOM_NAV.map((item) => {
+                            const active = location.pathname === item.path;
+                            return (
+                                <NavLink
+                                    key={item.path}
+                                    to={item.path}
+                                    onMouseEnter={(e) => handleMouseEnter(e, item.label)}
+                                    onMouseLeave={handleMouseLeave}
+                                    title={undefined}
+                                    className={cn(
+                                        'w-full flex items-center gap-3 rounded-xl transition-all duration-150 group relative mb-0.5',
+                                        collapsed ? 'px-2.5 py-2.5 justify-center' : 'px-3 py-2.5',
+                                        active
+                                            ? 'bg-primary-50 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
+                                            : 'text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-800 dark:hover:text-neutral-200'
                                     )}
-                                </>
-                            )}
-                        </NavLink>
-                    );
-                })}
+                                >
+                                    <div className="relative flex-shrink-0">
+                                        <item.icon
+                                            size={17}
+                                            strokeWidth={active ? 2.5 : 2}
+                                            className={active ? 'text-primary-600 dark:text-primary-400' : 'text-neutral-400 dark:text-neutral-500 group-hover:text-neutral-700 dark:group-hover:text-neutral-300'}
+                                        />
+                                        {item.badge !== undefined && (
+                                            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-danger-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+                                                {item.badge}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {!collapsed && (
+                                        <>
+                                            <span className={cn('flex-1 text-sm font-medium', active && 'font-semibold')}>
+                                                {item.label}
+                                            </span>
+                                            {item.badge !== undefined && (
+                                                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-danger-100 text-danger-700">
+                                                    {item.badge}
+                                                </span>
+                                            )}
+                                        </>
+                                    )}
+                                </NavLink>
+                            );
+                        })}
+                    </div>
+                )}
 
                 {/* User profile card */}
                 <div className={cn(
-                    'mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800',
-                    collapsed ? 'flex justify-center' : ''
+                    'border-t border-neutral-100 dark:border-neutral-800',
+                    collapsed ? 'mt-3 pt-3 flex justify-center' : cn(!bottomToolsOpen ? 'mt-1.5 pt-2' : 'mt-2.5 pt-2.5')
                 )}>
                     {collapsed ? (
                         <button

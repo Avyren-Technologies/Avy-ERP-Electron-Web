@@ -243,15 +243,15 @@ export function AttendanceDashboardScreen() {
                                     >
                                         <td className="py-4 px-6">
                                             <div>
-                                                <span className="font-bold text-primary-950 dark:text-white">{rec.employeeName ?? "\u2014"}</span>
+                                                <span className="font-bold text-primary-950 dark:text-white">{rec.employeeName ?? "—"}</span>
                                                 {rec.employeeCode && (
                                                     <span className="block text-[11px] font-mono text-neutral-400 dark:text-neutral-500 mt-0.5">{rec.employeeCode}</span>
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{rec.punchIn ?? "\u2014"}</td>
-                                        <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{rec.punchOut ?? "\u2014"}</td>
-                                        <td className="py-4 px-6 font-semibold text-neutral-700 dark:text-neutral-300">{rec.workedHours ?? "\u2014"}</td>
+                                        <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{rec.punchIn ?? "—"}</td>
+                                        <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{rec.punchOut ?? "—"}</td>
+                                        <td className="py-4 px-6 font-semibold text-neutral-700 dark:text-neutral-300">{rec.workedHours ?? "—"}</td>
                                         <td className="py-4 px-6 text-center">
                                             <StatusBadge status={rec.status ?? "Unknown"} />
                                         </td>
@@ -259,7 +259,7 @@ export function AttendanceDashboardScreen() {
                                             {rec.lateMinutes ? (
                                                 <span className="text-xs font-semibold text-warning-600 dark:text-warning-400">{rec.lateMinutes}m</span>
                                             ) : (
-                                                <span className="text-xs text-neutral-400">\u2014</span>
+                                                <span className="text-xs text-neutral-400">—</span>
                                             )}
                                         </td>
                                         <td className="py-4 px-6 text-center">

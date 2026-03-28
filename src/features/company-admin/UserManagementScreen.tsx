@@ -269,7 +269,7 @@ export function UserManagementScreen() {
     const updateField = (key: string, value: string) => setForm((p) => ({ ...p, [key]: value }));
 
     const formatDate = (d: string | null | undefined) => {
-        if (!d) return "\u2014";
+        if (!d) return "—";
         return new Date(d).toLocaleString("en-IN", {
             day: "numeric",
             month: "short",

@@ -44,7 +44,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const formatTime = (t: string | null | undefined) => {
-    if (!t) return "\u2014";
+    if (!t) return "—";
     return t;
 };
 
@@ -274,7 +274,7 @@ export function MyAttendanceScreen() {
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-neutral-500 dark:text-neutral-400">Hours Worked</span>
-                                    <span className="font-semibold text-primary-950 dark:text-white">{selectedRecord.hoursWorked ?? "\u2014"}</span>
+                                    <span className="font-semibold text-primary-950 dark:text-white">{selectedRecord.hoursWorked ?? "—"}</span>
                                 </div>
                                 {selectedRecord.shift && (
                                     <div className="flex justify-between">

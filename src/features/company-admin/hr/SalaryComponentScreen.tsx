@@ -329,7 +329,7 @@ export function SalaryComponentScreen() {
             case "PERCENT_OF_BASIC": return `${c.formulaValue ?? 0}% of Basic`;
             case "PERCENT_OF_GROSS": return `${c.formulaValue ?? 0}% of Gross`;
             case "FORMULA": return "Formula";
-            default: return c.calculationMethod ?? "\u2014";
+            default: return c.calculationMethod ?? "—";
         }
     };
 
@@ -403,7 +403,7 @@ export function SalaryComponentScreen() {
                                                 <span className="font-bold text-primary-950 dark:text-white">{c.name}</span>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{c.code || "\u2014"}</td>
+                                        <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{c.code || "—"}</td>
                                         <td className="py-4 px-6"><TypeBadge type={c.type} /></td>
                                         <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{getCalcDisplay(c)}</td>
                                         <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400 capitalize">{(c.taxable ?? "").replace(/_/g, " ").toLowerCase()}</td>

@@ -150,7 +150,7 @@ const SETUP_STEPS: SetupStep[] = [
     {
         number: 3,
         title: "Create Departments",
-        description: "Set up your department hierarchy \u2014 e.g. Engineering, Finance, HR.",
+        description: "Set up your department hierarchy — e.g. Engineering, Finance, HR.",
         navHint: "HR \u2192 Departments",
         required: true,
         icon: Network,
@@ -254,15 +254,15 @@ const FAQ_ITEMS: FaqItem[] = [
     },
     {
         question: "Can I change the employee ID format later?",
-        answer: "You can update the Number Series configuration at any time under Configuration \u2192 No. Series. However, already-generated employee IDs will not change \u2014 only new employees will use the updated format.",
+        answer: "You can update the Number Series configuration at any time under Configuration \u2192 No. Series. However, already-generated employee IDs will not change — only new employees will use the updated format.",
     },
     {
         question: "What is the difference between a Location and a Department?",
-        answer: "A Location represents a physical place \u2014 a factory, office, warehouse, or branch. A Department represents an organisational unit \u2014 like Engineering, HR, or Finance. Employees are assigned to both: a location (where they work) and a department (what team they belong to).",
+        answer: "A Location represents a physical place — a factory, office, warehouse, or branch. A Department represents an organisational unit — like Engineering, HR, or Finance. Employees are assigned to both: a location (where they work) and a department (what team they belong to).",
     },
     {
         question: "How do I set up shifts for attendance tracking?",
-        answer: "Go to Company \u2192 Shifts to define shift schedules with start time, end time, and break durations. Shifts are optional \u2014 if your company follows standard 9-to-5 hours, you can skip this step. Shifts become important when you enable attendance tracking or have multiple work schedules.",
+        answer: "Go to Company \u2192 Shifts to define shift schedules with start time, end time, and break durations. Shifts are optional — if your company follows standard 9-to-5 hours, you can skip this step. Shifts become important when you enable attendance tracking or have multiple work schedules.",
     },
     {
         question: "What are Cost Centres used for?",
@@ -674,7 +674,7 @@ function HelpCenterTab() {
                 <div className="mx-6 mt-5 flex items-start gap-3 p-3.5 rounded-xl bg-primary-50 dark:bg-primary-950/30 border border-primary-200/60 dark:border-primary-800/40">
                     <Info className="w-5 h-5 text-primary-600 dark:text-primary-400 flex-shrink-0 mt-0.5" />
                     <p className="text-sm text-primary-700 dark:text-primary-300 leading-relaxed">
-                        Complete the <span className="font-semibold">required</span> steps (1{"\u2013"}5, 9, 11) before creating employees.
+                        Complete the <span className="font-semibold">required</span> steps (1{"–"}5, 9, 11) before creating employees.
                         Optional steps can be configured at any time.
                     </p>
                 </div>
@@ -779,7 +779,7 @@ function HelpCenterTab() {
                         <div>
                             <p className="text-sm font-semibold text-neutral-900 dark:text-white">Working Hours</p>
                             <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                                Mon{"\u2013"}Fri, 9:00 AM {"\u2013"} 6:00 PM IST
+                                Mon{"–"}Fri, 9:00 AM {"–"} 6:00 PM IST
                             </p>
                         </div>
                     </div>

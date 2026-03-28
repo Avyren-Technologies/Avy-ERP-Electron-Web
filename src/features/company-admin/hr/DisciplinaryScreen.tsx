@@ -58,7 +58,7 @@ const EMPTY_ACTION = {
 };
 
 const formatDate = (d: string | null | undefined) => {
-    if (!d) return "\u2014";
+    if (!d) return "—";
     return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 };
 
@@ -237,7 +237,7 @@ export function DisciplinaryScreen() {
                                                 <span className="font-bold text-primary-950 dark:text-white">{employeeName(a.employeeId)}</span>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 truncate max-w-[200px]">{a.subject || "\u2014"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 truncate max-w-[200px]">{a.subject || "—"}</td>
                                         <td className="py-4 px-6"><TypeBadge type={a.type ?? "Written Warning"} /></td>
                                         <td className="py-4 px-6 text-center"><SeverityBadge severity={a.severity ?? "Moderate"} /></td>
                                         <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(a.incidentDate)}</td>
@@ -392,11 +392,11 @@ export function DisciplinaryScreen() {
                                 </div>
                             </div>
                             <div><span className="text-xs text-neutral-400 block mb-0.5">Employee</span><p className="font-bold text-primary-950 dark:text-white text-lg">{employeeName(detailTarget.employeeId)}</p></div>
-                            <div><span className="text-xs text-neutral-400 block mb-0.5">Subject</span><p className="font-bold text-primary-950 dark:text-white">{detailTarget.subject || "\u2014"}</p></div>
+                            <div><span className="text-xs text-neutral-400 block mb-0.5">Subject</span><p className="font-bold text-primary-950 dark:text-white">{detailTarget.subject || "—"}</p></div>
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div><span className="text-xs text-neutral-400 block mb-0.5">Incident Date</span><p className="font-semibold text-primary-950 dark:text-white">{formatDate(detailTarget.incidentDate)}</p></div>
                                 <div><span className="text-xs text-neutral-400 block mb-0.5">Issued Date</span><p className="font-semibold text-primary-950 dark:text-white">{formatDate(detailTarget.issuedDate)}</p></div>
-                                <div><span className="text-xs text-neutral-400 block mb-0.5">Issued By</span><p className="font-semibold text-primary-950 dark:text-white">{detailTarget.issuedById ? employeeName(detailTarget.issuedById) : "\u2014"}</p></div>
+                                <div><span className="text-xs text-neutral-400 block mb-0.5">Issued By</span><p className="font-semibold text-primary-950 dark:text-white">{detailTarget.issuedById ? employeeName(detailTarget.issuedById) : "—"}</p></div>
                                 <div><span className="text-xs text-neutral-400 block mb-0.5">Previous Warnings</span><p className="font-semibold text-primary-950 dark:text-white">{detailTarget.previousWarnings ?? 0}</p></div>
                             </div>
                             {detailTarget.description && (

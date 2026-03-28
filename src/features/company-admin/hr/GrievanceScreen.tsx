@@ -47,14 +47,14 @@ const EMPTY_CASE = {
 };
 
 const formatDate = (d: string | null | undefined) => {
-    if (!d) return "\u2014";
+    if (!d) return "—";
     return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 };
 
 /* ── SLA Helper ── */
 
 function SlaIndicator({ createdAt, slaDays, status }: { createdAt: string; slaDays: number; status: string }) {
-    if (!createdAt || !slaDays) return <span className="text-xs text-neutral-400">\u2014</span>;
+    if (!createdAt || !slaDays) return <span className="text-xs text-neutral-400">—</span>;
     if (["resolved", "closed"].includes(status?.toLowerCase())) {
         return <span className="inline-flex items-center gap-1 text-[10px] font-bold text-success-600 dark:text-success-400"><CheckCircle2 size={10} />Completed</span>;
     }
@@ -275,7 +275,7 @@ export function GrievanceScreen() {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="py-4 px-6 text-xs font-mono text-neutral-600 dark:text-neutral-400">{c.code || "\u2014"}</td>
+                                            <td className="py-4 px-6 text-xs font-mono text-neutral-600 dark:text-neutral-400">{c.code || "—"}</td>
                                             <td className="py-4 px-6 text-center font-semibold text-primary-950 dark:text-white">{c.slaDays ?? 7}</td>
                                             <td className="py-4 px-6 text-center">
                                                 {c.escalationEnabled !== false ? (

@@ -228,7 +228,7 @@ export function LoanScreen() {
                                             <td className="py-4 px-6 text-right font-mono text-neutral-600 dark:text-neutral-400">₹{(l.emi ?? 0).toLocaleString("en-IN")}</td>
                                             <td className="py-4 px-6 text-right font-mono text-neutral-600 dark:text-neutral-400">₹{(l.outstanding ?? l.amount ?? 0).toLocaleString("en-IN")}</td>
                                             <td className="py-4 px-6 text-center"><LoanStatusBadge status={l.status ?? "pending"} /></td>
-                                            <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{l.disbursedDate || "\u2014"}</td>
+                                            <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{l.disbursedDate || "—"}</td>
                                             <td className="py-4 px-6 text-right">
                                                 <div className="flex items-center justify-end gap-1">
                                                     {status === "pending" && (

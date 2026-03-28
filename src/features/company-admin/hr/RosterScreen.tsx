@@ -87,9 +87,9 @@ function SelectField({
 function PatternBadge({ pattern }: { pattern: string }) {
     const p = pattern?.toUpperCase();
     const label =
-        p === "MON_FRI" ? "Mon\u2013Fri"
-        : p === "MON_SAT" ? "Mon\u2013Sat"
-        : p === "MON_SAT_ALT" ? "Mon\u2013Sat (Alt)"
+        p === "MON_FRI" ? "Mon–Fri"
+        : p === "MON_SAT" ? "Mon–Sat"
+        : p === "MON_SAT_ALT" ? "Mon–Sat (Alt)"
         : p === "CUSTOM" ? "Custom"
         : pattern;
     const cls =
@@ -120,9 +120,9 @@ const WEEKDAYS = [
 ];
 
 const PATTERNS = [
-    { value: "MON_FRI", label: "Mon\u2013Fri" },
-    { value: "MON_SAT", label: "Mon\u2013Sat" },
-    { value: "MON_SAT_ALT", label: "Mon\u2013Sat (Alt)" },
+    { value: "MON_FRI", label: "Mon–Fri" },
+    { value: "MON_SAT", label: "Mon–Sat" },
+    { value: "MON_SAT_ALT", label: "Mon–Sat (Alt)" },
     { value: "CUSTOM", label: "Custom" },
 ];
 
@@ -285,16 +285,16 @@ export function RosterScreen() {
                                         <td className="py-4 px-6 text-center">
                                             <PatternBadge pattern={r.pattern ?? "MON_FRI"} />
                                         </td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{r.weekOff1 ?? "\u2014"}</td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{r.weekOff2 || "\u2014"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{r.weekOff1 ?? "—"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{r.weekOff2 || "—"}</td>
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                            {r.effectiveFrom ? new Date(r.effectiveFrom).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "\u2014"}
+                                            {r.effectiveFrom ? new Date(r.effectiveFrom).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
                                         </td>
                                         <td className="py-4 px-6 text-center">
                                             {r.isDefault ? (
                                                 <Star size={16} className="text-warning-500 inline fill-warning-500" />
                                             ) : (
-                                                <span className="text-neutral-300 dark:text-neutral-600">\u2014</span>
+                                                <span className="text-neutral-300 dark:text-neutral-600">—</span>
                                             )}
                                         </td>
                                         <td className="py-4 px-6 text-right">

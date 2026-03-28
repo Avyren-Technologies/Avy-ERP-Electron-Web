@@ -67,7 +67,7 @@ const EMPTY_NOMINATION = {
 };
 
 const formatDate = (d: string | null | undefined) => {
-    if (!d) return "\u2014";
+    if (!d) return "—";
     return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 };
 
@@ -285,12 +285,12 @@ export function TrainingCatalogueScreen() {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="py-4 px-6 text-xs font-mono text-neutral-600 dark:text-neutral-400">{c.code || "\u2014"}</td>
+                                            <td className="py-4 px-6 text-xs font-mono text-neutral-600 dark:text-neutral-400">{c.code || "—"}</td>
                                             <td className="py-4 px-6"><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-accent-50 text-accent-700 border border-accent-200 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50">{c.category}</span></td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{c.deliveryMode || "\u2014"}</td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{c.duration ? `${c.duration} ${c.durationUnit || "hrs"}` : "\u2014"}</td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{c.provider || "\u2014"}</td>
-                                            <td className="py-4 px-6 text-right font-semibold text-primary-950 dark:text-white">{c.cost ? `\u20B9${Number(c.cost).toLocaleString("en-IN")}` : "\u2014"}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{c.deliveryMode || "—"}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{c.duration ? `${c.duration} ${c.durationUnit || "hrs"}` : "—"}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{c.provider || "—"}</td>
+                                            <td className="py-4 px-6 text-right font-semibold text-primary-950 dark:text-white">{c.cost ? `\u20B9${Number(c.cost).toLocaleString("en-IN")}` : "—"}</td>
                                             <td className="py-4 px-6 text-right">
                                                 <div className="flex items-center justify-end gap-1">
                                                     <button onClick={() => openEditCourse(c)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit"><Edit3 size={15} /></button>
@@ -341,7 +341,7 @@ export function TrainingCatalogueScreen() {
                                             <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(n.batchDate)}</td>
                                             <td className="py-4 px-6 text-center"><NomStatusBadge status={n.status ?? "Nominated"} /></td>
                                             <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(n.completionDate)}</td>
-                                            <td className="py-4 px-6 text-center font-semibold text-primary-950 dark:text-white">{n.score ?? "\u2014"}</td>
+                                            <td className="py-4 px-6 text-center font-semibold text-primary-950 dark:text-white">{n.score ?? "—"}</td>
                                             <td className="py-4 px-6 text-right">
                                                 <button onClick={() => openEditNom(n)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit"><Edit3 size={15} /></button>
                                             </td>

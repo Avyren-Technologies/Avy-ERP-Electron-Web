@@ -54,7 +54,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function RatingDisplay({ value, scale = 5 }: { value?: number; scale?: number }) {
-    if (!value) return <span className="text-xs text-neutral-400">\u2014</span>;
+    if (!value) return <span className="text-xs text-neutral-400">—</span>;
     const pct = (value / scale) * 100;
     const color = pct >= 80 ? "text-success-600 dark:text-success-400" : pct >= 60 ? "text-primary-600 dark:text-primary-400" : pct >= 40 ? "text-warning-600 dark:text-warning-400" : "text-danger-600 dark:text-danger-400";
     return (
@@ -108,7 +108,7 @@ export function RatingsScreen() {
 
     const employeeName = (id: string) => {
         const emp = employees.find((e: any) => e.id === id);
-        if (!emp) return id || "\u2014";
+        if (!emp) return id || "—";
         return [emp.firstName, emp.lastName].filter(Boolean).join(" ") || emp.fullName || emp.email || id;
     };
 
@@ -243,7 +243,7 @@ export function RatingsScreen() {
                                 </thead>
                                 <tbody className="text-sm">
                                     {filtered.map((e: any) => {
-                                        const cycleName = cycles.find((c: any) => c.id === e.cycleId)?.name ?? "\u2014";
+                                        const cycleName = cycles.find((c: any) => c.id === e.cycleId)?.name ?? "—";
                                         const scale = cycles.find((c: any) => c.id === e.cycleId)?.ratingScale ?? 5;
                                         return (
                                             <tr key={e.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
@@ -265,7 +265,7 @@ export function RatingsScreen() {
                                                 <td className="py-4 px-6 text-center">
                                                     {e.kraScore != null ? (
                                                         <span className="text-sm font-semibold text-primary-950 dark:text-white">{Number(e.kraScore).toFixed(1)}</span>
-                                                    ) : <span className="text-xs text-neutral-400">\u2014</span>}
+                                                    ) : <span className="text-xs text-neutral-400">—</span>}
                                                 </td>
                                                 <td className="py-4 px-6 text-center"><StatusBadge status={e.status ?? "Pending"} /></td>
                                                 <td className="py-4 px-6 text-right">

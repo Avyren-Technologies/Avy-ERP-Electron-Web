@@ -139,7 +139,7 @@ export function Feedback360Screen() {
 
     const employeeName = (id: string) => {
         const emp = employees.find((e: any) => e.id === id);
-        if (!emp) return id || "\u2014";
+        if (!emp) return id || "—";
         return [emp.firstName, emp.lastName].filter(Boolean).join(" ") || emp.fullName || emp.email || id;
     };
 
@@ -270,7 +270,7 @@ export function Feedback360Screen() {
                             </thead>
                             <tbody className="text-sm">
                                 {filtered.map((f: any) => {
-                                    const cycleName = cycles.find((c: any) => c.id === f.cycleId)?.name ?? "\u2014";
+                                    const cycleName = cycles.find((c: any) => c.id === f.cycleId)?.name ?? "—";
                                     return (
                                         <tr key={f.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
                                             <td className="py-4 px-6">
@@ -291,7 +291,7 @@ export function Feedback360Screen() {
                                                         <span className="text-xs font-bold text-primary-950 dark:text-white">{Number(f.rating).toFixed(1)}</span>
                                                     </div>
                                                 ) : (
-                                                    <span className="text-xs text-neutral-400">\u2014</span>
+                                                    <span className="text-xs text-neutral-400">—</span>
                                                 )}
                                             </td>
                                             <td className="py-4 px-6 text-center"><StatusBadge status={f.status ?? "Pending"} /></td>
@@ -473,10 +473,10 @@ export function Feedback360Screen() {
                                     {/* Summary Cards */}
                                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                                         {[
-                                            { label: "Overall Avg", value: report.overallAverage ?? report.avgRating ?? "\u2014", color: "primary" },
+                                            { label: "Overall Avg", value: report.overallAverage ?? report.avgRating ?? "—", color: "primary" },
                                             { label: "Total Responses", value: report.totalResponses ?? report.responseCount ?? 0, color: "accent" },
-                                            { label: "Completion %", value: report.completionRate ? `${Math.round(report.completionRate)}%` : "\u2014", color: "success" },
-                                            { label: "Rater Types", value: report.raterTypes?.length ?? report.uniqueRaterTypes ?? "\u2014", color: "info" },
+                                            { label: "Completion %", value: report.completionRate ? `${Math.round(report.completionRate)}%` : "—", color: "success" },
+                                            { label: "Rater Types", value: report.raterTypes?.length ?? report.uniqueRaterTypes ?? "—", color: "info" },
                                         ].map((card) => (
                                             <div key={card.label} className={cn("rounded-xl p-4 border", `bg-${card.color}-50 border-${card.color}-200 dark:bg-${card.color}-900/20 dark:border-${card.color}-800/50`)}>
                                                 <p className={cn("text-[10px] font-bold uppercase tracking-wider", `text-${card.color}-600 dark:text-${card.color}-400`)}>{card.label}</p>

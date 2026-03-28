@@ -169,14 +169,14 @@ export function SalaryHoldScreen() {
                                                 </div>
                                             </td>
                                             <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">
-                                                {h.month && h.year ? `${MONTHS[(h.month ?? 1) - 1]} ${h.year}` : "\u2014"}
+                                                {h.month && h.year ? `${MONTHS[(h.month ?? 1) - 1]} ${h.year}` : "—"}
                                             </td>
                                             <td className="py-4 px-6 text-center">
                                                 <HoldTypeBadge type={h.holdType ?? "full"} />
                                             </td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 max-w-[200px] truncate">{h.reason || "\u2014"}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 max-w-[200px] truncate">{h.reason || "—"}</td>
                                             <td className="py-4 px-6 text-xs text-neutral-500 dark:text-neutral-400">
-                                                {h.heldComponents && h.heldComponents.length > 0 ? h.heldComponents.join(", ") : "\u2014"}
+                                                {h.heldComponents && h.heldComponents.length > 0 ? h.heldComponents.join(", ") : "—"}
                                             </td>
                                             <td className="py-4 px-6 text-center">
                                                 {isReleased ? (

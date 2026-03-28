@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
     Gift,
     Plus,
@@ -14,6 +14,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useBonusBatches, useBonusBatch } from "@/features/company-admin/api/use-bonus-batch-queries";
 import { useCreateBonusBatch, useApproveBonusBatch, useMergeBonusBatch } from "@/features/company-admin/api/use-bonus-batch-mutations";
+import { useDepartments, useDesignations, useEmployees } from "@/features/company-admin/api/use-hr-queries";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
@@ -130,14 +132,14 @@ const BONUS_TYPES = [
     { value: "STATUTORY", label: "Statutory" },
 ];
 
-interface BonusItem {
+type SelectionMode = "department" | "designation" | "employee";
+
+interface PreviewItem {
     employeeId: string;
     employeeName: string;
     amount: number;
     remarks: string;
 }
-
-const EMPTY_ITEM: BonusItem = { employeeId: "", employeeName: "", amount: 0, remarks: "" };
 
 /* ── Screen ── */
 
@@ -152,13 +154,36 @@ export function BonusBatchScreen() {
     // Create form state
     const [formName, setFormName] = useState("");
     const [formType, setFormType] = useState("");
-    const [formItems, setFormItems] = useState<BonusItem[]>([{ ...EMPTY_ITEM }]);
+    const [selectionMode, setSelectionMode] = useState<SelectionMode>("employee");
+    const [selectedDepartmentId, setSelectedDepartmentId] = useState("");
+    const [selectedDesignationId, setSelectedDesignationId] = useState("");
+    const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
+    const [sameAmountForAll, setSameAmountForAll] = useState(true);
+    const [bulkAmount, setBulkAmount] = useState("");
+    const [individualAmounts, setIndividualAmounts] = useState<Record<string, string>>({});
+    const [individualRemarks, setIndividualRemarks] = useState<Record<string, string>>({});
+    const [showPreview, setShowPreview] = useState(false);
 
     const { data, isLoading, isError } = useBonusBatches();
     const { data: detailData, isLoading: detailLoading } = useBonusBatch(detailId);
     const createMutation = useCreateBonusBatch();
     const approveMutation = useApproveBonusBatch();
     const mergeMutation = useMergeBonusBatch();
+
+    // HR data
+    const { data: deptData } = useDepartments();
+    const { data: desigData } = useDesignations();
+    const deptFilterParams = useMemo(() => (selectedDepartmentId ? { departmentId: selectedDepartmentId } : undefined), [selectedDepartmentId]);
+    const desigFilterParams = useMemo(() => (selectedDesignationId ? { designationId: selectedDesignationId } : undefined), [selectedDesignationId]);
+    const { data: empByDept } = useEmployees(selectionMode === "department" && selectedDepartmentId ? deptFilterParams : undefined);
+    const { data: empByDesig } = useEmployees(selectionMode === "designation" && selectedDesignationId ? desigFilterParams : undefined);
+    const { data: allEmpData } = useEmployees();
+
+    const departments: any[] = (deptData as any)?.data ?? deptData ?? [];
+    const designations: any[] = (desigData as any)?.data ?? desigData ?? [];
+    const allEmployees: any[] = (allEmpData as any)?.data ?? allEmpData ?? [];
+    const deptEmployees: any[] = (empByDept as any)?.data ?? empByDept ?? [];
+    const desigEmployees: any[] = (empByDesig as any)?.data ?? empByDesig ?? [];
 
     const batches: any[] = (data as any)?.data ?? [];
     const detail: any = (detailData as any)?.data ?? null;
@@ -169,24 +194,63 @@ export function BonusBatchScreen() {
         return b.name?.toLowerCase().includes(s) || b.type?.toLowerCase().includes(s) || b.status?.toLowerCase().includes(s);
     });
 
+    // Build preview items based on selection mode
+    const previewItems: PreviewItem[] = useMemo(() => {
+        if (selectionMode === "department") {
+            if (!selectedDepartmentId || !Array.isArray(deptEmployees)) return [];
+            return deptEmployees.map((e: any) => ({
+                employeeId: e.id,
+                employeeName: `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim() || e.employeeId || e.id,
+                amount: Number(bulkAmount) || 0,
+                remarks: individualRemarks[e.id] ?? "",
+            }));
+        }
+        if (selectionMode === "designation") {
+            if (!selectedDesignationId || !Array.isArray(desigEmployees)) return [];
+            return desigEmployees.map((e: any) => ({
+                employeeId: e.id,
+                employeeName: `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim() || e.employeeId || e.id,
+                amount: Number(bulkAmount) || 0,
+                remarks: individualRemarks[e.id] ?? "",
+            }));
+        }
+        // employee mode
+        if (selectedEmployeeIds.length === 0) return [];
+        return selectedEmployeeIds.map((id) => {
+            const e = allEmployees.find((emp: any) => emp.id === id);
+            return {
+                employeeId: id,
+                employeeName: e ? `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim() || e.employeeId || id : id,
+                amount: sameAmountForAll ? (Number(bulkAmount) || 0) : (Number(individualAmounts[id]) || 0),
+                remarks: individualRemarks[id] ?? "",
+            };
+        });
+    }, [selectionMode, selectedDepartmentId, selectedDesignationId, selectedEmployeeIds, deptEmployees, desigEmployees, allEmployees, bulkAmount, sameAmountForAll, individualAmounts, individualRemarks]);
+
+    const totalAmount = previewItems.reduce((sum, i) => sum + i.amount, 0);
+
     const openCreate = () => {
         setFormName("");
         setFormType("");
-        setFormItems([{ ...EMPTY_ITEM }]);
+        setSelectionMode("employee");
+        setSelectedDepartmentId("");
+        setSelectedDesignationId("");
+        setSelectedEmployeeIds([]);
+        setSameAmountForAll(true);
+        setBulkAmount("");
+        setIndividualAmounts({});
+        setIndividualRemarks({});
+        setShowPreview(false);
         setModalOpen(true);
     };
 
-    const addItem = () => setFormItems((p) => [...p, { ...EMPTY_ITEM }]);
-    const removeItem = (idx: number) => setFormItems((p) => p.filter((_, i) => i !== idx));
-    const updateItem = (idx: number, key: keyof BonusItem, val: any) =>
-        setFormItems((p) => p.map((item, i) => (i === idx ? { ...item, [key]: val } : item)));
-
     const handleCreate = async () => {
         try {
+            const items = previewItems.filter((i) => i.employeeId && i.amount > 0);
             await createMutation.mutateAsync({
                 name: formName,
                 type: formType,
-                items: formItems.filter((i) => i.employeeId && i.amount > 0),
+                items,
             } as any);
             showSuccess("Batch Created", `${formName} has been created.`);
             setModalOpen(false);
@@ -222,6 +286,21 @@ export function BonusBatchScreen() {
         setPayrollRunId("");
         setMergeModalOpen(true);
     };
+
+    const departmentOptions = Array.isArray(departments) ? departments.map((d: any) => ({ value: d.id, label: d.name })) : [];
+    const designationOptions = Array.isArray(designations) ? designations.map((d: any) => ({ value: d.id, label: d.name })) : [];
+    const employeeOptions = Array.isArray(allEmployees) ? allEmployees.map((e: any) => ({
+        value: e.id,
+        label: `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim() || e.id,
+        sublabel: e.employeeId ?? e.id,
+    })) : [];
+
+    const resolvedEmployeeCount =
+        selectionMode === "department" ? (Array.isArray(deptEmployees) ? deptEmployees.length : 0) :
+        selectionMode === "designation" ? (Array.isArray(desigEmployees) ? desigEmployees.length : 0) :
+        selectedEmployeeIds.length;
+
+    const canSubmit = formName.trim() && formType && previewItems.some((i) => i.amount > 0);
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -304,7 +383,7 @@ export function BonusBatchScreen() {
                                         </td>
                                         <td className="py-4 px-6 text-center"><StatusBadge status={b.status ?? "DRAFT"} /></td>
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                            {b.createdAt ? new Date(b.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "\u2014"}
+                                            {b.createdAt ? new Date(b.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
                                         </td>
                                         <td className="py-4 px-6 text-right">
                                             <div className="flex items-center justify-end gap-1">
@@ -341,67 +420,240 @@ export function BonusBatchScreen() {
             {/* ── Create Modal ── */}
             {modalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-2xl animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-3xl animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
                             <h2 className="text-lg font-bold text-primary-950 dark:text-white">Create Bonus Batch</h2>
                             <button onClick={() => setModalOpen(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
                                 <X size={18} />
                             </button>
                         </div>
-                        <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                        <div className="p-6 overflow-y-auto flex-1 space-y-5">
+                            {/* Batch Name & Type */}
                             <div className="grid grid-cols-2 gap-4">
-                                <FormField label="Batch Name" value={formName} onChange={setFormName} placeholder="e.g. Q1 Performance Bonus" />
-                                <SelectField label="Bonus Type" value={formType} onChange={setFormType} options={BONUS_TYPES} placeholder="Select type" />
+                                <FormField label="Batch Name *" value={formName} onChange={setFormName} placeholder="e.g. Q1 Performance Bonus" />
+                                <SelectField label="Bonus Type *" value={formType} onChange={setFormType} options={BONUS_TYPES} placeholder="Select type" />
                             </div>
 
-                            <div className="border-t border-neutral-100 dark:border-neutral-800 pt-4 mt-4">
-                                <div className="flex items-center justify-between mb-3">
-                                    <label className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Bonus Items</label>
-                                    <button onClick={addItem} className="inline-flex items-center gap-1 text-xs font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 transition-colors">
-                                        <Plus size={14} /> Add Row
-                                    </button>
-                                </div>
-                                <div className="space-y-3">
-                                    {formItems.map((item, idx) => (
-                                        <div key={idx} className="flex items-start gap-3 p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
-                                            <div className="flex-1 space-y-2">
-                                                <input
-                                                    value={item.employeeId}
-                                                    onChange={(e) => updateItem(idx, "employeeId", e.target.value)}
-                                                    placeholder="Employee ID"
-                                                    className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
-                                                />
-                                                <div className="flex gap-2">
-                                                    <input
-                                                        type="number"
-                                                        value={item.amount || ""}
-                                                        onChange={(e) => updateItem(idx, "amount", Number(e.target.value))}
-                                                        placeholder="Amount"
-                                                        className="flex-1 px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
-                                                    />
-                                                    <input
-                                                        value={item.remarks}
-                                                        onChange={(e) => updateItem(idx, "remarks", e.target.value)}
-                                                        placeholder="Remarks"
-                                                        className="flex-1 px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
-                                                    />
-                                                </div>
-                                            </div>
-                                            {formItems.length > 1 && (
-                                                <button onClick={() => removeItem(idx)} className="p-1.5 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors mt-1">
-                                                    <Trash2 size={14} />
-                                                </button>
+                            {/* Selection Mode Tabs */}
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">Selection Mode</label>
+                                <div className="flex gap-2">
+                                    {([
+                                        { key: "department" as const, label: "By Department" },
+                                        { key: "designation" as const, label: "By Designation" },
+                                        { key: "employee" as const, label: "By Employee" },
+                                    ]).map((tab) => (
+                                        <button
+                                            key={tab.key}
+                                            onClick={() => {
+                                                setSelectionMode(tab.key);
+                                                setSelectedDepartmentId("");
+                                                setSelectedDesignationId("");
+                                                setSelectedEmployeeIds([]);
+                                                setBulkAmount("");
+                                                setIndividualAmounts({});
+                                                setIndividualRemarks({});
+                                                setShowPreview(false);
+                                            }}
+                                            className={cn(
+                                                "px-4 py-2 rounded-xl text-sm font-bold transition-all border",
+                                                selectionMode === tab.key
+                                                    ? "bg-primary-600 text-white border-primary-600 shadow-md shadow-primary-500/20"
+                                                    : "bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-700"
                                             )}
-                                        </div>
+                                        >
+                                            {tab.label}
+                                        </button>
                                     ))}
                                 </div>
                             </div>
+
+                            {/* By Department */}
+                            {selectionMode === "department" && (
+                                <div className="space-y-4">
+                                    <SearchableSelect
+                                        label="Department"
+                                        value={selectedDepartmentId}
+                                        onChange={setSelectedDepartmentId}
+                                        options={departmentOptions}
+                                        placeholder="Search department..."
+                                        required
+                                    />
+                                    {selectedDepartmentId && (
+                                        <div className="bg-primary-50 dark:bg-primary-900/20 rounded-xl p-3 flex items-center gap-2">
+                                            <Users size={16} className="text-primary-600 dark:text-primary-400" />
+                                            <span className="text-sm font-bold text-primary-700 dark:text-primary-300">{Array.isArray(deptEmployees) ? deptEmployees.length : 0} employees found</span>
+                                        </div>
+                                    )}
+                                    <FormField label="Bonus Amount (for all)" value={bulkAmount} onChange={setBulkAmount} placeholder="Enter amount" type="number" />
+                                </div>
+                            )}
+
+                            {/* By Designation */}
+                            {selectionMode === "designation" && (
+                                <div className="space-y-4">
+                                    <SearchableSelect
+                                        label="Designation"
+                                        value={selectedDesignationId}
+                                        onChange={setSelectedDesignationId}
+                                        options={designationOptions}
+                                        placeholder="Search designation..."
+                                        required
+                                    />
+                                    {selectedDesignationId && (
+                                        <div className="bg-primary-50 dark:bg-primary-900/20 rounded-xl p-3 flex items-center gap-2">
+                                            <Users size={16} className="text-primary-600 dark:text-primary-400" />
+                                            <span className="text-sm font-bold text-primary-700 dark:text-primary-300">{Array.isArray(desigEmployees) ? desigEmployees.length : 0} employees found</span>
+                                        </div>
+                                    )}
+                                    <FormField label="Bonus Amount (for all)" value={bulkAmount} onChange={setBulkAmount} placeholder="Enter amount" type="number" />
+                                </div>
+                            )}
+
+                            {/* By Employee */}
+                            {selectionMode === "employee" && (
+                                <div className="space-y-4">
+                                    <SearchableSelect
+                                        label="Employees"
+                                        value=""
+                                        onChange={() => {}}
+                                        multiple
+                                        selectedValues={selectedEmployeeIds}
+                                        onMultiChange={setSelectedEmployeeIds}
+                                        options={employeeOptions}
+                                        placeholder="Search employees..."
+                                        required
+                                    />
+                                    {/* Selected chips */}
+                                    {selectedEmployeeIds.length > 0 && (
+                                        <div className="flex flex-wrap gap-2">
+                                            {selectedEmployeeIds.map((id) => {
+                                                const emp = allEmployees.find((e: any) => e.id === id);
+                                                const name = emp ? `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim() || emp.employeeId : id;
+                                                return (
+                                                    <span key={id} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-50 dark:bg-primary-900/20 text-xs font-bold text-primary-700 dark:text-primary-400 border border-primary-200 dark:border-primary-800/50">
+                                                        {name}
+                                                        <button onClick={() => setSelectedEmployeeIds((p) => p.filter((v) => v !== id))} className="hover:text-danger-500 transition-colors">
+                                                            <X size={12} />
+                                                        </button>
+                                                    </span>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+
+                                    {selectedEmployeeIds.length > 0 && (
+                                        <>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => setSameAmountForAll(true)}
+                                                    className={cn(
+                                                        "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
+                                                        sameAmountForAll
+                                                            ? "bg-primary-600 text-white border-primary-600"
+                                                            : "bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700"
+                                                    )}
+                                                >
+                                                    Same Amount for All
+                                                </button>
+                                                <button
+                                                    onClick={() => setSameAmountForAll(false)}
+                                                    className={cn(
+                                                        "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
+                                                        !sameAmountForAll
+                                                            ? "bg-primary-600 text-white border-primary-600"
+                                                            : "bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700"
+                                                    )}
+                                                >
+                                                    Individual Amounts
+                                                </button>
+                                            </div>
+
+                                            {sameAmountForAll ? (
+                                                <FormField label="Bonus Amount (for all)" value={bulkAmount} onChange={setBulkAmount} placeholder="Enter amount" type="number" />
+                                            ) : (
+                                                <div className="space-y-2">
+                                                    {selectedEmployeeIds.map((id) => {
+                                                        const emp = allEmployees.find((e: any) => e.id === id);
+                                                        const name = emp ? `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim() || emp.employeeId : id;
+                                                        return (
+                                                            <div key={id} className="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
+                                                                <span className="text-sm font-semibold text-primary-950 dark:text-white flex-1 truncate">{name}</span>
+                                                                <input
+                                                                    type="number"
+                                                                    value={individualAmounts[id] ?? ""}
+                                                                    onChange={(e) => setIndividualAmounts((p) => ({ ...p, [id]: e.target.value }))}
+                                                                    placeholder="Amount"
+                                                                    className="w-32 px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
+                                                                />
+                                                                <input
+                                                                    value={individualRemarks[id] ?? ""}
+                                                                    onChange={(e) => setIndividualRemarks((p) => ({ ...p, [id]: e.target.value }))}
+                                                                    placeholder="Remarks"
+                                                                    className="w-40 px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
+                                                                />
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Preview Section */}
+                            {resolvedEmployeeCount > 0 && (
+                                <div className="border-t border-neutral-100 dark:border-neutral-800 pt-4">
+                                    <button
+                                        onClick={() => setShowPreview(!showPreview)}
+                                        className="text-sm font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 transition-colors mb-3"
+                                    >
+                                        {showPreview ? "Hide Preview" : "Show Preview"}
+                                    </button>
+
+                                    {showPreview && (
+                                        <div className="space-y-3">
+                                            <div className="flex gap-4">
+                                                <div className="bg-primary-50 dark:bg-primary-900/20 rounded-xl p-3 flex-1">
+                                                    <p className="text-[10px] text-neutral-500 uppercase font-semibold">Total Employees</p>
+                                                    <p className="text-lg font-bold text-primary-700 dark:text-primary-300">{previewItems.length}</p>
+                                                </div>
+                                                <div className="bg-success-50 dark:bg-success-900/20 rounded-xl p-3 flex-1">
+                                                    <p className="text-[10px] text-neutral-500 uppercase font-semibold">Total Amount</p>
+                                                    <p className="text-lg font-bold text-success-700 dark:text-success-300">{"\u20B9"}{totalAmount.toLocaleString("en-IN")}</p>
+                                                </div>
+                                            </div>
+                                            <div className="overflow-x-auto border border-neutral-200 dark:border-neutral-800 rounded-xl max-h-48 overflow-y-auto">
+                                                <table className="w-full text-left border-collapse">
+                                                    <thead>
+                                                        <tr className="bg-neutral-50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-[10px] text-neutral-500 uppercase tracking-widest">
+                                                            <th className="py-2 px-3 font-bold">Employee</th>
+                                                            <th className="py-2 px-3 font-bold text-right">Amount</th>
+                                                            <th className="py-2 px-3 font-bold">Remarks</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="text-xs">
+                                                        {previewItems.map((item) => (
+                                                            <tr key={item.employeeId} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0">
+                                                                <td className="py-2 px-3 font-semibold text-primary-950 dark:text-white">{item.employeeName}</td>
+                                                                <td className="py-2 px-3 text-right font-mono">{"\u20B9"}{item.amount.toLocaleString("en-IN")}</td>
+                                                                <td className="py-2 px-3 text-neutral-500">{item.remarks || "—"}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
                             <button onClick={() => setModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
-                            <button onClick={handleCreate} disabled={createMutation.isPending || !formName || !formType} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                            <button onClick={handleCreate} disabled={createMutation.isPending || !canSubmit} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                                 {createMutation.isPending && <Loader2 size={14} className="animate-spin" />}
-                                {createMutation.isPending ? "Creating..." : "Create Batch"}
+                                {createMutation.isPending ? "Creating..." : `Create Batch (${previewItems.length} employees)`}
                             </button>
                         </div>
                     </div>
@@ -456,7 +708,7 @@ export function BonusBatchScreen() {
                                                         <td className="py-3 px-4 text-right font-mono text-xs">{"\u20B9"}{(item.amount ?? 0).toLocaleString("en-IN")}</td>
                                                         <td className="py-3 px-4 text-right font-mono text-xs text-danger-600">{"\u20B9"}{(item.tds ?? 0).toLocaleString("en-IN")}</td>
                                                         <td className="py-3 px-4 text-right font-mono text-xs font-bold text-success-700 dark:text-success-400">{"\u20B9"}{(item.netAmount ?? item.amount ?? 0).toLocaleString("en-IN")}</td>
-                                                        <td className="py-3 px-4 text-xs text-neutral-500">{item.remarks || "\u2014"}</td>
+                                                        <td className="py-3 px-4 text-xs text-neutral-500">{item.remarks || "—"}</td>
                                                     </tr>
                                                 ))}
                                             </tbody>

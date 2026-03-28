@@ -211,7 +211,7 @@ export function NotificationTemplateScreen() {
                                             </div>
                                         </td>
                                         <td className="py-4 px-6"><ChannelBadge channel={t.channel} /></td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-sm truncate max-w-[250px]">{t.subject || "\u2014"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-sm truncate max-w-[250px]">{t.subject || "—"}</td>
                                         <td className="py-4 px-6 text-center">
                                             {t.active ? (
                                                 <CheckCircle2 size={16} className="text-success-500 inline-block" />

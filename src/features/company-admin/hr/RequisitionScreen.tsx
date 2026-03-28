@@ -103,12 +103,12 @@ const EMPTY_INTERVIEW = {
 /* ── Helpers ── */
 
 const formatDate = (d: string | null | undefined) => {
-    if (!d) return "\u2014";
+    if (!d) return "—";
     return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 };
 
 const formatDateTime = (d: string | null | undefined) => {
-    if (!d) return "\u2014";
+    if (!d) return "—";
     return new Date(d).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 };
 
@@ -491,11 +491,11 @@ export function RequisitionScreen() {
                                                     <span className="font-bold text-primary-950 dark:text-white">{r.title}</span>
                                                 </div>
                                             </td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{r.department || "\u2014"}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{r.department || "—"}</td>
                                             <td className="py-4 px-6 text-center font-semibold text-primary-950 dark:text-white">{r.positions ?? 1}</td>
                                             <td className="py-4 px-6"><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-accent-50 text-accent-700 border border-accent-200 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50">{r.employmentType || "Full-Time"}</span></td>
                                             <td className="py-4 px-6 text-center"><PriorityBadge priority={r.priority ?? "Medium"} /></td>
-                                            <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{r.location || "\u2014"}</td>
+                                            <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{r.location || "—"}</td>
                                             <td className="py-4 px-6 text-center"><ReqStatusBadge status={r.status ?? "Open"} /></td>
                                             <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(r.deadline)}</td>
                                             <td className="py-4 px-6 text-right">
@@ -558,9 +558,9 @@ export function RequisitionScreen() {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{c.email || "\u2014"}</td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{c.experience ? `${c.experience} yrs` : "\u2014"}</td>
-                                            <td className="py-4 px-6 text-xs text-neutral-500 dark:text-neutral-400">{c.source || "\u2014"}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{c.email || "—"}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{c.experience ? `${c.experience} yrs` : "—"}</td>
+                                            <td className="py-4 px-6 text-xs text-neutral-500 dark:text-neutral-400">{c.source || "—"}</td>
                                             <td className="py-4 px-6 text-center"><StageBadge stage={c.stage ?? "Applied"} /></td>
                                             <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(c.createdAt)}</td>
                                             <td className="py-4 px-6 text-right">
@@ -616,7 +616,7 @@ export function RequisitionScreen() {
                                             <td className="py-4 px-6"><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-accent-50 text-accent-700 border border-accent-200 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50">{i.type}</span></td>
                                             <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDateTime(i.scheduledAt)}</td>
                                             <td className="py-4 px-6 text-center text-neutral-600 dark:text-neutral-400">{i.duration ?? 60} min</td>
-                                            <td className="py-4 px-6 text-xs text-neutral-500 dark:text-neutral-400 truncate max-w-[200px]">{i.meetingLink || i.location || "\u2014"}</td>
+                                            <td className="py-4 px-6 text-xs text-neutral-500 dark:text-neutral-400 truncate max-w-[200px]">{i.meetingLink || i.location || "—"}</td>
                                             <td className="py-4 px-6 text-center"><InterviewStatusBadge status={i.status ?? "Scheduled"} /></td>
                                             <td className="py-4 px-6 text-right">
                                                 <button onClick={() => openEditInt(i)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit">
@@ -887,23 +887,23 @@ export function RequisitionScreen() {
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div>
                                     <span className="text-xs text-neutral-400 block mb-0.5">Email</span>
-                                    <p className="font-semibold text-primary-950 dark:text-white">{candDetailTarget.email || "\u2014"}</p>
+                                    <p className="font-semibold text-primary-950 dark:text-white">{candDetailTarget.email || "—"}</p>
                                 </div>
                                 <div>
                                     <span className="text-xs text-neutral-400 block mb-0.5">Phone</span>
-                                    <p className="font-semibold text-primary-950 dark:text-white">{candDetailTarget.phone || "\u2014"}</p>
+                                    <p className="font-semibold text-primary-950 dark:text-white">{candDetailTarget.phone || "—"}</p>
                                 </div>
                                 <div>
                                     <span className="text-xs text-neutral-400 block mb-0.5">Experience</span>
-                                    <p className="font-semibold text-primary-950 dark:text-white">{candDetailTarget.experience ? `${candDetailTarget.experience} years` : "\u2014"}</p>
+                                    <p className="font-semibold text-primary-950 dark:text-white">{candDetailTarget.experience ? `${candDetailTarget.experience} years` : "—"}</p>
                                 </div>
                                 <div>
                                     <span className="text-xs text-neutral-400 block mb-0.5">Current Company</span>
-                                    <p className="font-semibold text-primary-950 dark:text-white">{candDetailTarget.currentCompany || "\u2014"}</p>
+                                    <p className="font-semibold text-primary-950 dark:text-white">{candDetailTarget.currentCompany || "—"}</p>
                                 </div>
                                 <div>
                                     <span className="text-xs text-neutral-400 block mb-0.5">Source</span>
-                                    <p className="font-semibold text-primary-950 dark:text-white">{candDetailTarget.source || "\u2014"}</p>
+                                    <p className="font-semibold text-primary-950 dark:text-white">{candDetailTarget.source || "—"}</p>
                                 </div>
                                 <div>
                                     <span className="text-xs text-neutral-400 block mb-0.5">Applied</span>

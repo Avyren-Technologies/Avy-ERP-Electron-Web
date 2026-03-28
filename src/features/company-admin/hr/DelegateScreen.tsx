@@ -20,7 +20,7 @@ import { showSuccess, showApiError } from "@/lib/toast";
 /* ── Helpers ── */
 
 const formatDate = (d: string | null | undefined) => {
-    if (!d) return "\u2014";
+    if (!d) return "—";
     return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 };
 
@@ -146,7 +146,7 @@ export function DelegateScreen() {
                                                     : "bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700"
                                             )}>{r.active !== false ? "Active" : "Revoked"}</span>
                                         </td>
-                                        <td className="py-4 px-6 text-xs text-neutral-500 dark:text-neutral-400 max-w-[200px] truncate">{r.reason || "\u2014"}</td>
+                                        <td className="py-4 px-6 text-xs text-neutral-500 dark:text-neutral-400 max-w-[200px] truncate">{r.reason || "—"}</td>
                                         <td className="py-4 px-6 text-right">
                                             {r.active !== false && (
                                                 <button onClick={() => setRevokeTarget(r)} className="p-1.5 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors" title="Revoke">

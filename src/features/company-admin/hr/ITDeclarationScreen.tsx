@@ -367,7 +367,7 @@ export function ITDeclarationScreen() {
                                                 <span className="font-bold text-primary-950 dark:text-white">{employeeName(d.employeeId)}</span>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 font-mono text-xs">{d.financialYear ?? "\u2014"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 font-mono text-xs">{d.financialYear ?? "—"}</td>
                                         <td className="py-4 px-6"><RegimeBadge regime={d.regime ?? "old"} /></td>
                                         <td className="py-4 px-6 text-right font-mono font-semibold text-primary-950 dark:text-white">{formatCurrency(d.totalDeclared)}</td>
                                         <td className="py-4 px-6 text-center"><StatusBadge status={d.status ?? "Draft"} /></td>

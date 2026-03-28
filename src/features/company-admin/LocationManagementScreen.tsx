@@ -177,13 +177,13 @@ export function LocationManagementScreen() {
                                         <td className="py-4 px-6 text-neutral-700 dark:text-neutral-300 font-medium">{loc.facilityType}</td>
                                         <td className="py-4 px-6"><StatusBadge status={loc.status ?? "Active"} /></td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">
-                                            {[loc.city, loc.state].filter(Boolean).join(", ") || "\u2014"}
+                                            {[loc.city, loc.state].filter(Boolean).join(", ") || "—"}
                                         </td>
                                         <td className="py-4 px-6 text-center">
                                             {loc.isHQ ? (
                                                 <Star size={16} className="text-warning-500 fill-warning-400 inline" />
                                             ) : (
-                                                <span className="text-neutral-300 dark:text-neutral-600">\u2014</span>
+                                                <span className="text-neutral-300 dark:text-neutral-600">—</span>
                                             )}
                                         </td>
                                         <td className="py-4 px-6 text-right">

@@ -286,27 +286,27 @@ export function AttendanceOverrideScreen() {
                                     >
                                         <td className="py-4 px-6">
                                             <div>
-                                                <span className="font-bold text-primary-950 dark:text-white">{o.employeeName ?? "\u2014"}</span>
+                                                <span className="font-bold text-primary-950 dark:text-white">{o.employeeName ?? "—"}</span>
                                                 {o.employeeCode && (
                                                     <span className="block text-[11px] font-mono text-neutral-400 dark:text-neutral-500 mt-0.5">{o.employeeCode}</span>
                                                 )}
                                             </div>
                                         </td>
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                            {o.date ? new Date(o.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "\u2014"}
+                                            {o.date ? new Date(o.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
                                         </td>
                                         <td className="py-4 px-6">
                                             <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800 px-2 py-1 rounded-lg">
-                                                {o.issueType ?? "\u2014"}
+                                                {o.issueType ?? "—"}
                                             </span>
                                         </td>
                                         <td className="py-4 px-6">
                                             <div className="flex items-center gap-2 font-mono text-xs text-neutral-600 dark:text-neutral-400">
                                                 <Clock size={12} className="text-neutral-400" />
-                                                {o.correctedPunchIn ?? "\u2014"} &ndash; {o.correctedPunchOut ?? "\u2014"}
+                                                {o.correctedPunchIn ?? "—"} &ndash; {o.correctedPunchOut ?? "—"}
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 max-w-[200px] truncate">{o.reason ?? "\u2014"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 max-w-[200px] truncate">{o.reason ?? "—"}</td>
                                         <td className="py-4 px-6 text-center">
                                             <StatusBadge status={o.status ?? "Pending"} />
                                         </td>
@@ -331,7 +331,7 @@ export function AttendanceOverrideScreen() {
                                                     </button>
                                                 </div>
                                             ) : (
-                                                <span className="text-xs text-neutral-400">\u2014</span>
+                                                <span className="text-xs text-neutral-400">—</span>
                                             )}
                                         </td>
                                     </tr>

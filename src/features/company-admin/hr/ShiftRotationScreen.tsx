@@ -343,7 +343,7 @@ export function ShiftRotationScreen() {
                                         <td className="py-4 px-6 text-center text-neutral-600 dark:text-neutral-400 font-bold">{s.shifts?.length ?? s.shiftCount ?? 0}</td>
                                         <td className="py-4 px-6 text-center text-neutral-600 dark:text-neutral-400 font-bold">{s.assignedEmployees?.length ?? s.employeeCount ?? 0}</td>
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                            {s.effectiveFrom ? new Date(s.effectiveFrom).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "\u2014"}
+                                            {s.effectiveFrom ? new Date(s.effectiveFrom).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
                                         </td>
                                         <td className="py-4 px-6 text-center"><ActiveBadge active={s.isActive ?? true} /></td>
                                         <td className="py-4 px-6 text-right">

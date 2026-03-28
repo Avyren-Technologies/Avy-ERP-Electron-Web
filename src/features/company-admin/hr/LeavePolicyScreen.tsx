@@ -298,7 +298,7 @@ export function LeavePolicyScreen() {
         if (p.overrideAnnualEntitlement) parts.push(`${p.annualEntitlement}d entitlement`);
         if (p.overrideCarryForward) parts.push(`CF: ${p.carryForwardMaxDays}d`);
         if (p.overrideEncashment) parts.push(`Enc: ${p.encashmentMaxDays}d`);
-        return parts.length > 0 ? parts.join(", ") : "\u2014 (inherits defaults)";
+        return parts.length > 0 ? parts.join(", ") : "— (inherits defaults)";
     };
 
     return (
@@ -370,7 +370,7 @@ export function LeavePolicyScreen() {
                                         </td>
                                         <td className="py-4 px-6"><LevelBadge level={p.assignmentLevel} /></td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">
-                                            {p.assignmentLevel === "company" ? "All Employees" : p.assignmentTargetName || "\u2014"}
+                                            {p.assignmentLevel === "company" ? "All Employees" : p.assignmentTargetName || "—"}
                                         </td>
                                         <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{buildOverrideSummary(p)}</td>
                                         <td className="py-4 px-6 text-right">

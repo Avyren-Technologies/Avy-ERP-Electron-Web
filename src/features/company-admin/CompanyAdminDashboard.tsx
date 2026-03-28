@@ -97,7 +97,7 @@ export function CompanyAdminDashboard() {
     const kpis: KPI[] = [
         {
             title: "Total Users",
-            value: stats?.totalUsers?.toString() ?? stats?.totalEmployees?.toString() ?? "\u2014",
+            value: stats?.totalUsers?.toString() ?? stats?.totalEmployees?.toString() ?? "—",
             change: stats?.activeUsers ? `${stats.activeUsers} active` : "",
             trend: "up",
             icon: Users,
@@ -107,7 +107,7 @@ export function CompanyAdminDashboard() {
         },
         {
             title: "Locations",
-            value: stats?.totalLocations?.toString() ?? "\u2014",
+            value: stats?.totalLocations?.toString() ?? "—",
             change: stats?.activeLocations ? `${stats.activeLocations} active` : "",
             trend: "neutral",
             icon: MapPin,
@@ -117,7 +117,7 @@ export function CompanyAdminDashboard() {
         },
         {
             title: "Active Modules",
-            value: stats?.activeModules?.toString() ?? "\u2014",
+            value: stats?.activeModules?.toString() ?? "—",
             change: "Configured",
             trend: "neutral",
             icon: Blocks,
@@ -127,7 +127,7 @@ export function CompanyAdminDashboard() {
         },
         {
             title: "Company Status",
-            value: stats?.companyStatus ?? profile?.wizardStatus ?? "\u2014",
+            value: stats?.companyStatus ?? profile?.wizardStatus ?? "—",
             change: stats?.companyStatus === "Active" ? "Operational" : "",
             trend: stats?.companyStatus === "Active" ? "up" : "neutral",
             icon: CheckCircle2,
@@ -262,7 +262,7 @@ export function CompanyAdminDashboard() {
                                                     field.mono && "font-mono"
                                                 )}
                                             >
-                                                {field.value || "\u2014"}
+                                                {field.value || "—"}
                                             </p>
                                         </div>
                                     </div>

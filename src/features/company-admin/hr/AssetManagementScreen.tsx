@@ -58,7 +58,7 @@ const EMPTY_ASSIGNMENT = {
 };
 
 const formatDate = (d: string | null | undefined) => {
-    if (!d) return "\u2014";
+    if (!d) return "—";
     return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 };
 
@@ -289,9 +289,9 @@ export function AssetManagementScreen() {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="py-4 px-6 text-xs font-mono text-neutral-600 dark:text-neutral-400">{c.code || "\u2014"}</td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{c.depreciationRate ? `${c.depreciationRate}%` : "\u2014"}</td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{c.usefulLife ? `${c.usefulLife} yrs` : "\u2014"}</td>
+                                            <td className="py-4 px-6 text-xs font-mono text-neutral-600 dark:text-neutral-400">{c.code || "—"}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{c.depreciationRate ? `${c.depreciationRate}%` : "—"}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{c.usefulLife ? `${c.usefulLife} yrs` : "—"}</td>
                                             <td className="py-4 px-6 text-right">
                                                 <div className="flex items-center justify-end gap-1">
                                                     <button onClick={() => openEditCat(c)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit"><Edit3 size={15} /></button>
@@ -337,12 +337,12 @@ export function AssetManagementScreen() {
                                                     <span className="font-bold text-primary-950 dark:text-white">{a.name}</span>
                                                 </div>
                                             </td>
-                                            <td className="py-4 px-6 text-xs font-mono text-neutral-600 dark:text-neutral-400">{a.assetTag || "\u2014"}</td>
+                                            <td className="py-4 px-6 text-xs font-mono text-neutral-600 dark:text-neutral-400">{a.assetTag || "—"}</td>
                                             <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{categoryName(a.categoryId)}</td>
-                                            <td className="py-4 px-6 text-xs font-mono text-neutral-500 dark:text-neutral-400">{a.serialNumber || "\u2014"}</td>
-                                            <td className="py-4 px-6"><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">{a.condition || "\u2014"}</span></td>
+                                            <td className="py-4 px-6 text-xs font-mono text-neutral-500 dark:text-neutral-400">{a.serialNumber || "—"}</td>
+                                            <td className="py-4 px-6"><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">{a.condition || "—"}</span></td>
                                             <td className="py-4 px-6 text-center"><AssetStatusBadge status={a.status ?? "Available"} /></td>
-                                            <td className="py-4 px-6 text-right font-semibold text-primary-950 dark:text-white">{a.purchaseCost ? `\u20B9${Number(a.purchaseCost).toLocaleString("en-IN")}` : "\u2014"}</td>
+                                            <td className="py-4 px-6 text-right font-semibold text-primary-950 dark:text-white">{a.purchaseCost ? `\u20B9${Number(a.purchaseCost).toLocaleString("en-IN")}` : "—"}</td>
                                             <td className="py-4 px-6 text-right">
                                                 <button onClick={() => openEditAsset(a)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit"><Edit3 size={15} /></button>
                                             </td>

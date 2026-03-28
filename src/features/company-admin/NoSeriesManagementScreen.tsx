@@ -195,10 +195,10 @@ export function NoSeriesManagementScreen() {
                                             <td className="py-4 px-6">
                                                 <span className="font-mono text-xs font-bold text-primary-700 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-2 py-1 rounded">{ns.code}</span>
                                             </td>
-                                            <td className="py-4 px-6 text-neutral-700 dark:text-neutral-300">{ns.description || "\u2014"}</td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{ns.linkedScreen || "\u2014"}</td>
-                                            <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{ns.prefix || "\u2014"}</td>
-                                            <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{ns.suffix || "\u2014"}</td>
+                                            <td className="py-4 px-6 text-neutral-700 dark:text-neutral-300">{ns.description || "—"}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{ns.linkedScreen || "—"}</td>
+                                            <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{ns.prefix || "—"}</td>
+                                            <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{ns.suffix || "—"}</td>
                                             <td className="py-4 px-6">
                                                 <span className="font-mono text-xs font-semibold text-primary-950 dark:text-white bg-neutral-100 dark:bg-neutral-800 px-2.5 py-1 rounded-lg">{preview}</span>
                                             </td>

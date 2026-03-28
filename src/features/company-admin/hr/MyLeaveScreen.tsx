@@ -24,7 +24,7 @@ import { showSuccess, showApiError } from "@/lib/toast";
 /* ── Helpers ── */
 
 const formatDate = (d: string | null | undefined) => {
-    if (!d) return "\u2014";
+    if (!d) return "—";
     return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 };
 
@@ -200,9 +200,9 @@ export function MyLeaveScreen() {
                                         <td className="py-4 px-6 font-bold text-primary-950 dark:text-white">{leaveTypeName(r.leaveTypeId)}</td>
                                         <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(r.fromDate ?? r.startDate)}</td>
                                         <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(r.toDate ?? r.endDate)}</td>
-                                        <td className="py-4 px-6 text-center font-semibold text-primary-950 dark:text-white">{r.days ?? "\u2014"}</td>
+                                        <td className="py-4 px-6 text-center font-semibold text-primary-950 dark:text-white">{r.days ?? "—"}</td>
                                         <td className="py-4 px-6 text-center"><StatusBadge status={r.status ?? "Pending"} /></td>
-                                        <td className="py-4 px-6 text-neutral-500 dark:text-neutral-400 text-xs truncate max-w-[200px]">{r.reason || "\u2014"}</td>
+                                        <td className="py-4 px-6 text-neutral-500 dark:text-neutral-400 text-xs truncate max-w-[200px]">{r.reason || "—"}</td>
                                     </tr>
                                 ))}
                             </tbody>

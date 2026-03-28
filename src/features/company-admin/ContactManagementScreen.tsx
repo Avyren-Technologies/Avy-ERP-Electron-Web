@@ -193,8 +193,8 @@ export function ContactManagementScreen() {
                                                 <span className="font-bold text-primary-950 dark:text-white">{c.name}</span>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{c.designation || "\u2014"}</td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{c.department || "\u2014"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{c.designation || "—"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{c.department || "—"}</td>
                                         <td className="py-4 px-6"><TypeBadge type={c.type ?? "Primary"} /></td>
                                         <td className="py-4 px-6">
                                             <a href={`mailto:${c.email}`} className="text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1 text-xs">

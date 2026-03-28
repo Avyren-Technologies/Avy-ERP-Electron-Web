@@ -166,7 +166,7 @@ const EMPTY_REQUEST = {
 /* ── Helpers ── */
 
 const formatDate = (d: string | null | undefined) => {
-    if (!d) return "\u2014";
+    if (!d) return "—";
     return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 };
 
@@ -429,7 +429,7 @@ export function LeaveRequestScreen() {
                                         </div>
                                         <div>
                                             <span className="text-neutral-400">Days</span>
-                                            <p className="font-semibold text-primary-950 dark:text-white">{req.days ?? "\u2014"}</p>
+                                            <p className="font-semibold text-primary-950 dark:text-white">{req.days ?? "—"}</p>
                                         </div>
                                         <div>
                                             <span className="text-neutral-400">Applied</span>
@@ -506,9 +506,9 @@ export function LeaveRequestScreen() {
                                             <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{leaveTypeName(req.leaveTypeId)}</td>
                                             <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(req.fromDate)}</td>
                                             <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(req.toDate)}</td>
-                                            <td className="py-4 px-6 text-center font-semibold text-primary-950 dark:text-white">{req.days ?? "\u2014"}</td>
+                                            <td className="py-4 px-6 text-center font-semibold text-primary-950 dark:text-white">{req.days ?? "—"}</td>
                                             <td className="py-4 px-6 text-center"><RequestStatusBadge status={req.status ?? "Pending"} /></td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{req.approverName || req.approverId || "\u2014"}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{req.approverName || req.approverId || "—"}</td>
                                             <td className="py-4 px-6 text-right">
                                                 <div className="flex items-center justify-end gap-1">
                                                     <button onClick={() => setDetailTarget(req)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="View">
@@ -726,11 +726,11 @@ export function LeaveRequestScreen() {
                                 </div>
                                 <div>
                                     <span className="text-xs text-neutral-400 block mb-0.5">Days</span>
-                                    <p className="font-semibold text-primary-950 dark:text-white">{detailTarget.days ?? "\u2014"}</p>
+                                    <p className="font-semibold text-primary-950 dark:text-white">{detailTarget.days ?? "—"}</p>
                                 </div>
                                 <div>
                                     <span className="text-xs text-neutral-400 block mb-0.5">Approver</span>
-                                    <p className="font-semibold text-primary-950 dark:text-white">{detailTarget.approverName || detailTarget.approverId || "\u2014"}</p>
+                                    <p className="font-semibold text-primary-950 dark:text-white">{detailTarget.approverName || detailTarget.approverId || "—"}</p>
                                 </div>
                             </div>
                             {detailTarget.reason && (

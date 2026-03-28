@@ -204,15 +204,15 @@ export function IOTReasonManagementScreen() {
                                             </span>
                                         </td>
                                         <td className="py-4 px-6 font-semibold text-primary-950 dark:text-white">{r.reason}</td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{r.department || "\u2014"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{r.department || "—"}</td>
                                         <td className="py-4 px-6 text-center">
                                             {r.planned ? (
                                                 <span className="text-[10px] font-bold bg-success-50 text-success-700 border border-success-100 px-2 py-0.5 rounded dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50">Planned</span>
                                             ) : (
-                                                <span className="text-neutral-300 dark:text-neutral-600">\u2014</span>
+                                                <span className="text-neutral-300 dark:text-neutral-600">—</span>
                                             )}
                                         </td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{r.duration || "\u2014"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{r.duration || "—"}</td>
                                         <td className="py-4 px-6 text-right">
                                             <div className="flex items-center justify-end gap-1">
                                                 <button onClick={() => openEdit(r)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors"><Edit3 size={15} /></button>
