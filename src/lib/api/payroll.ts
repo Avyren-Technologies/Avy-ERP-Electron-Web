@@ -268,6 +268,23 @@ async function updateTaxConfig(data: any): Promise<ApiResponse<any>> {
     return response.data;
 }
 
+// ── Travel Advance ──
+
+async function createTravelAdvance(data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.post('/hr/loans/travel-advance', data);
+    return response.data;
+}
+
+async function listTravelAdvances(params?: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.get('/hr/loans/travel-advances', { params });
+    return response.data;
+}
+
+async function settleTravelAdvance(id: string, data: { expenseClaimId: string }): Promise<ApiResponse<any>> {
+    const response = await client.post(`/hr/loans/${id}/settle-travel`, data);
+    return response.data;
+}
+
 export const payrollApi = {
     // Salary Components
     listSalaryComponents,
@@ -325,4 +342,8 @@ export const payrollApi = {
     // Tax Config
     getTaxConfig,
     updateTaxConfig,
+    // Travel Advance
+    createTravelAdvance,
+    listTravelAdvances,
+    settleTravelAdvance,
 };

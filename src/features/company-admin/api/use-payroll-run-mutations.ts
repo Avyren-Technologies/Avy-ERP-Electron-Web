@@ -202,3 +202,23 @@ export function useUpdateStatutoryFiling() {
         },
     });
 }
+
+// ── Form 16 / 24Q ──
+
+export function useGenerateForm16() {
+    return useMutation({
+        mutationFn: (data: { financialYear: string }) => payrollRunApi.generateForm16(data),
+    });
+}
+
+export function useGenerateForm24Q() {
+    return useMutation({
+        mutationFn: (data: { quarter: number; financialYear: string }) => payrollRunApi.generateForm24Q(data),
+    });
+}
+
+export function useBulkEmailForm16() {
+    return useMutation({
+        mutationFn: (data: { financialYear: string }) => payrollRunApi.bulkEmailForm16(data),
+    });
+}

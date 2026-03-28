@@ -61,6 +61,8 @@ export {
     useEmployeePreviousEmployment,
     useEmployeeDocuments,
     useEmployeeTimeline,
+    useProbationDue,
+    useOrgChart,
 } from './use-hr-queries';
 
 export {
@@ -95,6 +97,7 @@ export {
     useCreateDocument,
     useUpdateDocument,
     useDeleteDocument,
+    useSubmitProbationReview,
 } from './use-hr-mutations';
 
 // Attendance
@@ -173,6 +176,7 @@ export {
     useLoanPolicy,
     useLoans,
     useTaxConfig,
+    useTravelAdvances,
 } from './use-payroll-queries';
 
 export {
@@ -202,6 +206,8 @@ export {
     useUpdateLoan,
     useUpdateLoanStatus,
     useUpdateTaxConfig,
+    useCreateTravelAdvance,
+    useSettleTravelAdvance,
 } from './use-payroll-mutations';
 
 // Payroll Operations (Runs, Payslips, Holds, Revisions, Statutory, Reports)
@@ -227,6 +233,8 @@ export {
     useVarianceReport,
 } from './use-payroll-run-queries';
 
+// Form 16 / 24Q are mutation-only (no queries needed)
+
 export {
     useCreatePayrollRun,
     useLockAttendance,
@@ -245,6 +253,9 @@ export {
     useApplySalaryRevision,
     useCreateStatutoryFiling,
     useUpdateStatutoryFiling,
+    useGenerateForm16,
+    useGenerateForm24Q,
+    useBulkEmailForm16,
 } from './use-payroll-run-mutations';
 
 // ESS & Workflows
@@ -376,6 +387,8 @@ export {
     useGrievanceCase,
     useDisciplinaryActions,
     useDisciplinaryAction,
+    useESignStatus,
+    usePendingESign,
 } from './use-recruitment-queries';
 
 export {
@@ -414,6 +427,7 @@ export {
     useUpdateGrievanceCase,
     useCreateDisciplinaryAction,
     useUpdateDisciplinaryAction,
+    useDispatchESign,
 } from './use-recruitment-mutations';
 
 // Offboarding (Exit & Separation)
@@ -475,3 +489,114 @@ export {
     useAddLocationModules,
     useRemoveLocationModule,
 } from './use-company-admin-mutations';
+
+// Onboarding
+export {
+    onboardingKeys,
+    useOnboardingTemplates,
+    useOnboardingTemplate,
+    useOnboardingTasks,
+    useOnboardingProgress,
+} from './use-onboarding-queries';
+
+export {
+    useCreateOnboardingTemplate,
+    useUpdateOnboardingTemplate,
+    useDeleteOnboardingTemplate,
+    useGenerateOnboardingTasks,
+    useUpdateOnboardingTask,
+} from './use-onboarding-mutations';
+
+// Chatbot
+export {
+    chatbotKeys,
+    useChatbotConversations,
+    useChatbotConversation,
+    useChatbotMessages,
+} from './use-chatbot-queries';
+
+export {
+    useCreateChatbotConversation,
+    useSendChatbotMessage,
+    useEscalateChatbotConversation,
+    useCloseChatbotConversation,
+} from './use-chatbot-mutations';
+
+// Retention / GDPR
+export {
+    retentionKeys,
+    useRetentionPolicies,
+    useRetentionDataRequests,
+    useRetentionDataExport,
+    useRetentionConsents,
+    useRetentionCheckDue,
+} from './use-retention-queries';
+
+export {
+    useCreateRetentionPolicy,
+    useDeleteRetentionPolicy,
+    useCreateRetentionDataRequest,
+    useUpdateRetentionDataRequest,
+    useAnonymiseEmployee,
+    useCreateRetentionConsent,
+} from './use-retention-mutations';
+
+// Biometric Devices
+export {
+    biometricKeys,
+    useBiometricDevices,
+    useBiometricDevice,
+} from './use-biometric-queries';
+
+export {
+    useCreateBiometricDevice,
+    useUpdateBiometricDevice,
+    useDeleteBiometricDevice,
+    useTestBiometricDevice,
+    useSyncBiometricDevice,
+} from './use-biometric-mutations';
+
+// Shift Rotations
+export {
+    shiftRotationKeys,
+    useShiftRotations,
+    useShiftRotation,
+} from './use-shift-rotation-queries';
+
+export {
+    useCreateShiftRotation,
+    useUpdateShiftRotation,
+    useDeleteShiftRotation,
+    useAssignShiftRotation,
+    useUnassignShiftRotation,
+    useExecuteShiftRotations,
+} from './use-shift-rotation-mutations';
+
+// Production Incentives
+export {
+    productionIncentiveKeys,
+    useProductionIncentiveConfigs,
+    useProductionIncentiveConfig,
+    useProductionIncentiveRecords,
+} from './use-production-incentive-queries';
+
+export {
+    useCreateProductionIncentiveConfig,
+    useUpdateProductionIncentiveConfig,
+    useDeleteProductionIncentiveConfig,
+    useComputeProductionIncentive,
+    useMergeProductionIncentive,
+} from './use-production-incentive-mutations';
+
+// Bonus Batches
+export {
+    bonusBatchKeys,
+    useBonusBatches,
+    useBonusBatch,
+} from './use-bonus-batch-queries';
+
+export {
+    useCreateBonusBatch,
+    useApproveBonusBatch,
+    useMergeBonusBatch,
+} from './use-bonus-batch-mutations';

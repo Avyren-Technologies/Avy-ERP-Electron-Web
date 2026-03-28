@@ -406,6 +406,23 @@ async function updateDisciplinaryAction(id: string, data: any): Promise<ApiRespo
     return response.data;
 }
 
+// ── E-Sign ──
+
+async function dispatchESign(letterId: string): Promise<ApiResponse<any>> {
+    const response = await client.post(`/hr/hr-letters/${letterId}/dispatch-esign`);
+    return response.data;
+}
+
+async function getESignStatus(letterId: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/hr-letters/${letterId}/esign-status`);
+    return response.data;
+}
+
+async function listPendingESign(): Promise<ApiResponse<any>> {
+    const response = await client.get('/hr/hr-letters/pending-esign');
+    return response.data;
+}
+
 export const recruitmentApi = {
     // Requisitions
     listRequisitions,
@@ -470,6 +487,10 @@ export const recruitmentApi = {
     createLetter,
     getLetter,
     generateLetterPdf,
+    // E-Sign
+    dispatchESign,
+    getESignStatus,
+    listPendingESign,
     // Grievance Categories
     listGrievanceCategories,
     createGrievanceCategory,

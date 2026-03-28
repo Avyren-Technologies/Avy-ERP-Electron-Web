@@ -19,6 +19,7 @@ import {
     Target, Flag, MessageSquare, Star, Brain, GitFork,
     UserPlus, GraduationCap, Award, FileSignature, AlertTriangle, Gavel,
     ArrowLeftRight, LogIn,
+    Fingerprint, RefreshCw, Gift, Plane, PenTool, MessageCircle, Factory, Network,
 } from 'lucide-react';
 import { useAuthStore, getUserInitials, getDisplayName } from '@/store/useAuthStore';
 import { checkPermission } from '@/lib/api/auth';
@@ -160,6 +161,7 @@ const NAV_CONFIG: NavSection[] = [
             { icon: UserCheck, label: 'Employee Types', path: '/app/company/hr/employee-types', requiredPerm: 'hr:read' },
             { icon: Wallet, label: 'Cost Centres', path: '/app/company/hr/cost-centres', requiredPerm: 'hr:read' },
             { icon: Users, label: 'Employee Directory', path: '/app/company/hr/employees', requiredPerm: 'hr:read' },
+            { icon: Network, label: 'Org Chart', path: '/app/company/hr/org-chart', requiredPerm: 'hr:read' },
         ],
     },
     {
@@ -172,6 +174,8 @@ const NAV_CONFIG: NavSection[] = [
             { icon: CalendarDays, label: 'Rosters', path: '/app/company/hr/rosters', requiredPerm: 'hr:read' },
             { icon: ClipboardList, label: 'Attendance Rules', path: '/app/company/hr/attendance-rules', requiredPerm: 'hr:read' },
             { icon: Timer, label: 'Overtime Rules', path: '/app/company/hr/overtime-rules', requiredPerm: 'hr:read' },
+            { icon: Fingerprint, label: 'Biometric Devices', path: '/app/company/hr/biometric-devices', requiredPerm: 'hr:configure' },
+            { icon: RefreshCw, label: 'Shift Rotations', path: '/app/company/hr/shift-rotations', requiredPerm: 'hr:configure' },
         ],
     },
     {
@@ -211,6 +215,9 @@ const NAV_CONFIG: NavSection[] = [
             { icon: TrendingUp, label: 'Salary Revisions', path: '/app/company/hr/salary-revisions', requiredPerm: 'hr:read' },
             { icon: Stamp, label: 'Statutory Filings', path: '/app/company/hr/statutory-filings', requiredPerm: 'hr:read' },
             { icon: BarChart3, label: 'Payroll Reports', path: '/app/company/hr/payroll-reports', requiredPerm: 'hr:read' },
+            { icon: Gift, label: 'Bonus Batches', path: '/app/company/hr/bonus-batches', requiredPerm: 'hr:read' },
+            { icon: FileText, label: 'Form 16 & 24Q', path: '/app/company/hr/form-16', requiredPerm: 'hr:read' },
+            { icon: Plane, label: 'Travel Advances', path: '/app/company/hr/travel-advances', requiredPerm: 'hr:read' },
         ],
     },
     {
@@ -237,6 +244,7 @@ const NAV_CONFIG: NavSection[] = [
             { icon: Mail, label: 'Notification Templates', path: '/app/company/hr/notification-templates', requiredPerm: 'hr:configure' },
             { icon: BellRing, label: 'Notification Rules', path: '/app/company/hr/notification-rules', requiredPerm: 'hr:configure' },
             { icon: FileCheck, label: 'IT Declarations', path: '/app/company/hr/it-declarations', requiredPerm: 'hr:read' },
+            { icon: PenTool, label: 'E-Sign Tracking', path: '/app/company/hr/esign', requiredPerm: 'hr:read' },
         ],
     },
     {
@@ -272,6 +280,8 @@ const NAV_CONFIG: NavSection[] = [
             { icon: UserPlus, label: 'Candidates', path: '/app/company/hr/candidates', requiredPerm: 'hr:read' },
             { icon: GraduationCap, label: 'Training Catalogue', path: '/app/company/hr/training', requiredPerm: 'hr:read' },
             { icon: Award, label: 'Training Nominations', path: '/app/company/hr/training-nominations', requiredPerm: 'hr:read' },
+            { icon: ClipboardList, label: 'Onboarding', path: '/app/company/hr/onboarding', requiredPerm: 'hr:read' },
+            { icon: UserCheck, label: 'Probation Reviews', path: '/app/company/hr/probation-reviews', requiredPerm: 'hr:read' },
         ],
     },
     {
@@ -294,6 +304,17 @@ const NAV_CONFIG: NavSection[] = [
             { icon: FileSignature, label: 'HR Letters', path: '/app/company/hr/hr-letters', requiredPerm: 'hr:read' },
             { icon: AlertTriangle, label: 'Grievances', path: '/app/company/hr/grievances', requiredPerm: 'hr:read' },
             { icon: Gavel, label: 'Disciplinary Actions', path: '/app/company/hr/disciplinary', requiredPerm: 'hr:read' },
+        ],
+    },
+
+    {
+        group: 'Advanced Features',
+        roles: ['company_admin'],
+        requiredPerm: 'hr:read',
+        items: [
+            { icon: MessageCircle, label: 'HR Chatbot', path: '/app/company/hr/chatbot', requiredPerm: 'hr:read' },
+            { icon: Shield, label: 'Data Retention', path: '/app/company/hr/data-retention', requiredPerm: 'hr:configure' },
+            { icon: Factory, label: 'Production Incentives', path: '/app/company/hr/production-incentives', requiredPerm: 'hr:read' },
         ],
     },
 

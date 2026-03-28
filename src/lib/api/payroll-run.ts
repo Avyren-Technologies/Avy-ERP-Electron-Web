@@ -256,6 +256,23 @@ async function getVarianceReport(params?: {
     return response.data;
 }
 
+// ── Form 16 / 24Q ──
+
+async function generateForm16(data: { financialYear: string }): Promise<ApiResponse<any>> {
+    const response = await client.post('/hr/payroll-reports/form-16', data);
+    return response.data;
+}
+
+async function generateForm24Q(data: { quarter: number; financialYear: string }): Promise<ApiResponse<any>> {
+    const response = await client.post('/hr/payroll-reports/form-24q', data);
+    return response.data;
+}
+
+async function bulkEmailForm16(data: { financialYear: string }): Promise<ApiResponse<any>> {
+    const response = await client.post('/hr/payroll-reports/form-16/bulk-email', data);
+    return response.data;
+}
+
 export const payrollRunApi = {
     // Payroll Runs
     listPayrollRuns,
@@ -302,4 +319,8 @@ export const payrollRunApi = {
     getESIChallan,
     getPTChallan,
     getVarianceReport,
+    // Form 16 / 24Q
+    generateForm16,
+    generateForm24Q,
+    bulkEmailForm16,
 };

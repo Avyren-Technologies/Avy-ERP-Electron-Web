@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { client } from "@/lib/api/client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { showSuccess, showApiError } from "@/lib/toast";
 import { Skeleton, SkeletonCard } from "@/components/ui/Skeleton";
 
@@ -147,14 +147,16 @@ export function ShiftCheckInScreen() {
         );
     }, []);
 
-    // API: status query
-    const { data: statusData, isLoading } = useQuery<StatusResponse>({
+    // API: status query — background polling keeps previous data visible (no skeleton flash on refetch)
+    const { data: statusData, isPending } = useQuery<StatusResponse>({
         queryKey: ["attendance", "my-status"],
         queryFn: async () => {
             const res = await client.get("/hr/attendance/my-status");
             return res.data.data;
         },
+        placeholderData: keepPreviousData,
         refetchInterval: 30000,
+        refetchOnWindowFocus: false,
     });
 
     const attendanceStatus = statusData?.status ?? "NOT_CHECKED_IN";
@@ -230,8 +232,8 @@ export function ShiftCheckInScreen() {
 
     const GeoIcon = geoStatusInfo.icon;
 
-    // Loading skeleton
-    if (isLoading) {
+    // Initial load only — background refetches keep showing the last successful data
+    if (isPending) {
         return (
             <div className="space-y-8 animate-in fade-in duration-500">
                 <div>

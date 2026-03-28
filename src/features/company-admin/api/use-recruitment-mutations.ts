@@ -309,3 +309,13 @@ export function useUpdateDisciplinaryAction() {
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
     });
 }
+
+// ── E-Sign ──
+
+export function useDispatchESign() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (letterId: string) => recruitmentApi.dispatchESign(letterId),
+        onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+    });
+}

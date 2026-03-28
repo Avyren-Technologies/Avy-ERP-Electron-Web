@@ -142,6 +142,20 @@ import { SkillScreen } from "./features/company-admin/hr/SkillScreen";
 import { SuccessionScreen } from "./features/company-admin/hr/SuccessionScreen";
 import { PerformanceDashboardScreen } from "./features/company-admin/hr/PerformanceDashboardScreen";
 
+// HR Additional Screens
+import { OnboardingScreen } from "./features/company-admin/hr/OnboardingScreen";
+import { ProbationReviewScreen } from "./features/company-admin/hr/ProbationReviewScreen";
+import { OrgChartScreen } from "./features/company-admin/hr/OrgChartScreen";
+import { Form16Screen } from "./features/company-admin/hr/Form16Screen";
+import { ChatbotScreen } from "./features/company-admin/hr/ChatbotScreen";
+import { BonusBatchScreen } from "./features/company-admin/hr/BonusBatchScreen";
+import { ESignScreen } from "./features/company-admin/hr/ESignScreen";
+import { DataRetentionScreen } from "./features/company-admin/hr/DataRetentionScreen";
+import { BiometricDeviceScreen } from "./features/company-admin/hr/BiometricDeviceScreen";
+import { ShiftRotationScreen } from "./features/company-admin/hr/ShiftRotationScreen";
+import { ProductionIncentiveScreen } from "./features/company-admin/hr/ProductionIncentiveScreen";
+import { TravelAdvanceScreen } from "./features/company-admin/hr/TravelAdvanceScreen";
+
 // Operations Module Screens
 import { InventoryScreen } from "./features/inventory/InventoryScreen";
 import { ProductionScreen } from "./features/production/ProductionScreen";
@@ -337,6 +351,19 @@ function App() {
         <Route path="company/hr/skills" element={<RequirePermission permission="hr:read"><SkillScreen /></RequirePermission>} />
         <Route path="company/hr/succession" element={<RequirePermission permission="hr:read"><SuccessionScreen /></RequirePermission>} />
         <Route path="company/hr/performance-dashboard" element={<RequirePermission permission="hr:read"><PerformanceDashboardScreen /></RequirePermission>} />
+        {/* Company-admin Additional HR routes */}
+        <Route path="company/hr/onboarding" element={<RequirePermission permission="hr:read"><OnboardingScreen /></RequirePermission>} />
+        <Route path="company/hr/probation-reviews" element={<RequirePermission permission="hr:read"><ProbationReviewScreen /></RequirePermission>} />
+        <Route path="company/hr/org-chart" element={<RequirePermission permission="hr:read"><OrgChartScreen /></RequirePermission>} />
+        <Route path="company/hr/form-16" element={<RequirePermission permission="hr:read"><Form16Screen /></RequirePermission>} />
+        <Route path="company/hr/chatbot" element={<RequirePermission permission="hr:read"><ChatbotScreen /></RequirePermission>} />
+        <Route path="company/hr/bonus-batches" element={<RequirePermission permission="hr:read"><BonusBatchScreen /></RequirePermission>} />
+        <Route path="company/hr/esign" element={<RequirePermission permission="hr:read"><ESignScreen /></RequirePermission>} />
+        <Route path="company/hr/data-retention" element={<RequirePermission permission="hr:read"><DataRetentionScreen /></RequirePermission>} />
+        <Route path="company/hr/biometric-devices" element={<RequirePermission permission="hr:read"><BiometricDeviceScreen /></RequirePermission>} />
+        <Route path="company/hr/shift-rotations" element={<RequirePermission permission="hr:read"><ShiftRotationScreen /></RequirePermission>} />
+        <Route path="company/hr/production-incentives" element={<RequirePermission permission="hr:read"><ProductionIncentiveScreen /></RequirePermission>} />
+        <Route path="company/hr/travel-advances" element={<RequirePermission permission="hr:read"><TravelAdvanceScreen /></RequirePermission>} />
         {/* Operations module routes */}
         <Route path="inventory" element={<RequireRole roles={['super-admin', 'company-admin']}><InventoryScreen /></RequireRole>} />
         <Route path="production" element={<RequireRole roles={['super-admin', 'company-admin']}><ProductionScreen /></RequireRole>} />

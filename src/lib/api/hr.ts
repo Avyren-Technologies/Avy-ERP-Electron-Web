@@ -525,6 +525,25 @@ async function listTimeline(employeeId: string): Promise<ApiResponse<TimelineEnt
     return response.data;
 }
 
+// ── Probation ──
+
+async function listProbationDue(): Promise<ApiResponse<any>> {
+    const response = await client.get('/hr/employees/probation-due');
+    return response.data;
+}
+
+async function submitProbationReview(id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.post(`/hr/employees/${id}/probation-review`, data);
+    return response.data;
+}
+
+// ── Org Chart ──
+
+async function getOrgChart(): Promise<ApiResponse<any>> {
+    const response = await client.get('/hr/employees/org-chart');
+    return response.data;
+}
+
 export const hrApi = {
     // Departments
     listDepartments,
@@ -585,4 +604,9 @@ export const hrApi = {
     deleteDocument,
     // Timeline
     listTimeline,
+    // Probation
+    listProbationDue,
+    submitProbationReview,
+    // Org Chart
+    getOrgChart,
 };

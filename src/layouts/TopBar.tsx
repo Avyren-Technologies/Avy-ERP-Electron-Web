@@ -112,6 +112,19 @@ const PAGE_TITLES: Record<string, { title: string; subtitle?: string }> = {
     '/app/company/hr/skills': { title: 'Skills & Mapping', subtitle: 'Skill library, employee skill mapping, and gap analysis' },
     '/app/company/hr/succession': { title: 'Succession Planning', subtitle: '9-box grid, bench strength, and succession pipelines' },
     '/app/company/hr/performance-dashboard': { title: 'Performance Dashboard', subtitle: 'Cycle progress, completion rates, and rating distribution' },
+    // Additional HR screens
+    '/app/company/hr/onboarding': { title: 'Onboarding Checklist', subtitle: 'Manage new employee onboarding tasks' },
+    '/app/company/hr/probation-reviews': { title: 'Probation Reviews', subtitle: 'Track and manage probation review cycles' },
+    '/app/company/hr/org-chart': { title: 'Organisation Chart', subtitle: 'Visual organisation hierarchy' },
+    '/app/company/hr/form-16': { title: 'Form 16 & 24Q', subtitle: 'Generate and manage Form 16 and 24Q filings' },
+    '/app/company/hr/chatbot': { title: 'HR Chatbot', subtitle: 'AI-powered HR assistant' },
+    '/app/company/hr/bonus-batches': { title: 'Bonus Batches', subtitle: 'Process and manage bonus payouts' },
+    '/app/company/hr/esign': { title: 'E-Sign Tracking', subtitle: 'Track document e-signatures' },
+    '/app/company/hr/data-retention': { title: 'Data Retention & Privacy', subtitle: 'Configure data retention policies' },
+    '/app/company/hr/biometric-devices': { title: 'Biometric Devices', subtitle: 'Manage biometric attendance devices' },
+    '/app/company/hr/shift-rotations': { title: 'Shift Rotations', subtitle: 'Configure automatic shift rotation schedules' },
+    '/app/company/hr/production-incentives': { title: 'Production Incentives', subtitle: 'Manage production-linked incentive schemes' },
+    '/app/company/hr/travel-advances': { title: 'Travel Advances', subtitle: 'Process travel advance requests and settlements' },
 };
 
 function getPageTitle(path: string) {

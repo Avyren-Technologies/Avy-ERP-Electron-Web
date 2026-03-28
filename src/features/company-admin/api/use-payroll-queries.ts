@@ -49,6 +49,10 @@ export const payrollKeys = {
 
     // Tax Config
     taxConfig: () => [...payrollKeys.all, 'tax-config'] as const,
+
+    // Travel Advances
+    travelAdvances: (params?: Record<string, unknown>) =>
+        [...payrollKeys.all, 'travel-advances', params] as const,
 };
 
 // ── Salary Components ──
@@ -187,5 +191,14 @@ export function useTaxConfig() {
     return useQuery({
         queryKey: payrollKeys.taxConfig(),
         queryFn: () => payrollApi.getTaxConfig(),
+    });
+}
+
+// ── Travel Advances ──
+
+export function useTravelAdvances(params?: Record<string, unknown>) {
+    return useQuery({
+        queryKey: payrollKeys.travelAdvances(params),
+        queryFn: () => payrollApi.listTravelAdvances(params),
     });
 }

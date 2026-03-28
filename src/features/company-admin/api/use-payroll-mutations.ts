@@ -299,3 +299,28 @@ export function useUpdateTaxConfig() {
         },
     });
 }
+
+// ── Travel Advance ──
+
+export function useCreateTravelAdvance() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: Record<string, unknown>) => payrollApi.createTravelAdvance(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: payrollKeys.travelAdvances() });
+            queryClient.invalidateQueries({ queryKey: payrollKeys.loans() });
+        },
+    });
+}
+
+export function useSettleTravelAdvance() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, data }: { id: string; data: { expenseClaimId: string } }) =>
+            payrollApi.settleTravelAdvance(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: payrollKeys.travelAdvances() });
+            queryClient.invalidateQueries({ queryKey: payrollKeys.loans() });
+        },
+    });
+}

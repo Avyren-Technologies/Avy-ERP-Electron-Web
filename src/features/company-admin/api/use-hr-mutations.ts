@@ -357,3 +357,18 @@ export function useDeleteDocument() {
         },
     });
 }
+
+// ── Probation ──
+
+export function useSubmitProbationReview() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
+            hrApi.submitProbationReview(id, data),
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: hrKeys.probationDue() });
+            queryClient.invalidateQueries({ queryKey: hrKeys.employee(variables.id) });
+            queryClient.invalidateQueries({ queryKey: hrKeys.employees() });
+        },
+    });
+}

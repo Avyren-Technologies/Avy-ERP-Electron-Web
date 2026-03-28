@@ -20,6 +20,8 @@ export const hrKeys = {
     previousEmployment: (employeeId: string) => [...hrKeys.all, 'employee', employeeId, 'previous-employment'] as const,
     documents: (employeeId: string) => [...hrKeys.all, 'employee', employeeId, 'documents'] as const,
     timeline: (employeeId: string) => [...hrKeys.all, 'employee', employeeId, 'timeline'] as const,
+    probationDue: () => [...hrKeys.all, 'probation-due'] as const,
+    orgChart: () => [...hrKeys.all, 'org-chart'] as const,
 };
 
 // ── Departments ──
@@ -163,5 +165,23 @@ export function useEmployeeTimeline(employeeId: string) {
         queryKey: hrKeys.timeline(employeeId),
         queryFn: () => hrApi.listTimeline(employeeId),
         enabled: !!employeeId,
+    });
+}
+
+// ── Probation ──
+
+export function useProbationDue() {
+    return useQuery({
+        queryKey: hrKeys.probationDue(),
+        queryFn: () => hrApi.listProbationDue(),
+    });
+}
+
+// ── Org Chart ──
+
+export function useOrgChart() {
+    return useQuery({
+        queryKey: hrKeys.orgChart(),
+        queryFn: () => hrApi.getOrgChart(),
     });
 }
