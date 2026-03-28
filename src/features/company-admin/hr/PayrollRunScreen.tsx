@@ -61,6 +61,18 @@ const STATUS_STEP_MAP: Record<string, number> = {
     statutory_done: 4,
     approved: 5,
     disbursed: 6,
+    archived: 6,
+};
+
+const STATUS_LABELS: Record<string, string> = {
+    draft: "Draft",
+    attendance_locked: "Attendance Locked",
+    exceptions_reviewed: "Exceptions Reviewed",
+    computed: "Computed",
+    statutory_done: "Statutory Done",
+    approved: "Approved",
+    disbursed: "Disbursed",
+    archived: "Archived",
 };
 
 function RunStatusBadge({ status }: { status: string }) {
@@ -73,11 +85,12 @@ function RunStatusBadge({ status }: { status: string }) {
         statutory_done: "bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50",
         approved: "bg-success-50 text-success-700 border-success-200 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50",
         disbursed: "bg-success-50 text-success-700 border-success-200 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50",
+        archived: "bg-neutral-200 text-neutral-700 border-neutral-300 dark:bg-neutral-700 dark:text-neutral-300 dark:border-neutral-600",
     };
     const cls = colorMap[s] ?? colorMap.draft;
     return (
         <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize whitespace-nowrap", cls)}>
-            {status?.replace(/_/g, " ") || "Draft"}
+            {STATUS_LABELS[s] || status?.replace(/_/g, " ") || "Draft"}
         </span>
     );
 }

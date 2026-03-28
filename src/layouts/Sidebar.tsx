@@ -124,6 +124,7 @@ const NAV_CONFIG: NavSection[] = [
         roles: ['company_admin'],
         requiredPerm: 'company:read',
         items: [
+            { icon: Blocks, label: 'Module Catalogue', path: '/app/modules', requiredPerm: 'company:read' },
             { icon: Hash, label: 'Number Series', path: '/app/company/no-series', requiredPerm: 'company:read' },
             { icon: Cpu, label: 'IOT Reasons', path: '/app/company/iot-reasons', requiredPerm: 'company:read' },
             { icon: SlidersHorizontal, label: 'System Controls', path: '/app/company/controls', requiredPerm: 'company:configure' },

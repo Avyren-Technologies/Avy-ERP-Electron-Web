@@ -22,6 +22,7 @@ function toSidebarRole(role: UserRole | null): SidebarUserRole {
 export function DashboardLayout() {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const userRole = useAuthStore((s) => s.userRole);
+    const permissions = useAuthStore((s) => s.permissions);
 
     return (
         <div className="flex h-screen w-full overflow-hidden bg-[var(--background)] dark:bg-neutral-950 transition-colors">
@@ -30,6 +31,7 @@ export function DashboardLayout() {
                 collapsed={sidebarCollapsed}
                 onCollapse={setSidebarCollapsed}
                 role={toSidebarRole(userRole)}
+                permissions={permissions}
             />
 
             {/* Main Content Area */}

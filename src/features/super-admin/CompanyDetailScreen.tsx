@@ -17,7 +17,7 @@ import { useTenantDetail, useUpdateCompanyStatus, useDeleteCompany } from '@/fea
 import { useEntityAuditLogs } from '@/features/super-admin/api/use-audit-queries';
 import { showSuccess } from '@/lib/toast';
 import { CompanyDetailEditModal } from '@/features/super-admin/CompanyDetailEditModal';
-import { MODULE_CATALOGUE, USER_TIERS } from '@/features/super-admin/tenant-onboarding/constants';
+import { MODULE_CATALOGUE, USER_TIERS, FY_OPTIONS, MONTHS } from '@/features/super-admin/tenant-onboarding/constants';
 import { Skeleton, SkeletonCard } from '@/components/ui/Skeleton';
 
 // ============================================================
@@ -707,7 +707,15 @@ export function CompanyDetailScreen() {
                             {expandedSections.fiscal ? (
                                 <div className="mt-5 space-y-4 animate-in fade-in duration-200">
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-5">
-                                        <DetailField label="Financial Year" value={fiscalConfig.fyType} />
+                                        <DetailField label="Financial Year" value={(() => {
+                                            const fyOpt = FY_OPTIONS.find((o) => o.key === fiscalConfig.fyType);
+                                            if (fiscalConfig.fyType === 'custom' && fiscalConfig.fyCustomStartMonth && fiscalConfig.fyCustomEndMonth) {
+                                                const startMonth = MONTHS.find((m) => m.key === fiscalConfig.fyCustomStartMonth || m.label === fiscalConfig.fyCustomStartMonth);
+                                                const endMonth = MONTHS.find((m) => m.key === fiscalConfig.fyCustomEndMonth || m.label === fiscalConfig.fyCustomEndMonth);
+                                                return `${startMonth?.label ?? fiscalConfig.fyCustomStartMonth} – ${endMonth?.label ?? fiscalConfig.fyCustomEndMonth}`;
+                                            }
+                                            return fyOpt?.label ?? fiscalConfig.fyType;
+                                        })()} />
                                         <DetailField label="Payroll Frequency" value={fiscalConfig.payrollFreq} />
                                         <DetailField label="Timezone" value={fiscalConfig.timezone} />
                                         <DetailField label="Cutoff Day" value={fiscalConfig.cutoffDay} />
@@ -732,7 +740,15 @@ export function CompanyDetailScreen() {
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-4 mt-4 text-xs text-neutral-500 dark:text-neutral-400">
-                                    <span className="font-semibold">{fiscalConfig.fyType ?? '—'}</span>
+                                    <span className="font-semibold">{(() => {
+                                        const fyOpt = FY_OPTIONS.find((o) => o.key === fiscalConfig.fyType);
+                                        if (fiscalConfig.fyType === 'custom' && fiscalConfig.fyCustomStartMonth && fiscalConfig.fyCustomEndMonth) {
+                                            const startMonth = MONTHS.find((m) => m.key === fiscalConfig.fyCustomStartMonth || m.label === fiscalConfig.fyCustomStartMonth);
+                                            const endMonth = MONTHS.find((m) => m.key === fiscalConfig.fyCustomEndMonth || m.label === fiscalConfig.fyCustomEndMonth);
+                                            return `${startMonth?.label ?? fiscalConfig.fyCustomStartMonth} – ${endMonth?.label ?? fiscalConfig.fyCustomEndMonth}`;
+                                        }
+                                        return fyOpt?.label ?? fiscalConfig.fyType ?? '—';
+                                    })()}</span>
                                     <span>·</span>
                                     <span>{fiscalConfig.payrollFreq ?? '—'}</span>
                                     <span>·</span>
