@@ -2,14 +2,17 @@ import { useState, useMemo } from "react";
 import {
     KeySquare, Users, ShieldCheck, Factory, HeartPulse, Truck,
     FileText, Boxes, Smartphone, Laptop, Search, Loader2, AlertCircle,
-    Filter, ChevronDown,
+    Filter, ChevronDown, Lock, Plus, Minus, ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useModuleCatalogue } from "@/features/company-admin/api/use-company-admin-queries";
+import { useAddLocationModules, useRemoveLocationModule } from "@/features/company-admin/api";
 import type { CatalogueModule } from "@/lib/api/company-admin";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useNavigate } from "react-router-dom";
+import { showSuccess, showApiError } from "@/lib/toast";
 
 // ── Icon map for modules ──
 
@@ -66,7 +69,12 @@ export function ModuleCatalogueScreen() {
     const userRole = useAuthStore((s) => s.userRole);
     const isCompanyAdmin = userRole === "company-admin";
 
+    const navigate = useNavigate();
     const { data, isLoading, isError, error } = useModuleCatalogue();
+    const addModulesMutation = useAddLocationModules();
+    const removeModuleMutation = useRemoveLocationModule();
+    const isMutating = addModulesMutation.isPending || removeModuleMutation.isPending;
+
     // Backend returns { data: { catalogue: [...], companyActiveModuleIds: [...] } }
     const rawData = data?.data as any;
     const modules: CatalogueModule[] = (rawData?.catalogue ?? rawData ?? []).map((mod: any) => ({
@@ -82,6 +90,33 @@ export function ModuleCatalogueScreen() {
         dependencies: mod.dependencies,
         features: mod.features,
     }));
+
+    const locationConfig: string = rawData?.locationConfig ?? 'common';
+    const billingType: string = rawData?.billingType ?? 'monthly';
+    const locationModules: Array<{ locationId: string; locationName: string; activeModuleIds: string[] }> = rawData?.locationModules ?? [];
+    const isOneTimeBilling = billingType === 'one-time';
+
+    function handleAddModule(locationId: string, moduleId: string, moduleName: string) {
+        if (isOneTimeBilling) {
+            navigate('/app/help', { state: { prefill: { category: 'MODULE_CHANGE', metadata: { type: 'ADD', locationId, moduleId, moduleName } } } });
+            return;
+        }
+        addModulesMutation.mutate({ locationId, moduleIds: [moduleId] }, {
+            onSuccess: () => showSuccess(`${moduleName} added successfully`),
+            onError: (err) => showApiError(err),
+        });
+    }
+
+    function handleRemoveModule(locationId: string, moduleId: string, moduleName: string) {
+        if (isOneTimeBilling) {
+            navigate('/app/help', { state: { prefill: { category: 'MODULE_CHANGE', metadata: { type: 'REMOVE', locationId, moduleId, moduleName } } } });
+            return;
+        }
+        removeModuleMutation.mutate({ locationId, moduleId }, {
+            onSuccess: () => showSuccess(`${moduleName} removed successfully`),
+            onError: (err) => showApiError(err),
+        });
+    }
 
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORY);
@@ -233,13 +268,13 @@ export function ModuleCatalogueScreen() {
                     {viewMode === "grid" ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
                             {mods.map((mod) => (
-                                <ModuleCard key={mod.id} mod={mod} isCompanyAdmin={isCompanyAdmin} />
+                                <ModuleCard key={mod.id} mod={mod} isCompanyAdmin={isCompanyAdmin} locationModules={locationModules} onAdd={handleAddModule} onRemove={handleRemoveModule} isOneTimeBilling={isOneTimeBilling} isMutating={isMutating} />
                             ))}
                         </div>
                     ) : (
                         <div className="space-y-3">
                             {mods.map((mod) => (
-                                <ModuleListItem key={mod.id} mod={mod} isCompanyAdmin={isCompanyAdmin} />
+                                <ModuleListItem key={mod.id} mod={mod} isCompanyAdmin={isCompanyAdmin} locationModules={locationModules} onAdd={handleAddModule} onRemove={handleRemoveModule} isOneTimeBilling={isOneTimeBilling} isMutating={isMutating} />
                             ))}
                         </div>
                     )}
@@ -251,7 +286,15 @@ export function ModuleCatalogueScreen() {
 
 // ── Module Card ──
 
-function ModuleCard({ mod, isCompanyAdmin }: { mod: CatalogueModule; isCompanyAdmin: boolean }) {
+function ModuleCard({ mod, isCompanyAdmin, locationModules, onAdd, onRemove, isOneTimeBilling, isMutating }: {
+    mod: CatalogueModule;
+    isCompanyAdmin: boolean;
+    locationModules?: Array<{ locationId: string; locationName: string; activeModuleIds: string[] }>;
+    onAdd?: (locationId: string, moduleId: string, moduleName: string) => void;
+    onRemove?: (locationId: string, moduleId: string, moduleName: string) => void;
+    isOneTimeBilling?: boolean;
+    isMutating?: boolean;
+}) {
     const Icon = getModuleIcon(mod);
     const color = getModuleColor(mod);
 
@@ -326,13 +369,57 @@ function ModuleCard({ mod, isCompanyAdmin }: { mod: CatalogueModule; isCompanyAd
                     </div>
                 </div>
             </div>
+
+            {/* Module Actions for Company Admin */}
+            {isCompanyAdmin && locationModules && locationModules.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800 relative z-10">
+                    {locationModules.map((loc) => {
+                        const isActiveOnLocation = loc.activeModuleIds.includes(mod.id);
+                        const isMasters = mod.id === 'masters';
+                        return (
+                            <div key={loc.locationId} className="flex items-center justify-between py-1.5">
+                                <span className="text-xs text-neutral-500 dark:text-neutral-400 truncate flex-1">{loc.locationName}</span>
+                                {isMasters ? (
+                                    <span className="flex items-center gap-1 text-[10px] text-neutral-400 dark:text-neutral-500">
+                                        <Lock className="w-3 h-3" /> Required
+                                    </span>
+                                ) : isActiveOnLocation ? (
+                                    <button
+                                        onClick={() => onRemove?.(loc.locationId, mod.id, mod.name)}
+                                        disabled={isMutating}
+                                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-danger-600 dark:text-danger-400 bg-danger-50 dark:bg-danger-900/20 rounded-md hover:bg-danger-100 dark:hover:bg-danger-900/40 transition-colors disabled:opacity-50"
+                                    >
+                                        {isOneTimeBilling ? <><ExternalLink className="w-3 h-3" /> Request Remove</> : <><Minus className="w-3 h-3" /> Remove</>}
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => onAdd?.(loc.locationId, mod.id, mod.name)}
+                                        disabled={isMutating}
+                                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-success-600 dark:text-success-400 bg-success-50 dark:bg-success-900/20 rounded-md hover:bg-success-100 dark:hover:bg-success-900/40 transition-colors disabled:opacity-50"
+                                    >
+                                        {isOneTimeBilling ? <><ExternalLink className="w-3 h-3" /> Request Add</> : <><Plus className="w-3 h-3" /> Add</>}
+                                    </button>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
         </div>
     );
 }
 
 // ── Module List Item ──
 
-function ModuleListItem({ mod, isCompanyAdmin }: { mod: CatalogueModule; isCompanyAdmin: boolean }) {
+function ModuleListItem({ mod, isCompanyAdmin, locationModules, onAdd, onRemove, isOneTimeBilling, isMutating }: {
+    mod: CatalogueModule;
+    isCompanyAdmin: boolean;
+    locationModules?: Array<{ locationId: string; locationName: string; activeModuleIds: string[] }>;
+    onAdd?: (locationId: string, moduleId: string, moduleName: string) => void;
+    onRemove?: (locationId: string, moduleId: string, moduleName: string) => void;
+    isOneTimeBilling?: boolean;
+    isMutating?: boolean;
+}) {
     const Icon = getModuleIcon(mod);
     const color = getModuleColor(mod);
 
@@ -371,6 +458,42 @@ function ModuleListItem({ mod, isCompanyAdmin }: { mod: CatalogueModule; isCompa
                 )}>
                     {mod.isActive ? "Active" : "Not Subscribed"}
                 </span>
+            )}
+
+            {/* Module Actions for Company Admin */}
+            {isCompanyAdmin && locationModules && locationModules.length > 0 && (
+                <div className="flex items-center gap-2">
+                    {locationModules.map((loc) => {
+                        const isActiveOnLocation = loc.activeModuleIds.includes(mod.id);
+                        const isMasters = mod.id === 'masters';
+                        return (
+                            <div key={loc.locationId} className="flex items-center gap-1.5">
+                                <span className="text-[10px] text-neutral-400 dark:text-neutral-500 hidden xl:inline">{loc.locationName}:</span>
+                                {isMasters ? (
+                                    <span className="flex items-center gap-0.5 text-[10px] text-neutral-400 dark:text-neutral-500">
+                                        <Lock className="w-3 h-3" />
+                                    </span>
+                                ) : isActiveOnLocation ? (
+                                    <button
+                                        onClick={() => onRemove?.(loc.locationId, mod.id, mod.name)}
+                                        disabled={isMutating}
+                                        className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-bold text-danger-600 dark:text-danger-400 bg-danger-50 dark:bg-danger-900/20 rounded hover:bg-danger-100 dark:hover:bg-danger-900/40 transition-colors disabled:opacity-50"
+                                    >
+                                        {isOneTimeBilling ? <ExternalLink className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => onAdd?.(loc.locationId, mod.id, mod.name)}
+                                        disabled={isMutating}
+                                        className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-bold text-success-600 dark:text-success-400 bg-success-50 dark:bg-success-900/20 rounded hover:bg-success-100 dark:hover:bg-success-900/40 transition-colors disabled:opacity-50"
+                                    >
+                                        {isOneTimeBilling ? <ExternalLink className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                                    </button>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
             )}
         </div>
     );

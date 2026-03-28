@@ -216,7 +216,7 @@ export function TicketChatScreen() {
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
-    const ticket: TicketData | null = data?.ticket ?? data ?? null;
+    const ticket: TicketData | null = data?.data ?? data?.ticket ?? null;
 
     useTicketSocket(id, ticket?.companyId);
     const messages: SupportMessage[] = ticket?.messages ?? [];

@@ -26,7 +26,7 @@ export const companyAdminKeys = {
     permissionCatalogue: () => [...companyAdminKeys.all, 'permission-catalogue'] as const,
     referenceRoles: () => [...companyAdminKeys.all, 'reference-roles'] as const,
     featureToggleCatalogue: () => [...companyAdminKeys.all, 'feature-toggle-catalogue'] as const,
-    supportTickets: (params?: Record<string, unknown>) => [...companyAdminKeys.all, 'support-tickets', params] as const,
+    supportTickets: (params?: Record<string, unknown>) => params ? [...companyAdminKeys.all, 'support-tickets', params] as const : [...companyAdminKeys.all, 'support-tickets'] as const,
     supportTicket: (id: string) => [...companyAdminKeys.all, 'support-ticket', id] as const,
 };
 

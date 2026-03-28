@@ -17,6 +17,16 @@ export function getSocket(): Socket {
 
 export function connectSocket() {
     const s = getSocket();
+    // Attach auth token from localStorage before connecting
+    try {
+        const tokensRaw = localStorage.getItem('auth_tokens');
+        if (tokensRaw) {
+            const tokens = JSON.parse(tokensRaw);
+            s.auth = { token: tokens.accessToken };
+        }
+    } catch {
+        // Ignore parse errors
+    }
     if (!s.connected) s.connect();
     return s;
 }
