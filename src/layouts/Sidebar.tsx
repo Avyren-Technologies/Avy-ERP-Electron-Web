@@ -401,11 +401,11 @@ const NAV_CONFIG: NavSection[] = [
         ],
     },
 
-    // ══════════ EMPLOYEE SELF-SERVICE (visible to ALL authenticated users with ess:* permissions) ══════════
+    // ══════════ EMPLOYEE SELF-SERVICE (company users only — not super admin) ══════════
     {
         group: 'Self-Service',
         moduleSeparator: 'Self-Service',
-        // NO roles filter — visible to all authenticated users
+        roles: ['company_admin', 'viewer'],
         items: [
             { icon: UserCircle, label: 'My Profile', path: '/app/company/hr/my-profile', requiredPerm: 'ess:view-profile' },
             { icon: FileText, label: 'My Payslips', path: '/app/company/hr/my-payslips', requiredPerm: 'ess:view-payslips' },
@@ -418,18 +418,20 @@ const NAV_CONFIG: NavSection[] = [
             { icon: MessageCircle, label: 'HR Chatbot', path: '/app/company/hr/chatbot', requiredPerm: 'ess:view-profile' },
         ],
     },
-    // ── Manager Tools (visible to users with hr:read or hr:approve) ──
+    // ── Manager Tools (company users only — not super admin) ──
     {
         group: 'Team Management',
+        roles: ['company_admin', 'viewer'],
         items: [
             { icon: Users, label: 'Team View', path: '/app/company/hr/team-view', requiredPerm: 'hr:read' },
             { icon: CheckSquare, label: 'Approvals', path: '/app/company/hr/approval-requests', requiredPerm: 'hr:approve' },
         ],
     },
-    // ── Performance (visible to users with ess:view-goals) ──
+    // ── Performance (company users only — not super admin) ──
     {
         group: 'Performance',
         moduleSeparator: 'Performance',
+        roles: ['company_admin', 'viewer'],
         items: [
             { icon: Target, label: 'My Goals', path: '/app/company/hr/goals', requiredPerm: 'ess:view-goals' },
             { icon: Star, label: 'My Appraisal', path: '/app/company/hr/ratings', requiredPerm: 'ess:submit-appraisal' },

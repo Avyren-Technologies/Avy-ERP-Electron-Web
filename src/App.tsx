@@ -157,6 +157,13 @@ import { ShiftRotationScreen } from "./features/company-admin/hr/ShiftRotationSc
 import { ProductionIncentiveScreen } from "./features/company-admin/hr/ProductionIncentiveScreen";
 import { TravelAdvanceScreen } from "./features/company-admin/hr/TravelAdvanceScreen";
 
+// ESS Self-Service Screens (Employee)
+import { MyGoalsScreen } from './features/ess/MyGoalsScreen';
+import { MyForm16Screen } from './features/ess/MyForm16Screen';
+import { MyGrievancesScreen } from './features/ess/MyGrievancesScreen';
+import { MyTrainingScreen } from './features/ess/MyTrainingScreen';
+import { MyAssetsScreen } from './features/ess/MyAssetsScreen';
+
 // Operations Module Screens
 import { InventoryScreen } from "./features/inventory/InventoryScreen";
 import { ProductionScreen } from "./features/production/ProductionScreen";
@@ -335,6 +342,11 @@ function App() {
         <Route path="company/hr/my-attendance" element={<RequirePermission permission="ess:view-attendance"><MyAttendanceScreen /></RequirePermission>} />
         <Route path="company/hr/shift-check-in" element={<RequirePermission permission="ess:view-attendance"><ShiftCheckInScreen /></RequirePermission>} />
         <Route path="company/hr/team-view" element={<RequirePermission permission="hr:read"><TeamViewScreen /></RequirePermission>} />
+        <Route path="company/hr/my-goals" element={<RequirePermission permission="ess:view-goals"><MyGoalsScreen /></RequirePermission>} />
+        <Route path="company/hr/my-form16" element={<RequirePermission permission="ess:download-form16"><MyForm16Screen /></RequirePermission>} />
+        <Route path="company/hr/my-grievances" element={<RequirePermission permission="ess:raise-grievance"><MyGrievancesScreen /></RequirePermission>} />
+        <Route path="company/hr/my-training" element={<RequirePermission permission="ess:enroll-training"><MyTrainingScreen /></RequirePermission>} />
+        <Route path="company/hr/my-assets" element={<RequirePermission permission="ess:view-assets"><MyAssetsScreen /></RequirePermission>} />
         {/* Company-admin Recruitment & Training routes */}
         <Route path="company/hr/requisitions" element={<RequirePermission permission="hr:read"><RequisitionScreen /></RequirePermission>} />
         <Route path="company/hr/candidates" element={<RequirePermission permission="hr:read"><CandidateScreen /></RequirePermission>} />

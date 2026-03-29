@@ -29,6 +29,11 @@ export const companyAdminKeys = {
     supportTickets: (params?: Record<string, unknown>) => params ? [...companyAdminKeys.all, 'support-tickets', params] as const : [...companyAdminKeys.all, 'support-tickets'] as const,
     supportTicket: (id: string) => [...companyAdminKeys.all, 'support-ticket', id] as const,
     navigationManifest: () => [...companyAdminKeys.all, 'navigation-manifest'] as const,
+    myGoals: () => [...companyAdminKeys.all, 'my-goals'] as const,
+    myGrievances: () => [...companyAdminKeys.all, 'my-grievances'] as const,
+    myTraining: () => [...companyAdminKeys.all, 'my-training'] as const,
+    myAssets: () => [...companyAdminKeys.all, 'my-assets'] as const,
+    myForm16: () => [...companyAdminKeys.all, 'my-form16'] as const,
 };
 
 export function useCompanyProfile() {
@@ -246,4 +251,26 @@ export function useSupportTicket(id: string) {
         enabled: !!id,
         refetchInterval: 10000,
     });
+}
+
+// ── ESS Self-Service ──
+
+export function useMyGoals() {
+    return useQuery({ queryKey: companyAdminKeys.myGoals(), queryFn: () => companyAdminApi.getMyGoals() });
+}
+
+export function useMyGrievances() {
+    return useQuery({ queryKey: companyAdminKeys.myGrievances(), queryFn: () => companyAdminApi.getMyGrievances() });
+}
+
+export function useMyTraining() {
+    return useQuery({ queryKey: companyAdminKeys.myTraining(), queryFn: () => companyAdminApi.getMyTraining() });
+}
+
+export function useMyAssets() {
+    return useQuery({ queryKey: companyAdminKeys.myAssets(), queryFn: () => companyAdminApi.getMyAssets() });
+}
+
+export function useMyForm16() {
+    return useQuery({ queryKey: companyAdminKeys.myForm16(), queryFn: () => companyAdminApi.getMyForm16() });
 }

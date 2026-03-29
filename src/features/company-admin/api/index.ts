@@ -481,6 +481,11 @@ export {
 export {
     useSupportTickets,
     useSupportTicket,
+    useMyGoals,
+    useMyGrievances,
+    useMyTraining,
+    useMyAssets,
+    useMyForm16,
 } from './use-company-admin-queries';
 
 export {
@@ -489,6 +494,7 @@ export {
     useCloseSupportTicket,
     useAddLocationModules,
     useRemoveLocationModule,
+    useFileGrievance,
 } from './use-company-admin-mutations';
 
 // Onboarding

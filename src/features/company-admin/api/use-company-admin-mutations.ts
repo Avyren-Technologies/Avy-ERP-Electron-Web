@@ -345,6 +345,19 @@ export function useAddLocationModules() {
     });
 }
 
+// ── ESS Self-Service ──
+
+export function useFileGrievance() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: { categoryId: string; description: string; isAnonymous?: boolean }) =>
+            companyAdminApi.fileGrievance(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: companyAdminKeys.myGrievances() });
+        },
+    });
+}
+
 export function useRemoveLocationModule() {
     const queryClient = useQueryClient();
     return useMutation({

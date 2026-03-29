@@ -775,4 +775,13 @@ export const companyAdminApi = {
     // ── Navigation Manifest ──
     getNavigationManifest: () =>
         client.get('/rbac/navigation-manifest').then(r => r.data),
+
+    // ── ESS Self-Service ──
+    getMyGoals: () => client.get('/hr/ess/my-goals').then(r => r.data),
+    getMyGrievances: () => client.get('/hr/ess/my-grievances').then(r => r.data),
+    fileGrievance: (data: { categoryId: string; description: string; isAnonymous?: boolean }) =>
+        client.post('/hr/ess/file-grievance', data).then(r => r.data),
+    getMyTraining: () => client.get('/hr/ess/my-training').then(r => r.data),
+    getMyAssets: () => client.get('/hr/ess/my-assets').then(r => r.data),
+    getMyForm16: () => client.get('/hr/ess/my-form16').then(r => r.data),
 };
