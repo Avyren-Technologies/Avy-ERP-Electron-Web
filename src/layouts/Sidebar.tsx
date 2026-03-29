@@ -18,7 +18,7 @@ import {
     Settings2, GitBranch, Mail, BellRing, FileCheck, UserCircle, CalendarOff,
     Target, Flag, MessageSquare, Star, Brain, GitFork,
     UserPlus, GraduationCap, Award, FileSignature, AlertTriangle, Gavel,
-    ArrowLeftRight, LogIn,
+    ArrowLeftRight, LogIn, CheckSquare,
     Fingerprint, RefreshCw, Gift, Plane, PenTool, MessageCircle, Factory, Network,
 } from 'lucide-react';
 import { useAuthStore, getUserInitials, getDisplayName } from '@/store/useAuthStore';
@@ -343,6 +343,42 @@ const NAV_CONFIG: NavSection[] = [
         requiredPerm: 'audit:read',
         items: [
             { icon: FileText, label: 'Audit Logs', path: '/app/reports/audit', requiredPerm: 'audit:read' },
+        ],
+    },
+
+    // ══════════ EMPLOYEE SELF-SERVICE (visible to ALL authenticated users with ess:* permissions) ══════════
+    {
+        group: 'Self-Service',
+        moduleSeparator: 'Self-Service',
+        // NO roles filter — visible to all authenticated users
+        items: [
+            { icon: UserCircle, label: 'My Profile', path: '/app/company/hr/my-profile', requiredPerm: 'ess:view-profile' },
+            { icon: FileText, label: 'My Payslips', path: '/app/company/hr/my-payslips', requiredPerm: 'ess:view-payslips' },
+            { icon: CalendarOff, label: 'My Leave', path: '/app/company/hr/my-leave', requiredPerm: 'ess:view-leave' },
+            { icon: Clock, label: 'My Attendance', path: '/app/company/hr/my-attendance', requiredPerm: 'ess:view-attendance' },
+            { icon: Fingerprint, label: 'Shift Check-In', path: '/app/company/hr/shift-check-in', requiredPerm: 'ess:view-attendance' },
+            { icon: CalendarDays, label: 'Holiday Calendar', path: '/app/company/hr/holidays', requiredPerm: 'ess:view-holidays' },
+            { icon: FileCheck, label: 'IT Declaration', path: '/app/company/hr/it-declarations', requiredPerm: 'ess:it-declaration' },
+            { icon: Users, label: 'Employee Directory', path: '/app/company/hr/employees', requiredPerm: 'ess:view-directory' },
+            { icon: MessageCircle, label: 'HR Chatbot', path: '/app/company/hr/chatbot', requiredPerm: 'ess:view-profile' },
+        ],
+    },
+    // ── Manager Tools (visible to users with hr:read or hr:approve) ──
+    {
+        group: 'Team Management',
+        items: [
+            { icon: Users, label: 'Team View', path: '/app/company/hr/team-view', requiredPerm: 'hr:read' },
+            { icon: CheckSquare, label: 'Approvals', path: '/app/company/hr/approval-requests', requiredPerm: 'hr:approve' },
+        ],
+    },
+    // ── Performance (visible to users with ess:view-goals) ──
+    {
+        group: 'Performance',
+        moduleSeparator: 'Performance',
+        items: [
+            { icon: Target, label: 'My Goals', path: '/app/company/hr/goals', requiredPerm: 'ess:view-goals' },
+            { icon: Star, label: 'My Appraisal', path: '/app/company/hr/ratings', requiredPerm: 'ess:submit-appraisal' },
+            { icon: MessageSquare, label: '360 Feedback', path: '/app/company/hr/feedback-360', requiredPerm: 'ess:submit-feedback' },
         ],
     },
 ];

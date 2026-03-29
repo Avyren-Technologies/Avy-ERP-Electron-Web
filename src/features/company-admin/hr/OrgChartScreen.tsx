@@ -163,7 +163,22 @@ export function OrgChartScreen() {
     const { data, isLoading, isError } = useOrgChart();
     const orgData: OrgNode[] = useMemo(() => {
         const raw = (data as any)?.data ?? data ?? [];
-        return Array.isArray(raw) ? raw : raw?.tree ? [raw.tree] : raw?.root ? [raw.root] : [];
+        const arr = Array.isArray(raw) ? raw : raw?.tree ? [raw.tree] : raw?.root ? [raw.root] : [];
+
+        // Transform backend format (firstName/lastName, nested objects) to frontend OrgNode format
+        function transformNode(node: any): OrgNode {
+            return {
+                id: node.id,
+                name: [node.firstName, node.lastName].filter(Boolean).join(' ') || node.name || 'Unknown',
+                designation: node.designation?.name ?? node.designation ?? undefined,
+                department: node.department?.name ?? node.department ?? undefined,
+                employeeId: node.employeeId,
+                imageUrl: node.profilePhotoUrl ?? node.imageUrl ?? undefined,
+                reportees: (node.reportees ?? node.children ?? []).map(transformNode),
+            };
+        }
+
+        return arr.map(transformNode);
     }, [data]);
 
     const allNodes = useMemo(() => flattenNodes(orgData), [orgData]);

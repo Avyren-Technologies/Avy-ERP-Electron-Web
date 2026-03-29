@@ -42,6 +42,14 @@ function buildPreview(prefix: string, suffix: string, numberCount: number, start
     return `${prefix}${suffix}${String(start).padStart(digits, "0")}`;
 }
 
+const LINKED_SCREENS = [
+    'Employee Onboarding', 'Attendance', 'Leave Management', 'Payroll',
+    'Work Order', 'Production Order', 'Andon Ticket', 'Quality Check',
+    'Non-Conformance', 'Maintenance Ticket', 'Preventive Maintenance',
+    'GRN', 'Material Request', 'Gate Pass', 'Stock Transfer',
+    'Sales Invoice', 'Purchase Order', 'Delivery Challan', 'Goods Return',
+];
+
 const EMPTY_SERIES = {
     code: "",
     description: "",
@@ -231,7 +239,17 @@ export function NoSeriesManagementScreen() {
                         <div className="p-6 overflow-y-auto flex-1 space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <FormField label="Code" value={form.code} onChange={(v) => updateField("code", v)} placeholder="e.g. PO" mono />
-                                <FormField label="Linked Screen" value={form.linkedScreen} onChange={(v) => updateField("linkedScreen", v)} placeholder="e.g. Purchase Order" />
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Linked Screen *</label>
+                                    <select
+                                        value={form.linkedScreen}
+                                        onChange={(e) => updateField("linkedScreen", e.target.value)}
+                                        className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                                    >
+                                        <option value="">Select screen...</option>
+                                        {LINKED_SCREENS.map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                </div>
                             </div>
                             <FormField label="Description" value={form.description} onChange={(v) => updateField("description", v)} placeholder="Series description" />
                             <div className="grid grid-cols-2 gap-4">

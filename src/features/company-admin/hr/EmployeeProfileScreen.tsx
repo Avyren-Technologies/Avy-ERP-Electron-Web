@@ -24,6 +24,7 @@ import {
     EyeOff,
     KeyRound,
     Plus,
+    RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -236,6 +237,25 @@ const EMPTY_DOCUMENTS = {
     passport: "", dl: "", voterId: "",
 };
 
+/* ── Draft persistence helpers (localStorage) ── */
+
+const STORAGE_KEY = 'avy_employee_form_draft';
+
+function saveDraft(data: any) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
+}
+
+function loadDraft(): any | null {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+}
+
+function clearDraft() {
+    try { localStorage.removeItem(STORAGE_KEY); } catch {}
+}
+
 /* ── Main Screen ── */
 
 export function EmployeeProfileScreen() {
@@ -392,6 +412,36 @@ export function EmployeeProfileScreen() {
             voterId: emp.voterId ?? "",
         });
     }, [employeeQuery.data, isNew]);
+
+    // Load draft from localStorage on mount (create mode only)
+    useEffect(() => {
+        if (!isNew) return;
+        const draft = loadDraft();
+        if (draft) {
+            setPersonal(draft.personal ?? { ...EMPTY_PERSONAL });
+            setProfessional(draft.professional ?? { ...EMPTY_PROFESSIONAL });
+            setSalary(draft.salary ?? { ...EMPTY_SALARY });
+            setBank(draft.bank ?? { ...EMPTY_BANK });
+            setDocuments(draft.documents ?? { ...EMPTY_DOCUMENTS });
+            showSuccess('Draft Restored', 'Your previously saved employee form data has been restored.');
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Auto-save draft on form changes (debounced, create mode only)
+    useEffect(() => {
+        if (!isNew) return;
+        const timer = setTimeout(() => {
+            saveDraft({
+                personal,
+                professional,
+                salary,
+                bank,
+                documents,
+            });
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [personal, professional, salary, bank, documents, isNew]);
 
     // Helpers
     const updatePersonal = (key: string, value: any) => setPersonal((p) => ({ ...p, [key]: value }));
@@ -574,6 +624,7 @@ export function EmployeeProfileScreen() {
         try {
             if (isNew) {
                 const result = await createMutation.mutateAsync(payload);
+                clearDraft();
                 showSuccess("Employee Created", `${personal.firstName} ${personal.lastName} has been added.`);
                 const newId = (result as any)?.data?.id;
                 if (newId) {
@@ -678,15 +729,39 @@ export function EmployeeProfileScreen() {
                         )}
                     </div>
                 </div>
-                {!isNew && !editing && (
-                    <button
-                        onClick={() => setEditing(true)}
-                        className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none"
-                    >
-                        <Briefcase className="w-4 h-4" />
-                        Edit Employee
-                    </button>
-                )}
+                <div className="flex items-center gap-3">
+                    {isNew && (
+                        <button
+                            onClick={() => {
+                                clearDraft();
+                                setPersonal({ ...EMPTY_PERSONAL });
+                                setProfessional({ ...EMPTY_PROFESSIONAL });
+                                setSalary({ ...EMPTY_SALARY });
+                                setBank({ ...EMPTY_BANK });
+                                setDocuments({ ...EMPTY_DOCUMENTS });
+                                setProfilePhotoUrl(null);
+                                setCreateUserAccount(false);
+                                setUserPassword("");
+                                setConfirmPassword("");
+                                setUserRole("");
+                                setDocUploads({});
+                            }}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-semibold text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                        >
+                            <RotateCcw size={14} />
+                            Reset Form
+                        </button>
+                    )}
+                    {!isNew && !editing && (
+                        <button
+                            onClick={() => setEditing(true)}
+                            className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none"
+                        >
+                            <Briefcase className="w-4 h-4" />
+                            Edit Employee
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Tab Navigation */}

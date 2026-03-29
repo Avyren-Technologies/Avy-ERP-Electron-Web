@@ -22,6 +22,9 @@ import {
     useUnassignShiftRotation,
     useExecuteShiftRotations,
 } from "@/features/company-admin/api/use-shift-rotation-mutations";
+import { useCompanyShifts } from "@/features/company-admin/api/use-company-admin-queries";
+import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
@@ -133,6 +136,8 @@ const EMPTY_FORM = {
     name: "",
     pattern: "WEEKLY",
     effectiveFrom: "",
+    effectiveTo: "",
+    description: "",
     isActive: true,
     shifts: [] as { shiftId: string; shiftName: string; weekNumber: number }[],
 };
@@ -147,7 +152,7 @@ export function ShiftRotationScreen() {
     const [deleteTarget, setDeleteTarget] = useState<any>(null);
     const [detailTarget, setDetailTarget] = useState<any>(null);
     const [assignModalOpen, setAssignModalOpen] = useState(false);
-    const [assignEmployeeIds, setAssignEmployeeIds] = useState("");
+    const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
     const [executeResult, setExecuteResult] = useState<any>(null);
 
     const { data, isLoading, isError } = useShiftRotations();
@@ -157,6 +162,25 @@ export function ShiftRotationScreen() {
     const assignMutation = useAssignShiftRotation();
     const unassignMutation = useUnassignShiftRotation();
     const executeMutation = useExecuteShiftRotations();
+
+    const { data: shiftsData } = useCompanyShifts();
+    const availableShifts: any[] = (shiftsData as any)?.data ?? [];
+    const shiftOptions = availableShifts.map((s: any) => ({
+        value: s.id,
+        label: s.name,
+        sublabel: `${s.fromTime} — ${s.toTime}`,
+    }));
+
+    const { data: empData } = useEmployees();
+    const allEmployees: any[] = (empData as any)?.data ?? [];
+    const employeeOptions = allEmployees.map((e: any) => ({
+        value: e.id,
+        label: `${e.firstName} ${e.lastName}`,
+        sublabel: e.employeeId,
+    }));
+
+    // Build a lookup map for employee names
+    const employeeMap = new Map(allEmployees.map((e: any) => [e.id, `${e.firstName} ${e.lastName} (${e.employeeId})`]));
 
     const schedules: any[] = (data as any)?.data ?? [];
 
@@ -178,8 +202,14 @@ export function ShiftRotationScreen() {
             name: schedule.name ?? "",
             pattern: schedule.pattern ?? "WEEKLY",
             effectiveFrom: schedule.effectiveFrom ? schedule.effectiveFrom.substring(0, 10) : "",
+            effectiveTo: schedule.effectiveTo ? schedule.effectiveTo.substring(0, 10) : "",
+            description: schedule.description ?? "",
             isActive: schedule.isActive ?? true,
-            shifts: schedule.shifts ?? [],
+            shifts: (schedule.shifts ?? []).map((s: any, i: number) => ({
+                shiftId: s.shiftId ?? "",
+                shiftName: s.shiftName ?? availableShifts.find((sh: any) => sh.id === s.shiftId)?.name ?? "",
+                weekNumber: s.weekNumber ?? i + 1,
+            })),
         });
         setModalOpen(true);
     };
@@ -188,10 +218,15 @@ export function ShiftRotationScreen() {
         try {
             const payload = {
                 name: form.name,
-                pattern: form.pattern,
+                rotationPattern: form.pattern,
                 effectiveFrom: form.effectiveFrom,
+                effectiveTo: form.effectiveTo || undefined,
+                description: form.description || undefined,
                 isActive: form.isActive,
-                shifts: form.shifts,
+                shifts: form.shifts.map((s, i) => ({
+                    shiftId: s.shiftId,
+                    weekNumber: i + 1,
+                })),
             };
             if (editingId) {
                 await updateMutation.mutateAsync({ id: editingId, data: payload });
@@ -218,13 +253,12 @@ export function ShiftRotationScreen() {
     };
 
     const handleAssign = async () => {
-        if (!detailTarget) return;
+        if (!detailTarget || selectedEmployeeIds.length === 0) return;
         try {
-            const ids = assignEmployeeIds.split(",").map((s) => s.trim()).filter(Boolean);
-            await assignMutation.mutateAsync({ id: detailTarget.id, data: { employeeIds: ids } });
-            showSuccess("Employees Assigned", `${ids.length} employee(s) assigned to ${detailTarget.name}.`);
+            await assignMutation.mutateAsync({ id: detailTarget.id, data: { employeeIds: selectedEmployeeIds } });
+            showSuccess("Employees Assigned", `${selectedEmployeeIds.length} employee(s) assigned to ${detailTarget.name}.`);
             setAssignModalOpen(false);
-            setAssignEmployeeIds("");
+            setSelectedEmployeeIds([]);
         } catch (err) {
             showApiError(err);
         }
@@ -396,6 +430,19 @@ export function ShiftRotationScreen() {
                             <FormField label="Schedule Name" value={form.name} onChange={(v) => updateField("name", v)} placeholder="e.g. Weekly A-B-C Rotation" required />
                             <SelectField label="Pattern" value={form.pattern} onChange={(v) => updateField("pattern", v)} options={PATTERNS} />
                             <FormField label="Effective From" value={form.effectiveFrom} onChange={(v) => updateField("effectiveFrom", v)} type="date" required />
+                            <FormField label="Effective To" value={form.effectiveTo} onChange={(v) => updateField("effectiveTo", v)} type="date" />
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
+                                    Description
+                                </label>
+                                <textarea
+                                    value={form.description}
+                                    onChange={(e) => updateField("description", e.target.value)}
+                                    placeholder="Notes about this schedule..."
+                                    rows={2}
+                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all resize-none"
+                                />
+                            </div>
                             <div className="flex items-center justify-between px-1">
                                 <label className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Active</label>
                                 <button
@@ -417,25 +464,21 @@ export function ShiftRotationScreen() {
                                 </div>
                                 {form.shifts.map((shift, i) => (
                                     <div key={i} className="flex items-center gap-2 mb-2">
-                                        <input
-                                            value={shift.shiftName}
-                                            onChange={(e) => updateShiftRow(i, "shiftName", e.target.value)}
-                                            placeholder="Shift name"
-                                            className="flex-1 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm dark:text-white placeholder:text-neutral-400"
-                                        />
-                                        <input
-                                            value={shift.shiftId}
-                                            onChange={(e) => updateShiftRow(i, "shiftId", e.target.value)}
-                                            placeholder="Shift ID"
-                                            className="w-28 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm dark:text-white placeholder:text-neutral-400"
-                                        />
-                                        <input
-                                            type="number"
-                                            value={shift.weekNumber}
-                                            onChange={(e) => updateShiftRow(i, "weekNumber", Number(e.target.value))}
-                                            placeholder="Week"
-                                            className="w-20 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm dark:text-white placeholder:text-neutral-400"
-                                        />
+                                        <div className="flex-1">
+                                            <SearchableSelect
+                                                value={shift.shiftId}
+                                                onChange={(v) => {
+                                                    const selected = availableShifts.find((s: any) => s.id === v);
+                                                    updateShiftRow(i, "shiftId", v);
+                                                    if (selected) updateShiftRow(i, "shiftName", selected.name);
+                                                }}
+                                                options={shiftOptions}
+                                                placeholder="Select shift..."
+                                            />
+                                        </div>
+                                        <div className="w-16 h-10 bg-neutral-100 dark:bg-neutral-800 rounded-lg flex items-center justify-center text-sm font-bold text-neutral-600 dark:text-neutral-300">
+                                            #{i + 1}
+                                        </div>
                                         <button onClick={() => removeShiftRow(i)} className="p-1.5 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg">
                                             <X size={14} />
                                         </button>
@@ -482,7 +525,7 @@ export function ShiftRotationScreen() {
                                 <div className="space-y-2">
                                     {(detailTarget.assignedEmployees ?? []).map((emp: any) => (
                                         <div key={emp.id ?? emp.employeeId} className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-neutral-800 rounded-xl">
-                                            <span className="text-sm font-medium text-primary-950 dark:text-white">{emp.name ?? emp.employeeName ?? emp.id}</span>
+                                            <span className="text-sm font-medium text-primary-950 dark:text-white">{emp.name ?? emp.employeeName ?? employeeMap.get(emp.id ?? emp.employeeId) ?? emp.id}</span>
                                             <button
                                                 onClick={() => handleRemoveEmployee(detailTarget.id, emp.id ?? emp.employeeId)}
                                                 className="p-1 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg"
@@ -504,7 +547,7 @@ export function ShiftRotationScreen() {
             {/* ── Assign Employees Modal ── */}
             {assignModalOpen && detailTarget && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm animate-in fade-in zoom-in-95 duration-200">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in-95 duration-200">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
                             <h2 className="text-lg font-bold text-primary-950 dark:text-white">Assign Employees</h2>
                             <button onClick={() => setAssignModalOpen(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
@@ -512,20 +555,23 @@ export function ShiftRotationScreen() {
                             </button>
                         </div>
                         <div className="p-6 space-y-4">
-                            <p className="text-sm text-neutral-500 dark:text-neutral-400">Enter employee IDs, comma-separated.</p>
-                            <textarea
-                                value={assignEmployeeIds}
-                                onChange={(e) => setAssignEmployeeIds(e.target.value)}
-                                placeholder="e.g. emp-001, emp-002, emp-003"
-                                rows={3}
-                                className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400">Select employees to assign to this schedule.</p>
+                            <SearchableSelect
+                                label="Select Employees"
+                                value=""
+                                onChange={() => {}}
+                                multiple
+                                selectedValues={selectedEmployeeIds}
+                                onMultiChange={setSelectedEmployeeIds}
+                                options={employeeOptions}
+                                placeholder="Search employees..."
                             />
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
-                            <button onClick={() => setAssignModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
-                            <button onClick={handleAssign} disabled={assignMutation.isPending || !assignEmployeeIds.trim()} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                            <button onClick={() => { setAssignModalOpen(false); setSelectedEmployeeIds([]); }} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
+                            <button onClick={handleAssign} disabled={assignMutation.isPending || selectedEmployeeIds.length === 0} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                                 {assignMutation.isPending && <Loader2 size={14} className="animate-spin" />}
-                                {assignMutation.isPending ? "Assigning..." : "Assign"}
+                                {assignMutation.isPending ? "Assigning..." : `Assign (${selectedEmployeeIds.length})`}
                             </button>
                         </div>
                     </div>

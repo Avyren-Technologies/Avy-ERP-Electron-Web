@@ -140,6 +140,16 @@ export function useHasPermission(permission: string): boolean {
     return checkPermission(permissions, permission);
 }
 
+/** Returns true if the user is an employee (not super-admin or company-admin) with ESS permissions. */
+export function isEmployeeUser(userRole: UserRole | null, permissions: string[]): boolean {
+    if (userRole === 'super-admin' || userRole === 'company-admin') return false;
+    // Check if user has any ESS permissions but not company:read
+    return permissions.some(p => p.startsWith('ess:')) && !checkPermission(permissions, 'company:read');
+}
+
+// Re-export checkPermission for convenience
+export { checkPermission };
+
 /** React hook: returns true if the current user has the given feature toggle enabled. */
 export function useHasFeature(key: string): boolean {
     const featureToggles = useAuthStore((s) => s.featureToggles);

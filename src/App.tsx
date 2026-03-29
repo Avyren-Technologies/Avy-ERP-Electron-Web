@@ -16,6 +16,7 @@ import { VerifyResetCodeScreen } from "./features/auth/VerifyResetCodeScreen";
 import { ResetPasswordScreen } from "./features/auth/ResetPasswordScreen";
 import { DashboardScreen } from "./features/super-admin/DashboardScreen";
 import { CompanyAdminDashboard } from "./features/company-admin/CompanyAdminDashboard";
+import { RoleBasedDashboardScreen } from "./features/employee/EmployeeDashboard";
 import { CompanyListScreen } from "./features/super-admin/CompanyListScreen";
 import { CompanyDetailScreen } from "./features/super-admin/CompanyDetailScreen";
 import { AddCompanyWizard } from "./features/super-admin/AddCompanyWizard";
@@ -206,9 +207,11 @@ const RequireRole = ({ children, roles }: { children: React.ReactNode; roles: Us
 };
 
 // Permission Guard — renders NoPermissionScreen if user lacks the required permission
-const RequirePermission = ({ children, permission }: { children: React.ReactNode; permission: string }) => {
+const RequirePermission = ({ children, permission }: { children: React.ReactNode; permission: string | string[] }) => {
   const permissions = useAuthStore((s) => s.permissions) || [];
-  if (!checkPermission(permissions, permission)) {
+  const required = Array.isArray(permission) ? permission : [permission];
+  const hasAccess = required.some(p => checkPermission(permissions, p));
+  if (!hasAccess) {
     return <NoPermissionScreen />;
   }
   return <>{children}</>;
@@ -216,8 +219,16 @@ const RequirePermission = ({ children, permission }: { children: React.ReactNode
 
 function RoleBasedDashboard() {
   const userRole = useAuthStore((s) => s.userRole);
-  if (userRole === 'company-admin') return <CompanyAdminDashboard />;
-  return <DashboardScreen />;
+  const permissions = useAuthStore((s) => s.permissions) || [];
+
+  if (userRole === 'super-admin') return <DashboardScreen />;
+
+  // Check if user has company admin-level access (not just COMPANY_ADMIN role)
+  const hasCompanyAccess = checkPermission(permissions, 'company:read');
+  if (hasCompanyAccess) return <CompanyAdminDashboard />;
+
+  // Everyone else (employees, managers without company:read) gets the role-based dashboard
+  return <RoleBasedDashboardScreen />;
 }
 
 function App() {
@@ -280,20 +291,20 @@ function App() {
         <Route path="company/hr/grades" element={<RequirePermission permission="hr:read"><GradeScreen /></RequirePermission>} />
         <Route path="company/hr/employee-types" element={<RequirePermission permission="hr:read"><EmployeeTypeScreen /></RequirePermission>} />
         <Route path="company/hr/cost-centres" element={<RequirePermission permission="hr:read"><CostCentreScreen /></RequirePermission>} />
-        <Route path="company/hr/employees" element={<RequirePermission permission="hr:read"><EmployeeDirectoryScreen /></RequirePermission>} />
-        <Route path="company/hr/employees/:id" element={<RequirePermission permission="hr:read"><EmployeeProfileScreen /></RequirePermission>} />
+        <Route path="company/hr/employees" element={<RequirePermission permission={['hr:read', 'ess:view-directory']}><EmployeeDirectoryScreen /></RequirePermission>} />
+        <Route path="company/hr/employees/:id" element={<RequirePermission permission={['hr:read', 'ess:view-profile']}><EmployeeProfileScreen /></RequirePermission>} />
         {/* Company-admin Attendance routes */}
         <Route path="company/hr/attendance" element={<RequirePermission permission="hr:read"><AttendanceDashboardScreen /></RequirePermission>} />
-        <Route path="company/hr/holidays" element={<RequirePermission permission="hr:read"><HolidayScreen /></RequirePermission>} />
+        <Route path="company/hr/holidays" element={<RequirePermission permission={['hr:read', 'ess:view-holidays']}><HolidayScreen /></RequirePermission>} />
         <Route path="company/hr/rosters" element={<RequirePermission permission="hr:read"><RosterScreen /></RequirePermission>} />
         <Route path="company/hr/attendance-rules" element={<RequirePermission permission="hr:read"><AttendanceRulesScreen /></RequirePermission>} />
         <Route path="company/hr/attendance-overrides" element={<RequirePermission permission="hr:read"><AttendanceOverrideScreen /></RequirePermission>} />
         <Route path="company/hr/overtime-rules" element={<RequirePermission permission="hr:read"><OvertimeRulesScreen /></RequirePermission>} />
         {/* Company-admin Leave Management routes */}
-        <Route path="company/hr/leave-types" element={<RequirePermission permission="hr:read"><LeaveTypeScreen /></RequirePermission>} />
+        <Route path="company/hr/leave-types" element={<RequirePermission permission={['hr:read', 'ess:view-leave']}><LeaveTypeScreen /></RequirePermission>} />
         <Route path="company/hr/leave-policies" element={<RequirePermission permission="hr:read"><LeavePolicyScreen /></RequirePermission>} />
-        <Route path="company/hr/leave-requests" element={<RequirePermission permission="hr:read"><LeaveRequestScreen /></RequirePermission>} />
-        <Route path="company/hr/leave-balances" element={<RequirePermission permission="hr:read"><LeaveBalanceScreen /></RequirePermission>} />
+        <Route path="company/hr/leave-requests" element={<RequirePermission permission={['hr:read', 'ess:apply-leave']}><LeaveRequestScreen /></RequirePermission>} />
+        <Route path="company/hr/leave-balances" element={<RequirePermission permission={['hr:read', 'ess:view-leave']}><LeaveBalanceScreen /></RequirePermission>} />
         {/* Company-admin Payroll & Compliance routes */}
         <Route path="company/hr/salary-components" element={<RequirePermission permission="hr:read"><SalaryComponentScreen /></RequirePermission>} />
         <Route path="company/hr/salary-structures" element={<RequirePermission permission="hr:read"><SalaryStructureScreen /></RequirePermission>} />
@@ -316,13 +327,13 @@ function App() {
         <Route path="company/hr/approval-requests" element={<RequirePermission permission="hr:read"><ApprovalRequestScreen /></RequirePermission>} />
         <Route path="company/hr/notification-templates" element={<RequirePermission permission="hr:configure"><NotificationTemplateScreen /></RequirePermission>} />
         <Route path="company/hr/notification-rules" element={<RequirePermission permission="hr:configure"><NotificationRuleScreen /></RequirePermission>} />
-        <Route path="company/hr/it-declarations" element={<RequirePermission permission="hr:read"><ITDeclarationScreen /></RequirePermission>} />
-        {/* Company-admin Self-Service routes */}
-        <Route path="company/hr/my-profile" element={<RequirePermission permission="hr:read"><MyProfileScreen /></RequirePermission>} />
-        <Route path="company/hr/my-payslips" element={<RequirePermission permission="hr:read"><MyPayslipsScreen /></RequirePermission>} />
-        <Route path="company/hr/my-leave" element={<RequirePermission permission="hr:read"><MyLeaveScreen /></RequirePermission>} />
-        <Route path="company/hr/my-attendance" element={<RequirePermission permission="hr:read"><MyAttendanceScreen /></RequirePermission>} />
-        <Route path="company/hr/shift-check-in" element={<RequirePermission permission="hr:read"><ShiftCheckInScreen /></RequirePermission>} />
+        <Route path="company/hr/it-declarations" element={<RequirePermission permission={['hr:read', 'ess:it-declaration']}><ITDeclarationScreen /></RequirePermission>} />
+        {/* Self-Service routes (accessible to all users with ESS permissions) */}
+        <Route path="company/hr/my-profile" element={<RequirePermission permission="ess:view-profile"><MyProfileScreen /></RequirePermission>} />
+        <Route path="company/hr/my-payslips" element={<RequirePermission permission="ess:view-payslips"><MyPayslipsScreen /></RequirePermission>} />
+        <Route path="company/hr/my-leave" element={<RequirePermission permission="ess:view-leave"><MyLeaveScreen /></RequirePermission>} />
+        <Route path="company/hr/my-attendance" element={<RequirePermission permission="ess:view-attendance"><MyAttendanceScreen /></RequirePermission>} />
+        <Route path="company/hr/shift-check-in" element={<RequirePermission permission="ess:view-attendance"><ShiftCheckInScreen /></RequirePermission>} />
         <Route path="company/hr/team-view" element={<RequirePermission permission="hr:read"><TeamViewScreen /></RequirePermission>} />
         {/* Company-admin Recruitment & Training routes */}
         <Route path="company/hr/requisitions" element={<RequirePermission permission="hr:read"><RequisitionScreen /></RequirePermission>} />
@@ -345,9 +356,9 @@ function App() {
         <Route path="company/hr/delegates" element={<RequirePermission permission="hr:read"><DelegateScreen /></RequirePermission>} />
         {/* Company-admin Performance Management routes */}
         <Route path="company/hr/appraisal-cycles" element={<RequirePermission permission="hr:read"><AppraisalCycleScreen /></RequirePermission>} />
-        <Route path="company/hr/goals" element={<RequirePermission permission="hr:read"><GoalScreen /></RequirePermission>} />
-        <Route path="company/hr/feedback-360" element={<RequirePermission permission="hr:read"><Feedback360Screen /></RequirePermission>} />
-        <Route path="company/hr/ratings" element={<RequirePermission permission="hr:read"><RatingsScreen /></RequirePermission>} />
+        <Route path="company/hr/goals" element={<RequirePermission permission={['hr:read', 'ess:view-goals']}><GoalScreen /></RequirePermission>} />
+        <Route path="company/hr/feedback-360" element={<RequirePermission permission={['hr:read', 'ess:submit-feedback']}><Feedback360Screen /></RequirePermission>} />
+        <Route path="company/hr/ratings" element={<RequirePermission permission={['hr:read', 'ess:submit-appraisal']}><RatingsScreen /></RequirePermission>} />
         <Route path="company/hr/skills" element={<RequirePermission permission="hr:read"><SkillScreen /></RequirePermission>} />
         <Route path="company/hr/succession" element={<RequirePermission permission="hr:read"><SuccessionScreen /></RequirePermission>} />
         <Route path="company/hr/performance-dashboard" element={<RequirePermission permission="hr:read"><PerformanceDashboardScreen /></RequirePermission>} />
@@ -356,7 +367,7 @@ function App() {
         <Route path="company/hr/probation-reviews" element={<RequirePermission permission="hr:read"><ProbationReviewScreen /></RequirePermission>} />
         <Route path="company/hr/org-chart" element={<RequirePermission permission="hr:read"><OrgChartScreen /></RequirePermission>} />
         <Route path="company/hr/form-16" element={<RequirePermission permission="hr:read"><Form16Screen /></RequirePermission>} />
-        <Route path="company/hr/chatbot" element={<RequirePermission permission="hr:read"><ChatbotScreen /></RequirePermission>} />
+        <Route path="company/hr/chatbot" element={<RequirePermission permission={['hr:read', 'ess:view-profile']}><ChatbotScreen /></RequirePermission>} />
         <Route path="company/hr/bonus-batches" element={<RequirePermission permission="hr:read"><BonusBatchScreen /></RequirePermission>} />
         <Route path="company/hr/esign" element={<RequirePermission permission="hr:read"><ESignScreen /></RequirePermission>} />
         <Route path="company/hr/data-retention" element={<RequirePermission permission="hr:read"><DataRetentionScreen /></RequirePermission>} />

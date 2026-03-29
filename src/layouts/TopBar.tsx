@@ -140,7 +140,15 @@ function getPageTitle(path: string) {
 // ============================================================
 // Command Palette search items
 // ============================================================
-const SEARCH_ITEMS = [
+type SearchItem = {
+    icon: typeof LayoutDashboard;
+    label: string;
+    path: string;
+    group: string;
+    requiredPerm?: string;
+};
+
+const SEARCH_ITEMS: SearchItem[] = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/app/dashboard', group: 'Pages' },
     { icon: Building2, label: 'Companies', path: '/app/companies', group: 'Pages' },
     { icon: CreditCard, label: 'Billing', path: '/app/billing', group: 'Billing' },
@@ -150,43 +158,101 @@ const SEARCH_ITEMS = [
     { icon: Activity, label: 'Platform Monitor', path: '/app/monitor', group: 'Pages' },
     { icon: Settings, label: 'Settings', path: '/app/settings', group: 'Pages' },
     // Company Admin
-    { icon: Building2, label: 'Company Profile', path: '/app/company/profile', group: 'Company' },
-    { icon: Users, label: 'User Management', path: '/app/company/users', group: 'Company' },
-    { icon: FileText, label: 'Roles & Permissions', path: '/app/company/roles', group: 'Company' },
-    { icon: Settings, label: 'Company Settings', path: '/app/company/settings', group: 'Company' },
+    { icon: Building2, label: 'Company Profile', path: '/app/company/profile', group: 'Company', requiredPerm: 'company:read' },
+    { icon: Users, label: 'User Management', path: '/app/company/users', group: 'Company', requiredPerm: 'company:read' },
+    { icon: FileText, label: 'Roles & Permissions', path: '/app/company/roles', group: 'Company', requiredPerm: 'role:read' },
+    { icon: Settings, label: 'Company Settings', path: '/app/company/settings', group: 'Company', requiredPerm: 'company:read' },
+    { icon: FileText, label: 'Number Series', path: '/app/company/no-series', group: 'Company', requiredPerm: 'company:read' },
+    { icon: FileText, label: 'Locations', path: '/app/company/locations', group: 'Company', requiredPerm: 'company:read' },
+    { icon: FileText, label: 'Shifts & Time', path: '/app/company/shifts', group: 'Company', requiredPerm: 'company:read' },
+    { icon: FileText, label: 'Feature Toggles', path: '/app/company/feature-toggles', group: 'Company', requiredPerm: 'role:read' },
     // Transfers & Promotions
-    { icon: Users, label: 'Employee Transfers', path: '/app/company/hr/transfers', group: 'HR' },
-    { icon: Users, label: 'Employee Promotions', path: '/app/company/hr/promotions', group: 'HR' },
-    { icon: Users, label: 'Manager Delegation', path: '/app/company/hr/delegates', group: 'HR' },
+    { icon: Users, label: 'Employee Transfers', path: '/app/company/hr/transfers', group: 'HR', requiredPerm: 'hr:read' },
+    { icon: Users, label: 'Employee Promotions', path: '/app/company/hr/promotions', group: 'HR', requiredPerm: 'hr:read' },
+    { icon: Users, label: 'Manager Delegation', path: '/app/company/hr/delegates', group: 'HR', requiredPerm: 'hr:read' },
     // HR
-    { icon: Users, label: 'Employee Directory', path: '/app/company/hr/employees', group: 'HR' },
-    { icon: Building2, label: 'Departments', path: '/app/company/hr/departments', group: 'HR' },
-    { icon: FileText, label: 'Designations', path: '/app/company/hr/designations', group: 'HR' },
-    { icon: FileText, label: 'Payroll Reports', path: '/app/company/hr/payroll-reports', group: 'HR' },
-    { icon: Settings, label: 'ESS Config', path: '/app/company/hr/ess-config', group: 'ESS & Workflows' },
-    { icon: FileText, label: 'Approval Workflows', path: '/app/company/hr/approval-workflows', group: 'ESS & Workflows' },
-    { icon: FileText, label: 'IT Declarations', path: '/app/company/hr/it-declarations', group: 'ESS & Workflows' },
+    { icon: Users, label: 'Employee Directory', path: '/app/company/hr/employees', group: 'HR', requiredPerm: 'hr:read' },
+    { icon: Building2, label: 'Departments', path: '/app/company/hr/departments', group: 'HR', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Designations', path: '/app/company/hr/designations', group: 'HR', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Grades & Bands', path: '/app/company/hr/grades', group: 'HR', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Employee Types', path: '/app/company/hr/employee-types', group: 'HR', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Cost Centres', path: '/app/company/hr/cost-centres', group: 'HR', requiredPerm: 'hr:read' },
+    { icon: ClipboardList, label: 'Onboarding Checklist', path: '/app/company/hr/onboarding', group: 'HR', requiredPerm: 'hr:read' },
+    { icon: Users, label: 'Probation Reviews', path: '/app/company/hr/probation-reviews', group: 'HR', requiredPerm: 'hr:read' },
+    { icon: Users, label: 'Organisation Chart', path: '/app/company/hr/org-chart', group: 'HR', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Payroll Reports', path: '/app/company/hr/payroll-reports', group: 'Payroll', requiredPerm: 'hr:read' },
+    // Attendance
+    { icon: FileText, label: 'Attendance Dashboard', path: '/app/company/hr/attendance', group: 'Attendance', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Holiday Calendar', path: '/app/company/hr/holidays', group: 'Attendance', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Rosters', path: '/app/company/hr/rosters', group: 'Attendance', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Attendance Rules', path: '/app/company/hr/attendance-rules', group: 'Attendance', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Attendance Overrides', path: '/app/company/hr/attendance-overrides', group: 'Attendance', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Overtime Rules', path: '/app/company/hr/overtime-rules', group: 'Attendance', requiredPerm: 'hr:read' },
+    { icon: Settings, label: 'Biometric Devices', path: '/app/company/hr/biometric-devices', group: 'Attendance', requiredPerm: 'hr:configure' },
+    { icon: Settings, label: 'Shift Rotations', path: '/app/company/hr/shift-rotations', group: 'Attendance', requiredPerm: 'hr:configure' },
+    // Leave Management
+    { icon: FileText, label: 'Leave Types', path: '/app/company/hr/leave-types', group: 'Leave', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Leave Policies', path: '/app/company/hr/leave-policies', group: 'Leave', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Leave Requests', path: '/app/company/hr/leave-requests', group: 'Leave', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Leave Balances', path: '/app/company/hr/leave-balances', group: 'Leave', requiredPerm: 'hr:read' },
+    // Payroll & Compliance
+    { icon: FileText, label: 'Salary Components', path: '/app/company/hr/salary-components', group: 'Payroll', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Salary Structures', path: '/app/company/hr/salary-structures', group: 'Payroll', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Employee Salary', path: '/app/company/hr/employee-salary', group: 'Payroll', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Payroll Runs', path: '/app/company/hr/payroll-runs', group: 'Payroll', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Payslips', path: '/app/company/hr/payslips', group: 'Payroll', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Salary Holds', path: '/app/company/hr/salary-holds', group: 'Payroll', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Salary Revisions', path: '/app/company/hr/salary-revisions', group: 'Payroll', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Statutory Config', path: '/app/company/hr/statutory-config', group: 'Payroll', requiredPerm: 'hr:configure' },
+    { icon: FileText, label: 'Tax & TDS Config', path: '/app/company/hr/tax-config', group: 'Payroll', requiredPerm: 'hr:configure' },
+    { icon: FileText, label: 'Bank Config', path: '/app/company/hr/bank-config', group: 'Payroll', requiredPerm: 'hr:configure' },
+    { icon: FileText, label: 'Loan Policies', path: '/app/company/hr/loan-policies', group: 'Payroll', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Loans', path: '/app/company/hr/loans', group: 'Payroll', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Statutory Filings', path: '/app/company/hr/statutory-filings', group: 'Payroll', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Form 16 & 24Q', path: '/app/company/hr/form-16', group: 'Payroll', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Bonus Batches', path: '/app/company/hr/bonus-batches', group: 'Payroll', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Travel Advances', path: '/app/company/hr/travel-advances', group: 'Payroll', requiredPerm: 'hr:read' },
+    // ESS & Workflows
+    { icon: Settings, label: 'ESS Config', path: '/app/company/hr/ess-config', group: 'ESS & Workflows', requiredPerm: 'hr:configure' },
+    { icon: FileText, label: 'Approval Workflows', path: '/app/company/hr/approval-workflows', group: 'ESS & Workflows', requiredPerm: 'hr:configure' },
+    { icon: FileText, label: 'Approval Requests', path: '/app/company/hr/approval-requests', group: 'ESS & Workflows', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'IT Declarations', path: '/app/company/hr/it-declarations', group: 'ESS & Workflows', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Notification Templates', path: '/app/company/hr/notification-templates', group: 'ESS & Workflows', requiredPerm: 'hr:configure' },
+    { icon: FileText, label: 'Notification Rules', path: '/app/company/hr/notification-rules', group: 'ESS & Workflows', requiredPerm: 'hr:configure' },
+    { icon: Settings, label: 'E-Sign Tracking', path: '/app/company/hr/esign', group: 'ESS & Workflows', requiredPerm: 'hr:read' },
+    // Exit & Separation
+    { icon: FileText, label: 'Exit Requests', path: '/app/company/hr/exit-requests', group: 'Exit', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Clearance Dashboard', path: '/app/company/hr/clearance-dashboard', group: 'Exit', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'F&F Settlement', path: '/app/company/hr/fnf-settlement', group: 'Exit', requiredPerm: 'hr:read' },
+    // Self-Service
     { icon: Users, label: 'My Profile', path: '/app/company/hr/my-profile', group: 'Self-Service' },
+    { icon: FileText, label: 'My Payslips', path: '/app/company/hr/my-payslips', group: 'Self-Service' },
+    { icon: FileText, label: 'My Leave', path: '/app/company/hr/my-leave', group: 'Self-Service' },
+    { icon: FileText, label: 'My Attendance', path: '/app/company/hr/my-attendance', group: 'Self-Service' },
+    { icon: FileText, label: 'Shift Check-In', path: '/app/company/hr/shift-check-in', group: 'Self-Service' },
     { icon: Users, label: 'Team View', path: '/app/company/hr/team-view', group: 'Self-Service' },
     // Recruitment & Training
-    { icon: Users, label: 'Job Requisitions', path: '/app/company/hr/requisitions', group: 'Recruitment' },
-    { icon: Users, label: 'Candidates', path: '/app/company/hr/candidates', group: 'Recruitment' },
-    { icon: Settings, label: 'Training Catalogue', path: '/app/company/hr/training', group: 'Recruitment' },
-    { icon: Settings, label: 'Training Nominations', path: '/app/company/hr/training-nominations', group: 'Recruitment' },
+    { icon: Users, label: 'Job Requisitions', path: '/app/company/hr/requisitions', group: 'Recruitment', requiredPerm: 'hr:read' },
+    { icon: Users, label: 'Candidates', path: '/app/company/hr/candidates', group: 'Recruitment', requiredPerm: 'hr:read' },
+    { icon: Settings, label: 'Training Catalogue', path: '/app/company/hr/training', group: 'Recruitment', requiredPerm: 'hr:read' },
+    { icon: Settings, label: 'Training Nominations', path: '/app/company/hr/training-nominations', group: 'Recruitment', requiredPerm: 'hr:read' },
     // Advanced HR
-    { icon: Package, label: 'Asset Management', path: '/app/company/hr/assets', group: 'Advanced HR' },
-    { icon: FileText, label: 'Expense Claims', path: '/app/company/hr/expenses', group: 'Advanced HR' },
-    { icon: FileText, label: 'HR Letters', path: '/app/company/hr/hr-letters', group: 'Advanced HR' },
-    { icon: Settings, label: 'Grievances', path: '/app/company/hr/grievances', group: 'Advanced HR' },
-    { icon: Settings, label: 'Disciplinary Actions', path: '/app/company/hr/disciplinary', group: 'Advanced HR' },
+    { icon: Package, label: 'Asset Management', path: '/app/company/hr/assets', group: 'Advanced HR', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Expense Claims', path: '/app/company/hr/expenses', group: 'Advanced HR', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'HR Letters', path: '/app/company/hr/hr-letters', group: 'Advanced HR', requiredPerm: 'hr:read' },
+    { icon: Settings, label: 'Grievances', path: '/app/company/hr/grievances', group: 'Advanced HR', requiredPerm: 'hr:read' },
+    { icon: Settings, label: 'Disciplinary Actions', path: '/app/company/hr/disciplinary', group: 'Advanced HR', requiredPerm: 'hr:read' },
+    { icon: Settings, label: 'Production Incentives', path: '/app/company/hr/production-incentives', group: 'Advanced HR', requiredPerm: 'hr:read' },
+    { icon: Settings, label: 'HR Chatbot', path: '/app/company/hr/chatbot', group: 'Advanced HR', requiredPerm: 'hr:read' },
+    { icon: Settings, label: 'Data Retention & Privacy', path: '/app/company/hr/data-retention', group: 'Advanced HR', requiredPerm: 'hr:configure' },
     // Performance Management
-    { icon: Settings, label: 'Appraisal Cycles', path: '/app/company/hr/appraisal-cycles', group: 'Performance' },
-    { icon: FileText, label: 'Goals & OKRs', path: '/app/company/hr/goals', group: 'Performance' },
-    { icon: Users, label: '360 Feedback', path: '/app/company/hr/feedback-360', group: 'Performance' },
-    { icon: Settings, label: 'Ratings & Calibration', path: '/app/company/hr/ratings', group: 'Performance' },
-    { icon: Settings, label: 'Skills & Mapping', path: '/app/company/hr/skills', group: 'Performance' },
-    { icon: Users, label: 'Succession Planning', path: '/app/company/hr/succession', group: 'Performance' },
-    { icon: Activity, label: 'Performance Dashboard', path: '/app/company/hr/performance-dashboard', group: 'Performance' },
+    { icon: Settings, label: 'Appraisal Cycles', path: '/app/company/hr/appraisal-cycles', group: 'Performance', requiredPerm: 'hr:read' },
+    { icon: FileText, label: 'Goals & OKRs', path: '/app/company/hr/goals', group: 'Performance', requiredPerm: 'hr:read' },
+    { icon: Users, label: '360 Feedback', path: '/app/company/hr/feedback-360', group: 'Performance', requiredPerm: 'hr:read' },
+    { icon: Settings, label: 'Ratings & Calibration', path: '/app/company/hr/ratings', group: 'Performance', requiredPerm: 'hr:read' },
+    { icon: Settings, label: 'Skills & Mapping', path: '/app/company/hr/skills', group: 'Performance', requiredPerm: 'hr:read' },
+    { icon: Users, label: 'Succession Planning', path: '/app/company/hr/succession', group: 'Performance', requiredPerm: 'hr:read' },
+    { icon: Activity, label: 'Performance Dashboard', path: '/app/company/hr/performance-dashboard', group: 'Performance', requiredPerm: 'hr:read' },
     // Reports
     { icon: ClipboardList, label: 'Audit Logs', path: '/app/reports/audit', group: 'Reports' },
     // Operations
@@ -458,24 +524,81 @@ function ProfileDropdown() {
 // ============================================================
 function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
     const [query, setQuery] = useState('');
+    const [activeIndex, setActiveIndex] = useState(0);
     const navigate = useNavigate();
     const inputRef = useRef<HTMLInputElement>(null);
+    const permissions = useAuthStore((s) => s.permissions);
+    const userRole = useAuthStore((s) => s.userRole);
 
     useEffect(() => {
         if (open) {
             setQuery('');
+            setActiveIndex(0);
             setTimeout(() => inputRef.current?.focus(), 50);
         }
     }, [open]);
 
-    const grouped = SEARCH_ITEMS.reduce((acc, item) => {
+    // Filter by role and permissions — strict role separation
+    const visibleItems = SEARCH_ITEMS.filter((item) => {
+        if (userRole === 'super-admin') {
+            // Super admin: only platform-level routes (no tenant context for company/* routes)
+            if (item.path.startsWith('/app/company')) return false;
+            if (item.path.startsWith('/app/inventory')) return false;
+            if (item.path.startsWith('/app/production')) return false;
+            if (item.path.startsWith('/app/maintenance')) return false;
+            return true;
+        }
+        // Company admin / other roles: hide super-admin-only routes
+        if (item.path.startsWith('/app/companies') || item.path.startsWith('/app/billing') ||
+            item.path === '/app/modules' || item.path === '/app/monitor') {
+            return false;
+        }
+        // Permission-based filtering for company users
+        if (item.requiredPerm) {
+            return permissions.includes(item.requiredPerm);
+        }
+        return true;
+    });
+
+    const grouped = visibleItems.reduce((acc, item) => {
         if (query && !item.label.toLowerCase().includes(query.toLowerCase())) return acc;
         if (!acc[item.group]) acc[item.group] = [];
         acc[item.group].push(item);
         return acc;
-    }, {} as Record<string, typeof SEARCH_ITEMS>);
+    }, {} as Record<string, SearchItem[]>);
+
+    // Flatten all visible items for index-based navigation
+    const flatItems = Object.values(grouped).flat();
+
+    // Reset active index when query changes
+    useEffect(() => { setActiveIndex(0); }, [query]);
+
+    // Scroll active item into view
+    useEffect(() => {
+        const el = document.querySelector('[data-active="true"]');
+        el?.scrollIntoView({ block: 'nearest' });
+    }, [activeIndex]);
+
+    // Keyboard handler on the input
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setActiveIndex((i) => Math.min(i + 1, flatItems.length - 1));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setActiveIndex((i) => Math.max(i - 1, 0));
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (flatItems[activeIndex]) {
+                navigate(flatItems[activeIndex].path);
+                onClose();
+            }
+        }
+    };
 
     if (!open) return null;
+
+    let globalIndex = 0;
 
     return (
         <div
@@ -497,6 +620,7 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
                         ref={inputRef}
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
+                        onKeyDown={handleKeyDown}
                         placeholder="Search pages, modules, actions…"
                         className="flex-1 text-sm font-medium bg-transparent outline-none text-primary-950 dark:text-white placeholder:text-neutral-400"
                     />
@@ -525,19 +649,44 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
                                 <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
                                     {group}
                                 </p>
-                                {items.map((item) => (
-                                    <button
-                                        key={item.path}
-                                        onClick={() => { navigate(item.path); onClose(); }}
-                                        className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900/30 group transition-colors"
-                                    >
-                                        <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center flex-shrink-0 group-hover:bg-primary-100 dark:group-hover:bg-primary-800/50 transition-colors">
-                                            <item.icon size={15} className="text-neutral-500 dark:text-neutral-400 group-hover:text-primary-600 dark:group-hover:text-primary-400" />
-                                        </div>
-                                        <span className="flex-1 text-left text-sm font-semibold text-primary-950 dark:text-white">{item.label}</span>
-                                        <ArrowRight size={14} className="text-neutral-300 dark:text-neutral-600 group-hover:text-primary-400 transition-colors" />
-                                    </button>
-                                ))}
+                                {items.map((item) => {
+                                    const idx = globalIndex++;
+                                    return (
+                                        <button
+                                            key={item.path}
+                                            data-active={idx === activeIndex}
+                                            onClick={() => { navigate(item.path); onClose(); }}
+                                            onMouseEnter={() => setActiveIndex(idx)}
+                                            className={cn(
+                                                "w-full flex items-center gap-3 px-3 py-3 rounded-xl group transition-colors",
+                                                idx === activeIndex
+                                                    ? "bg-primary-50 dark:bg-primary-900/30"
+                                                    : "hover:bg-primary-50 dark:hover:bg-primary-900/30"
+                                            )}
+                                        >
+                                            <div className={cn(
+                                                "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors",
+                                                idx === activeIndex
+                                                    ? "bg-primary-100 dark:bg-primary-800/50"
+                                                    : "bg-neutral-100 dark:bg-neutral-800 group-hover:bg-primary-100 dark:group-hover:bg-primary-800/50"
+                                            )}>
+                                                <item.icon size={15} className={cn(
+                                                    "transition-colors",
+                                                    idx === activeIndex
+                                                        ? "text-primary-600 dark:text-primary-400"
+                                                        : "text-neutral-500 dark:text-neutral-400 group-hover:text-primary-600 dark:group-hover:text-primary-400"
+                                                )} />
+                                            </div>
+                                            <span className="flex-1 text-left text-sm font-semibold text-primary-950 dark:text-white">{item.label}</span>
+                                            <ArrowRight size={14} className={cn(
+                                                "transition-colors",
+                                                idx === activeIndex
+                                                    ? "text-primary-400"
+                                                    : "text-neutral-300 dark:text-neutral-600 group-hover:text-primary-400"
+                                            )} />
+                                        </button>
+                                    );
+                                })}
                             </div>
                         ))
                     )}

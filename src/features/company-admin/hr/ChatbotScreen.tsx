@@ -108,7 +108,13 @@ export function ChatbotScreen() {
     const { data: historyData, isLoading: historyLoading } = useChatbotMessages(conversationId ?? "", undefined);
     const escalateChat = useEscalateChatbotConversation();
 
-    const messages: ChatMessage[] = (historyData as any)?.data ?? [];
+    const rawMessages: any[] = (historyData as any)?.data ?? [];
+    const messages: ChatMessage[] = rawMessages.map((m: any) => ({
+        id: m.id,
+        role: (m.role?.toLowerCase() === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+        content: m.content ?? m.message ?? '',
+        timestamp: m.createdAt ?? m.timestamp ?? new Date().toISOString(),
+    }));
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -136,7 +142,7 @@ export function ChatbotScreen() {
         const msg = input.trim();
         setInput("");
         sendMessage.mutate(
-            { conversationId, data: { message: msg } } as any,
+            { conversationId, data: { content: msg } } as any,
             { onError: (err: unknown) => showApiError(err) }
         );
     };
@@ -145,7 +151,7 @@ export function ChatbotScreen() {
         if (!conversationId) return;
         setInput("");
         sendMessage.mutate(
-            { conversationId, data: { message: label } } as any,
+            { conversationId, data: { content: label } } as any,
             { onError: (err: unknown) => showApiError(err) }
         );
     };
