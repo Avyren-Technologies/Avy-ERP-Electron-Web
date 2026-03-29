@@ -32,6 +32,16 @@ const QUICK_ACTIONS = [
     { label: "Talk to HR", icon: "🧑‍💼" },
 ];
 
+/** GET .../messages returns `{ data: { conversation, messages } }` — not a bare array. */
+function extractChatMessageRows(historyPayload: unknown): unknown[] {
+    const inner = (historyPayload as { data?: unknown } | null | undefined)?.data;
+    if (Array.isArray(inner)) return inner;
+    if (inner && typeof inner === "object" && "messages" in inner && Array.isArray((inner as { messages: unknown }).messages)) {
+        return (inner as { messages: unknown[] }).messages;
+    }
+    return [];
+}
+
 /* ── Atoms ── */
 
 function MessageBubble({ message }: { message: ChatMessage }) {
@@ -108,7 +118,7 @@ export function ChatbotScreen() {
     const { data: historyData, isLoading: historyLoading } = useChatbotMessages(conversationId ?? "", undefined);
     const escalateChat = useEscalateChatbotConversation();
 
-    const rawMessages: any[] = (historyData as any)?.data ?? [];
+    const rawMessages = extractChatMessageRows(historyData);
     const messages: ChatMessage[] = rawMessages.map((m: any) => ({
         id: m.id,
         role: (m.role?.toLowerCase() === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',

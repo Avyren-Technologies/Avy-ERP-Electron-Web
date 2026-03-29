@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { useThemeStore } from '@/store/useThemeStore';
 import { useAuthStore, getUserInitials, getDisplayName, getRoleLabel } from '@/store/useAuthStore';
+import { useNavigationManifest } from '@/features/company-admin/api';
+import { checkPermission } from '@/lib/api/auth';
 
 // ============================================================
 // Page title map
@@ -148,6 +150,7 @@ type SearchItem = {
     requiredPerm?: string;
 };
 
+// Fallback items — used only when navigation manifest hasn't loaded yet
 const SEARCH_ITEMS: SearchItem[] = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/app/dashboard', group: 'Pages' },
     { icon: Building2, label: 'Companies', path: '/app/companies', group: 'Pages' },
@@ -520,6 +523,39 @@ function ProfileDropdown() {
 }
 
 // ============================================================
+// Icon resolver for manifest items in command palette
+// ============================================================
+const SEARCH_ICON_MAP: Record<string, typeof LayoutDashboard> = {
+    'dashboard': LayoutDashboard, 'building': Building2, 'credit-card': CreditCard,
+    'blocks': Blocks, 'activity': Activity, 'settings': Settings,
+    'users': Users, 'user': Users, 'user-cog': Users, 'user-check': Users, 'user-plus': Users,
+    'file-text': FileText, 'file-check': FileText, 'file-spreadsheet': FileText, 'file-signature': FileText,
+    'package': Package, 'wrench': Wrench, 'clipboard-list': ClipboardList,
+    'shield-check': FileText, 'shield': FileText, 'toggle-left': Settings,
+    'map-pin': Building2, 'clock': Settings, 'hash': FileText, 'cpu': Settings,
+    'sliders': Settings, 'briefcase': FileText, 'bar-chart': FileText,
+    'wallet': CreditCard, 'calendar-check': FileText, 'calendar': FileText,
+    'calendar-days': FileText, 'calendar-off': FileText, 'timer': Settings,
+    'book-open': FileText, 'send': FileText, 'scale': FileText,
+    'dollar-sign': CreditCard, 'calculator': CreditCard, 'landmark': CreditCard,
+    'hand-coins': CreditCard, 'receipt': CreditCard, 'play': Settings,
+    'pause-circle': Settings, 'trending-up': FileText, 'stamp': FileText,
+    'git-branch': Settings, 'mail': FileText, 'bell-ring': FileText,
+    'arrow-left-right': FileText, 'flag': FileText, 'target': FileText,
+    'star': FileText, 'brain': FileText, 'git-fork': FileText,
+    'graduation-cap': FileText, 'award': FileText, 'log-out': FileText,
+    'log-in': FileText, 'gavel': FileText, 'alert-triangle': FileText,
+    'support': FileText, 'message-circle': FileText, 'check-square': FileText,
+    'pen-tool': FileText, 'database': Settings, 'factory': ClipboardList,
+    'plane': FileText, 'gift': FileText, 'message-square': FileText,
+    'refresh-cw': Settings,
+};
+
+function resolveSearchIcon(iconName: string): typeof LayoutDashboard {
+    return SEARCH_ICON_MAP[iconName] ?? FileText;
+}
+
+// ============================================================
 // Command Palette (Cmd+K / Ctrl+K)
 // ============================================================
 function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -529,6 +565,7 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
     const inputRef = useRef<HTMLInputElement>(null);
     const permissions = useAuthStore((s) => s.permissions);
     const userRole = useAuthStore((s) => s.userRole);
+    const { data: manifestData } = useNavigationManifest();
 
     useEffect(() => {
         if (open) {
@@ -538,27 +575,55 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
         }
     }, [open]);
 
-    // Filter by role and permissions — strict role separation
-    const visibleItems = SEARCH_ITEMS.filter((item) => {
-        if (userRole === 'super-admin') {
-            // Super admin: only platform-level routes (no tenant context for company/* routes)
-            if (item.path.startsWith('/app/company')) return false;
-            if (item.path.startsWith('/app/inventory')) return false;
-            if (item.path.startsWith('/app/production')) return false;
-            if (item.path.startsWith('/app/maintenance')) return false;
-            return true;
+    // Build search items from manifest (already filtered by backend for role + permissions + modules)
+    const visibleItems: SearchItem[] = (() => {
+        const rawManifest = manifestData?.data ?? (Array.isArray(manifestData) ? manifestData : null);
+        if (!rawManifest || !Array.isArray(rawManifest)) {
+            // Fallback to hardcoded items while manifest loads
+            return SEARCH_ITEMS.filter((item) => {
+                if (userRole === 'super-admin') {
+                    if (item.path.startsWith('/app/company')) return false;
+                    if (item.path.startsWith('/app/inventory')) return false;
+                    if (item.path.startsWith('/app/production')) return false;
+                    if (item.path.startsWith('/app/maintenance')) return false;
+                    return true;
+                }
+                if (item.path.startsWith('/app/companies') || item.path.startsWith('/app/billing') ||
+                    item.path === '/app/modules' || item.path === '/app/monitor') {
+                    return false;
+                }
+                if (item.requiredPerm) {
+                    return checkPermission(permissions, item.requiredPerm);
+                }
+                return true;
+            });
         }
-        // Company admin / other roles: hide super-admin-only routes
-        if (item.path.startsWith('/app/companies') || item.path.startsWith('/app/billing') ||
-            item.path === '/app/modules' || item.path === '/app/monitor') {
-            return false;
+
+        // Convert manifest sections into flat search items
+        const items: SearchItem[] = [];
+        for (const section of rawManifest) {
+            for (const item of section.items ?? []) {
+                items.push({
+                    icon: resolveSearchIcon(item.icon),
+                    label: item.label,
+                    path: item.path,
+                    group: section.group,
+                });
+                // Also add children as separate searchable items
+                if (item.children) {
+                    for (const child of item.children) {
+                        items.push({
+                            icon: resolveSearchIcon(item.icon),
+                            label: child.label,
+                            path: child.path,
+                            group: section.group,
+                        });
+                    }
+                }
+            }
         }
-        // Permission-based filtering for company users
-        if (item.requiredPerm) {
-            return permissions.includes(item.requiredPerm);
-        }
-        return true;
-    });
+        return items;
+    })();
 
     const grouped = visibleItems.reduce((acc, item) => {
         if (query && !item.label.toLowerCase().includes(query.toLowerCase())) return acc;

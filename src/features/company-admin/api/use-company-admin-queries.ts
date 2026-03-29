@@ -28,6 +28,7 @@ export const companyAdminKeys = {
     featureToggleCatalogue: () => [...companyAdminKeys.all, 'feature-toggle-catalogue'] as const,
     supportTickets: (params?: Record<string, unknown>) => params ? [...companyAdminKeys.all, 'support-tickets', params] as const : [...companyAdminKeys.all, 'support-tickets'] as const,
     supportTicket: (id: string) => [...companyAdminKeys.all, 'support-ticket', id] as const,
+    navigationManifest: () => [...companyAdminKeys.all, 'navigation-manifest'] as const,
 };
 
 export function useCompanyProfile() {
@@ -226,6 +227,15 @@ export function useSupportTickets(params?: { status?: string; category?: string;
     return useQuery({
         queryKey: companyAdminKeys.supportTickets(params as Record<string, unknown>),
         queryFn: () => companyAdminApi.listSupportTickets(params),
+    });
+}
+
+/** Navigation manifest — cached 5 minutes, drives sidebar rendering */
+export function useNavigationManifest() {
+    return useQuery({
+        queryKey: companyAdminKeys.navigationManifest(),
+        queryFn: () => companyAdminApi.getNavigationManifest(),
+        staleTime: 5 * 60 * 1000,
     });
 }
 

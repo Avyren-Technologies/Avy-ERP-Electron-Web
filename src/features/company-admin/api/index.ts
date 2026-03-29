@@ -14,6 +14,7 @@ export {
     useCompanyAuditLogs,
     useCompanyActivity,
     useRbacRoles,
+    useNavigationManifest,
 } from './use-company-admin-queries';
 
 export {

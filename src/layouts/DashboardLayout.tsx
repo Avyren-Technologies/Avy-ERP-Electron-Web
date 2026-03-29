@@ -8,6 +8,8 @@ import { TopBar } from './TopBar';
 import { useAuthStore } from '@/store/useAuthStore';
 import type { UserRole } from '@/store/useAuthStore';
 import type { SidebarUserRole } from './Sidebar';
+import { useNavigationManifest } from '@/features/company-admin/api';
+import { usePermissionRefresh } from '@/hooks/usePermissionRefresh';
 
 /** Map auth store role (hyphen) to sidebar role (underscore). */
 function toSidebarRole(role: UserRole | null): SidebarUserRole {
@@ -23,6 +25,13 @@ export function DashboardLayout() {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const userRole = useAuthStore((s) => s.userRole);
     const permissions = useAuthStore((s) => s.permissions);
+    const { data: manifestData } = useNavigationManifest();
+
+    // Auto-refresh permissions on dashboard load (picks up role changes without re-login)
+    usePermissionRefresh();
+
+    // Extract manifest sections from API response envelope
+    const manifestSections = manifestData?.data ?? (Array.isArray(manifestData) ? manifestData : undefined);
 
     return (
         <div className="flex h-screen w-full overflow-hidden bg-[var(--background)] dark:bg-neutral-950 transition-colors">
@@ -32,6 +41,7 @@ export function DashboardLayout() {
                 onCollapse={setSidebarCollapsed}
                 role={toSidebarRole(userRole)}
                 permissions={permissions}
+                manifestSections={manifestSections}
             />
 
             {/* Main Content Area */}

@@ -18,7 +18,7 @@ import {
     Settings2, GitBranch, Mail, BellRing, FileCheck, UserCircle, CalendarOff,
     Target, Flag, MessageSquare, Star, Brain, GitFork,
     UserPlus, GraduationCap, Award, FileSignature, AlertTriangle, Gavel,
-    ArrowLeftRight, LogIn, CheckSquare,
+    ArrowLeftRight, LogIn, CheckSquare, CheckCircle2,
     Fingerprint, RefreshCw, Gift, Plane, PenTool, MessageCircle, Factory, Network,
 } from 'lucide-react';
 import { useAuthStore, getUserInitials, getDisplayName } from '@/store/useAuthStore';
@@ -26,7 +26,62 @@ import { checkPermission } from '@/lib/api/auth';
 import { useNavigate } from 'react-router-dom';
 
 // ============================================================
-// Nav Config — role-based
+// Manifest Types — for dynamic sidebar from API
+// ============================================================
+
+interface ManifestNavItem {
+    id: string;
+    label: string;
+    icon: string;
+    path: string;
+    requiredPerm: string | null;
+    module: string | null;
+    children?: { label: string; path: string }[];
+}
+
+interface ManifestSection {
+    group: string;
+    moduleSeparator?: string;
+    items: ManifestNavItem[];
+}
+
+// ============================================================
+// Icon Map — resolves string icon names from manifest to components
+// ============================================================
+
+const ICON_MAP: Record<string, React.ComponentType<any>> = {
+    'dashboard': LayoutDashboard, 'building': Building2, 'credit-card': CreditCard,
+    'shield-check': ShieldCheck, 'blocks': Blocks, 'activity': Activity,
+    'user-cog': UserCog, 'support': HelpCircle, 'user': UserCircle,
+    'receipt': Receipt, 'calendar-off': CalendarOff, 'clock': Clock,
+    'log-in': LogIn, 'calendar': Calendar, 'target': Target,
+    'file-check': FileCheck, 'file-text': FileText, 'alert-triangle': AlertTriangle,
+    'graduation-cap': GraduationCap, 'package': Package, 'message-circle': MessageSquare,
+    'map-pin': MapPin, 'users': Users, 'shield': Shield, 'toggle-left': ToggleLeft,
+    'hash': Hash, 'cpu': Cpu, 'sliders': SlidersHorizontal, 'settings': Settings,
+    'briefcase': Briefcase, 'bar-chart': BarChart3, 'user-check': UserCheck,
+    'wallet': Wallet, 'calendar-check': CalendarCheck, 'calendar-days': CalendarDays,
+    'clipboard-list': ClipboardList, 'timer': Timer, 'book-open': BookOpen,
+    'send': Send, 'scale': Scale, 'dollar-sign': DollarSign,
+    'file-spreadsheet': FileSpreadsheet, 'calculator': Calculator,
+    'landmark': Landmark, 'hand-coins': HandCoins, 'play': Play,
+    'pause-circle': PauseCircle, 'trending-up': TrendingUp, 'stamp': Stamp,
+    'git-branch': GitBranch, 'mail': Mail, 'bell-ring': BellRing,
+    'arrow-left-right': ArrowLeftRight, 'flag': Flag, 'star': Star,
+    'brain': Brain, 'git-fork': GitFork, 'user-plus': UserPlus,
+    'award': Award, 'log-out': LogOut, 'gavel': Gavel,
+    'file-signature': FileSignature, 'wrench': Wrench, 'check-square': CheckCircle2,
+    'pen-tool': FileSignature, 'database': Blocks, 'factory': ClipboardList,
+    'plane': Send, 'gift': Award, 'message-square': MessageSquare,
+    'refresh-cw': Activity, 'default': Blocks,
+};
+
+function resolveIcon(iconName: string): React.ComponentType<any> {
+    return ICON_MAP[iconName] ?? ICON_MAP['default'];
+}
+
+// ============================================================
+// Nav Config — role-based (fallback when manifest is not available)
 // ============================================================
 
 export type SidebarUserRole = 'super_admin' | 'company_admin' | 'viewer';
@@ -398,9 +453,10 @@ interface SidebarProps {
     onCollapse: (v: boolean) => void;
     role?: SidebarUserRole;
     permissions?: string[];
+    manifestSections?: ManifestSection[];
 }
 
-export function Sidebar({ collapsed, onCollapse, role = 'super_admin', permissions = [] }: SidebarProps) {
+export function Sidebar({ collapsed, onCollapse, role = 'super_admin', permissions = [], manifestSections }: SidebarProps) {
     const location = useLocation();
     const navigate = useNavigate();
     const signOut = useAuthStore((s) => s.signOut);
@@ -453,19 +509,30 @@ export function Sidebar({ collapsed, onCollapse, role = 'super_admin', permissio
 
     const hasPerm = (perm: string) => checkPermission(permissions, perm);
 
-    // Filter sections by role AND permissions
-    const visibleSections = NAV_CONFIG.filter((s) => {
-        if (s.roles && !s.roles.includes(role)) return false;
-        if (s.requiredPerm && !hasPerm(s.requiredPerm)) return false;
-        return true;
-    }).map((s) => ({
-        ...s,
-        items: s.items.filter((i) => {
-            if (i.roles && !i.roles.includes(role)) return false;
-            if (i.requiredPerm && !hasPerm(i.requiredPerm)) return false;
+    // Convert manifest sections to the internal format, or fall back to NAV_CONFIG filtering
+    const visibleSections = manifestSections
+        ? manifestSections.map((s) => ({
+            group: s.group,
+            moduleSeparator: s.moduleSeparator,
+            items: s.items.map((i) => ({
+                icon: resolveIcon(i.icon),
+                label: i.label,
+                path: i.path,
+                children: i.children,
+            })),
+        }))
+        : NAV_CONFIG.filter((s) => {
+            if (s.roles && !s.roles.includes(role)) return false;
+            if (s.requiredPerm && !hasPerm(s.requiredPerm)) return false;
             return true;
-        }),
-    })).filter((s) => s.items.length > 0);
+        }).map((s) => ({
+            ...s,
+            items: s.items.filter((i) => {
+                if (i.roles && !i.roles.includes(role)) return false;
+                if (i.requiredPerm && !hasPerm(i.requiredPerm)) return false;
+                return true;
+            }),
+        })).filter((s) => s.items.length > 0);
 
     // Collapsible bottom strip (Notifications / Settings / Help) when sidebar is expanded — default collapsed
     const [bottomToolsOpen, setBottomToolsOpen] = useState(false);

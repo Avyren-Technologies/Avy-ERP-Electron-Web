@@ -26,7 +26,8 @@ interface AttendanceRecord {
     id: string;
     punchIn: string | null;
     punchOut: string | null;
-    workedHours: number | null;
+    /** API may send a number or string (e.g. Prisma Decimal JSON). */
+    workedHours: number | string | null;
     status: string;
     geoStatus: string | null;
     checkInLatitude: number | null;
@@ -41,14 +42,6 @@ interface StatusResponse {
     status: "NOT_CHECKED_IN" | "CHECKED_IN" | "CHECKED_OUT" | "NOT_LINKED";
     record: AttendanceRecord | null;
     elapsedSeconds?: number;
-}
-
-interface RecentEntry {
-    date: string;
-    punchIn: string | null;
-    punchOut: string | null;
-    workedHours: number | null;
-    status: string;
 }
 
 /* ── Helpers ── */
@@ -76,6 +69,40 @@ const formatDateShort = (dateStr: string) => {
     const d = new Date(dateStr);
     return d.toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short" });
 };
+
+/** Backend may serialize Decimal as string; coerce before `.toFixed`. */
+function parseWorkedHours(value: unknown): number | null {
+    if (value == null || value === "") return null;
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+        const n = parseFloat(value.trim());
+        return Number.isFinite(n) ? n : null;
+    }
+    if (typeof value === "object" && value !== null && "toString" in value) {
+        const n = parseFloat(String(value));
+        return Number.isFinite(n) ? n : null;
+    }
+    return null;
+}
+
+function formatWorkedHoursLabel(value: unknown, mode: "long" | "short"): string {
+    const n = parseWorkedHours(value);
+    if (n == null) return mode === "long" ? "--:--" : "--";
+    return mode === "long" ? `${n.toFixed(1)} hrs` : `${n.toFixed(1)}h`;
+}
+
+function geolocationUserMessage(code: number): string {
+    switch (code) {
+        case 1:
+            return "Location permission denied. Check-in can continue without GPS.";
+        case 2:
+            return "Could not determine position (e.g. indoors / Wi-Fi only). Check-in can continue without GPS.";
+        case 3:
+            return "Location request timed out. Check-in can continue without GPS.";
+        default:
+            return "Location unavailable. Check-in can continue without GPS.";
+    }
+}
 
 /* ── Status Badge ── */
 
@@ -137,13 +164,33 @@ export function ShiftCheckInScreen() {
     const [geoError, setGeoError] = useState<string | null>(null);
     useEffect(() => {
         if (!navigator.geolocation) {
-            setGeoError("Geolocation not supported");
-            return;
+            const t = window.setTimeout(() => setGeoError("Geolocation not supported"), 0);
+            return () => clearTimeout(t);
         }
+
+        const onSuccess = (pos: GeolocationPosition) => {
+            setGeoError(null);
+            setGeo({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        };
+
+        const optsHigh: PositionOptions = { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 };
+        const optsLow: PositionOptions = { enableHighAccuracy: false, timeout: 20000, maximumAge: 120000 };
+
         navigator.geolocation.getCurrentPosition(
-            (pos) => setGeo({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-            (err) => setGeoError(err.message),
-            { enableHighAccuracy: true, timeout: 10000 },
+            onSuccess,
+            (err) => {
+                // POSITION_UNAVAILABLE / TIMEOUT: retry with lower accuracy (reduces CoreLocation "unknown" noise on desktop)
+                if (err.code === 2 || err.code === 3) {
+                    navigator.geolocation.getCurrentPosition(
+                        onSuccess,
+                        (e) => setGeoError(geolocationUserMessage(e.code)),
+                        optsLow,
+                    );
+                } else {
+                    setGeoError(geolocationUserMessage(err.code));
+                }
+            },
+            optsHigh,
         );
     }, []);
 
@@ -168,11 +215,14 @@ export function ShiftCheckInScreen() {
         if (attendanceStatus !== "CHECKED_IN" || !record?.punchIn) return;
         const base = statusData?.elapsedSeconds ?? 0;
         const start = Date.now();
-        setElapsed(base);
+        const boot = window.setTimeout(() => setElapsed(base), 0);
         const id = setInterval(() => {
             setElapsed(base + Math.floor((Date.now() - start) / 1000));
         }, 1000);
-        return () => clearInterval(id);
+        return () => {
+            clearTimeout(boot);
+            clearInterval(id);
+        };
     }, [attendanceStatus, record?.punchIn, statusData?.elapsedSeconds]);
 
     // Check-in mutation
@@ -448,7 +498,9 @@ export function ShiftCheckInScreen() {
                         <div className="pt-2 border-t border-neutral-100 dark:border-neutral-800">
                             <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium mb-0.5">Total Hours</p>
                             <p className="font-bold text-xl text-primary-950 dark:text-white tabular-nums">
-                                {isCheckedIn ? formatDuration(elapsed) : record?.workedHours != null ? `${record.workedHours.toFixed(1)} hrs` : "--:--"}
+                                {isCheckedIn
+                                    ? formatDuration(elapsed)
+                                    : formatWorkedHoursLabel(record?.workedHours, "long")}
                             </p>
                         </div>
                         {record?.status && (
@@ -505,7 +557,7 @@ export function ShiftCheckInScreen() {
                                 <td className="py-4 px-6 text-neutral-600 dark:text-neutral-300 font-mono text-xs">{formatTimeShort(record?.punchIn)}</td>
                                 <td className="py-4 px-6 text-neutral-600 dark:text-neutral-300 font-mono text-xs">{formatTimeShort(record?.punchOut)}</td>
                                 <td className="py-4 px-6 text-right font-bold text-primary-950 dark:text-white font-mono text-xs">
-                                    {isCheckedIn ? formatDuration(elapsed) : record?.workedHours != null ? `${record.workedHours.toFixed(1)}h` : "--"}
+                                    {isCheckedIn ? formatDuration(elapsed) : formatWorkedHoursLabel(record?.workedHours, "short")}
                                 </td>
                                 <td className="py-4 px-6 text-right">
                                     <AttendanceStatusBadge status={attendanceStatus} />

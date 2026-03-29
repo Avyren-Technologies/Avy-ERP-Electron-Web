@@ -771,4 +771,8 @@ export const companyAdminApi = {
         client.post(`/company/locations/${locationId}/modules`, data).then(r => r.data),
     removeLocationModule: (locationId: string, moduleId: string) =>
         client.delete(`/company/locations/${locationId}/modules/${moduleId}`).then(r => r.data),
+
+    // ── Navigation Manifest ──
+    getNavigationManifest: () =>
+        client.get('/rbac/navigation-manifest').then(r => r.data),
 };
