@@ -66,7 +66,13 @@ export function MyAttendanceScreen() {
     const [currentYear, setCurrentYear] = useState(today.getFullYear());
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [regularizeModal, setRegularizeModal] = useState(false);
-    const [regularizeForm, setRegularizeForm] = useState({ date: "", checkIn: "", checkOut: "", reason: "" });
+    const [regularizeForm, setRegularizeForm] = useState({
+        attendanceRecordId: '',
+        issueType: 'MISSING_PUNCH_IN' as string,
+        correctedPunchIn: '',
+        correctedPunchOut: '',
+        reason: '',
+    });
 
     const { data, isLoading } = useMyAttendance({ month: currentMonth + 1, year: currentYear });
     const regularizeMutation = useRegularizeAttendance();
@@ -96,20 +102,62 @@ export function MyAttendanceScreen() {
 
     const selectedRecord = selectedDate ? attendanceMap[selectedDate] : null;
 
-    const openRegularize = () => {
+    const openRegularize = (record?: any) => {
+        const rec = record ?? selectedRecord;
+        // Auto-detect issue type from record state
+        let issueType = 'ABSENT_OVERRIDE';
+        if (rec) {
+            if (!rec.punchIn && !rec.punchOut) issueType = 'NO_PUNCH';
+            else if (!rec.punchIn) issueType = 'MISSING_PUNCH_IN';
+            else if (!rec.punchOut) issueType = 'MISSING_PUNCH_OUT';
+            else if (rec.isLate) issueType = 'LATE_OVERRIDE';
+            else if (rec.status === 'ABSENT') issueType = 'ABSENT_OVERRIDE';
+            else issueType = 'NO_PUNCH';
+        }
         setRegularizeForm({
-            date: selectedDate ?? "",
-            checkIn: "",
-            checkOut: "",
-            reason: "",
+            attendanceRecordId: rec?.id ?? '',
+            issueType,
+            correctedPunchIn: '',
+            correctedPunchOut: '',
+            reason: '',
         });
         setRegularizeModal(true);
     };
 
+    const ISSUE_TYPES = [
+        { value: 'MISSING_PUNCH_IN', label: 'Missing Punch In' },
+        { value: 'MISSING_PUNCH_OUT', label: 'Missing Punch Out' },
+        { value: 'ABSENT_OVERRIDE', label: 'Absent Override' },
+        { value: 'LATE_OVERRIDE', label: 'Late Override' },
+        { value: 'NO_PUNCH', label: 'No Punch' },
+    ];
+
+    const showPunchIn = ['MISSING_PUNCH_IN', 'NO_PUNCH', 'ABSENT_OVERRIDE'].includes(regularizeForm.issueType);
+    const showPunchOut = ['MISSING_PUNCH_OUT', 'NO_PUNCH', 'ABSENT_OVERRIDE'].includes(regularizeForm.issueType);
+
     const handleRegularize = async () => {
+        const payload: any = {
+            issueType: regularizeForm.issueType,
+            reason: regularizeForm.reason,
+        };
+
+        // Send either attendanceRecordId (if record exists) or date (for absent days)
+        if (regularizeForm.attendanceRecordId) {
+            payload.attendanceRecordId = regularizeForm.attendanceRecordId;
+        } else if (selectedDate) {
+            payload.date = selectedDate; // ISO date like "2026-03-30"
+        }
+
+        if (regularizeForm.correctedPunchIn && showPunchIn) {
+            payload.correctedPunchIn = `${selectedDate}T${regularizeForm.correctedPunchIn}:00`;
+        }
+        if (regularizeForm.correctedPunchOut && showPunchOut) {
+            payload.correctedPunchOut = `${selectedDate}T${regularizeForm.correctedPunchOut}:00`;
+        }
+
         try {
-            await regularizeMutation.mutateAsync(regularizeForm);
-            showSuccess("Regularization Requested", "Your attendance regularization request has been submitted.");
+            await regularizeMutation.mutateAsync(payload);
+            showSuccess("Regularization Requested", "Your request has been submitted for approval.");
             setRegularizeModal(false);
         } catch (err) {
             showApiError(err);
@@ -289,9 +337,9 @@ export function MyAttendanceScreen() {
                                     </div>
                                 )}
                             </div>
-                            {(selectedRecord.status === "absent" || selectedRecord.status === "half_day") && (
+                            {(selectedRecord.status === "absent" || selectedRecord.status === "half_day" || !selectedRecord.punchIn || !selectedRecord.punchOut || selectedRecord.lateBy) && (
                                 <button
-                                    onClick={openRegularize}
+                                    onClick={() => openRegularize(selectedRecord)}
                                     className="w-full mt-3 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors flex items-center justify-center gap-2"
                                 >
                                     <AlertTriangle size={14} />
@@ -303,7 +351,7 @@ export function MyAttendanceScreen() {
                         <div className="text-center py-6">
                             <p className="text-sm text-neutral-400">No attendance record for this date.</p>
                             <button
-                                onClick={openRegularize}
+                                onClick={() => openRegularize()}
                                 className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 transition-colors"
                             >
                                 <AlertTriangle size={12} />
@@ -325,28 +373,56 @@ export function MyAttendanceScreen() {
                             </button>
                         </div>
                         <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                            {/* Date (read-only display) */}
                             <div>
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Date</label>
-                                <input type="date" value={regularizeForm.date} onChange={(e) => setRegularizeForm((p) => ({ ...p, date: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Check In Time</label>
-                                    <input type="time" value={regularizeForm.checkIn} onChange={(e) => setRegularizeForm((p) => ({ ...p, checkIn: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Check Out Time</label>
-                                    <input type="time" value={regularizeForm.checkOut} onChange={(e) => setRegularizeForm((p) => ({ ...p, checkOut: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                                <div className="w-full px-3 py-2.5 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm text-neutral-700 dark:text-neutral-300">
+                                    {selectedDate ? new Date(selectedDate + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
                                 </div>
                             </div>
+
+                            {/* Issue Type */}
                             <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Reason</label>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Issue Type *</label>
+                                <select
+                                    value={regularizeForm.issueType}
+                                    onChange={(e) => setRegularizeForm((p) => ({ ...p, issueType: e.target.value }))}
+                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all appearance-none"
+                                >
+                                    {ISSUE_TYPES.map((t) => (
+                                        <option key={t.value} value={t.value}>{t.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Corrected Time Fields */}
+                            <div className="grid grid-cols-2 gap-4">
+                                {showPunchIn && (
+                                    <div>
+                                        <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Corrected Check-In</label>
+                                        <input type="time" value={regularizeForm.correctedPunchIn} onChange={(e) => setRegularizeForm((p) => ({ ...p, correctedPunchIn: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                                    </div>
+                                )}
+                                {showPunchOut && (
+                                    <div>
+                                        <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Corrected Check-Out</label>
+                                        <input type="time" value={regularizeForm.correctedPunchOut} onChange={(e) => setRegularizeForm((p) => ({ ...p, correctedPunchOut: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                                    </div>
+                                )}
+                            </div>
+                            {regularizeForm.issueType === 'LATE_OVERRIDE' && (
+                                <p className="text-xs text-neutral-400 dark:text-neutral-500 italic">No corrected times needed — this will clear the late flag.</p>
+                            )}
+
+                            {/* Reason */}
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Reason *</label>
                                 <textarea value={regularizeForm.reason} onChange={(e) => setRegularizeForm((p) => ({ ...p, reason: e.target.value }))} placeholder="Reason for regularization..." rows={3} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all resize-none" />
                             </div>
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
                             <button onClick={() => setRegularizeModal(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
-                            <button onClick={handleRegularize} disabled={regularizeMutation.isPending} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                            <button onClick={handleRegularize} disabled={regularizeMutation.isPending || !regularizeForm.reason.trim()} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                                 {regularizeMutation.isPending && <Loader2 size={14} className="animate-spin" />}
                                 {regularizeMutation.isPending ? "Submitting..." : "Submit Request"}
                             </button>

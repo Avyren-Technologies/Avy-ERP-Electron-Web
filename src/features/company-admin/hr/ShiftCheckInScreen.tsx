@@ -337,16 +337,18 @@ export function ShiftCheckInScreen() {
                                 {now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
                             </p>
 
-                            <AttendanceStatusBadge status={attendanceStatus} />
+                            <div className="inline-flex items-center gap-4">
+                                <AttendanceStatusBadge status={attendanceStatus} />
 
-                            {/* Elapsed timer for checked-in state */}
-                            {isCheckedIn && (
-                                <div className="mt-4 p-3 bg-white/10 backdrop-blur-sm rounded-xl inline-flex items-center gap-3">
-                                    <Timer className="w-5 h-5 text-primary-200" />
-                                    <span className="text-2xl font-mono font-bold tabular-nums">{formatDuration(elapsed)}</span>
-                                    <span className="text-primary-200 text-sm">elapsed</span>
-                                </div>
-                            )}
+                                {/* Elapsed timer for checked-in state */}
+                                {isCheckedIn && (
+                                    <div className="p-3 bg-white/10 backdrop-blur-sm rounded-xl inline-flex items-center gap-3">
+                                        <Timer className="w-5 h-5 text-primary-200" />
+                                        <span className="text-2xl font-mono font-bold tabular-nums">{formatDuration(elapsed)}</span>
+                                        <span className="text-primary-200 text-sm">elapsed</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {/* Action Button */}

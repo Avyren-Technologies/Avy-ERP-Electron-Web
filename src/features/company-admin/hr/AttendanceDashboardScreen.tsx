@@ -8,11 +8,19 @@ import {
     Filter,
     ChevronDown,
     BarChart3,
+    CheckCircle2,
+    XCircle,
+    AlertTriangle,
+    Loader2,
+    X,
+    ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAttendanceRecords, useAttendanceSummary } from "@/features/company-admin/api/use-attendance-queries";
+import { useAttendanceRecords, useAttendanceSummary, useAttendanceOverrides } from "@/features/company-admin/api/use-attendance-queries";
+import { useUpdateAttendanceOverride, useCreateAttendanceOverride } from "@/features/company-admin/api/use-attendance-mutations";
 import { SkeletonTable, SkeletonKPIGrid } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── KPI Card ── */
 
@@ -137,13 +145,26 @@ export function AttendanceDashboardScreen() {
     const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
     const [department, setDepartment] = useState("");
     const [search, setSearch] = useState("");
+    const [overrideModal, setOverrideModal] = useState(false);
+    const [overrideForm, setOverrideForm] = useState({
+        employeeId: '',
+        attendanceRecordId: '',
+        issueType: 'MISSING_PUNCH_IN' as string,
+        correctedPunchIn: '',
+        correctedPunchOut: '',
+        reason: '',
+    });
 
     const summaryQuery = useAttendanceSummary();
     const recordsQuery = useAttendanceRecords({ date, department: department || undefined });
+    const overridesQuery = useAttendanceOverrides({ status: 'PENDING' });
+    const processOverrideMutation = useUpdateAttendanceOverride();
+    const createOverrideMutation = useCreateAttendanceOverride();
 
     const summary = (summaryQuery.data as any)?.data ?? {};
     const records: any[] = (recordsQuery.data as any)?.data ?? [];
     const departmentBreakdown: any[] = summary.departments ?? [];
+    const pendingOverrides: any[] = (overridesQuery.data as any)?.data ?? [];
 
     const filtered = records.filter((r: any) => {
         if (!search) return true;
@@ -155,6 +176,68 @@ export function AttendanceDashboardScreen() {
     });
 
     const isLoading = summaryQuery.isLoading || recordsQuery.isLoading;
+
+    const ISSUE_TYPES = [
+        { value: 'MISSING_PUNCH_IN', label: 'Missing Punch In' },
+        { value: 'MISSING_PUNCH_OUT', label: 'Missing Punch Out' },
+        { value: 'ABSENT_OVERRIDE', label: 'Absent Override' },
+        { value: 'LATE_OVERRIDE', label: 'Late Override' },
+        { value: 'NO_PUNCH', label: 'No Punch' },
+    ];
+
+    const showPunchIn = ['MISSING_PUNCH_IN', 'NO_PUNCH', 'ABSENT_OVERRIDE'].includes(overrideForm.issueType);
+    const showPunchOut = ['MISSING_PUNCH_OUT', 'NO_PUNCH', 'ABSENT_OVERRIDE'].includes(overrideForm.issueType);
+
+    const handleApproveOverride = async (overrideId: string) => {
+        try {
+            await processOverrideMutation.mutateAsync({ id: overrideId, data: { status: 'APPROVED' } });
+            showSuccess('Override Approved', 'Attendance record has been updated.');
+        } catch (err) {
+            showApiError(err);
+        }
+    };
+
+    const handleRejectOverride = async (overrideId: string) => {
+        try {
+            await processOverrideMutation.mutateAsync({ id: overrideId, data: { status: 'REJECTED' } });
+            showSuccess('Override Rejected', 'The request has been rejected.');
+        } catch (err) {
+            showApiError(err);
+        }
+    };
+
+    const openOverrideModal = (record: any) => {
+        setOverrideForm({
+            employeeId: record.employeeId ?? '',
+            attendanceRecordId: record.id ?? '',
+            issueType: !record.punchIn ? 'MISSING_PUNCH_IN' : !record.punchOut ? 'MISSING_PUNCH_OUT' : 'ABSENT_OVERRIDE',
+            correctedPunchIn: '',
+            correctedPunchOut: '',
+            reason: '',
+        });
+        setOverrideModal(true);
+    };
+
+    const handleCreateOverride = async () => {
+        const payload: any = {
+            attendanceRecordId: overrideForm.attendanceRecordId,
+            issueType: overrideForm.issueType,
+            reason: overrideForm.reason,
+        };
+        if (overrideForm.correctedPunchIn && showPunchIn) {
+            payload.correctedPunchIn = `${date}T${overrideForm.correctedPunchIn}:00`;
+        }
+        if (overrideForm.correctedPunchOut && showPunchOut) {
+            payload.correctedPunchOut = `${date}T${overrideForm.correctedPunchOut}:00`;
+        }
+        try {
+            await createOverrideMutation.mutateAsync(payload);
+            showSuccess('Override Created', 'Attendance override has been created.');
+            setOverrideModal(false);
+        } catch (err) {
+            showApiError(err);
+        }
+    };
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -180,6 +263,92 @@ export function AttendanceDashboardScreen() {
 
             {/* Department Breakdown */}
             <DepartmentBreakdown departments={departmentBreakdown} />
+
+            {/* Pending Regularizations / Overrides */}
+            <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm overflow-hidden">
+                <div className="flex items-center gap-3 p-6 pb-4">
+                    <div className="w-8 h-8 rounded-lg bg-warning-50 dark:bg-warning-900/30 flex items-center justify-center">
+                        <ShieldAlert size={16} className="text-warning-600 dark:text-warning-400" />
+                    </div>
+                    <h3 className="text-sm font-bold text-primary-950 dark:text-white">Pending Regularizations</h3>
+                    {pendingOverrides.length > 0 && (
+                        <span className="ml-auto text-xs font-bold px-2 py-0.5 rounded-full bg-warning-100 text-warning-700 dark:bg-warning-900/30 dark:text-warning-400 border border-warning-200 dark:border-warning-800/50">
+                            {pendingOverrides.length}
+                        </span>
+                    )}
+                </div>
+                {overridesQuery.isLoading ? (
+                    <div className="px-6 pb-6"><SkeletonTable rows={3} cols={6} /></div>
+                ) : pendingOverrides.length === 0 ? (
+                    <div className="px-6 pb-6">
+                        <EmptyState icon="list" title="No pending requests" message="All regularization requests have been processed." />
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse min-w-[900px]">
+                            <thead>
+                                <tr className="bg-neutral-50/50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
+                                    <th className="py-3 px-6 font-bold">Employee</th>
+                                    <th className="py-3 px-6 font-bold">Date</th>
+                                    <th className="py-3 px-6 font-bold text-center">Issue Type</th>
+                                    <th className="py-3 px-6 font-bold">Reason</th>
+                                    <th className="py-3 px-6 font-bold">Corrected Times</th>
+                                    <th className="py-3 px-6 font-bold text-center">Status</th>
+                                    <th className="py-3 px-6 font-bold text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="text-sm">
+                                {pendingOverrides.map((ov: any) => (
+                                    <tr key={ov.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
+                                        <td className="py-3 px-6">
+                                            <span className="font-bold text-primary-950 dark:text-white">{ov.employeeName ?? ov.employee?.name ?? "—"}</span>
+                                        </td>
+                                        <td className="py-3 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
+                                            {ov.date ? new Date(ov.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—"}
+                                        </td>
+                                        <td className="py-3 px-6 text-center">
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 border border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50">
+                                                {ov.issueType?.replace(/_/g, ' ') ?? "—"}
+                                            </span>
+                                        </td>
+                                        <td className="py-3 px-6 text-neutral-600 dark:text-neutral-400 max-w-[200px] truncate">{ov.reason ?? "—"}</td>
+                                        <td className="py-3 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
+                                            {ov.correctedPunchIn && <div>In: {new Date(ov.correctedPunchIn).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</div>}
+                                            {ov.correctedPunchOut && <div>Out: {new Date(ov.correctedPunchOut).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</div>}
+                                            {!ov.correctedPunchIn && !ov.correctedPunchOut && "—"}
+                                        </td>
+                                        <td className="py-3 px-6 text-center">
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-warning-50 text-warning-700 border border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50">
+                                                PENDING
+                                            </span>
+                                        </td>
+                                        <td className="py-3 px-6 text-center">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button
+                                                    onClick={() => handleApproveOverride(ov.id)}
+                                                    disabled={processOverrideMutation.isPending}
+                                                    className="p-1.5 rounded-lg bg-success-50 hover:bg-success-100 dark:bg-success-900/20 dark:hover:bg-success-900/40 text-success-600 dark:text-success-400 transition-colors disabled:opacity-50"
+                                                    title="Approve"
+                                                >
+                                                    <CheckCircle2 size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleRejectOverride(ov.id)}
+                                                    disabled={processOverrideMutation.isPending}
+                                                    className="p-1.5 rounded-lg bg-danger-50 hover:bg-danger-100 dark:bg-danger-900/20 dark:hover:bg-danger-900/40 text-danger-600 dark:text-danger-400 transition-colors disabled:opacity-50"
+                                                    title="Reject"
+                                                >
+                                                    <XCircle size={16} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
 
             {/* Toolbar */}
             <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm">
@@ -220,7 +389,7 @@ export function AttendanceDashboardScreen() {
             {/* Data Table */}
             <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-xl shadow-neutral-900/5 overflow-hidden">
                 {recordsQuery.isLoading ? (
-                    <SkeletonTable rows={8} cols={7} />
+                    <SkeletonTable rows={8} cols={8} />
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse min-w-[1000px]">
@@ -233,6 +402,7 @@ export function AttendanceDashboardScreen() {
                                     <th className="py-4 px-6 font-bold text-center">Status</th>
                                     <th className="py-4 px-6 font-bold text-center">Late</th>
                                     <th className="py-4 px-6 font-bold text-center">Source</th>
+                                    <th className="py-4 px-6 font-bold text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="text-sm">
@@ -265,11 +435,20 @@ export function AttendanceDashboardScreen() {
                                         <td className="py-4 px-6 text-center">
                                             <SourceBadge source={rec.source ?? "Manual"} />
                                         </td>
+                                        <td className="py-4 px-6 text-center">
+                                            <button
+                                                onClick={() => openOverrideModal(rec)}
+                                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100 dark:hover:bg-primary-900/40 border border-primary-200 dark:border-primary-800/50 transition-colors"
+                                            >
+                                                <AlertTriangle size={12} />
+                                                Override
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))}
                                 {filtered.length === 0 && !recordsQuery.isLoading && (
                                     <tr>
-                                        <td colSpan={7}>
+                                        <td colSpan={8}>
                                             <EmptyState icon="list" title="No attendance records" message="No records found for the selected date and filters." />
                                         </td>
                                     </tr>
@@ -279,6 +458,67 @@ export function AttendanceDashboardScreen() {
                     </div>
                 )}
             </div>
+
+            {/* ── Override Creation Modal ── */}
+            {overrideModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
+                            <h2 className="text-lg font-bold text-primary-950 dark:text-white">Create Attendance Override</h2>
+                            <button onClick={() => setOverrideModal(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                            {/* Issue Type */}
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Issue Type *</label>
+                                <select
+                                    value={overrideForm.issueType}
+                                    onChange={(e) => setOverrideForm((p) => ({ ...p, issueType: e.target.value }))}
+                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all appearance-none"
+                                >
+                                    {ISSUE_TYPES.map((t) => (
+                                        <option key={t.value} value={t.value}>{t.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Corrected Time Fields */}
+                            <div className="grid grid-cols-2 gap-4">
+                                {showPunchIn && (
+                                    <div>
+                                        <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Corrected Check-In</label>
+                                        <input type="time" value={overrideForm.correctedPunchIn} onChange={(e) => setOverrideForm((p) => ({ ...p, correctedPunchIn: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                                    </div>
+                                )}
+                                {showPunchOut && (
+                                    <div>
+                                        <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Corrected Check-Out</label>
+                                        <input type="time" value={overrideForm.correctedPunchOut} onChange={(e) => setOverrideForm((p) => ({ ...p, correctedPunchOut: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                                    </div>
+                                )}
+                            </div>
+                            {overrideForm.issueType === 'LATE_OVERRIDE' && (
+                                <p className="text-xs text-neutral-400 dark:text-neutral-500 italic">No corrected times needed — this will clear the late flag.</p>
+                            )}
+
+                            {/* Reason */}
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Reason *</label>
+                                <textarea value={overrideForm.reason} onChange={(e) => setOverrideForm((p) => ({ ...p, reason: e.target.value }))} placeholder="Reason for override..." rows={3} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all resize-none" />
+                            </div>
+                        </div>
+                        <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
+                            <button onClick={() => setOverrideModal(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
+                            <button onClick={handleCreateOverride} disabled={createOverrideMutation.isPending || !overrideForm.reason.trim()} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                                {createOverrideMutation.isPending && <Loader2 size={14} className="animate-spin" />}
+                                {createOverrideMutation.isPending ? "Creating..." : "Create Override"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
