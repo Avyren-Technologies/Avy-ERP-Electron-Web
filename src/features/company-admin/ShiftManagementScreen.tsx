@@ -14,6 +14,7 @@ import {
     CheckCircle2,
     XCircle,
 } from "lucide-react";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
 import { cn } from "@/lib/utils";
 import { useCompanyShifts } from "@/features/company-admin/api/use-company-admin-queries";
 import {
@@ -67,8 +68,8 @@ function FormSelect({ label, value, onChange, options }: {
     );
 }
 
-function FormToggle({ label, description, checked, onChange }: {
-    label: string; description?: string; checked: boolean; onChange: (v: boolean) => void;
+function FormToggle({ label, description, checked, onChange, tooltip }: {
+    label: string; description?: string; checked: boolean; onChange: (v: boolean) => void; tooltip?: string;
 }) {
     return (
         <div className="flex items-start gap-3">
@@ -83,15 +84,18 @@ function FormToggle({ label, description, checked, onChange }: {
                 <div className={cn("w-4 h-4 rounded-full bg-white absolute top-1 transition-all", checked ? "left-5" : "left-1")} />
             </button>
             <div>
-                <span className="text-sm font-medium text-primary-950 dark:text-white">{label}</span>
+                <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-medium text-primary-950 dark:text-white">{label}</span>
+                    {tooltip && <InfoTooltip content={tooltip} />}
+                </div>
                 {description && <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{description}</p>}
             </div>
         </div>
     );
 }
 
-function NullableNumberField({ label, value, onChange, suffix, min, max, step }: {
-    label: string; value: number | null; onChange: (v: number | null) => void; suffix?: string; min?: number; max?: number; step?: number;
+function NullableNumberField({ label, value, onChange, suffix, min, max, step, tooltip }: {
+    label: string; value: number | null; onChange: (v: number | null) => void; suffix?: string; min?: number; max?: number; step?: number; tooltip?: string;
 }) {
     const isDefault = value === null;
     return (
@@ -103,7 +107,10 @@ function NullableNumberField({ label, value, onChange, suffix, min, max, step }:
                     onChange={(e) => onChange(e.target.checked ? null : (min ?? 0))}
                     className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
                 />
-                <p className="text-xs font-medium text-neutral-600 dark:text-neutral-400">{label}</p>
+                <div className="flex items-center gap-1.5">
+                    <p className="text-xs font-medium text-neutral-600 dark:text-neutral-400">{label}</p>
+                    {tooltip && <InfoTooltip content={tooltip} />}
+                </div>
             </div>
             {!isDefault ? (
                 <div className="flex items-center gap-1.5 ml-3">
@@ -490,22 +497,22 @@ export function ShiftManagementScreen() {
                                 <FormField label="End Time" value={form.endTime} onChange={(v) => setForm((p) => ({ ...p, endTime: v }))} type="time" />
                             </div>
                             <div className="flex gap-6">
-                                <FormToggle label="Cross-Day Shift" description="Shift spans midnight" checked={form.isCrossDay} onChange={(v) => setForm((p) => ({ ...p, isCrossDay: v }))} />
+                                <FormToggle label="Cross-Day Shift" description="Shift spans midnight" checked={form.isCrossDay} onChange={(v) => setForm((p) => ({ ...p, isCrossDay: v }))} tooltip="Enable for night shifts that span midnight (e.g., 22:00 to 06:00). Attendance date will be the shift start date." />
                                 <FormToggle label="No Shuffle" description="Disable auto shift rotation" checked={form.noShuffle} onChange={(v) => setForm((p) => ({ ...p, noShuffle: v }))} />
                             </div>
 
                             {/* Policy Overrides */}
                             <div className="border-t border-neutral-100 dark:border-neutral-800 pt-5">
-                                <p className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">Policy Overrides</p>
-                                <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mb-3">Check "Use Default" to inherit from company attendance rules</p>
+                                <p className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">Policy Overrides</p>
+                                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3 leading-relaxed">Leave fields empty to inherit from company-wide Attendance Rules. Set a value to override for this specific shift.</p>
                                 <div className="space-y-2">
                                     <NullableNumberField label="Grace Period" value={form.gracePeriodMinutes} onChange={(v) => setForm((p) => ({ ...p, gracePeriodMinutes: v }))} suffix="min" min={0} max={60} />
                                     <NullableNumberField label="Early Exit Tolerance" value={form.earlyExitToleranceMinutes} onChange={(v) => setForm((p) => ({ ...p, earlyExitToleranceMinutes: v }))} suffix="min" min={0} max={60} />
                                     <NullableNumberField label="Half Day Threshold" value={form.halfDayThresholdHours} onChange={(v) => setForm((p) => ({ ...p, halfDayThresholdHours: v }))} suffix="hrs" min={1} max={12} step={0.5} />
                                     <NullableNumberField label="Full Day Threshold" value={form.fullDayThresholdHours} onChange={(v) => setForm((p) => ({ ...p, fullDayThresholdHours: v }))} suffix="hrs" min={1} max={24} step={0.5} />
                                     <NullableNumberField label="Max Late Check-In" value={form.maxLateCheckInMinutes} onChange={(v) => setForm((p) => ({ ...p, maxLateCheckInMinutes: v }))} suffix="min" min={0} max={480} />
-                                    <NullableNumberField label="Min Working Hours for OT" value={form.minWorkingHoursForOT} onChange={(v) => setForm((p) => ({ ...p, minWorkingHoursForOT: v }))} suffix="hrs" min={0} max={24} step={0.5} />
-                                    <NullableNumberField label="Auto Clock-Out After" value={form.autoClockOutMinutes} onChange={(v) => setForm((p) => ({ ...p, autoClockOutMinutes: v }))} suffix="min" min={0} max={480} />
+                                    <NullableNumberField label="Min Working Hours for OT" value={form.minWorkingHoursForOT} onChange={(v) => setForm((p) => ({ ...p, minWorkingHoursForOT: v }))} suffix="hrs" min={0} max={24} step={0.5} tooltip="Minimum hours an employee must work in this shift before overtime starts accumulating." />
+                                    <NullableNumberField label="Auto Clock-Out After" value={form.autoClockOutMinutes} onChange={(v) => setForm((p) => ({ ...p, autoClockOutMinutes: v }))} suffix="min" min={0} max={480} tooltip="Automatically clock out employees this many minutes after shift end if they haven't punched out." />
                                 </div>
                             </div>
 

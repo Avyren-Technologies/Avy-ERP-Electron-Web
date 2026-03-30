@@ -14,6 +14,7 @@ import {
     Users,
     Smartphone,
 } from "lucide-react";
+import { InfoTooltip, SectionDescription } from "@/components/ui/InfoTooltip";
 import { cn } from "@/lib/utils";
 import { useEssConfig } from "@/features/company-admin/api/use-ess-queries";
 import { useUpdateEssConfig } from "@/features/company-admin/api/use-ess-mutations";
@@ -23,8 +24,8 @@ import type { ESSConfig } from "@/lib/api/ess";
 
 /* ── Toggle ── */
 
-function Toggle({ label, description, checked, onChange }: {
-    label: string; description?: string; checked: boolean; onChange: (v: boolean) => void;
+function Toggle({ label, description, checked, onChange, tooltip }: {
+    label: string; description?: string; checked: boolean; onChange: (v: boolean) => void; tooltip?: string;
 }) {
     return (
         <div className={cn(
@@ -38,7 +39,10 @@ function Toggle({ label, description, checked, onChange }: {
                     ? <CheckCircle2 size={16} className="text-success-500 flex-shrink-0" />
                     : <XCircle size={16} className="text-neutral-300 dark:text-neutral-600 flex-shrink-0" />}
                 <div>
-                    <p className={cn("text-sm font-semibold", checked ? "text-success-800 dark:text-success-400" : "text-neutral-500 dark:text-neutral-400")}>{label}</p>
+                    <div className="flex items-center gap-1.5">
+                        <p className={cn("text-sm font-semibold", checked ? "text-success-800 dark:text-success-400" : "text-neutral-500 dark:text-neutral-400")}>{label}</p>
+                        {tooltip && <InfoTooltip content={tooltip} />}
+                    </div>
                     {description && <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{description}</p>}
                 </div>
             </div>
@@ -58,13 +62,16 @@ function Toggle({ label, description, checked, onChange }: {
 
 /* ── Number Field ── */
 
-function NumberField({ label, description, value, onChange, suffix, min, max }: {
-    label: string; description?: string; value: number; onChange: (v: number) => void; suffix?: string; min?: number; max?: number;
+function NumberField({ label, description, value, onChange, suffix, min, max, tooltip }: {
+    label: string; description?: string; value: number; onChange: (v: number) => void; suffix?: string; min?: number; max?: number; tooltip?: string;
 }) {
     return (
         <div className="flex items-center justify-between px-5 py-4 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
             <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
+                <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
+                    {tooltip && <InfoTooltip content={tooltip} />}
+                </div>
                 {description && <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{description}</p>}
             </div>
             <div className="flex items-center gap-2 ml-4">
@@ -84,13 +91,16 @@ function NumberField({ label, description, value, onChange, suffix, min, max }: 
 
 /* ── Select Row ── */
 
-function SelectRow({ label, description, value, onChange, options }: {
-    label: string; description?: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[];
+function SelectRow({ label, description, value, onChange, options, tooltip }: {
+    label: string; description?: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; tooltip?: string;
 }) {
     return (
         <div className="flex items-center justify-between px-5 py-4 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
             <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
+                <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
+                    {tooltip && <InfoTooltip content={tooltip} />}
+                </div>
                 {description && <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{description}</p>}
             </div>
             <select
@@ -170,6 +180,7 @@ interface EssField {
     key: keyof ESSConfig;
     label: string;
     description?: string;
+    tooltip?: string;
     type: "toggle" | "number" | "select";
     suffix?: string;
     min?: number;
@@ -179,6 +190,7 @@ interface EssField {
 
 interface EssSection {
     title: string;
+    sectionDescription?: string;
     icon: React.ComponentType<{ className?: string; size?: number }>;
     fields: EssField[];
 }
@@ -186,6 +198,7 @@ interface EssSection {
 const SECTIONS: EssSection[] = [
     {
         title: "Payroll & Tax",
+        sectionDescription: "Control what payroll and tax information employees can view and download through the self-service portal.",
         icon: Wallet,
         fields: [
             { key: "viewPayslips", label: "View Payslips", description: "Access monthly salary slips", type: "toggle" },
@@ -197,6 +210,7 @@ const SECTIONS: EssSection[] = [
     },
     {
         title: "Leave",
+        sectionDescription: "Configure which leave-related actions employees can perform on their own.",
         icon: Calendar,
         fields: [
             { key: "leaveApplication", label: "Leave Application", description: "Allow leave application through ESS", type: "toggle" },
@@ -206,17 +220,19 @@ const SECTIONS: EssSection[] = [
     },
     {
         title: "Attendance",
+        sectionDescription: "Define which attendance features are available to employees in the self-service portal.",
         icon: Clock,
         fields: [
             { key: "attendanceView", label: "Attendance View", description: "Show daily attendance records", type: "toggle" },
             { key: "attendanceRegularization", label: "Attendance Regularization", description: "Request attendance corrections", type: "toggle" },
             { key: "viewShiftSchedule", label: "View Shift Schedule", description: "Display assigned shift roster", type: "toggle" },
-            { key: "shiftSwapRequest", label: "Shift Swap Request", description: "Allow requesting shift swaps", type: "toggle" },
-            { key: "wfhRequest", label: "WFH Request", description: "Allow work from home requests", type: "toggle" },
+            { key: "shiftSwapRequest", label: "Shift Swap Request", description: "Allow requesting shift swaps", type: "toggle", tooltip: "Allow employees to request swapping shifts with colleagues." },
+            { key: "wfhRequest", label: "WFH Request", description: "Allow work from home requests", type: "toggle", tooltip: "Allow employees to request work-from-home days." },
         ],
     },
     {
         title: "Profile & Documents",
+        sectionDescription: "Manage employee access to profile editing, document uploads, and organizational information.",
         icon: Eye,
         fields: [
             { key: "profileUpdate", label: "Profile Update", description: "Allow employees to request profile changes", type: "toggle" },
@@ -227,6 +243,7 @@ const SECTIONS: EssSection[] = [
     },
     {
         title: "Financial",
+        sectionDescription: "Control access to financial self-service features like reimbursements, loans, and asset tracking.",
         icon: CreditCard,
         fields: [
             { key: "reimbursementClaims", label: "Reimbursement Claims", description: "Submit expense reimbursements", type: "toggle" },
@@ -236,6 +253,7 @@ const SECTIONS: EssSection[] = [
     },
     {
         title: "Performance",
+        sectionDescription: "Enable performance management features employees can access through self-service.",
         icon: Target,
         fields: [
             { key: "performanceGoals", label: "Performance Goals", description: "View and manage performance goals", type: "toggle" },
@@ -246,6 +264,7 @@ const SECTIONS: EssSection[] = [
     },
     {
         title: "Support & Communication",
+        sectionDescription: "Configure employee access to help desk, grievance submission, and company communications.",
         icon: HelpCircle,
         fields: [
             { key: "helpDesk", label: "Help Desk", description: "Access IT / HR help desk", type: "toggle" },
@@ -257,20 +276,22 @@ const SECTIONS: EssSection[] = [
     },
     {
         title: "Manager Self-Service",
+        sectionDescription: "Control what managers can do for their direct reports through the portal.",
         icon: Users,
         fields: [
             { key: "mssViewTeam", label: "View Team Members", description: "Show direct reportees list", type: "toggle" },
             { key: "mssApproveLeave", label: "Approve/Reject Leave", description: "Allow leave approvals for team", type: "toggle" },
-            { key: "mssApproveAttendance", label: "Approve Attendance", description: "Allow attendance regularization approvals", type: "toggle" },
+            { key: "mssApproveAttendance", label: "Approve Attendance", description: "Allow attendance regularization approvals", type: "toggle", tooltip: "Allow managers to approve or reject attendance regularization requests from their team." },
             { key: "mssViewTeamAttendance", label: "View Team Attendance", description: "Show team attendance summary", type: "toggle" },
         ],
     },
     {
         title: "Mobile Behavior",
+        sectionDescription: "Configure mobile app behavior for attendance capture, offline support, and location tracking.",
         icon: Smartphone,
         fields: [
-            { key: "mobileOfflinePunch", label: "Offline Punch", description: "Allow offline attendance capture on mobile", type: "toggle" },
-            { key: "mobileSyncRetryMinutes", label: "Sync Retry Interval", description: "Minutes between offline sync retries", type: "number", suffix: "min", min: 1, max: 60 },
+            { key: "mobileOfflinePunch", label: "Offline Punch", description: "Allow offline attendance capture on mobile", type: "toggle", tooltip: "Allow attendance punches to be recorded offline on mobile and synced later." },
+            { key: "mobileSyncRetryMinutes", label: "Sync Retry Interval", description: "Minutes between offline sync retries", type: "number", suffix: "min", min: 1, max: 60, tooltip: "How often the mobile app retries syncing failed offline punches." },
             { key: "mobileLocationAccuracy", label: "Location Accuracy", description: "GPS accuracy level for mobile attendance", type: "select", options: LOCATION_ACCURACY_OPTIONS },
         ],
     },
@@ -366,12 +387,16 @@ export function EssConfigScreen() {
                         className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm overflow-hidden"
                     >
                         <div className="p-6">
-                            <div className="flex items-center gap-3 mb-5">
+                            <div className="flex items-center gap-3 mb-1">
                                 <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
                                     <section.icon size={16} className="text-primary-600" />
                                 </div>
                                 <h3 className="text-sm font-bold text-primary-950 dark:text-white">{section.title}</h3>
                             </div>
+                            {section.sectionDescription && (
+                                <SectionDescription>{section.sectionDescription}</SectionDescription>
+                            )}
+                            {!section.sectionDescription && <div className="mb-5" />}
                             <div className="space-y-3">
                                 {section.fields.map((field) => {
                                     if (field.type === "toggle") {
@@ -382,6 +407,7 @@ export function EssConfigScreen() {
                                                 description={field.description}
                                                 checked={config[field.key] as boolean}
                                                 onChange={(v) => updateField(field.key, v as never)}
+                                                tooltip={field.tooltip}
                                             />
                                         );
                                     }
@@ -396,6 +422,7 @@ export function EssConfigScreen() {
                                                 suffix={field.suffix}
                                                 min={field.min}
                                                 max={field.max}
+                                                tooltip={field.tooltip}
                                             />
                                         );
                                     }
@@ -408,6 +435,7 @@ export function EssConfigScreen() {
                                                 value={config[field.key] as string}
                                                 onChange={(v) => updateField(field.key, v as never)}
                                                 options={field.options ?? []}
+                                                tooltip={field.tooltip}
                                             />
                                         );
                                     }

@@ -11,6 +11,7 @@ import {
     Shield,
     FileText,
 } from "lucide-react";
+import { InfoTooltip, SectionDescription } from "@/components/ui/InfoTooltip";
 import { cn } from "@/lib/utils";
 import { useCompanyControls } from "@/features/company-admin/api/use-company-admin-queries";
 import { useUpdateControls } from "@/features/company-admin/api/use-company-admin-mutations";
@@ -20,8 +21,8 @@ import type { SystemControls } from "@/lib/api/company-admin";
 
 /* ── Toggle ── */
 
-function Toggle({ label, description, checked, onChange }: {
-    label: string; description?: string; checked: boolean; onChange: (v: boolean) => void;
+function Toggle({ label, description, checked, onChange, tooltip }: {
+    label: string; description?: string; checked: boolean; onChange: (v: boolean) => void; tooltip?: string;
 }) {
     return (
         <div className={cn(
@@ -35,7 +36,10 @@ function Toggle({ label, description, checked, onChange }: {
                     ? <CheckCircle2 size={16} className="text-success-500 flex-shrink-0" />
                     : <XCircle size={16} className="text-neutral-300 dark:text-neutral-600 flex-shrink-0" />}
                 <div>
-                    <p className={cn("text-sm font-semibold", checked ? "text-success-800 dark:text-success-400" : "text-neutral-500 dark:text-neutral-400")}>{label}</p>
+                    <div className="flex items-center gap-1.5">
+                        <p className={cn("text-sm font-semibold", checked ? "text-success-800 dark:text-success-400" : "text-neutral-500 dark:text-neutral-400")}>{label}</p>
+                        {tooltip && <InfoTooltip content={tooltip} />}
+                    </div>
                     {description && <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{description}</p>}
                 </div>
             </div>
@@ -55,13 +59,16 @@ function Toggle({ label, description, checked, onChange }: {
 
 /* ── Number Field ── */
 
-function NumberField({ label, description, value, onChange, suffix, min, max }: {
-    label: string; description?: string; value: number; onChange: (v: number) => void; suffix?: string; min?: number; max?: number;
+function NumberField({ label, description, value, onChange, suffix, min, max, tooltip }: {
+    label: string; description?: string; value: number; onChange: (v: number) => void; suffix?: string; min?: number; max?: number; tooltip?: string;
 }) {
     return (
         <div className="flex items-center justify-between px-5 py-4 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
             <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
+                <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
+                    {tooltip && <InfoTooltip content={tooltip} />}
+                </div>
                 {description && <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{description}</p>}
             </div>
             <div className="flex items-center gap-2 ml-4">
@@ -81,13 +88,16 @@ function NumberField({ label, description, value, onChange, suffix, min, max }: 
 
 /* ── Select Row ── */
 
-function SelectRow({ label, description, value, onChange, options }: {
-    label: string; description?: string; value: string | number; onChange: (v: string) => void; options: { value: string; label: string }[];
+function SelectRow({ label, description, value, onChange, options, tooltip }: {
+    label: string; description?: string; value: string | number; onChange: (v: string) => void; options: { value: string; label: string }[]; tooltip?: string;
 }) {
     return (
         <div className="flex items-center justify-between px-5 py-4 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
             <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
+                <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
+                    {tooltip && <InfoTooltip content={tooltip} />}
+                </div>
                 {description && <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{description}</p>}
             </div>
             <select
@@ -153,6 +163,7 @@ interface ControlField {
     key: keyof SystemControls;
     label: string;
     description?: string;
+    tooltip?: string;
     type: "toggle" | "number" | "select";
     suffix?: string;
     min?: number;
@@ -162,6 +173,7 @@ interface ControlField {
 
 interface ControlSection {
     title: string;
+    sectionDescription?: string;
     icon: React.ComponentType<{ className?: string; size?: number }>;
     fields: ControlField[];
 }
@@ -169,6 +181,7 @@ interface ControlSection {
 const SECTIONS: ControlSection[] = [
     {
         title: "Module Enablement",
+        sectionDescription: "Enable or disable entire modules for your organization. Disabled modules won't appear in navigation or be accessible via API.",
         icon: LayoutGrid,
         fields: [
             { key: "attendanceEnabled", label: "Attendance", description: "Enable attendance tracking module", type: "toggle" },
@@ -184,6 +197,7 @@ const SECTIONS: ControlSection[] = [
     },
     {
         title: "Production",
+        sectionDescription: "Control production-related features like non-conformance editing, machine tracking, and cycle time recording.",
         icon: Factory,
         fields: [
             { key: "ncEditMode", label: "NC Edit Mode", description: "Allow editing non-conformance records", type: "toggle" },
@@ -193,14 +207,16 @@ const SECTIONS: ControlSection[] = [
     },
     {
         title: "Payroll",
+        sectionDescription: "Safeguard payroll data integrity with processing locks and backdated entry controls.",
         icon: Wallet,
         fields: [
-            { key: "payrollLock", label: "Payroll Lock", description: "Lock payroll after processing", type: "toggle" },
-            { key: "backdatedEntryControl", label: "Backdated Entry Control", description: "Control backdated payroll entries", type: "toggle" },
+            { key: "payrollLock", label: "Payroll Lock", description: "Lock payroll after processing", type: "toggle", tooltip: "Prevents modifications to attendance and payroll data for processed payroll periods." },
+            { key: "backdatedEntryControl", label: "Backdated Entry Control", description: "Control backdated payroll entries", type: "toggle", tooltip: "Block or flag attendance and leave entries submitted for past dates." },
         ],
     },
     {
         title: "Leave",
+        sectionDescription: "Configure leave policies including carry-forward, compensatory off, and half-day leave options.",
         icon: CalendarOff,
         fields: [
             { key: "leaveCarryForward", label: "Leave Carry Forward", description: "Allow carrying forward unused leave", type: "toggle" },
@@ -210,6 +226,7 @@ const SECTIONS: ControlSection[] = [
     },
     {
         title: "Security & Access",
+        sectionDescription: "Manage authentication, session limits, password policies, and account lockout rules.",
         icon: Shield,
         fields: [
             { key: "mfaRequired", label: "MFA Required", description: "Enforce multi-factor authentication for all users", type: "toggle" },
@@ -217,15 +234,16 @@ const SECTIONS: ControlSection[] = [
             { key: "maxConcurrentSessions", label: "Max Concurrent Sessions", description: "Maximum active sessions per user", type: "number", suffix: "sessions", min: 1, max: 10 },
             { key: "passwordMinLength", label: "Password Min Length", description: "Minimum password character count", type: "number", suffix: "chars", min: 6, max: 32 },
             { key: "passwordComplexity", label: "Password Complexity", description: "Require uppercase, lowercase, number, and special character", type: "toggle" },
-            { key: "accountLockThreshold", label: "Account Lock Threshold", description: "Failed attempts before account lock", type: "number", suffix: "attempts", min: 1, max: 20 },
+            { key: "accountLockThreshold", label: "Account Lock Threshold", description: "Failed attempts before account lock", type: "number", suffix: "attempts", min: 1, max: 20, tooltip: "Number of consecutive failed login attempts before the account is temporarily locked." },
             { key: "accountLockDurationMinutes", label: "Account Lock Duration", description: "Auto-unlock after (minutes)", type: "number", suffix: "min", min: 1, max: 1440 },
         ],
     },
     {
         title: "Audit",
+        sectionDescription: "Configure how long audit trail records are retained for compliance and review.",
         icon: FileText,
         fields: [
-            { key: "auditLogRetentionDays", label: "Audit Log Retention", description: "How long to retain audit logs", type: "select", options: AUDIT_RETENTION_OPTIONS },
+            { key: "auditLogRetentionDays", label: "Audit Log Retention", description: "How long to retain audit logs", type: "select", options: AUDIT_RETENTION_OPTIONS, tooltip: "How long to keep audit trail records. Longer retention uses more storage." },
         ],
     },
 ];
@@ -327,12 +345,16 @@ export function SystemControlsScreen() {
                         section.title === "Module Enablement" && "md:col-span-2"
                     )}>
                         <div className="p-6">
-                            <div className="flex items-center gap-3 mb-5">
+                            <div className="flex items-center gap-3 mb-1">
                                 <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
                                     <section.icon size={16} className="text-primary-600" />
                                 </div>
                                 <h3 className="text-sm font-bold text-primary-950 dark:text-white">{section.title}</h3>
                             </div>
+                            {section.sectionDescription && (
+                                <SectionDescription>{section.sectionDescription}</SectionDescription>
+                            )}
+                            {!section.sectionDescription && <div className="mb-5" />}
                             <div className={cn(
                                 "space-y-3",
                                 section.title === "Module Enablement" && "grid grid-cols-1 md:grid-cols-2 gap-3 space-y-0"
@@ -346,6 +368,7 @@ export function SystemControlsScreen() {
                                                 description={field.description}
                                                 checked={controls[field.key] as boolean}
                                                 onChange={(v) => updateField(field.key, v as never)}
+                                                tooltip={field.tooltip}
                                             />
                                         );
                                     }
@@ -360,6 +383,7 @@ export function SystemControlsScreen() {
                                                 suffix={field.suffix}
                                                 min={field.min}
                                                 max={field.max}
+                                                tooltip={field.tooltip}
                                             />
                                         );
                                     }
@@ -372,6 +396,7 @@ export function SystemControlsScreen() {
                                                 value={controls[field.key] as number}
                                                 onChange={(v) => updateField(field.key, Number(v) as never)}
                                                 options={field.options ?? []}
+                                                tooltip={field.tooltip}
                                             />
                                         );
                                     }

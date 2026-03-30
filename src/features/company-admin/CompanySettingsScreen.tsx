@@ -6,6 +6,7 @@ import {
     Shield,
     Plug,
 } from "lucide-react";
+import { InfoTooltip, SectionDescription } from "@/components/ui/InfoTooltip";
 import { cn } from "@/lib/utils";
 import { useCompanySettings } from "@/features/company-admin/api/use-company-admin-queries";
 import { useUpdateSettings } from "@/features/company-admin/api/use-company-admin-mutations";
@@ -15,13 +16,16 @@ import type { CompanySettings } from "@/lib/api/company-admin";
 
 /* ── Shared Controls ── */
 
-function SelectField({ label, value, onChange, options }: {
-    label: string; value: string; onChange: (v: string) => void; options: Array<{ value: string; label: string }>;
+function SelectField({ label, value, onChange, options, tooltip }: {
+    label: string; value: string; onChange: (v: string) => void; options: Array<{ value: string; label: string }>; tooltip?: string;
 }) {
     const fieldId = label.toLowerCase().replace(/\s+/g, '-');
     return (
         <div>
-            <label htmlFor={fieldId} className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">{label}</label>
+            <div className="flex items-center gap-1.5 mb-1.5">
+                <label htmlFor={fieldId} className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">{label}</label>
+                {tooltip && <InfoTooltip content={tooltip} />}
+            </div>
             <select
                 id={fieldId}
                 value={value}
@@ -36,13 +40,16 @@ function SelectField({ label, value, onChange, options }: {
     );
 }
 
-function Toggle({ label, description, checked, onChange }: {
-    label: string; description?: string; checked: boolean; onChange: (v: boolean) => void;
+function Toggle({ label, description, checked, onChange, tooltip }: {
+    label: string; description?: string; checked: boolean; onChange: (v: boolean) => void; tooltip?: string;
 }) {
     return (
         <div className="flex items-center justify-between px-5 py-4 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
             <div>
-                <p className="text-sm font-semibold text-primary-950 dark:text-white">{label}</p>
+                <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-semibold text-primary-950 dark:text-white">{label}</p>
+                    {tooltip && <InfoTooltip content={tooltip} />}
+                </div>
                 {description && <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{description}</p>}
             </div>
             <button
@@ -200,14 +207,15 @@ export function CompanySettingsScreen() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Locale */}
                 <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm p-6">
-                    <div className="flex items-center gap-3 mb-5">
+                    <div className="flex items-center gap-3 mb-1">
                         <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center"><Globe size={16} className="text-primary-600" /></div>
                         <h3 className="text-sm font-bold text-primary-950 dark:text-white">Locale</h3>
                     </div>
+                    <SectionDescription>Regional settings that affect date formatting, currency display, and language across the platform.</SectionDescription>
                     <div className="space-y-4">
                         <SelectField label="Currency" value={settings.currency} onChange={(v) => updateField("currency", v as CompanySettings["currency"])} options={CURRENCY_OPTIONS} />
                         <SelectField label="Language" value={settings.language} onChange={(v) => updateField("language", v as CompanySettings["language"])} options={LANGUAGE_OPTIONS} />
-                        <SelectField label="Timezone" value={settings.timezone} onChange={(v) => updateField("timezone", v)} options={TIMEZONE_OPTIONS} />
+                        <SelectField label="Timezone" value={settings.timezone} onChange={(v) => updateField("timezone", v)} options={TIMEZONE_OPTIONS} tooltip="All attendance calculations use this timezone. Changing this affects how dates and times are interpreted." />
                         <SelectField label="Date Format" value={settings.dateFormat} onChange={(v) => updateField("dateFormat", v)} options={DATE_FORMAT_OPTIONS} />
                         <SelectField label="Time Format" value={settings.timeFormat} onChange={(v) => updateField("timeFormat", v as CompanySettings["timeFormat"])} options={TIME_FORMAT_OPTIONS} />
                         <SelectField label="Number Format" value={settings.numberFormat} onChange={(v) => updateField("numberFormat", v)} options={NUMBER_FORMAT_OPTIONS} />
@@ -216,23 +224,25 @@ export function CompanySettingsScreen() {
 
                 {/* Compliance */}
                 <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm p-6">
-                    <div className="flex items-center gap-3 mb-5">
+                    <div className="flex items-center gap-3 mb-1">
                         <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center"><Shield size={16} className="text-primary-600" /></div>
                         <h3 className="text-sm font-bold text-primary-950 dark:text-white">Compliance</h3>
                     </div>
+                    <SectionDescription>Enable region-specific compliance frameworks and data protection features.</SectionDescription>
                     <div className="space-y-3">
                         <Toggle label="India Compliance" description="Enable India-specific statutory compliance" checked={settings.indiaCompliance} onChange={(v) => updateField("indiaCompliance", v)} />
                         <Toggle label="GDPR Mode" description="Enable GDPR data protection features" checked={settings.gdprMode} onChange={(v) => updateField("gdprMode", v)} />
-                        <Toggle label="Audit Trail" description="Maintain detailed audit trail for all changes" checked={settings.auditTrail} onChange={(v) => updateField("auditTrail", v)} />
+                        <Toggle label="Audit Trail" description="Maintain detailed audit trail for all changes" checked={settings.auditTrail} onChange={(v) => updateField("auditTrail", v)} tooltip="When enabled, all configuration changes are logged with who made the change and when." />
                     </div>
                 </div>
 
                 {/* Integrations */}
                 <div className="md:col-span-2 bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm p-6">
-                    <div className="flex items-center gap-3 mb-5">
+                    <div className="flex items-center gap-3 mb-1">
                         <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center"><Plug size={16} className="text-primary-600" /></div>
                         <h3 className="text-sm font-bold text-primary-950 dark:text-white">Integrations</h3>
                     </div>
+                    <SectionDescription>Connect external services for payments, notifications, biometric devices, and e-signatures.</SectionDescription>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <Toggle label="Bank Integration" description="Enable bank account integration" checked={settings.bankIntegration} onChange={(v) => updateField("bankIntegration", v)} />
                         <Toggle label="RazorpayX Payout" description="Enable RazorpayX for payroll disbursement" checked={settings.razorpayEnabled} onChange={(v) => updateField("razorpayEnabled", v)} />

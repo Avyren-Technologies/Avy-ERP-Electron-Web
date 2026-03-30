@@ -12,6 +12,7 @@ import {
     Gift,
     Settings2,
 } from "lucide-react";
+import { InfoTooltip, SectionDescription } from "@/components/ui/InfoTooltip";
 import { cn } from "@/lib/utils";
 import { useOvertimeRules } from "@/features/company-admin/api/use-attendance-queries";
 import { useUpdateOvertimeRules } from "@/features/company-admin/api/use-attendance-mutations";
@@ -21,8 +22,8 @@ import type { OvertimeRule } from "@/lib/api/attendance";
 
 /* ── Toggle ── */
 
-function Toggle({ label, description, checked, onChange }: {
-    label: string; description?: string; checked: boolean; onChange: (v: boolean) => void;
+function Toggle({ label, description, checked, onChange, tooltip }: {
+    label: string; description?: string; checked: boolean; onChange: (v: boolean) => void; tooltip?: string;
 }) {
     return (
         <div className={cn(
@@ -36,7 +37,10 @@ function Toggle({ label, description, checked, onChange }: {
                     ? <CheckCircle2 size={16} className="text-success-500 flex-shrink-0" />
                     : <XCircle size={16} className="text-neutral-300 dark:text-neutral-600 flex-shrink-0" />}
                 <div>
-                    <p className={cn("text-sm font-semibold", checked ? "text-success-800 dark:text-success-400" : "text-neutral-500 dark:text-neutral-400")}>{label}</p>
+                    <div className="flex items-center gap-1.5">
+                        <p className={cn("text-sm font-semibold", checked ? "text-success-800 dark:text-success-400" : "text-neutral-500 dark:text-neutral-400")}>{label}</p>
+                        {tooltip && <InfoTooltip content={tooltip} />}
+                    </div>
                     {description && <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{description}</p>}
                 </div>
             </div>
@@ -56,13 +60,16 @@ function Toggle({ label, description, checked, onChange }: {
 
 /* ── Number Field ── */
 
-function NumberField({ label, value, onChange, suffix, min, max, step, description }: {
-    label: string; value: number; onChange: (v: number) => void; suffix?: string; min?: number; max?: number; step?: number; description?: string;
+function NumberField({ label, value, onChange, suffix, min, max, step, description, tooltip }: {
+    label: string; value: number; onChange: (v: number) => void; suffix?: string; min?: number; max?: number; step?: number; description?: string; tooltip?: string;
 }) {
     return (
         <div className="flex items-center justify-between px-5 py-4 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
             <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
+                <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
+                    {tooltip && <InfoTooltip content={tooltip} />}
+                </div>
                 {description && <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{description}</p>}
             </div>
             <div className="flex items-center gap-2 ml-4">
@@ -83,8 +90,8 @@ function NumberField({ label, value, onChange, suffix, min, max, step, descripti
 
 /* ── Nullable Number Field ── */
 
-function NullableNumberField({ label, value, onChange, suffix, min, max, step, nullLabel, description }: {
-    label: string; value: number | null; onChange: (v: number | null) => void; suffix?: string; min?: number; max?: number; step?: number; nullLabel?: string; description?: string;
+function NullableNumberField({ label, value, onChange, suffix, min, max, step, nullLabel, description, tooltip }: {
+    label: string; value: number | null; onChange: (v: number | null) => void; suffix?: string; min?: number; max?: number; step?: number; nullLabel?: string; description?: string; tooltip?: string;
 }) {
     const isNull = value === null;
     return (
@@ -97,7 +104,10 @@ function NullableNumberField({ label, value, onChange, suffix, min, max, step, n
                     className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
                 />
                 <div>
-                    <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
+                    <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
+                        {tooltip && <InfoTooltip content={tooltip} />}
+                    </div>
                     {description && <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{description}</p>}
                 </div>
             </div>
@@ -123,13 +133,16 @@ function NullableNumberField({ label, value, onChange, suffix, min, max, step, n
 
 /* ── Select Row ── */
 
-function SelectRow({ label, value, onChange, options, description }: {
-    label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; description?: string;
+function SelectRow({ label, value, onChange, options, description, tooltip }: {
+    label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; description?: string; tooltip?: string;
 }) {
     return (
         <div className="flex items-center justify-between px-5 py-4 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
             <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
+                <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
+                    {tooltip && <InfoTooltip content={tooltip} />}
+                </div>
                 {description && <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{description}</p>}
             </div>
             <select
@@ -186,18 +199,22 @@ const DEFAULTS: OvertimeRule = {
 
 /* ── Section Card ── */
 
-function SectionCard({ title, icon: Icon, children }: {
-    title: string; icon: React.ComponentType<{ className?: string; size?: number }>; children: React.ReactNode;
+function SectionCard({ title, icon: Icon, children, sectionDescription }: {
+    title: string; icon: React.ComponentType<{ className?: string; size?: number }>; children: React.ReactNode; sectionDescription?: string;
 }) {
     return (
         <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm overflow-hidden">
             <div className="p-6">
-                <div className="flex items-center gap-3 mb-5">
+                <div className="flex items-center gap-3 mb-1">
                     <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
                         <Icon size={16} className="text-primary-600" />
                     </div>
                     <h3 className="text-sm font-bold text-primary-950 dark:text-white">{title}</h3>
                 </div>
+                {sectionDescription && (
+                    <SectionDescription>{sectionDescription}</SectionDescription>
+                )}
+                {!sectionDescription && <div className="mb-5" />}
                 <div className="space-y-3">{children}</div>
             </div>
         </div>
@@ -284,7 +301,7 @@ export function OvertimeRulesScreen() {
             {/* Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Eligibility */}
-                <SectionCard title="Eligibility" icon={UserCheck}>
+                <SectionCard title="Eligibility" icon={UserCheck} sectionDescription="Define which employee types are eligible for overtime. Leave unset to include all types.">
                     <div className="px-5 py-4 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
                         <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">Eligible Employee Types</p>
                         <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">
@@ -294,15 +311,15 @@ export function OvertimeRulesScreen() {
                 </SectionCard>
 
                 {/* Calculation */}
-                <SectionCard title="Calculation" icon={Calculator}>
-                    <SelectRow label="Calculation Basis" description="How overtime is calculated" value={rules.calculationBasis} onChange={(v) => updateRule("calculationBasis", v as OvertimeRule["calculationBasis"])} options={CALCULATION_BASIS_OPTIONS} />
-                    <NumberField label="Threshold Minutes" description="Extra minutes before OT counts" value={rules.thresholdMinutes} onChange={(v) => updateRule("thresholdMinutes", v)} suffix="min" min={0} max={120} />
-                    <NumberField label="Minimum OT Minutes" description="Min OT minutes to be recorded" value={rules.minimumOtMinutes} onChange={(v) => updateRule("minimumOtMinutes", v)} suffix="min" min={0} max={120} />
+                <SectionCard title="Calculation" icon={Calculator} sectionDescription="Configure how overtime hours are calculated, including thresholds and minimum durations.">
+                    <SelectRow label="Calculation Basis" description="How overtime is calculated" value={rules.calculationBasis} onChange={(v) => updateRule("calculationBasis", v as OvertimeRule["calculationBasis"])} options={CALCULATION_BASIS_OPTIONS} tooltip="AFTER_SHIFT: OT counted from when shift ends. TOTAL_HOURS: OT = total worked hours minus the full-day threshold." />
+                    <NumberField label="Threshold Minutes" description="Extra minutes before OT counts" value={rules.thresholdMinutes} onChange={(v) => updateRule("thresholdMinutes", v)} suffix="min" min={0} max={120} tooltip="Minimum extra minutes worked beyond shift before overtime starts counting." />
+                    <NumberField label="Minimum OT Minutes" description="Min OT minutes to be recorded" value={rules.minimumOtMinutes} onChange={(v) => updateRule("minimumOtMinutes", v)} suffix="min" min={0} max={120} tooltip="Minimum overtime duration to be recorded. Shorter periods are ignored." />
                     <Toggle label="Include Breaks in OT" description="Count break time within OT hours" checked={rules.includeBreaksInOT} onChange={(v) => updateRule("includeBreaksInOT", v)} />
                 </SectionCard>
 
                 {/* Rate Multipliers */}
-                <SectionCard title="Rate Multipliers" icon={DollarSign}>
+                <SectionCard title="Rate Multipliers" icon={DollarSign} sectionDescription="Define pay multipliers for different overtime scenarios. Null values fall back to the weekday rate.">
                     <NumberField label="Weekday Multiplier" value={rules.weekdayMultiplier} onChange={(v) => updateRule("weekdayMultiplier", v)} suffix="x" min={1} max={5} step={0.25} />
                     <NullableNumberField label="Weekend Multiplier" value={rules.weekendMultiplier} onChange={(v) => updateRule("weekendMultiplier", v)} suffix="x" min={1} max={5} step={0.25} nullLabel="Use Weekday Rate" />
                     <NullableNumberField label="Holiday Multiplier" value={rules.holidayMultiplier} onChange={(v) => updateRule("holidayMultiplier", v)} suffix="x" min={1} max={5} step={0.25} nullLabel="Use Weekday Rate" />
@@ -310,28 +327,28 @@ export function OvertimeRulesScreen() {
                 </SectionCard>
 
                 {/* Caps */}
-                <SectionCard title="Caps" icon={Gauge}>
+                <SectionCard title="Caps" icon={Gauge} sectionDescription="Set maximum overtime limits per day, week, or month. Caps can be advisory or hard-enforced.">
                     <NullableNumberField label="Daily Cap" value={rules.dailyCapHours} onChange={(v) => updateRule("dailyCapHours", v)} suffix="hrs" min={0} max={12} step={0.5} nullLabel="No Limit" />
                     <NullableNumberField label="Weekly Cap" value={rules.weeklyCapHours} onChange={(v) => updateRule("weeklyCapHours", v)} suffix="hrs" min={0} max={48} step={0.5} nullLabel="No Limit" />
                     <NullableNumberField label="Monthly Cap" value={rules.monthlyCapHours} onChange={(v) => updateRule("monthlyCapHours", v)} suffix="hrs" min={0} max={200} step={1} nullLabel="No Limit" />
-                    <Toggle label="Enforce Caps" description="Hard block OT entries exceeding limits" checked={rules.enforceCaps} onChange={(v) => updateRule("enforceCaps", v)} />
-                    <NullableNumberField label="Max Continuous OT" description="Safety/compliance limit" value={rules.maxContinuousOtHours} onChange={(v) => updateRule("maxContinuousOtHours", v)} suffix="hrs" min={0} max={24} step={0.5} nullLabel="No Limit" />
+                    <Toggle label="Enforce Caps" description="Hard block OT entries exceeding limits" checked={rules.enforceCaps} onChange={(v) => updateRule("enforceCaps", v)} tooltip="When enabled, overtime is hard-capped — employees cannot log more than the limit. When disabled, caps are advisory only." />
+                    <NullableNumberField label="Max Continuous OT" description="Safety/compliance limit" value={rules.maxContinuousOtHours} onChange={(v) => updateRule("maxContinuousOtHours", v)} suffix="hrs" min={0} max={24} step={0.5} nullLabel="No Limit" tooltip="Maximum consecutive overtime hours allowed per session. A safety/compliance limit." />
                 </SectionCard>
 
                 {/* Approval & Payroll */}
-                <SectionCard title="Approval & Payroll" icon={Receipt}>
+                <SectionCard title="Approval & Payroll" icon={Receipt} sectionDescription="Configure the approval workflow and payroll integration for overtime entries.">
                     <Toggle label="Approval Required" description="Manager must approve overtime before payroll" checked={rules.approvalRequired} onChange={(v) => updateRule("approvalRequired", v)} />
                     <Toggle label="Auto Include in Payroll" description="Automatically add approved OT to payroll" checked={rules.autoIncludePayroll} onChange={(v) => updateRule("autoIncludePayroll", v)} />
                 </SectionCard>
 
                 {/* Comp-Off */}
-                <SectionCard title="Comp-Off" icon={Gift}>
+                <SectionCard title="Comp-Off" icon={Gift} sectionDescription="Allow employees to choose compensatory time off instead of overtime pay.">
                     <Toggle label="Comp-Off Enabled" description="Allow employees to choose comp-off instead of pay" checked={rules.compOffEnabled} onChange={(v) => updateRule("compOffEnabled", v)} />
-                    <NullableNumberField label="Comp-Off Expiry" description="Days before comp-off lapses" value={rules.compOffExpiryDays} onChange={(v) => updateRule("compOffExpiryDays", v)} suffix="days" min={1} max={365} nullLabel="No Expiry" />
+                    <NullableNumberField label="Comp-Off Expiry" description="Days before comp-off lapses" value={rules.compOffExpiryDays} onChange={(v) => updateRule("compOffExpiryDays", v)} suffix="days" min={1} max={365} nullLabel="No Expiry" tooltip="Number of days before unused compensatory off expires. Leave empty for no expiry." />
                 </SectionCard>
 
                 {/* Rounding */}
-                <SectionCard title="Rounding" icon={Settings2}>
+                <SectionCard title="Rounding" icon={Settings2} sectionDescription="Configure how calculated overtime hours are rounded for payroll purposes.">
                     <SelectRow label="Rounding Strategy" description="How OT hours are rounded" value={rules.roundingStrategy} onChange={(v) => updateRule("roundingStrategy", v as OvertimeRule["roundingStrategy"])} options={ROUNDING_STRATEGY_OPTIONS} />
                 </SectionCard>
             </div>
