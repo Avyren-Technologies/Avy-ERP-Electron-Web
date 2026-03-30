@@ -38,7 +38,6 @@ const PAGE_TITLES: Record<string, { title: string; subtitle?: string }> = {
     '/app/company/settings': { title: 'Company Settings', subtitle: 'Company preferences and configuration' },
     '/app/company/users': { title: 'User Management', subtitle: 'Manage company users' },
     '/app/company/roles': { title: 'Roles & Permissions', subtitle: 'Configure access control' },
-    '/app/company/feature-toggles': { title: 'Feature Toggles', subtitle: 'Enable or disable features' },
     '/app/company/hr/departments': { title: 'Departments', subtitle: 'Manage organization departments' },
     '/app/company/hr/designations': { title: 'Designations', subtitle: 'Configure job titles and designations' },
     '/app/company/hr/grades': { title: 'Grades & Bands', subtitle: 'Define employee grades and compensation bands' },

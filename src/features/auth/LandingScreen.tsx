@@ -94,7 +94,7 @@ const PLATFORMS = [
 const CAPABILITIES = [
     { icon: Layers, title: "Multi-Tenant SaaS", desc: "Complete data isolation per company with independent configuration, billing, and module access." },
     { icon: WifiOff, title: "Offline-First Design", desc: "Critical operations work without connectivity and sync automatically when reconnected." },
-    { icon: Lock, title: "Role-Based Access", desc: "Granular RBAC with feature toggles — every user sees only what their role permits." },
+    { icon: Lock, title: "Role-Based Access", desc: "Granular RBAC with dynamic permissions — every user sees only what their role permits." },
     { icon: Cpu, title: "Modular Architecture", desc: "Activate only the modules you need. Dependencies auto-resolve. Scale as you grow." },
 ];
 

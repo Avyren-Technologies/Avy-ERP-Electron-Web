@@ -11,7 +11,6 @@ interface AuthState {
     user: AuthUser | null;
     userRole: UserRole | null;
     permissions: string[];
-    featureToggles: string[];
     signIn: (tokens: AuthTokens, user: AuthUser, role?: UserRole) => void;
     signOut: () => void;
     updateTokens: (tokens: AuthTokens) => void;
@@ -55,16 +54,14 @@ export const useAuthStore = create<AuthState>((set) => ({
     user: null,
     userRole: null,
     permissions: [],
-    featureToggles: [],
 
     signIn: (tokens, user, role) => {
         const mappedRole = role ?? mapBackendRole(user.role);
         const permissions = user.permissions ?? [];
-        const featureToggles = user.featureToggles ?? [];
         localStorage.setItem('auth_tokens', JSON.stringify(tokens));
         localStorage.setItem('auth_user', JSON.stringify(user));
         localStorage.setItem('user_role', mappedRole);
-        set({ status: 'signIn', token: tokens.accessToken, user, userRole: mappedRole, permissions, featureToggles });
+        set({ status: 'signIn', token: tokens.accessToken, user, userRole: mappedRole, permissions });
     },
 
     signOut: () => {
@@ -73,7 +70,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         localStorage.removeItem('user_role');
         // Clear all React Query caches so new user doesn't see stale data
         queryClient.clear();
-        set({ status: 'signOut', token: null, user: null, userRole: null, permissions: [], featureToggles: [] });
+        set({ status: 'signOut', token: null, user: null, userRole: null, permissions: [] });
     },
 
     updateTokens: (tokens) => {
@@ -119,7 +116,6 @@ export const hydrateAuth = () => {
             // to match expected app/test behavior.
             const mappedRole = role ?? (user ? mapBackendRole(user.role) : 'super-admin');
             const permissions = user?.permissions ?? [];
-            const featureToggles = user?.featureToggles ?? [];
 
             useAuthStore.setState({
                 status: 'signIn',
@@ -127,7 +123,6 @@ export const hydrateAuth = () => {
                 user,
                 userRole: mappedRole,
                 permissions,
-                featureToggles,
             });
         } else {
             useAuthStore.setState({ status: 'signOut' });
@@ -152,12 +147,6 @@ export function isEmployeeUser(userRole: UserRole | null, permissions: string[])
 
 // Re-export checkPermission for convenience
 export { checkPermission };
-
-/** React hook: returns true if the current user has the given feature toggle enabled. */
-export function useHasFeature(key: string): boolean {
-    const featureToggles = useAuthStore((s) => s.featureToggles);
-    return featureToggles.includes(key);
-}
 
 // ── Cross-tab logout synchronization ──
 
@@ -186,7 +175,6 @@ export function initCrossTabSync() {
                 // For cross-tab sync, keep the existing fallback behavior.
                 const mappedRole = role ?? (user ? mapBackendRole(user.role) : 'user');
                 const permissions = user?.permissions ?? [];
-                const featureToggles = user?.featureToggles ?? [];
 
                 useAuthStore.setState({
                     status: 'signIn',
@@ -194,7 +182,6 @@ export function initCrossTabSync() {
                     user,
                     userRole: mappedRole,
                     permissions,
-                    featureToggles,
                 });
             } catch {
                 // Malformed data — ignore

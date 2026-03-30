@@ -41,7 +41,6 @@ import { SystemControlsScreen } from "./features/company-admin/SystemControlsScr
 import { CompanySettingsScreen } from "./features/company-admin/CompanySettingsScreen";
 import { UserManagementScreen } from "./features/company-admin/UserManagementScreen";
 import { RoleManagementScreen } from "./features/company-admin/RoleManagementScreen";
-import { FeatureToggleScreen } from "./features/company-admin/FeatureToggleScreen";
 import { BillingDashboardScreen } from "./features/company-admin/BillingDashboardScreen";
 import { MyInvoicesScreen } from "./features/company-admin/MyInvoicesScreen";
 import { MyPaymentsScreen } from "./features/company-admin/MyPaymentsScreen";
@@ -287,7 +286,6 @@ function App() {
         <Route path="company/settings" element={<RequirePermission permission="company:read"><CompanySettingsScreen /></RequirePermission>} />
         <Route path="company/users" element={<RequirePermission permission="user:read"><UserManagementScreen /></RequirePermission>} />
         <Route path="company/roles" element={<RequirePermission permission="role:read"><RoleManagementScreen /></RequirePermission>} />
-        <Route path="company/feature-toggles" element={<RequirePermission permission="role:read"><FeatureToggleScreen /></RequirePermission>} />
         {/* Company-admin Billing routes */}
         <Route path="company/billing" element={<RequireRole roles={['company-admin']}><BillingDashboardScreen /></RequireRole>} />
         <Route path="company/billing/invoices" element={<RequireRole roles={['company-admin']}><MyInvoicesScreen /></RequireRole>} />
