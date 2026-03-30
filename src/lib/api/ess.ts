@@ -1,14 +1,67 @@
 import { client } from './client';
 import type { ApiResponse } from './auth';
 
+// ── Types ──
+
+export type LocationAccuracy = 'HIGH' | 'MEDIUM' | 'LOW';
+
+export interface ESSConfig {
+    id?: string;
+    // Payroll & Tax
+    viewPayslips: boolean;
+    downloadPayslips: boolean;
+    downloadForm16: boolean;
+    viewSalaryStructure: boolean;
+    itDeclaration: boolean;
+    // Leave
+    leaveApplication: boolean;
+    leaveBalanceView: boolean;
+    leaveCancellation: boolean;
+    // Attendance
+    attendanceView: boolean;
+    attendanceRegularization: boolean;
+    viewShiftSchedule: boolean;
+    shiftSwapRequest: boolean;
+    wfhRequest: boolean;
+    // Profile & Documents
+    profileUpdate: boolean;
+    documentUpload: boolean;
+    employeeDirectory: boolean;
+    viewOrgChart: boolean;
+    // Financial
+    reimbursementClaims: boolean;
+    loanApplication: boolean;
+    assetView: boolean;
+    // Performance & Development
+    performanceGoals: boolean;
+    appraisalAccess: boolean;
+    feedback360: boolean;
+    trainingEnrollment: boolean;
+    // Support & Communication
+    helpDesk: boolean;
+    grievanceSubmission: boolean;
+    holidayCalendar: boolean;
+    policyDocuments: boolean;
+    announcementBoard: boolean;
+    // Manager Self-Service (MSS)
+    mssViewTeam: boolean;
+    mssApproveLeave: boolean;
+    mssApproveAttendance: boolean;
+    mssViewTeamAttendance: boolean;
+    // Mobile Behavior
+    mobileOfflinePunch: boolean;
+    mobileSyncRetryMinutes: number;
+    mobileLocationAccuracy: LocationAccuracy;
+}
+
 // ── ESS Config ──
 
-async function getEssConfig(): Promise<ApiResponse<any>> {
+async function getEssConfig(): Promise<ApiResponse<ESSConfig>> {
     const response = await client.get('/hr/ess-config');
     return response.data;
 }
 
-async function updateEssConfig(data: any): Promise<ApiResponse<any>> {
+async function updateEssConfig(data: Partial<ESSConfig>): Promise<ApiResponse<ESSConfig>> {
     const response = await client.patch('/hr/ess-config', data);
     return response.data;
 }

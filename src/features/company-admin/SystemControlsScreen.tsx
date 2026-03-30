@@ -4,26 +4,25 @@ import {
     Loader2,
     CheckCircle2,
     XCircle,
+    LayoutGrid,
     Factory,
     Wallet,
-    Shield,
     CalendarOff,
-    Bell,
+    Shield,
+    FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCompanyControls } from "@/features/company-admin/api/use-company-admin-queries";
 import { useUpdateControls } from "@/features/company-admin/api/use-company-admin-mutations";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { showSuccess, showApiError } from "@/lib/toast";
+import type { SystemControls } from "@/lib/api/company-admin";
 
-interface ToggleProps {
-    label: string;
-    description?: string;
-    checked: boolean;
-    onChange: (v: boolean) => void;
-}
+/* ── Toggle ── */
 
-function Toggle({ label, description, checked, onChange }: ToggleProps) {
+function Toggle({ label, description, checked, onChange }: {
+    label: string; description?: string; checked: boolean; onChange: (v: boolean) => void;
+}) {
     return (
         <div className={cn(
             "flex items-center justify-between px-5 py-4 rounded-xl border transition-colors",
@@ -48,82 +47,208 @@ function Toggle({ label, description, checked, onChange }: ToggleProps) {
                     checked ? "bg-success-500" : "bg-neutral-300 dark:bg-neutral-700"
                 )}
             >
-                <div className={cn("w-4.5 h-4.5 w-[18px] h-[18px] rounded-full bg-white absolute top-[3px] transition-all shadow-sm", checked ? "left-[22px]" : "left-[3px]")} />
+                <div className={cn("w-[18px] h-[18px] rounded-full bg-white absolute top-[3px] transition-all shadow-sm", checked ? "left-[22px]" : "left-[3px]")} />
             </button>
         </div>
     );
 }
 
+/* ── Number Field ── */
+
+function NumberField({ label, description, value, onChange, suffix, min, max }: {
+    label: string; description?: string; value: number; onChange: (v: number) => void; suffix?: string; min?: number; max?: number;
+}) {
+    return (
+        <div className="flex items-center justify-between px-5 py-4 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
+            <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
+                {description && <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{description}</p>}
+            </div>
+            <div className="flex items-center gap-2 ml-4">
+                <input
+                    type="number"
+                    value={value}
+                    onChange={(e) => onChange(Number(e.target.value))}
+                    min={min}
+                    max={max}
+                    className="w-20 px-3 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm text-right font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                />
+                {suffix && <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">{suffix}</span>}
+            </div>
+        </div>
+    );
+}
+
+/* ── Select Row ── */
+
+function SelectRow({ label, description, value, onChange, options }: {
+    label: string; description?: string; value: string | number; onChange: (v: string) => void; options: { value: string; label: string }[];
+}) {
+    return (
+        <div className="flex items-center justify-between px-5 py-4 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
+            <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
+                {description && <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{description}</p>}
+            </div>
+            <select
+                value={String(value)}
+                onChange={(e) => onChange(e.target.value)}
+                className="ml-4 px-3 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm font-semibold text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+            >
+                {options.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+            </select>
+        </div>
+    );
+}
+
+/* ── Default values ── */
+
+const DEFAULTS: SystemControls = {
+    // Module Enablement
+    attendanceEnabled: true,
+    leaveEnabled: true,
+    payrollEnabled: true,
+    essEnabled: true,
+    performanceEnabled: false,
+    recruitmentEnabled: false,
+    trainingEnabled: false,
+    mobileAppEnabled: true,
+    aiChatbotEnabled: false,
+    // Production
+    ncEditMode: false,
+    loadUnload: false,
+    cycleTime: false,
+    // Payroll
+    payrollLock: true,
+    backdatedEntryControl: false,
+    // Leave
+    leaveCarryForward: true,
+    compOffEnabled: false,
+    halfDayLeaveEnabled: true,
+    // Security
+    mfaRequired: false,
+    sessionTimeoutMinutes: 30,
+    maxConcurrentSessions: 3,
+    passwordMinLength: 8,
+    passwordComplexity: true,
+    accountLockThreshold: 5,
+    accountLockDurationMinutes: 30,
+    // Audit
+    auditLogRetentionDays: 365,
+};
+
+const AUDIT_RETENTION_OPTIONS = [
+    { value: "30", label: "30 days" },
+    { value: "90", label: "90 days" },
+    { value: "180", label: "180 days" },
+    { value: "365", label: "1 year" },
+    { value: "730", label: "2 years" },
+];
+
+/* ── Section Config ── */
+
+interface ControlField {
+    key: keyof SystemControls;
+    label: string;
+    description?: string;
+    type: "toggle" | "number" | "select";
+    suffix?: string;
+    min?: number;
+    max?: number;
+    options?: { value: string; label: string }[];
+}
+
 interface ControlSection {
     title: string;
     icon: React.ComponentType<{ className?: string; size?: number }>;
-    controls: Array<{ key: string; label: string; description?: string }>;
+    fields: ControlField[];
 }
 
 const SECTIONS: ControlSection[] = [
     {
+        title: "Module Enablement",
+        icon: LayoutGrid,
+        fields: [
+            { key: "attendanceEnabled", label: "Attendance", description: "Enable attendance tracking module", type: "toggle" },
+            { key: "leaveEnabled", label: "Leave Management", description: "Enable leave management module", type: "toggle" },
+            { key: "payrollEnabled", label: "Payroll", description: "Enable payroll processing module", type: "toggle" },
+            { key: "essEnabled", label: "Employee Self-Service", description: "Enable ESS portal for employees", type: "toggle" },
+            { key: "performanceEnabled", label: "Performance", description: "Enable performance management module", type: "toggle" },
+            { key: "recruitmentEnabled", label: "Recruitment", description: "Enable recruitment and hiring module", type: "toggle" },
+            { key: "trainingEnabled", label: "Training", description: "Enable training and development module", type: "toggle" },
+            { key: "mobileAppEnabled", label: "Mobile App", description: "Enable mobile app access for employees", type: "toggle" },
+            { key: "aiChatbotEnabled", label: "AI Chatbot", description: "Enable AI-powered chatbot assistant", type: "toggle" },
+        ],
+    },
+    {
         title: "Production",
         icon: Factory,
-        controls: [
-            { key: "ncEditMode", label: "NC Edit Mode", description: "Allow editing non-conformance records" },
-            { key: "loadUnload", label: "Load / Unload Tracking", description: "Track machine loading and unloading events" },
-            { key: "cycleTime", label: "Cycle Time Capture", description: "Record cycle times for production runs" },
+        fields: [
+            { key: "ncEditMode", label: "NC Edit Mode", description: "Allow editing non-conformance records", type: "toggle" },
+            { key: "loadUnload", label: "Load / Unload Tracking", description: "Track machine loading and unloading events", type: "toggle" },
+            { key: "cycleTime", label: "Cycle Time Capture", description: "Record cycle times for production runs", type: "toggle" },
         ],
     },
     {
         title: "Payroll",
         icon: Wallet,
-        controls: [
-            { key: "payrollLock", label: "Payroll Lock", description: "Lock payroll after processing" },
-            { key: "overtimeApproval", label: "Overtime Approval", description: "Require approval for overtime hours" },
-        ],
-    },
-    {
-        title: "Security",
-        icon: Shield,
-        controls: [
-            { key: "mfa", label: "MFA Required", description: "Enforce multi-factor authentication for all users" },
-            { key: "sessionTimeout", label: "Session Timeout", description: "Auto-logout after inactivity period" },
-            { key: "ipWhitelist", label: "IP Whitelisting", description: "Restrict access to specific IP addresses" },
+        fields: [
+            { key: "payrollLock", label: "Payroll Lock", description: "Lock payroll after processing", type: "toggle" },
+            { key: "backdatedEntryControl", label: "Backdated Entry Control", description: "Control backdated payroll entries", type: "toggle" },
         ],
     },
     {
         title: "Leave",
         icon: CalendarOff,
-        controls: [
-            { key: "leaveCarryForward", label: "Leave Carry Forward", description: "Allow carrying forward unused leave" },
-            { key: "compOff", label: "Compensatory Off", description: "Enable comp-off for working on holidays" },
-            { key: "halfDayLeave", label: "Half-Day Leave", description: "Allow half-day leave applications" },
+        fields: [
+            { key: "leaveCarryForward", label: "Leave Carry Forward", description: "Allow carrying forward unused leave", type: "toggle" },
+            { key: "compOffEnabled", label: "Compensatory Off", description: "Enable comp-off for working on holidays", type: "toggle" },
+            { key: "halfDayLeaveEnabled", label: "Half-Day Leave", description: "Allow half-day leave applications", type: "toggle" },
         ],
     },
     {
-        title: "Notifications",
-        icon: Bell,
-        controls: [
-            { key: "emailNotifications", label: "Email Notifications", description: "Send email alerts for key events" },
-            { key: "pushNotifications", label: "Push Notifications", description: "Enable mobile push notifications" },
-            { key: "smsAlerts", label: "SMS Alerts", description: "Send critical alerts via SMS" },
+        title: "Security & Access",
+        icon: Shield,
+        fields: [
+            { key: "mfaRequired", label: "MFA Required", description: "Enforce multi-factor authentication for all users", type: "toggle" },
+            { key: "sessionTimeoutMinutes", label: "Session Timeout", description: "Auto-logout after inactivity (minutes)", type: "number", suffix: "min", min: 5, max: 1440 },
+            { key: "maxConcurrentSessions", label: "Max Concurrent Sessions", description: "Maximum active sessions per user", type: "number", suffix: "sessions", min: 1, max: 10 },
+            { key: "passwordMinLength", label: "Password Min Length", description: "Minimum password character count", type: "number", suffix: "chars", min: 6, max: 32 },
+            { key: "passwordComplexity", label: "Password Complexity", description: "Require uppercase, lowercase, number, and special character", type: "toggle" },
+            { key: "accountLockThreshold", label: "Account Lock Threshold", description: "Failed attempts before account lock", type: "number", suffix: "attempts", min: 1, max: 20 },
+            { key: "accountLockDurationMinutes", label: "Account Lock Duration", description: "Auto-unlock after (minutes)", type: "number", suffix: "min", min: 1, max: 1440 },
+        ],
+    },
+    {
+        title: "Audit",
+        icon: FileText,
+        fields: [
+            { key: "auditLogRetentionDays", label: "Audit Log Retention", description: "How long to retain audit logs", type: "select", options: AUDIT_RETENTION_OPTIONS },
         ],
     },
 ];
+
+/* ── Screen ── */
 
 export function SystemControlsScreen() {
     const { data, isLoading, isError } = useCompanyControls();
     const updateMutation = useUpdateControls();
 
-    const [controls, setControls] = useState<Record<string, boolean>>({});
+    const [controls, setControls] = useState<SystemControls>({ ...DEFAULTS });
     const [hasChanges, setHasChanges] = useState(false);
 
-    const serverControls = (data?.data as any) ?? {};
+    const serverControls: SystemControls = (data?.data as SystemControls) ?? DEFAULTS;
 
     useEffect(() => {
         if (data?.data) {
-            setControls({ ...serverControls });
+            setControls({ ...DEFAULTS, ...serverControls });
             setHasChanges(false);
         }
     }, [data]);
 
-    const toggleControl = (key: string, value: boolean) => {
+    const updateField = <K extends keyof SystemControls>(key: K, value: SystemControls[K]) => {
         setControls((p) => ({ ...p, [key]: value }));
         setHasChanges(true);
     };
@@ -139,7 +264,7 @@ export function SystemControlsScreen() {
     };
 
     const handleReset = () => {
-        setControls({ ...serverControls });
+        setControls({ ...DEFAULTS, ...serverControls });
         setHasChanges(false);
     };
 
@@ -163,8 +288,8 @@ export function SystemControlsScreen() {
         );
     }
 
-    const enabledCount = Object.values(controls).filter(Boolean).length;
-    const totalCount = SECTIONS.reduce((sum, s) => sum + s.controls.length, 0);
+    const toggleCount = SECTIONS.reduce((sum, s) => sum + s.fields.filter(f => f.type === "toggle").length, 0);
+    const enabledCount = SECTIONS.reduce((sum, s) => sum + s.fields.filter(f => f.type === "toggle" && controls[f.key] === true).length, 0);
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -172,7 +297,7 @@ export function SystemControlsScreen() {
                 <div>
                     <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">System Controls</h1>
                     <p className="text-neutral-500 dark:text-neutral-400 mt-1">
-                        {enabledCount} of {totalCount} controls enabled
+                        {enabledCount} of {toggleCount} controls enabled
                     </p>
                 </div>
                 {hasChanges && (
@@ -197,7 +322,10 @@ export function SystemControlsScreen() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {SECTIONS.map((section) => (
-                    <div key={section.title} className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm overflow-hidden">
+                    <div key={section.title} className={cn(
+                        "bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm overflow-hidden",
+                        section.title === "Module Enablement" && "md:col-span-2"
+                    )}>
                         <div className="p-6">
                             <div className="flex items-center gap-3 mb-5">
                                 <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
@@ -205,16 +333,50 @@ export function SystemControlsScreen() {
                                 </div>
                                 <h3 className="text-sm font-bold text-primary-950 dark:text-white">{section.title}</h3>
                             </div>
-                            <div className="space-y-3">
-                                {section.controls.map((ctrl) => (
-                                    <Toggle
-                                        key={ctrl.key}
-                                        label={ctrl.label}
-                                        description={ctrl.description}
-                                        checked={controls[ctrl.key] ?? false}
-                                        onChange={(v) => toggleControl(ctrl.key, v)}
-                                    />
-                                ))}
+                            <div className={cn(
+                                "space-y-3",
+                                section.title === "Module Enablement" && "grid grid-cols-1 md:grid-cols-2 gap-3 space-y-0"
+                            )}>
+                                {section.fields.map((field) => {
+                                    if (field.type === "toggle") {
+                                        return (
+                                            <Toggle
+                                                key={field.key}
+                                                label={field.label}
+                                                description={field.description}
+                                                checked={controls[field.key] as boolean}
+                                                onChange={(v) => updateField(field.key, v as never)}
+                                            />
+                                        );
+                                    }
+                                    if (field.type === "number") {
+                                        return (
+                                            <NumberField
+                                                key={field.key}
+                                                label={field.label}
+                                                description={field.description}
+                                                value={controls[field.key] as number}
+                                                onChange={(v) => updateField(field.key, v as never)}
+                                                suffix={field.suffix}
+                                                min={field.min}
+                                                max={field.max}
+                                            />
+                                        );
+                                    }
+                                    if (field.type === "select") {
+                                        return (
+                                            <SelectRow
+                                                key={field.key}
+                                                label={field.label}
+                                                description={field.description}
+                                                value={controls[field.key] as number}
+                                                onChange={(v) => updateField(field.key, Number(v) as never)}
+                                                options={field.options ?? []}
+                                            />
+                                        );
+                                    }
+                                    return null;
+                                })}
                             </div>
                         </div>
                     </div>

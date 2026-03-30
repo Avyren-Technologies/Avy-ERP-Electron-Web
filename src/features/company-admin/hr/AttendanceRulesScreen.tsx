@@ -6,26 +6,26 @@ import {
     XCircle,
     Timer,
     AlertTriangle,
-    Smartphone,
     TrendingDown,
-    Bell,
+    Repeat,
+    Settings2,
+    ShieldCheck,
+    Camera,
+    Hourglass,
+    Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAttendanceRules } from "@/features/company-admin/api/use-attendance-queries";
 import { useUpdateAttendanceRules } from "@/features/company-admin/api/use-attendance-mutations";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { showSuccess, showApiError } from "@/lib/toast";
+import type { AttendanceRule } from "@/lib/api/attendance";
 
 /* ── Toggle ── */
 
-interface ToggleProps {
-    label: string;
-    description?: string;
-    checked: boolean;
-    onChange: (v: boolean) => void;
-}
-
-function Toggle({ label, description, checked, onChange }: ToggleProps) {
+function Toggle({ label, description, checked, onChange }: {
+    label: string; description?: string; checked: boolean; onChange: (v: boolean) => void;
+}) {
     return (
         <div className={cn(
             "flex items-center justify-between px-5 py-4 rounded-xl border transition-colors",
@@ -58,31 +58,23 @@ function Toggle({ label, description, checked, onChange }: ToggleProps) {
 
 /* ── Number Field ── */
 
-function NumberField({
-    label,
-    value,
-    onChange,
-    suffix,
-    min,
-    max,
-}: {
-    label: string;
-    value: number;
-    onChange: (v: number) => void;
-    suffix?: string;
-    min?: number;
-    max?: number;
+function NumberField({ label, value, onChange, suffix, min, max, step, description }: {
+    label: string; value: number; onChange: (v: number) => void; suffix?: string; min?: number; max?: number; step?: number; description?: string;
 }) {
     return (
         <div className="flex items-center justify-between px-5 py-4 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
-            <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
-            <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
+                {description && <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{description}</p>}
+            </div>
+            <div className="flex items-center gap-2 ml-4">
                 <input
                     type="number"
                     value={value}
                     onChange={(e) => onChange(Number(e.target.value))}
                     min={min}
                     max={max}
+                    step={step}
                     className="w-20 px-3 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm text-right font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
                 />
                 {suffix && <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">{suffix}</span>}
@@ -93,98 +85,113 @@ function NumberField({
 
 /* ── Time Field ── */
 
-function TimeField({
-    label,
-    value,
-    onChange,
-}: {
-    label: string;
-    value: string;
-    onChange: (v: string) => void;
+function TimeField({ label, value, onChange, description }: {
+    label: string; value: string; onChange: (v: string) => void; description?: string;
 }) {
     return (
         <div className="flex items-center justify-between px-5 py-4 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
-            <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
+            <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
+                {description && <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{description}</p>}
+            </div>
             <input
                 type="time"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                className="px-3 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                className="ml-4 px-3 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
             />
         </div>
     );
 }
 
-/* ── Sections Config ── */
+/* ── Select Row ── */
 
-interface RuleSection {
-    title: string;
-    icon: React.ComponentType<{ className?: string; size?: number }>;
-    fields: Array<{
-        key: string;
-        label: string;
-        description?: string;
-        type: "toggle" | "number" | "time";
-        suffix?: string;
-        min?: number;
-        max?: number;
-    }>;
+function SelectRow({ label, value, onChange, options, description }: {
+    label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; description?: string;
+}) {
+    return (
+        <div className="flex items-center justify-between px-5 py-4 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
+            <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
+                {description && <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{description}</p>}
+            </div>
+            <select
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                className="ml-4 px-3 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm font-semibold text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+            >
+                {options.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+            </select>
+        </div>
+    );
 }
 
-const SECTIONS: RuleSection[] = [
-    {
-        title: "Time Rules",
-        icon: Clock,
-        fields: [
-            { key: "shiftStartTime", label: "Default Shift Start", type: "time" },
-            { key: "shiftEndTime", label: "Default Shift End", type: "time" },
-            { key: "graceMinutes", label: "Grace Period", type: "number", suffix: "min", min: 0, max: 60 },
-            { key: "halfDayHours", label: "Half Day Threshold", type: "number", suffix: "hrs", min: 1, max: 12 },
-            { key: "fullDayHours", label: "Full Day Threshold", type: "number", suffix: "hrs", min: 1, max: 24 },
-            { key: "autoClockOut", label: "Auto Clock-Out", description: "Automatically clock out after shift end + buffer", type: "toggle" },
-        ],
-    },
-    {
-        title: "Thresholds",
-        icon: Timer,
-        fields: [
-            { key: "lateThresholdMinutes", label: "Late After", type: "number", suffix: "min", min: 0, max: 120 },
-            { key: "earlyLeaveMinutes", label: "Early Leave Before", type: "number", suffix: "min", min: 0, max: 120 },
-            { key: "minWorkHours", label: "Minimum Work Hours", type: "number", suffix: "hrs", min: 0, max: 24 },
-            { key: "markAbsentAfterMinutes", label: "Mark Absent After", type: "number", suffix: "min", min: 0, max: 480 },
-        ],
-    },
-    {
-        title: "Deduction Rules",
-        icon: TrendingDown,
-        fields: [
-            { key: "deductForLate", label: "Deduct for Late Arrival", description: "Apply salary deduction for late arrivals", type: "toggle" },
-            { key: "deductForEarlyLeave", label: "Deduct for Early Leave", description: "Apply salary deduction for early departures", type: "toggle" },
-            { key: "lateDeductionPerDay", label: "Late Deduction Amount", type: "number", suffix: "/day", min: 0 },
-            { key: "maxLatePerMonth", label: "Max Late Per Month", type: "number", suffix: "days", min: 0, max: 31 },
-        ],
-    },
-    {
-        title: "Alerts & Notifications",
-        icon: Bell,
-        fields: [
-            { key: "alertOnAbsence", label: "Absence Alert", description: "Notify manager when employee is absent", type: "toggle" },
-            { key: "alertOnLate", label: "Late Arrival Alert", description: "Notify manager on late arrivals", type: "toggle" },
-            { key: "dailySummaryEmail", label: "Daily Summary Email", description: "Send daily attendance summary to HR", type: "toggle" },
-            { key: "weeklyReport", label: "Weekly Report", description: "Generate weekly attendance reports", type: "toggle" },
-        ],
-    },
-    {
-        title: "Mobile & Geo",
-        icon: Smartphone,
-        fields: [
-            { key: "mobileCheckIn", label: "Mobile Check-In", description: "Allow check-in from mobile app", type: "toggle" },
-            { key: "geoFencing", label: "Geo-Fencing", description: "Restrict check-in to office location", type: "toggle" },
-            { key: "geoRadiusMeters", label: "Geo-Fence Radius", type: "number", suffix: "m", min: 50, max: 5000 },
-            { key: "selfieVerification", label: "Selfie Verification", description: "Require selfie for mobile check-in", type: "toggle" },
-        ],
-    },
+/* ── Options ── */
+
+const DEDUCTION_TYPE_OPTIONS = [
+    { value: "NONE", label: "None" },
+    { value: "HALF_DAY_AFTER_LIMIT", label: "Half Day After Limit" },
+    { value: "PERCENTAGE", label: "Percentage" },
 ];
+
+const PUNCH_MODE_OPTIONS = [
+    { value: "FIRST_LAST", label: "First In / Last Out" },
+    { value: "EVERY_PAIR", label: "Every Pair (In/Out)" },
+    { value: "SHIFT_BASED", label: "Shift Based" },
+];
+
+const ROUNDING_STRATEGY_OPTIONS = [
+    { value: "NONE", label: "None" },
+    { value: "NEAREST_15", label: "Nearest 15 min" },
+    { value: "NEAREST_30", label: "Nearest 30 min" },
+    { value: "FLOOR_15", label: "Floor 15 min" },
+    { value: "CEIL_15", label: "Ceil 15 min" },
+];
+
+const PUNCH_ROUNDING_OPTIONS = [
+    { value: "NONE", label: "None" },
+    { value: "NEAREST_5", label: "Nearest 5 min" },
+    { value: "NEAREST_15", label: "Nearest 15 min" },
+];
+
+const ROUNDING_DIRECTION_OPTIONS = [
+    { value: "NEAREST", label: "Nearest" },
+    { value: "UP", label: "Round Up" },
+    { value: "DOWN", label: "Round Down" },
+];
+
+/* ── Defaults ── */
+
+const DEFAULTS: AttendanceRule = {
+    dayBoundaryTime: "00:00",
+    gracePeriodMinutes: 15,
+    earlyExitToleranceMinutes: 15,
+    maxLateCheckInMinutes: 240,
+    halfDayThresholdHours: 4,
+    fullDayThresholdHours: 8,
+    lateArrivalsAllowedPerMonth: 3,
+    lopAutoDeduct: true,
+    lateDeductionType: "NONE",
+    lateDeductionValue: null,
+    earlyExitDeductionType: "NONE",
+    earlyExitDeductionValue: null,
+    punchMode: "FIRST_LAST",
+    autoMarkAbsentIfNoPunch: true,
+    autoHalfDayEnabled: true,
+    autoAbsentAfterDays: 0,
+    regularizationWindowDays: 7,
+    workingHoursRounding: "NONE",
+    punchTimeRounding: "NONE",
+    punchTimeRoundingDirection: "NEAREST",
+    ignoreLateOnLeaveDay: true,
+    ignoreLateOnHoliday: true,
+    ignoreLateOnWeekOff: true,
+    selfieRequired: false,
+    gpsRequired: false,
+    missingPunchAlert: true,
+};
 
 /* ── Screen ── */
 
@@ -192,19 +199,19 @@ export function AttendanceRulesScreen() {
     const { data, isLoading, isError } = useAttendanceRules();
     const updateMutation = useUpdateAttendanceRules();
 
-    const [rules, setRules] = useState<Record<string, any>>({});
+    const [rules, setRules] = useState<AttendanceRule>({ ...DEFAULTS });
     const [hasChanges, setHasChanges] = useState(false);
 
-    const serverRules = (data as any)?.data ?? {};
+    const serverRules: AttendanceRule = (data as any)?.data ?? DEFAULTS;
 
     useEffect(() => {
         if ((data as any)?.data) {
-            setRules({ ...serverRules });
+            setRules({ ...DEFAULTS, ...serverRules });
             setHasChanges(false);
         }
     }, [data]);
 
-    const updateRule = (key: string, value: any) => {
+    const updateRule = <K extends keyof AttendanceRule>(key: K, value: AttendanceRule[K]) => {
         setRules((p) => ({ ...p, [key]: value }));
         setHasChanges(true);
     };
@@ -220,7 +227,7 @@ export function AttendanceRulesScreen() {
     };
 
     const handleReset = () => {
-        setRules({ ...serverRules });
+        setRules({ ...DEFAULTS, ...serverRules });
         setHasChanges(false);
     };
 
@@ -250,21 +257,12 @@ export function AttendanceRulesScreen() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Attendance Rules</h1>
-                    <p className="text-neutral-500 dark:text-neutral-400 mt-1">Configure time, threshold, deduction and alert settings</p>
+                    <p className="text-neutral-500 dark:text-neutral-400 mt-1">Configure time boundaries, thresholds, deductions, and processing rules</p>
                 </div>
                 {hasChanges && (
                     <div className="flex items-center gap-3">
-                        <button
-                            onClick={handleReset}
-                            className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
-                        >
-                            Reset
-                        </button>
-                        <button
-                            onClick={handleSave}
-                            disabled={updateMutation.isPending}
-                            className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all disabled:opacity-50"
-                        >
+                        <button onClick={handleReset} className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Reset</button>
+                        <button onClick={handleSave} disabled={updateMutation.isPending} className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all disabled:opacity-50">
                             {updateMutation.isPending && <Loader2 size={14} className="animate-spin" />}
                             {updateMutation.isPending ? "Saving..." : "Save Changes"}
                         </button>
@@ -274,57 +272,75 @@ export function AttendanceRulesScreen() {
 
             {/* Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {SECTIONS.map((section) => (
-                    <div key={section.title} className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm overflow-hidden">
-                        <div className="p-6">
-                            <div className="flex items-center gap-3 mb-5">
-                                <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
-                                    <section.icon size={16} className="text-primary-600" />
-                                </div>
-                                <h3 className="text-sm font-bold text-primary-950 dark:text-white">{section.title}</h3>
-                            </div>
-                            <div className="space-y-3">
-                                {section.fields.map((field) => {
-                                    if (field.type === "toggle") {
-                                        return (
-                                            <Toggle
-                                                key={field.key}
-                                                label={field.label}
-                                                description={field.description}
-                                                checked={rules[field.key] ?? false}
-                                                onChange={(v) => updateRule(field.key, v)}
-                                            />
-                                        );
-                                    }
-                                    if (field.type === "number") {
-                                        return (
-                                            <NumberField
-                                                key={field.key}
-                                                label={field.label}
-                                                value={rules[field.key] ?? 0}
-                                                onChange={(v) => updateRule(field.key, v)}
-                                                suffix={field.suffix}
-                                                min={field.min}
-                                                max={field.max}
-                                            />
-                                        );
-                                    }
-                                    if (field.type === "time") {
-                                        return (
-                                            <TimeField
-                                                key={field.key}
-                                                label={field.label}
-                                                value={rules[field.key] ?? "09:00"}
-                                                onChange={(v) => updateRule(field.key, v)}
-                                            />
-                                        );
-                                    }
-                                    return null;
-                                })}
-                            </div>
-                        </div>
-                    </div>
-                ))}
+                {/* Time & Boundary */}
+                <SectionCard title="Time & Boundary" icon={Clock}>
+                    <TimeField label="Day Boundary Time" description="When the calendar day flips for night shifts" value={rules.dayBoundaryTime} onChange={(v) => updateRule("dayBoundaryTime", v)} />
+                </SectionCard>
+
+                {/* Grace & Tolerance */}
+                <SectionCard title="Grace & Tolerance" icon={Hourglass}>
+                    <NumberField label="Grace Period" description="Minutes allowed after shift start" value={rules.gracePeriodMinutes} onChange={(v) => updateRule("gracePeriodMinutes", v)} suffix="min" min={0} max={60} />
+                    <NumberField label="Early Exit Tolerance" description="Minutes before shift end allowed" value={rules.earlyExitToleranceMinutes} onChange={(v) => updateRule("earlyExitToleranceMinutes", v)} suffix="min" min={0} max={60} />
+                    <NumberField label="Max Late Check-In" description="Auto-absent if later than this" value={rules.maxLateCheckInMinutes} onChange={(v) => updateRule("maxLateCheckInMinutes", v)} suffix="min" min={0} max={480} />
+                </SectionCard>
+
+                {/* Day Thresholds */}
+                <SectionCard title="Day Thresholds" icon={Timer}>
+                    <NumberField label="Half Day Threshold" description="Minimum hours for half-day credit" value={rules.halfDayThresholdHours} onChange={(v) => updateRule("halfDayThresholdHours", v)} suffix="hrs" min={1} max={12} step={0.5} />
+                    <NumberField label="Full Day Threshold" description="Minimum hours for full-day credit" value={rules.fullDayThresholdHours} onChange={(v) => updateRule("fullDayThresholdHours", v)} suffix="hrs" min={1} max={24} step={0.5} />
+                </SectionCard>
+
+                {/* Late Tracking */}
+                <SectionCard title="Late Tracking" icon={AlertTriangle}>
+                    <NumberField label="Late Arrivals Allowed / Month" description="Max late arrivals before penalty" value={rules.lateArrivalsAllowedPerMonth} onChange={(v) => updateRule("lateArrivalsAllowedPerMonth", v)} suffix="days" min={0} max={31} />
+                </SectionCard>
+
+                {/* Deduction Rules */}
+                <SectionCard title="Deduction Rules" icon={TrendingDown}>
+                    <Toggle label="LOP Auto-Deduct" description="Automatically deduct loss of pay" checked={rules.lopAutoDeduct} onChange={(v) => updateRule("lopAutoDeduct", v)} />
+                    <SelectRow label="Late Deduction Type" value={rules.lateDeductionType} onChange={(v) => updateRule("lateDeductionType", v as AttendanceRule["lateDeductionType"])} options={DEDUCTION_TYPE_OPTIONS} />
+                    {rules.lateDeductionType !== "NONE" && (
+                        <NumberField label="Late Deduction Value" description={rules.lateDeductionType === "PERCENTAGE" ? "Percentage of daily pay" : "Value"} value={rules.lateDeductionValue ?? 0} onChange={(v) => updateRule("lateDeductionValue", v)} suffix={rules.lateDeductionType === "PERCENTAGE" ? "%" : ""} min={0} step={0.01} />
+                    )}
+                    <SelectRow label="Early Exit Deduction Type" value={rules.earlyExitDeductionType} onChange={(v) => updateRule("earlyExitDeductionType", v as AttendanceRule["earlyExitDeductionType"])} options={DEDUCTION_TYPE_OPTIONS} />
+                    {rules.earlyExitDeductionType !== "NONE" && (
+                        <NumberField label="Early Exit Deduction Value" description={rules.earlyExitDeductionType === "PERCENTAGE" ? "Percentage of daily pay" : "Value"} value={rules.earlyExitDeductionValue ?? 0} onChange={(v) => updateRule("earlyExitDeductionValue", v)} suffix={rules.earlyExitDeductionType === "PERCENTAGE" ? "%" : ""} min={0} step={0.01} />
+                    )}
+                </SectionCard>
+
+                {/* Punch Interpretation */}
+                <SectionCard title="Punch Interpretation" icon={Repeat}>
+                    <SelectRow label="Punch Mode" description="How punch records are interpreted" value={rules.punchMode} onChange={(v) => updateRule("punchMode", v as AttendanceRule["punchMode"])} options={PUNCH_MODE_OPTIONS} />
+                </SectionCard>
+
+                {/* Auto-Processing */}
+                <SectionCard title="Auto-Processing" icon={Zap}>
+                    <Toggle label="Auto Mark Absent" description="Mark absent if no punch for the day" checked={rules.autoMarkAbsentIfNoPunch} onChange={(v) => updateRule("autoMarkAbsentIfNoPunch", v)} />
+                    <Toggle label="Auto Half-Day" description="Auto classify based on threshold hours" checked={rules.autoHalfDayEnabled} onChange={(v) => updateRule("autoHalfDayEnabled", v)} />
+                    <NumberField label="Auto Absent After Days" description="Mark absent after N days no punch (0 = disabled)" value={rules.autoAbsentAfterDays} onChange={(v) => updateRule("autoAbsentAfterDays", v)} suffix="days" min={0} max={30} />
+                    <NumberField label="Regularization Window" description="Days after which regularization is locked" value={rules.regularizationWindowDays} onChange={(v) => updateRule("regularizationWindowDays", v)} suffix="days" min={1} max={90} />
+                </SectionCard>
+
+                {/* Rounding */}
+                <SectionCard title="Rounding" icon={Settings2}>
+                    <SelectRow label="Working Hours Rounding" value={rules.workingHoursRounding} onChange={(v) => updateRule("workingHoursRounding", v as AttendanceRule["workingHoursRounding"])} options={ROUNDING_STRATEGY_OPTIONS} />
+                    <SelectRow label="Punch Time Rounding" value={rules.punchTimeRounding} onChange={(v) => updateRule("punchTimeRounding", v as AttendanceRule["punchTimeRounding"])} options={PUNCH_ROUNDING_OPTIONS} />
+                    <SelectRow label="Rounding Direction" value={rules.punchTimeRoundingDirection} onChange={(v) => updateRule("punchTimeRoundingDirection", v as AttendanceRule["punchTimeRoundingDirection"])} options={ROUNDING_DIRECTION_OPTIONS} />
+                </SectionCard>
+
+                {/* Exception Handling */}
+                <SectionCard title="Exception Handling" icon={ShieldCheck}>
+                    <Toggle label="Ignore Late on Leave Day" description="Don't flag late if employee has partial leave" checked={rules.ignoreLateOnLeaveDay} onChange={(v) => updateRule("ignoreLateOnLeaveDay", v)} />
+                    <Toggle label="Ignore Late on Holiday" description="Working on holiday = no late flag" checked={rules.ignoreLateOnHoliday} onChange={(v) => updateRule("ignoreLateOnHoliday", v)} />
+                    <Toggle label="Ignore Late on Week Off" description="Working on week-off = no late flag" checked={rules.ignoreLateOnWeekOff} onChange={(v) => updateRule("ignoreLateOnWeekOff", v)} />
+                </SectionCard>
+
+                {/* Capture */}
+                <SectionCard title="Capture" icon={Camera}>
+                    <Toggle label="Selfie Required" description="Require selfie for attendance punch" checked={rules.selfieRequired} onChange={(v) => updateRule("selfieRequired", v)} />
+                    <Toggle label="GPS Required" description="Require GPS location for attendance punch" checked={rules.gpsRequired} onChange={(v) => updateRule("gpsRequired", v)} />
+                    <Toggle label="Missing Punch Alert" description="Alert when employee has incomplete punches" checked={rules.missingPunchAlert} onChange={(v) => updateRule("missingPunchAlert", v)} />
+                </SectionCard>
             </div>
 
             {/* Sticky Save Bar */}
@@ -333,14 +349,8 @@ export function AttendanceRulesScreen() {
                     <div className="max-w-5xl mx-auto flex items-center justify-between">
                         <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">You have unsaved changes</p>
                         <div className="flex items-center gap-3">
-                            <button onClick={handleReset} className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">
-                                Discard
-                            </button>
-                            <button
-                                onClick={handleSave}
-                                disabled={updateMutation.isPending}
-                                className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2 rounded-xl font-bold text-sm transition-all disabled:opacity-50"
-                            >
+                            <button onClick={handleReset} className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Discard</button>
+                            <button onClick={handleSave} disabled={updateMutation.isPending} className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2 rounded-xl font-bold text-sm transition-all disabled:opacity-50">
                                 {updateMutation.isPending && <Loader2 size={14} className="animate-spin" />}
                                 Save Changes
                             </button>
@@ -348,6 +358,30 @@ export function AttendanceRulesScreen() {
                     </div>
                 </div>
             )}
+        </div>
+    );
+}
+
+/* ── Section Card ── */
+
+function SectionCard({ title, icon: Icon, children }: {
+    title: string;
+    icon: React.ComponentType<{ className?: string; size?: number }>;
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm overflow-hidden">
+            <div className="p-6">
+                <div className="flex items-center gap-3 mb-5">
+                    <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
+                        <Icon size={16} className="text-primary-600" />
+                    </div>
+                    <h3 className="text-sm font-bold text-primary-950 dark:text-white">{title}</h3>
+                </div>
+                <div className="space-y-3">
+                    {children}
+                </div>
+            </div>
         </div>
     );
 }

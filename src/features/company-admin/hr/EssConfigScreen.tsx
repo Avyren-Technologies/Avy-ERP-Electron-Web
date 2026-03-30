@@ -4,17 +4,14 @@ import {
     Loader2,
     CheckCircle2,
     XCircle,
-    Shield,
-    Eye,
-    Fingerprint,
-    Key,
-    FileText,
-    Calendar,
     Wallet,
+    Calendar,
     Clock,
+    Eye,
+    CreditCard,
+    Target,
+    HelpCircle,
     Users,
-    Bell,
-    Globe,
     Smartphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -22,44 +19,26 @@ import { useEssConfig } from "@/features/company-admin/api/use-ess-queries";
 import { useUpdateEssConfig } from "@/features/company-admin/api/use-ess-mutations";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { showSuccess, showApiError } from "@/lib/toast";
+import type { ESSConfig } from "@/lib/api/ess";
 
 /* ── Toggle ── */
 
-function Toggle({
-    label,
-    description,
-    checked,
-    onChange,
-}: {
-    label: string;
-    description?: string;
-    checked: boolean;
-    onChange: (v: boolean) => void;
+function Toggle({ label, description, checked, onChange }: {
+    label: string; description?: string; checked: boolean; onChange: (v: boolean) => void;
 }) {
     return (
-        <div
-            className={cn(
-                "flex items-center justify-between px-5 py-4 rounded-xl border transition-colors",
-                checked
-                    ? "bg-success-50 dark:bg-success-900/10 border-success-100 dark:border-success-800/50"
-                    : "bg-neutral-50 dark:bg-neutral-800 border-neutral-100 dark:border-neutral-800"
-            )}
-        >
+        <div className={cn(
+            "flex items-center justify-between px-5 py-4 rounded-xl border transition-colors",
+            checked
+                ? "bg-success-50 dark:bg-success-900/10 border-success-100 dark:border-success-800/50"
+                : "bg-neutral-50 dark:bg-neutral-800 border-neutral-100 dark:border-neutral-800"
+        )}>
             <div className="flex items-center gap-3 flex-1 min-w-0">
-                {checked ? (
-                    <CheckCircle2 size={16} className="text-success-500 flex-shrink-0" />
-                ) : (
-                    <XCircle size={16} className="text-neutral-300 dark:text-neutral-600 flex-shrink-0" />
-                )}
+                {checked
+                    ? <CheckCircle2 size={16} className="text-success-500 flex-shrink-0" />
+                    : <XCircle size={16} className="text-neutral-300 dark:text-neutral-600 flex-shrink-0" />}
                 <div>
-                    <p
-                        className={cn(
-                            "text-sm font-semibold",
-                            checked ? "text-success-800 dark:text-success-400" : "text-neutral-500 dark:text-neutral-400"
-                        )}
-                    >
-                        {label}
-                    </p>
+                    <p className={cn("text-sm font-semibold", checked ? "text-success-800 dark:text-success-400" : "text-neutral-500 dark:text-neutral-400")}>{label}</p>
                     {description && <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{description}</p>}
                 </div>
             </div>
@@ -71,31 +50,42 @@ function Toggle({
                     checked ? "bg-success-500" : "bg-neutral-300 dark:bg-neutral-700"
                 )}
             >
-                <div
-                    className={cn(
-                        "w-[18px] h-[18px] rounded-full bg-white absolute top-[3px] transition-all shadow-sm",
-                        checked ? "left-[22px]" : "left-[3px]"
-                    )}
-                />
+                <div className={cn("w-[18px] h-[18px] rounded-full bg-white absolute top-[3px] transition-all shadow-sm", checked ? "left-[22px]" : "left-[3px]")} />
             </button>
         </div>
     );
 }
 
-/* ── Select ── */
+/* ── Number Field ── */
 
-function SelectRow({
-    label,
-    description,
-    value,
-    onChange,
-    options,
-}: {
-    label: string;
-    description?: string;
-    value: string;
-    onChange: (v: string) => void;
-    options: { value: string; label: string }[];
+function NumberField({ label, description, value, onChange, suffix, min, max }: {
+    label: string; description?: string; value: number; onChange: (v: number) => void; suffix?: string; min?: number; max?: number;
+}) {
+    return (
+        <div className="flex items-center justify-between px-5 py-4 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
+            <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
+                {description && <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{description}</p>}
+            </div>
+            <div className="flex items-center gap-2 ml-4">
+                <input
+                    type="number"
+                    value={value}
+                    onChange={(e) => onChange(Number(e.target.value))}
+                    min={min}
+                    max={max}
+                    className="w-20 px-3 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm text-right font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                />
+                {suffix && <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">{suffix}</span>}
+            </div>
+        </div>
+    );
+}
+
+/* ── Select Row ── */
+
+function SelectRow({ label, description, value, onChange, options }: {
+    label: string; description?: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[];
 }) {
     return (
         <div className="flex items-center justify-between px-5 py-4 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
@@ -109,129 +99,179 @@ function SelectRow({
                 className="ml-4 px-3 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm font-semibold text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
             >
                 {options.map((o) => (
-                    <option key={o.value} value={o.value}>
-                        {o.label}
-                    </option>
+                    <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
             </select>
         </div>
     );
 }
 
+/* ── Options ── */
+
+const LOCATION_ACCURACY_OPTIONS = [
+    { value: "HIGH", label: "High" },
+    { value: "MEDIUM", label: "Medium" },
+    { value: "LOW", label: "Low" },
+];
+
+/* ── Defaults ── */
+
+const DEFAULTS: ESSConfig = {
+    // Payroll & Tax
+    viewPayslips: true,
+    downloadPayslips: true,
+    downloadForm16: true,
+    viewSalaryStructure: false,
+    itDeclaration: true,
+    // Leave
+    leaveApplication: true,
+    leaveBalanceView: true,
+    leaveCancellation: false,
+    // Attendance
+    attendanceView: true,
+    attendanceRegularization: false,
+    viewShiftSchedule: false,
+    shiftSwapRequest: false,
+    wfhRequest: false,
+    // Profile & Documents
+    profileUpdate: false,
+    documentUpload: false,
+    employeeDirectory: false,
+    viewOrgChart: false,
+    // Financial
+    reimbursementClaims: false,
+    loanApplication: false,
+    assetView: false,
+    // Performance
+    performanceGoals: false,
+    appraisalAccess: false,
+    feedback360: false,
+    trainingEnrollment: false,
+    // Support
+    helpDesk: false,
+    grievanceSubmission: false,
+    holidayCalendar: true,
+    policyDocuments: false,
+    announcementBoard: false,
+    // MSS
+    mssViewTeam: false,
+    mssApproveLeave: false,
+    mssApproveAttendance: false,
+    mssViewTeamAttendance: false,
+    // Mobile Behavior
+    mobileOfflinePunch: false,
+    mobileSyncRetryMinutes: 5,
+    mobileLocationAccuracy: "HIGH",
+};
+
 /* ── Section Config ── */
 
-interface ControlSection {
-    title: string;
-    icon: React.ComponentType<{ className?: string; size?: number }>;
-    controls: Array<{ key: string; label: string; description?: string; type?: "toggle" | "select"; options?: { value: string; label: string }[] }>;
+interface EssField {
+    key: keyof ESSConfig;
+    label: string;
+    description?: string;
+    type: "toggle" | "number" | "select";
+    suffix?: string;
+    min?: number;
+    max?: number;
+    options?: { value: string; label: string }[];
 }
 
-const SECTIONS: ControlSection[] = [
+interface EssSection {
+    title: string;
+    icon: React.ComponentType<{ className?: string; size?: number }>;
+    fields: EssField[];
+}
+
+const SECTIONS: EssSection[] = [
     {
-        title: "Portal Access",
-        icon: Globe,
-        controls: [
-            { key: "portalEnabled", label: "Enable ESS Portal", description: "Allow employees to access the self-service portal" },
-            {
-                key: "loginMethod",
-                label: "Login Method",
-                description: "How employees authenticate",
-                type: "select",
-                options: [
-                    { value: "email_password", label: "Email + Password" },
-                    { value: "employee_id", label: "Employee ID + Password" },
-                    { value: "sso", label: "Single Sign-On (SSO)" },
-                    { value: "otp", label: "OTP-based" },
-                ],
-            },
-            {
-                key: "passwordPolicy",
-                label: "Password Policy",
-                description: "Minimum password strength",
-                type: "select",
-                options: [
-                    { value: "basic", label: "Basic (6+ chars)" },
-                    { value: "medium", label: "Medium (8+ chars, mixed case)" },
-                    { value: "strong", label: "Strong (10+ chars, mixed case, numbers, symbols)" },
-                ],
-            },
-            { key: "mfaEnabled", label: "Multi-Factor Authentication", description: "Require MFA for ESS login" },
-            { key: "sessionTimeout", label: "Auto-Logout on Inactivity", description: "End session after 30 minutes of inactivity" },
+        title: "Payroll & Tax",
+        icon: Wallet,
+        fields: [
+            { key: "viewPayslips", label: "View Payslips", description: "Access monthly salary slips", type: "toggle" },
+            { key: "downloadPayslips", label: "Download Payslips", description: "Allow PDF download of payslips", type: "toggle" },
+            { key: "downloadForm16", label: "Download Form 16", description: "Access Form 16 / TDS certificate", type: "toggle" },
+            { key: "viewSalaryStructure", label: "View Salary Structure", description: "Show salary component breakdown", type: "toggle" },
+            { key: "itDeclaration", label: "IT Declaration", description: "Submit investment declarations for tax saving", type: "toggle" },
         ],
     },
     {
-        title: "Profile & Documents",
-        icon: Eye,
-        controls: [
-            { key: "viewProfile", label: "View Profile", description: "Allow employees to view their profile" },
-            { key: "requestProfileUpdate", label: "Request Profile Update", description: "Allow employees to request changes to their profile" },
-            { key: "viewDocuments", label: "View Documents", description: "Access uploaded documents (offer letter, ID proofs, etc.)" },
-            { key: "uploadDocuments", label: "Upload Documents", description: "Allow employees to upload documents" },
-            { key: "viewOrgChart", label: "View Org Chart", description: "Display organisation hierarchy to employees" },
-        ],
-    },
-    {
-        title: "Leave Management",
+        title: "Leave",
         icon: Calendar,
-        controls: [
-            { key: "viewLeaveBalance", label: "View Leave Balance", description: "Show available leave balances" },
-            { key: "applyLeave", label: "Apply Leave", description: "Allow leave application through ESS" },
-            { key: "cancelLeave", label: "Cancel Leave", description: "Allow cancelling pending/approved leave" },
-            { key: "viewLeaveHistory", label: "View Leave History", description: "Show past leave records" },
-            { key: "viewTeamLeave", label: "View Team Leave Calendar", description: "Show team members' leave schedule" },
+        fields: [
+            { key: "leaveApplication", label: "Leave Application", description: "Allow leave application through ESS", type: "toggle" },
+            { key: "leaveBalanceView", label: "Leave Balance View", description: "Show available leave balances", type: "toggle" },
+            { key: "leaveCancellation", label: "Leave Cancellation", description: "Allow cancelling pending/approved leave", type: "toggle" },
         ],
     },
     {
         title: "Attendance",
         icon: Clock,
-        controls: [
-            { key: "viewAttendance", label: "View Attendance", description: "Show daily attendance records" },
-            { key: "regularizeAttendance", label: "Regularize Attendance", description: "Request attendance corrections" },
-            { key: "punchInOut", label: "Web Punch In/Out", description: "Allow clock in/out from portal" },
-            { key: "viewShiftSchedule", label: "View Shift Schedule", description: "Display assigned shift roster" },
+        fields: [
+            { key: "attendanceView", label: "Attendance View", description: "Show daily attendance records", type: "toggle" },
+            { key: "attendanceRegularization", label: "Attendance Regularization", description: "Request attendance corrections", type: "toggle" },
+            { key: "viewShiftSchedule", label: "View Shift Schedule", description: "Display assigned shift roster", type: "toggle" },
+            { key: "shiftSwapRequest", label: "Shift Swap Request", description: "Allow requesting shift swaps", type: "toggle" },
+            { key: "wfhRequest", label: "WFH Request", description: "Allow work from home requests", type: "toggle" },
         ],
     },
     {
-        title: "Payroll & Compensation",
-        icon: Wallet,
-        controls: [
-            { key: "viewPayslips", label: "View Payslips", description: "Access monthly salary slips" },
-            { key: "downloadPayslips", label: "Download Payslips", description: "Allow PDF download of payslips" },
-            { key: "viewSalaryStructure", label: "View Salary Structure", description: "Show salary component breakdown" },
-            { key: "viewForm16", label: "View Form 16", description: "Access Form 16 / TDS certificate" },
-            { key: "itDeclaration", label: "IT Declaration (Form 12BB)", description: "Submit investment declarations for tax saving" },
-            { key: "viewLoanDetails", label: "View Loan Details", description: "Show active loan and EMI details" },
+        title: "Profile & Documents",
+        icon: Eye,
+        fields: [
+            { key: "profileUpdate", label: "Profile Update", description: "Allow employees to request profile changes", type: "toggle" },
+            { key: "documentUpload", label: "Document Upload", description: "Allow employees to upload documents", type: "toggle" },
+            { key: "employeeDirectory", label: "Employee Directory", description: "Access company employee directory", type: "toggle" },
+            { key: "viewOrgChart", label: "View Org Chart", description: "Display organisation hierarchy", type: "toggle" },
         ],
     },
     {
-        title: "Manager Self-Service (MSS)",
+        title: "Financial",
+        icon: CreditCard,
+        fields: [
+            { key: "reimbursementClaims", label: "Reimbursement Claims", description: "Submit expense reimbursements", type: "toggle" },
+            { key: "loanApplication", label: "Loan Application", description: "Apply for company loans", type: "toggle" },
+            { key: "assetView", label: "Asset View", description: "View assigned company assets", type: "toggle" },
+        ],
+    },
+    {
+        title: "Performance",
+        icon: Target,
+        fields: [
+            { key: "performanceGoals", label: "Performance Goals", description: "View and manage performance goals", type: "toggle" },
+            { key: "appraisalAccess", label: "Appraisal Access", description: "Access appraisal forms and history", type: "toggle" },
+            { key: "feedback360", label: "360 Feedback", description: "Participate in 360-degree feedback", type: "toggle" },
+            { key: "trainingEnrollment", label: "Training Enrollment", description: "Enroll in training programs", type: "toggle" },
+        ],
+    },
+    {
+        title: "Support & Communication",
+        icon: HelpCircle,
+        fields: [
+            { key: "helpDesk", label: "Help Desk", description: "Access IT / HR help desk", type: "toggle" },
+            { key: "grievanceSubmission", label: "Grievance Submission", description: "Submit workplace grievances", type: "toggle" },
+            { key: "holidayCalendar", label: "Holiday Calendar", description: "View company holiday calendar", type: "toggle" },
+            { key: "policyDocuments", label: "Policy Documents", description: "Access company policy documents", type: "toggle" },
+            { key: "announcementBoard", label: "Announcement Board", description: "View company announcements", type: "toggle" },
+        ],
+    },
+    {
+        title: "Manager Self-Service",
         icon: Users,
-        controls: [
-            { key: "mssEnabled", label: "Enable MSS", description: "Allow managers to access team management features" },
-            { key: "mssViewTeam", label: "View Team Members", description: "Show direct reportees list" },
-            { key: "mssApproveLeave", label: "Approve/Reject Leave", description: "Allow leave approvals" },
-            { key: "mssApproveAttendance", label: "Approve Attendance Regularization", description: "Allow attendance correction approvals" },
-            { key: "mssViewTeamAttendance", label: "View Team Attendance", description: "Show team attendance summary" },
+        fields: [
+            { key: "mssViewTeam", label: "View Team Members", description: "Show direct reportees list", type: "toggle" },
+            { key: "mssApproveLeave", label: "Approve/Reject Leave", description: "Allow leave approvals for team", type: "toggle" },
+            { key: "mssApproveAttendance", label: "Approve Attendance", description: "Allow attendance regularization approvals", type: "toggle" },
+            { key: "mssViewTeamAttendance", label: "View Team Attendance", description: "Show team attendance summary", type: "toggle" },
         ],
     },
     {
-        title: "Notifications & Communication",
-        icon: Bell,
-        controls: [
-            { key: "emailNotifications", label: "Email Notifications", description: "Send email alerts for approvals, payslips, etc." },
-            { key: "pushNotifications", label: "Push Notifications", description: "Mobile push notifications" },
-            { key: "inAppNotifications", label: "In-App Notifications", description: "Show notification bell in portal" },
-            { key: "announcementBoard", label: "Announcement Board", description: "Show company announcements on ESS dashboard" },
-        ],
-    },
-    {
-        title: "Mobile App",
+        title: "Mobile Behavior",
         icon: Smartphone,
-        controls: [
-            { key: "mobileAppEnabled", label: "Mobile App Access", description: "Allow ESS access via mobile app" },
-            { key: "mobileGeoFencing", label: "Geo-Fenced Punch", description: "Restrict mobile attendance to geo-fenced locations" },
-            { key: "mobileFaceRecognition", label: "Face Recognition", description: "Require face recognition for mobile attendance" },
-            { key: "mobileOfflineMode", label: "Offline Mode", description: "Allow offline attendance capture" },
+        fields: [
+            { key: "mobileOfflinePunch", label: "Offline Punch", description: "Allow offline attendance capture on mobile", type: "toggle" },
+            { key: "mobileSyncRetryMinutes", label: "Sync Retry Interval", description: "Minutes between offline sync retries", type: "number", suffix: "min", min: 1, max: 60 },
+            { key: "mobileLocationAccuracy", label: "Location Accuracy", description: "GPS accuracy level for mobile attendance", type: "select", options: LOCATION_ACCURACY_OPTIONS },
         ],
     },
 ];
@@ -242,19 +282,19 @@ export function EssConfigScreen() {
     const { data, isLoading, isError } = useEssConfig();
     const updateMutation = useUpdateEssConfig();
 
-    const [config, setConfig] = useState<Record<string, any>>({});
+    const [config, setConfig] = useState<ESSConfig>({ ...DEFAULTS });
     const [hasChanges, setHasChanges] = useState(false);
 
-    const serverConfig = (data?.data as any) ?? {};
+    const serverConfig: ESSConfig = (data?.data as ESSConfig) ?? DEFAULTS;
 
     useEffect(() => {
         if (data?.data) {
-            setConfig({ ...serverConfig });
+            setConfig({ ...DEFAULTS, ...serverConfig });
             setHasChanges(false);
         }
     }, [data]);
 
-    const updateField = (key: string, value: any) => {
+    const updateField = <K extends keyof ESSConfig>(key: K, value: ESSConfig[K]) => {
         setConfig((p) => ({ ...p, [key]: value }));
         setHasChanges(true);
     };
@@ -270,21 +310,16 @@ export function EssConfigScreen() {
     };
 
     const handleReset = () => {
-        setConfig({ ...serverConfig });
+        setConfig({ ...DEFAULTS, ...serverConfig });
         setHasChanges(false);
     };
 
     if (isLoading) {
         return (
             <div className="space-y-6 animate-in fade-in duration-500">
-                <div>
-                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">ESS Configuration</h1>
-                </div>
+                <div><h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">ESS Configuration</h1></div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <SkeletonCard />
-                    <SkeletonCard />
-                    <SkeletonCard />
-                    <SkeletonCard />
+                    <SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard />
                 </div>
             </div>
         );
@@ -299,8 +334,8 @@ export function EssConfigScreen() {
         );
     }
 
-    const enabledCount = Object.values(config).filter((v) => v === true).length;
-    const totalToggles = SECTIONS.reduce((sum, s) => sum + s.controls.filter((c) => c.type !== "select").length, 0);
+    const toggleCount = SECTIONS.reduce((sum, s) => sum + s.fields.filter(f => f.type === "toggle").length, 0);
+    const enabledCount = SECTIONS.reduce((sum, s) => sum + s.fields.filter(f => f.type === "toggle" && config[f.key] === true).length, 0);
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -309,22 +344,13 @@ export function EssConfigScreen() {
                 <div>
                     <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">ESS Configuration</h1>
                     <p className="text-neutral-500 dark:text-neutral-400 mt-1">
-                        {enabledCount} of {totalToggles} features enabled
+                        {enabledCount} of {toggleCount} features enabled
                     </p>
                 </div>
                 {hasChanges && (
                     <div className="flex items-center gap-3">
-                        <button
-                            onClick={handleReset}
-                            className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
-                        >
-                            Reset
-                        </button>
-                        <button
-                            onClick={handleSave}
-                            disabled={updateMutation.isPending}
-                            className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all disabled:opacity-50"
-                        >
+                        <button onClick={handleReset} className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Reset</button>
+                        <button onClick={handleSave} disabled={updateMutation.isPending} className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all disabled:opacity-50">
                             {updateMutation.isPending && <Loader2 size={14} className="animate-spin" />}
                             {updateMutation.isPending ? "Saving..." : "Save Changes"}
                         </button>
@@ -347,26 +373,46 @@ export function EssConfigScreen() {
                                 <h3 className="text-sm font-bold text-primary-950 dark:text-white">{section.title}</h3>
                             </div>
                             <div className="space-y-3">
-                                {section.controls.map((ctrl) =>
-                                    ctrl.type === "select" ? (
-                                        <SelectRow
-                                            key={ctrl.key}
-                                            label={ctrl.label}
-                                            description={ctrl.description}
-                                            value={config[ctrl.key] ?? ctrl.options?.[0]?.value ?? ""}
-                                            onChange={(v) => updateField(ctrl.key, v)}
-                                            options={ctrl.options ?? []}
-                                        />
-                                    ) : (
-                                        <Toggle
-                                            key={ctrl.key}
-                                            label={ctrl.label}
-                                            description={ctrl.description}
-                                            checked={config[ctrl.key] ?? false}
-                                            onChange={(v) => updateField(ctrl.key, v)}
-                                        />
-                                    )
-                                )}
+                                {section.fields.map((field) => {
+                                    if (field.type === "toggle") {
+                                        return (
+                                            <Toggle
+                                                key={field.key}
+                                                label={field.label}
+                                                description={field.description}
+                                                checked={config[field.key] as boolean}
+                                                onChange={(v) => updateField(field.key, v as never)}
+                                            />
+                                        );
+                                    }
+                                    if (field.type === "number") {
+                                        return (
+                                            <NumberField
+                                                key={field.key}
+                                                label={field.label}
+                                                description={field.description}
+                                                value={config[field.key] as number}
+                                                onChange={(v) => updateField(field.key, v as never)}
+                                                suffix={field.suffix}
+                                                min={field.min}
+                                                max={field.max}
+                                            />
+                                        );
+                                    }
+                                    if (field.type === "select") {
+                                        return (
+                                            <SelectRow
+                                                key={field.key}
+                                                label={field.label}
+                                                description={field.description}
+                                                value={config[field.key] as string}
+                                                onChange={(v) => updateField(field.key, v as never)}
+                                                options={field.options ?? []}
+                                            />
+                                        );
+                                    }
+                                    return null;
+                                })}
                             </div>
                         </div>
                     </div>
@@ -379,17 +425,8 @@ export function EssConfigScreen() {
                     <div className="max-w-5xl mx-auto flex items-center justify-between">
                         <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">You have unsaved changes</p>
                         <div className="flex items-center gap-3">
-                            <button
-                                onClick={handleReset}
-                                className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
-                            >
-                                Discard
-                            </button>
-                            <button
-                                onClick={handleSave}
-                                disabled={updateMutation.isPending}
-                                className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2 rounded-xl font-bold text-sm transition-all disabled:opacity-50"
-                            >
+                            <button onClick={handleReset} className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Discard</button>
+                            <button onClick={handleSave} disabled={updateMutation.isPending} className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2 rounded-xl font-bold text-sm transition-all disabled:opacity-50">
                                 {updateMutation.isPending && <Loader2 size={14} className="animate-spin" />}
                                 Save Changes
                             </button>

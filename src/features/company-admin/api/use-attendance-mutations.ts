@@ -151,3 +151,27 @@ export function useUpdateOvertimeRules() {
         },
     });
 }
+
+// ── Overtime Requests ──
+
+export function useApproveOvertimeRequest() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, data }: { id: string; data?: { approvalNotes?: string } }) =>
+            attendanceApi.approveOvertimeRequest(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: attendanceKeys.overtimeRequests() });
+        },
+    });
+}
+
+export function useRejectOvertimeRequest() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, data }: { id: string; data?: { approvalNotes?: string } }) =>
+            attendanceApi.rejectOvertimeRequest(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: attendanceKeys.overtimeRequests() });
+        },
+    });
+}

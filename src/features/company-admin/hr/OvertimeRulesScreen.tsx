@@ -5,26 +5,25 @@ import {
     XCircle,
     AlertTriangle,
     UserCheck,
+    Calculator,
     DollarSign,
     Gauge,
     Receipt,
+    Gift,
+    Settings2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useOvertimeRules } from "@/features/company-admin/api/use-attendance-queries";
 import { useUpdateOvertimeRules } from "@/features/company-admin/api/use-attendance-mutations";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { showSuccess, showApiError } from "@/lib/toast";
+import type { OvertimeRule } from "@/lib/api/attendance";
 
 /* ── Toggle ── */
 
-interface ToggleProps {
-    label: string;
-    description?: string;
-    checked: boolean;
-    onChange: (v: boolean) => void;
-}
-
-function Toggle({ label, description, checked, onChange }: ToggleProps) {
+function Toggle({ label, description, checked, onChange }: {
+    label: string; description?: string; checked: boolean; onChange: (v: boolean) => void;
+}) {
     return (
         <div className={cn(
             "flex items-center justify-between px-5 py-4 rounded-xl border transition-colors",
@@ -57,27 +56,16 @@ function Toggle({ label, description, checked, onChange }: ToggleProps) {
 
 /* ── Number Field ── */
 
-function NumberField({
-    label,
-    value,
-    onChange,
-    suffix,
-    min,
-    max,
-    step,
-}: {
-    label: string;
-    value: number;
-    onChange: (v: number) => void;
-    suffix?: string;
-    min?: number;
-    max?: number;
-    step?: number;
+function NumberField({ label, value, onChange, suffix, min, max, step, description }: {
+    label: string; value: number; onChange: (v: number) => void; suffix?: string; min?: number; max?: number; step?: number; description?: string;
 }) {
     return (
         <div className="flex items-center justify-between px-5 py-4 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
-            <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
-            <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
+                {description && <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{description}</p>}
+            </div>
+            <div className="flex items-center gap-2 ml-4">
                 <input
                     type="number"
                     value={value}
@@ -93,67 +81,128 @@ function NumberField({
     );
 }
 
-/* ── Sections ── */
+/* ── Nullable Number Field ── */
 
-interface OTSection {
-    title: string;
-    icon: React.ComponentType<{ className?: string; size?: number }>;
-    fields: Array<{
-        key: string;
-        label: string;
-        description?: string;
-        type: "toggle" | "number";
-        suffix?: string;
-        min?: number;
-        max?: number;
-        step?: number;
-    }>;
+function NullableNumberField({ label, value, onChange, suffix, min, max, step, nullLabel, description }: {
+    label: string; value: number | null; onChange: (v: number | null) => void; suffix?: string; min?: number; max?: number; step?: number; nullLabel?: string; description?: string;
+}) {
+    const isNull = value === null;
+    return (
+        <div className="flex items-center justify-between px-5 py-4 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+                <input
+                    type="checkbox"
+                    checked={isNull}
+                    onChange={(e) => onChange(e.target.checked ? null : (min ?? 0))}
+                    className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                />
+                <div>
+                    <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
+                    {description && <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{description}</p>}
+                </div>
+            </div>
+            {isNull ? (
+                <span className="text-xs font-medium text-primary-500 ml-4">{nullLabel ?? "Use Weekday Rate"}</span>
+            ) : (
+                <div className="flex items-center gap-2 ml-4">
+                    <input
+                        type="number"
+                        value={value ?? 0}
+                        onChange={(e) => onChange(Number(e.target.value))}
+                        min={min}
+                        max={max}
+                        step={step}
+                        className="w-20 px-3 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm text-right font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                    />
+                    {suffix && <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">{suffix}</span>}
+                </div>
+            )}
+        </div>
+    );
 }
 
-const SECTIONS: OTSection[] = [
-    {
-        title: "Eligibility",
-        icon: UserCheck,
-        fields: [
-            { key: "otEnabled", label: "Overtime Enabled", description: "Allow overtime tracking for employees", type: "toggle" },
-            { key: "requireApproval", label: "Require Approval", description: "Manager must approve overtime before payroll", type: "toggle" },
-            { key: "minOvertimeMinutes", label: "Minimum OT Threshold", type: "number", suffix: "min", min: 0, max: 120 },
-            { key: "autoDetect", label: "Auto-Detect Overtime", description: "Automatically detect OT from punch records", type: "toggle" },
-            { key: "weekendOT", label: "Weekend Overtime", description: "Track overtime on weekends separately", type: "toggle" },
-            { key: "holidayOT", label: "Holiday Overtime", description: "Track overtime on holidays separately", type: "toggle" },
-        ],
-    },
-    {
-        title: "Rate Multipliers",
-        icon: DollarSign,
-        fields: [
-            { key: "weekdayRate", label: "Weekday Rate", type: "number", suffix: "x", min: 1, max: 5, step: 0.25 },
-            { key: "weekendRate", label: "Weekend Rate", type: "number", suffix: "x", min: 1, max: 5, step: 0.25 },
-            { key: "holidayRate", label: "Holiday Rate", type: "number", suffix: "x", min: 1, max: 5, step: 0.25 },
-            { key: "nightShiftRate", label: "Night Shift Rate", type: "number", suffix: "x", min: 1, max: 5, step: 0.25 },
-        ],
-    },
-    {
-        title: "Caps & Limits",
-        icon: Gauge,
-        fields: [
-            { key: "maxDailyHours", label: "Max Daily OT", type: "number", suffix: "hrs", min: 0, max: 12 },
-            { key: "maxWeeklyHours", label: "Max Weekly OT", type: "number", suffix: "hrs", min: 0, max: 48 },
-            { key: "maxMonthlyHours", label: "Max Monthly OT", type: "number", suffix: "hrs", min: 0, max: 200 },
-            { key: "enforceCaps", label: "Enforce Caps", description: "Block overtime entries exceeding limits", type: "toggle" },
-        ],
-    },
-    {
-        title: "Payroll Integration",
-        icon: Receipt,
-        fields: [
-            { key: "includeInPayroll", label: "Include in Payroll", description: "Automatically add approved OT to payroll", type: "toggle" },
-            { key: "payrollCutoffDay", label: "Payroll Cutoff Day", type: "number", suffix: "day", min: 1, max: 31 },
-            { key: "roundToNearest", label: "Round to Nearest", type: "number", suffix: "min", min: 1, max: 60 },
-            { key: "compOffOption", label: "Comp-Off Option", description: "Allow employees to choose comp-off instead of pay", type: "toggle" },
-        ],
-    },
+/* ── Select Row ── */
+
+function SelectRow({ label, value, onChange, options, description }: {
+    label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; description?: string;
+}) {
+    return (
+        <div className="flex items-center justify-between px-5 py-4 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
+            <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
+                {description && <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{description}</p>}
+            </div>
+            <select
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                className="ml-4 px-3 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm font-semibold text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+            >
+                {options.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+            </select>
+        </div>
+    );
+}
+
+/* ── Options ── */
+
+const CALCULATION_BASIS_OPTIONS = [
+    { value: "AFTER_SHIFT", label: "After Shift End" },
+    { value: "TOTAL_HOURS", label: "Total Hours Worked" },
 ];
+
+const ROUNDING_STRATEGY_OPTIONS = [
+    { value: "NONE", label: "None" },
+    { value: "NEAREST_15", label: "Nearest 15 min" },
+    { value: "NEAREST_30", label: "Nearest 30 min" },
+    { value: "FLOOR_15", label: "Floor 15 min" },
+    { value: "CEIL_15", label: "Ceil 15 min" },
+];
+
+/* ── Defaults ── */
+
+const DEFAULTS: OvertimeRule = {
+    eligibleTypeIds: null,
+    calculationBasis: "AFTER_SHIFT",
+    thresholdMinutes: 30,
+    minimumOtMinutes: 30,
+    includeBreaksInOT: false,
+    weekdayMultiplier: 1.5,
+    weekendMultiplier: null,
+    holidayMultiplier: null,
+    nightShiftMultiplier: null,
+    dailyCapHours: null,
+    weeklyCapHours: null,
+    monthlyCapHours: null,
+    enforceCaps: false,
+    maxContinuousOtHours: null,
+    approvalRequired: true,
+    autoIncludePayroll: false,
+    compOffEnabled: false,
+    compOffExpiryDays: null,
+    roundingStrategy: "NONE",
+};
+
+/* ── Section Card ── */
+
+function SectionCard({ title, icon: Icon, children }: {
+    title: string; icon: React.ComponentType<{ className?: string; size?: number }>; children: React.ReactNode;
+}) {
+    return (
+        <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm overflow-hidden">
+            <div className="p-6">
+                <div className="flex items-center gap-3 mb-5">
+                    <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
+                        <Icon size={16} className="text-primary-600" />
+                    </div>
+                    <h3 className="text-sm font-bold text-primary-950 dark:text-white">{title}</h3>
+                </div>
+                <div className="space-y-3">{children}</div>
+            </div>
+        </div>
+    );
+}
 
 /* ── Screen ── */
 
@@ -161,19 +210,19 @@ export function OvertimeRulesScreen() {
     const { data, isLoading, isError } = useOvertimeRules();
     const updateMutation = useUpdateOvertimeRules();
 
-    const [rules, setRules] = useState<Record<string, any>>({});
+    const [rules, setRules] = useState<OvertimeRule>({ ...DEFAULTS });
     const [hasChanges, setHasChanges] = useState(false);
 
-    const serverRules = (data as any)?.data ?? {};
+    const serverRules: OvertimeRule = (data as any)?.data ?? DEFAULTS;
 
     useEffect(() => {
         if ((data as any)?.data) {
-            setRules({ ...serverRules });
+            setRules({ ...DEFAULTS, ...serverRules });
             setHasChanges(false);
         }
     }, [data]);
 
-    const updateRule = (key: string, value: any) => {
+    const updateRule = <K extends keyof OvertimeRule>(key: K, value: OvertimeRule[K]) => {
         setRules((p) => ({ ...p, [key]: value }));
         setHasChanges(true);
     };
@@ -189,7 +238,7 @@ export function OvertimeRulesScreen() {
     };
 
     const handleReset = () => {
-        setRules({ ...serverRules });
+        setRules({ ...DEFAULTS, ...serverRules });
         setHasChanges(false);
     };
 
@@ -219,21 +268,12 @@ export function OvertimeRulesScreen() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Overtime Rules</h1>
-                    <p className="text-neutral-500 dark:text-neutral-400 mt-1">Configure eligibility, rates, caps and payroll integration</p>
+                    <p className="text-neutral-500 dark:text-neutral-400 mt-1">Configure eligibility, calculation, rates, caps, and approval</p>
                 </div>
                 {hasChanges && (
                     <div className="flex items-center gap-3">
-                        <button
-                            onClick={handleReset}
-                            className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
-                        >
-                            Reset
-                        </button>
-                        <button
-                            onClick={handleSave}
-                            disabled={updateMutation.isPending}
-                            className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all disabled:opacity-50"
-                        >
+                        <button onClick={handleReset} className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Reset</button>
+                        <button onClick={handleSave} disabled={updateMutation.isPending} className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all disabled:opacity-50">
                             {updateMutation.isPending && <Loader2 size={14} className="animate-spin" />}
                             {updateMutation.isPending ? "Saving..." : "Save Changes"}
                         </button>
@@ -243,48 +283,57 @@ export function OvertimeRulesScreen() {
 
             {/* Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {SECTIONS.map((section) => (
-                    <div key={section.title} className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm overflow-hidden">
-                        <div className="p-6">
-                            <div className="flex items-center gap-3 mb-5">
-                                <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
-                                    <section.icon size={16} className="text-primary-600" />
-                                </div>
-                                <h3 className="text-sm font-bold text-primary-950 dark:text-white">{section.title}</h3>
-                            </div>
-                            <div className="space-y-3">
-                                {section.fields.map((field) => {
-                                    if (field.type === "toggle") {
-                                        return (
-                                            <Toggle
-                                                key={field.key}
-                                                label={field.label}
-                                                description={field.description}
-                                                checked={rules[field.key] ?? false}
-                                                onChange={(v) => updateRule(field.key, v)}
-                                            />
-                                        );
-                                    }
-                                    if (field.type === "number") {
-                                        return (
-                                            <NumberField
-                                                key={field.key}
-                                                label={field.label}
-                                                value={rules[field.key] ?? 0}
-                                                onChange={(v) => updateRule(field.key, v)}
-                                                suffix={field.suffix}
-                                                min={field.min}
-                                                max={field.max}
-                                                step={field.step}
-                                            />
-                                        );
-                                    }
-                                    return null;
-                                })}
-                            </div>
-                        </div>
+                {/* Eligibility */}
+                <SectionCard title="Eligibility" icon={UserCheck}>
+                    <div className="px-5 py-4 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
+                        <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">Eligible Employee Types</p>
+                        <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">
+                            {rules.eligibleTypeIds === null ? "All employee types are eligible" : `${rules.eligibleTypeIds.length} type(s) selected`}
+                        </p>
                     </div>
-                ))}
+                </SectionCard>
+
+                {/* Calculation */}
+                <SectionCard title="Calculation" icon={Calculator}>
+                    <SelectRow label="Calculation Basis" description="How overtime is calculated" value={rules.calculationBasis} onChange={(v) => updateRule("calculationBasis", v as OvertimeRule["calculationBasis"])} options={CALCULATION_BASIS_OPTIONS} />
+                    <NumberField label="Threshold Minutes" description="Extra minutes before OT counts" value={rules.thresholdMinutes} onChange={(v) => updateRule("thresholdMinutes", v)} suffix="min" min={0} max={120} />
+                    <NumberField label="Minimum OT Minutes" description="Min OT minutes to be recorded" value={rules.minimumOtMinutes} onChange={(v) => updateRule("minimumOtMinutes", v)} suffix="min" min={0} max={120} />
+                    <Toggle label="Include Breaks in OT" description="Count break time within OT hours" checked={rules.includeBreaksInOT} onChange={(v) => updateRule("includeBreaksInOT", v)} />
+                </SectionCard>
+
+                {/* Rate Multipliers */}
+                <SectionCard title="Rate Multipliers" icon={DollarSign}>
+                    <NumberField label="Weekday Multiplier" value={rules.weekdayMultiplier} onChange={(v) => updateRule("weekdayMultiplier", v)} suffix="x" min={1} max={5} step={0.25} />
+                    <NullableNumberField label="Weekend Multiplier" value={rules.weekendMultiplier} onChange={(v) => updateRule("weekendMultiplier", v)} suffix="x" min={1} max={5} step={0.25} nullLabel="Use Weekday Rate" />
+                    <NullableNumberField label="Holiday Multiplier" value={rules.holidayMultiplier} onChange={(v) => updateRule("holidayMultiplier", v)} suffix="x" min={1} max={5} step={0.25} nullLabel="Use Weekday Rate" />
+                    <NullableNumberField label="Night Shift Multiplier" value={rules.nightShiftMultiplier} onChange={(v) => updateRule("nightShiftMultiplier", v)} suffix="x" min={1} max={5} step={0.25} nullLabel="Use Weekday Rate" />
+                </SectionCard>
+
+                {/* Caps */}
+                <SectionCard title="Caps" icon={Gauge}>
+                    <NullableNumberField label="Daily Cap" value={rules.dailyCapHours} onChange={(v) => updateRule("dailyCapHours", v)} suffix="hrs" min={0} max={12} step={0.5} nullLabel="No Limit" />
+                    <NullableNumberField label="Weekly Cap" value={rules.weeklyCapHours} onChange={(v) => updateRule("weeklyCapHours", v)} suffix="hrs" min={0} max={48} step={0.5} nullLabel="No Limit" />
+                    <NullableNumberField label="Monthly Cap" value={rules.monthlyCapHours} onChange={(v) => updateRule("monthlyCapHours", v)} suffix="hrs" min={0} max={200} step={1} nullLabel="No Limit" />
+                    <Toggle label="Enforce Caps" description="Hard block OT entries exceeding limits" checked={rules.enforceCaps} onChange={(v) => updateRule("enforceCaps", v)} />
+                    <NullableNumberField label="Max Continuous OT" description="Safety/compliance limit" value={rules.maxContinuousOtHours} onChange={(v) => updateRule("maxContinuousOtHours", v)} suffix="hrs" min={0} max={24} step={0.5} nullLabel="No Limit" />
+                </SectionCard>
+
+                {/* Approval & Payroll */}
+                <SectionCard title="Approval & Payroll" icon={Receipt}>
+                    <Toggle label="Approval Required" description="Manager must approve overtime before payroll" checked={rules.approvalRequired} onChange={(v) => updateRule("approvalRequired", v)} />
+                    <Toggle label="Auto Include in Payroll" description="Automatically add approved OT to payroll" checked={rules.autoIncludePayroll} onChange={(v) => updateRule("autoIncludePayroll", v)} />
+                </SectionCard>
+
+                {/* Comp-Off */}
+                <SectionCard title="Comp-Off" icon={Gift}>
+                    <Toggle label="Comp-Off Enabled" description="Allow employees to choose comp-off instead of pay" checked={rules.compOffEnabled} onChange={(v) => updateRule("compOffEnabled", v)} />
+                    <NullableNumberField label="Comp-Off Expiry" description="Days before comp-off lapses" value={rules.compOffExpiryDays} onChange={(v) => updateRule("compOffExpiryDays", v)} suffix="days" min={1} max={365} nullLabel="No Expiry" />
+                </SectionCard>
+
+                {/* Rounding */}
+                <SectionCard title="Rounding" icon={Settings2}>
+                    <SelectRow label="Rounding Strategy" description="How OT hours are rounded" value={rules.roundingStrategy} onChange={(v) => updateRule("roundingStrategy", v as OvertimeRule["roundingStrategy"])} options={ROUNDING_STRATEGY_OPTIONS} />
+                </SectionCard>
             </div>
 
             {/* Sticky Save Bar */}
@@ -293,14 +342,8 @@ export function OvertimeRulesScreen() {
                     <div className="max-w-5xl mx-auto flex items-center justify-between">
                         <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">You have unsaved changes</p>
                         <div className="flex items-center gap-3">
-                            <button onClick={handleReset} className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">
-                                Discard
-                            </button>
-                            <button
-                                onClick={handleSave}
-                                disabled={updateMutation.isPending}
-                                className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2 rounded-xl font-bold text-sm transition-all disabled:opacity-50"
-                            >
+                            <button onClick={handleReset} className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Discard</button>
+                            <button onClick={handleSave} disabled={updateMutation.isPending} className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2 rounded-xl font-bold text-sm transition-all disabled:opacity-50">
                                 {updateMutation.isPending && <Loader2 size={14} className="animate-spin" />}
                                 Save Changes
                             </button>

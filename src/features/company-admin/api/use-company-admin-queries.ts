@@ -25,7 +25,7 @@ export const companyAdminKeys = {
     myPayments: (params?: Record<string, unknown>) => [...companyAdminKeys.all, 'my-payments', params] as const,
     permissionCatalogue: () => [...companyAdminKeys.all, 'permission-catalogue'] as const,
     referenceRoles: () => [...companyAdminKeys.all, 'reference-roles'] as const,
-    featureToggleCatalogue: () => [...companyAdminKeys.all, 'feature-toggle-catalogue'] as const,
+    shiftBreaks: (shiftId: string) => [...companyAdminKeys.all, 'shift-breaks', shiftId] as const,
     supportTickets: (params?: Record<string, unknown>) => params ? [...companyAdminKeys.all, 'support-tickets', params] as const : [...companyAdminKeys.all, 'support-tickets'] as const,
     supportTicket: (id: string) => [...companyAdminKeys.all, 'support-ticket', id] as const,
     navigationManifest: () => [...companyAdminKeys.all, 'navigation-manifest'] as const,
@@ -218,11 +218,11 @@ export function useReferenceRoles() {
     });
 }
 
-export function useFeatureToggleCatalogue() {
+export function useShiftBreaks(shiftId: string) {
     return useQuery({
-        queryKey: companyAdminKeys.featureToggleCatalogue(),
-        queryFn: () => companyAdminApi.getFeatureToggleCatalogue(),
-        staleTime: 5 * 60 * 1000,
+        queryKey: companyAdminKeys.shiftBreaks(shiftId),
+        queryFn: () => companyAdminApi.getShiftBreaks(shiftId),
+        enabled: !!shiftId,
     });
 }
 

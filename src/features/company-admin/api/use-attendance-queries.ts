@@ -11,6 +11,7 @@ export const attendanceKeys = {
     holidays: (params?: Record<string, unknown>) => [...attendanceKeys.all, 'holidays', params] as const,
     rosters: (params?: Record<string, unknown>) => [...attendanceKeys.all, 'rosters', params] as const,
     overtimeRules: () => [...attendanceKeys.all, 'overtime-rules'] as const,
+    overtimeRequests: (params?: Record<string, unknown>) => [...attendanceKeys.all, 'overtime-requests', params] as const,
 };
 
 // ── Attendance Records ──
@@ -81,5 +82,14 @@ export function useOvertimeRules() {
     return useQuery({
         queryKey: attendanceKeys.overtimeRules(),
         queryFn: () => attendanceApi.getOvertimeRules(),
+    });
+}
+
+// ── Overtime Requests ──
+
+export function useOvertimeRequests(params?: { page?: number; limit?: number; status?: string; employeeId?: string }) {
+    return useQuery({
+        queryKey: attendanceKeys.overtimeRequests(params as Record<string, unknown>),
+        queryFn: () => attendanceApi.getOvertimeRequests(params),
     });
 }

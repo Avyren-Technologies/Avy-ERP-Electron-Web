@@ -3,6 +3,7 @@ import { companyAdminApi } from '@/lib/api/company-admin';
 import type {
     CompanyLocation,
     CreateShiftPayload,
+    CreateShiftBreakPayload,
     CreateContactPayload,
     CreateNoSeriesPayload,
     CreateIOTReasonPayload,
@@ -80,6 +81,44 @@ export function useDeleteShift() {
     return useMutation({
         mutationFn: (id: string) => companyAdminApi.deleteShift(id),
         onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: companyAdminKeys.shifts() });
+        },
+    });
+}
+
+// ── Shift Breaks ──
+
+export function useCreateShiftBreak() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ shiftId, data }: { shiftId: string; data: CreateShiftBreakPayload }) =>
+            companyAdminApi.createShiftBreak(shiftId, data),
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: companyAdminKeys.shiftBreaks(variables.shiftId) });
+            queryClient.invalidateQueries({ queryKey: companyAdminKeys.shifts() });
+        },
+    });
+}
+
+export function useUpdateShiftBreak() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ shiftId, breakId, data }: { shiftId: string; breakId: string; data: Partial<CreateShiftBreakPayload> }) =>
+            companyAdminApi.updateShiftBreak(shiftId, breakId, data),
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: companyAdminKeys.shiftBreaks(variables.shiftId) });
+            queryClient.invalidateQueries({ queryKey: companyAdminKeys.shifts() });
+        },
+    });
+}
+
+export function useDeleteShiftBreak() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ shiftId, breakId }: { shiftId: string; breakId: string }) =>
+            companyAdminApi.deleteShiftBreak(shiftId, breakId),
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: companyAdminKeys.shiftBreaks(variables.shiftId) });
             queryClient.invalidateQueries({ queryKey: companyAdminKeys.shifts() });
         },
     });

@@ -60,25 +60,68 @@ export interface CompanyLocation {
     updatedAt?: string;
 }
 
+export type ShiftType = 'DAY' | 'NIGHT' | 'FLEXIBLE';
+export type BreakType = 'FIXED' | 'FLEXIBLE';
+export type DeviceType = 'BIOMETRIC' | 'MOBILE_GPS' | 'WEB_PORTAL' | 'SMART_CARD' | 'FACE_RECOGNITION';
+
+export interface ShiftBreak {
+    id: string;
+    shiftId: string;
+    name: string;
+    startTime?: string | null;
+    duration: number;
+    type: BreakType;
+    isPaid: boolean;
+}
+
+export interface CreateShiftBreakPayload {
+    name: string;
+    type: BreakType;
+    startTime?: string | null;
+    duration: number;
+    isPaid?: boolean;
+}
+
 export interface CompanyShift {
     id: string;
     name: string;
-    code?: string;
-    fromTime: string;
-    toTime: string;
-    noShuffle?: boolean;
-    downtimeSlots?: Array<{ type: string; duration: string }>;
-    status?: string;
+    shiftType: ShiftType;
+    startTime: string;
+    endTime: string;
+    isCrossDay: boolean;
+    breaks?: ShiftBreak[];
+    gracePeriodMinutes?: number | null;
+    earlyExitToleranceMinutes?: number | null;
+    halfDayThresholdHours?: number | null;
+    fullDayThresholdHours?: number | null;
+    maxLateCheckInMinutes?: number | null;
+    minWorkingHoursForOT?: number | null;
+    requireSelfie?: boolean | null;
+    requireGPS?: boolean | null;
+    allowedSources?: DeviceType[];
+    noShuffle: boolean;
+    autoClockOutMinutes?: number | null;
     createdAt?: string;
     updatedAt?: string;
 }
 
 export interface CreateShiftPayload {
     name: string;
-    fromTime: string;
-    toTime: string;
+    shiftType?: ShiftType;
+    startTime: string;
+    endTime: string;
+    isCrossDay?: boolean;
+    gracePeriodMinutes?: number | null;
+    earlyExitToleranceMinutes?: number | null;
+    halfDayThresholdHours?: number | null;
+    fullDayThresholdHours?: number | null;
+    maxLateCheckInMinutes?: number | null;
+    minWorkingHoursForOT?: number | null;
+    requireSelfie?: boolean | null;
+    requireGPS?: boolean | null;
+    allowedSources?: DeviceType[];
     noShuffle?: boolean;
-    downtimeSlots?: Array<{ type: string; duration: string }>;
+    autoClockOutMinutes?: number | null;
 }
 
 export interface CompanyContact {
@@ -149,19 +192,65 @@ export interface CreateIOTReasonPayload {
     duration?: string;
 }
 
-export interface SystemControls {
-    [key: string]: boolean | string | number;
-}
+export type CurrencyCode = 'INR' | 'USD' | 'EUR' | 'GBP' | 'AED';
+export type LanguageCode = 'en' | 'hi' | 'ta' | 'te' | 'mr' | 'kn';
+export type TimeFormat = 'TWELVE_HOUR' | 'TWENTY_FOUR_HOUR';
 
 export interface CompanySettings {
-    locale?: string;
-    dateFormat?: string;
-    timeZone?: string;
-    currency?: string;
-    complianceMode?: string;
-    portalEnabled?: boolean;
-    integrations?: Record<string, unknown>;
-    [key: string]: unknown;
+    id?: string;
+    // Locale
+    currency: CurrencyCode;
+    language: LanguageCode;
+    timezone: string;
+    dateFormat: string;
+    timeFormat: TimeFormat;
+    numberFormat: string;
+    // Compliance
+    indiaCompliance: boolean;
+    gdprMode: boolean;
+    auditTrail: boolean;
+    // Integrations
+    bankIntegration: boolean;
+    razorpayEnabled: boolean;
+    emailNotifications: boolean;
+    whatsappNotifications: boolean;
+    biometricIntegration: boolean;
+    eSignIntegration: boolean;
+}
+
+export interface SystemControls {
+    id?: string;
+    // Module Enablement
+    attendanceEnabled: boolean;
+    leaveEnabled: boolean;
+    payrollEnabled: boolean;
+    essEnabled: boolean;
+    performanceEnabled: boolean;
+    recruitmentEnabled: boolean;
+    trainingEnabled: boolean;
+    mobileAppEnabled: boolean;
+    aiChatbotEnabled: boolean;
+    // Production
+    ncEditMode: boolean;
+    loadUnload: boolean;
+    cycleTime: boolean;
+    // Payroll
+    payrollLock: boolean;
+    backdatedEntryControl: boolean;
+    // Leave
+    leaveCarryForward: boolean;
+    compOffEnabled: boolean;
+    halfDayLeaveEnabled: boolean;
+    // Security
+    mfaRequired: boolean;
+    sessionTimeoutMinutes: number;
+    maxConcurrentSessions: number;
+    passwordMinLength: number;
+    passwordComplexity: boolean;
+    accountLockThreshold: number;
+    accountLockDurationMinutes: number;
+    // Audit
+    auditLogRetentionDays: number;
 }
 
 export interface CompanyUser {
@@ -473,15 +562,6 @@ export interface PermissionCatalogue {
     modules: PermissionModuleEntry[];
 }
 
-// ── Feature Toggle Catalogue ──
-
-export interface FeatureToggleCatalogueItem {
-    key: string;
-    label: string;
-    description?: string;
-    module?: string;
-    defaultEnabled?: boolean;
-}
 
 // ── Reference Roles ──
 
@@ -697,10 +777,25 @@ async function assignRole(userId: string, roleId: string): Promise<ApiResponse<v
     return response.data;
 }
 
-// ── Feature Toggle Catalogue ──
+// ── Shift Breaks ──
 
-async function getFeatureToggleCatalogue(): Promise<ApiResponse<FeatureToggleCatalogueItem[]>> {
-    const response = await client.get('/feature-toggles/catalogue');
+async function getShiftBreaks(shiftId: string): Promise<ApiResponse<ShiftBreak[]>> {
+    const response = await client.get(`/company/shifts/${shiftId}/breaks`);
+    return response.data;
+}
+
+async function createShiftBreak(shiftId: string, data: CreateShiftBreakPayload): Promise<ApiResponse<ShiftBreak>> {
+    const response = await client.post(`/company/shifts/${shiftId}/breaks`, data);
+    return response.data;
+}
+
+async function updateShiftBreak(shiftId: string, breakId: string, data: Partial<CreateShiftBreakPayload>): Promise<ApiResponse<ShiftBreak>> {
+    const response = await client.patch(`/company/shifts/${shiftId}/breaks/${breakId}`, data);
+    return response.data;
+}
+
+async function deleteShiftBreak(shiftId: string, breakId: string): Promise<ApiResponse<void>> {
+    const response = await client.delete(`/company/shifts/${shiftId}/breaks/${breakId}`);
     return response.data;
 }
 
@@ -752,7 +847,10 @@ export const companyAdminApi = {
     getPermissionCatalogue,
     getReferenceRoles,
     assignRole,
-    getFeatureToggleCatalogue,
+    getShiftBreaks,
+    createShiftBreak,
+    updateShiftBreak,
+    deleteShiftBreak,
 
     // ── Support Tickets ──
     createSupportTicket: (data: { subject: string; category?: string; priority?: string; message: string; metadata?: Record<string, unknown> }) =>

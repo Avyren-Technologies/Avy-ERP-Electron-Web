@@ -4,7 +4,6 @@ import {
     Loader2,
     Globe,
     Shield,
-    Monitor,
     Plug,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -12,6 +11,9 @@ import { useCompanySettings } from "@/features/company-admin/api/use-company-adm
 import { useUpdateSettings } from "@/features/company-admin/api/use-company-admin-mutations";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { showSuccess, showApiError } from "@/lib/toast";
+import type { CompanySettings } from "@/lib/api/company-admin";
+
+/* ── Shared Controls ── */
 
 function SelectField({ label, value, onChange, options }: {
     label: string; value: string; onChange: (v: string) => void; options: Array<{ value: string; label: string }>;
@@ -57,11 +59,14 @@ function Toggle({ label, description, checked, onChange }: {
     );
 }
 
+/* ── Options ── */
+
 const CURRENCY_OPTIONS = [
     { value: "INR", label: "INR - Indian Rupee" },
     { value: "USD", label: "USD - US Dollar" },
     { value: "EUR", label: "EUR - Euro" },
     { value: "GBP", label: "GBP - British Pound" },
+    { value: "AED", label: "AED - UAE Dirham" },
 ];
 
 const LANGUAGE_OPTIONS = [
@@ -70,22 +75,7 @@ const LANGUAGE_OPTIONS = [
     { value: "ta", label: "Tamil" },
     { value: "te", label: "Telugu" },
     { value: "mr", label: "Marathi" },
-];
-
-const DATE_FORMAT_OPTIONS = [
-    { value: "DD/MM/YYYY", label: "DD/MM/YYYY" },
-    { value: "MM/DD/YYYY", label: "MM/DD/YYYY" },
-    { value: "YYYY-MM-DD", label: "YYYY-MM-DD" },
-];
-
-const TIME_FORMAT_OPTIONS = [
-    { value: "12h", label: "12 Hour" },
-    { value: "24h", label: "24 Hour" },
-];
-
-const NUMBER_FORMAT_OPTIONS = [
-    { value: "en-IN", label: "Indian (1,00,000)" },
-    { value: "en-US", label: "International (100,000)" },
+    { value: "kn", label: "Kannada" },
 ];
 
 const TIMEZONE_OPTIONS = [
@@ -97,23 +87,61 @@ const TIMEZONE_OPTIONS = [
     { value: "Asia/Singapore", label: "SGT (Asia/Singapore)" },
 ];
 
+const DATE_FORMAT_OPTIONS = [
+    { value: "DD/MM/YYYY", label: "DD/MM/YYYY" },
+    { value: "MM/DD/YYYY", label: "MM/DD/YYYY" },
+    { value: "YYYY-MM-DD", label: "YYYY-MM-DD" },
+];
+
+const TIME_FORMAT_OPTIONS = [
+    { value: "TWELVE_HOUR", label: "12 Hour" },
+    { value: "TWENTY_FOUR_HOUR", label: "24 Hour" },
+];
+
+const NUMBER_FORMAT_OPTIONS = [
+    { value: "en-IN", label: "Indian (1,00,000)" },
+    { value: "en-US", label: "International (100,000)" },
+];
+
+/* ── Default values ── */
+
+const DEFAULTS: CompanySettings = {
+    currency: "INR",
+    language: "en",
+    timezone: "Asia/Kolkata",
+    dateFormat: "DD/MM/YYYY",
+    timeFormat: "TWELVE_HOUR",
+    numberFormat: "en-IN",
+    indiaCompliance: true,
+    gdprMode: false,
+    auditTrail: true,
+    bankIntegration: false,
+    razorpayEnabled: false,
+    emailNotifications: true,
+    whatsappNotifications: false,
+    biometricIntegration: false,
+    eSignIntegration: false,
+};
+
+/* ── Screen ── */
+
 export function CompanySettingsScreen() {
     const { data, isLoading, isError } = useCompanySettings();
     const updateMutation = useUpdateSettings();
 
-    const [settings, setSettings] = useState<Record<string, any>>({});
+    const [settings, setSettings] = useState<CompanySettings>({ ...DEFAULTS });
     const [hasChanges, setHasChanges] = useState(false);
 
-    const serverSettings = (data?.data as any) ?? {};
+    const serverSettings: CompanySettings = (data?.data as CompanySettings) ?? DEFAULTS;
 
     useEffect(() => {
         if (data?.data) {
-            setSettings({ ...serverSettings });
+            setSettings({ ...DEFAULTS, ...serverSettings });
             setHasChanges(false);
         }
     }, [data]);
 
-    const updateField = (key: string, value: any) => {
+    const updateField = <K extends keyof CompanySettings>(key: K, value: CompanySettings[K]) => {
         setSettings((p) => ({ ...p, [key]: value }));
         setHasChanges(true);
     };
@@ -129,7 +157,7 @@ export function CompanySettingsScreen() {
     };
 
     const handleReset = () => {
-        setSettings({ ...serverSettings });
+        setSettings({ ...DEFAULTS, ...serverSettings });
         setHasChanges(false);
     };
 
@@ -137,7 +165,7 @@ export function CompanySettingsScreen() {
         return (
             <div className="space-y-6 animate-in fade-in duration-500">
                 <div><h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Company Settings</h1></div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6"><SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard /></div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6"><SkeletonCard /><SkeletonCard /><SkeletonCard /></div>
             </div>
         );
     }
@@ -177,12 +205,12 @@ export function CompanySettingsScreen() {
                         <h3 className="text-sm font-bold text-primary-950 dark:text-white">Locale</h3>
                     </div>
                     <div className="space-y-4">
-                        <SelectField label="Currency" value={settings.currency ?? "INR"} onChange={(v) => updateField("currency", v)} options={CURRENCY_OPTIONS} />
-                        <SelectField label="Language" value={settings.language ?? "en"} onChange={(v) => updateField("language", v)} options={LANGUAGE_OPTIONS} />
-                        <SelectField label="Timezone" value={settings.timezone ?? "Asia/Kolkata"} onChange={(v) => updateField("timezone", v)} options={TIMEZONE_OPTIONS} />
-                        <SelectField label="Date Format" value={settings.dateFormat ?? "DD/MM/YYYY"} onChange={(v) => updateField("dateFormat", v)} options={DATE_FORMAT_OPTIONS} />
-                        <SelectField label="Time Format" value={settings.timeFormat ?? "12h"} onChange={(v) => updateField("timeFormat", v)} options={TIME_FORMAT_OPTIONS} />
-                        <SelectField label="Number Format" value={settings.numberFormat ?? "en-IN"} onChange={(v) => updateField("numberFormat", v)} options={NUMBER_FORMAT_OPTIONS} />
+                        <SelectField label="Currency" value={settings.currency} onChange={(v) => updateField("currency", v as CompanySettings["currency"])} options={CURRENCY_OPTIONS} />
+                        <SelectField label="Language" value={settings.language} onChange={(v) => updateField("language", v as CompanySettings["language"])} options={LANGUAGE_OPTIONS} />
+                        <SelectField label="Timezone" value={settings.timezone} onChange={(v) => updateField("timezone", v)} options={TIMEZONE_OPTIONS} />
+                        <SelectField label="Date Format" value={settings.dateFormat} onChange={(v) => updateField("dateFormat", v)} options={DATE_FORMAT_OPTIONS} />
+                        <SelectField label="Time Format" value={settings.timeFormat} onChange={(v) => updateField("timeFormat", v as CompanySettings["timeFormat"])} options={TIME_FORMAT_OPTIONS} />
+                        <SelectField label="Number Format" value={settings.numberFormat} onChange={(v) => updateField("numberFormat", v)} options={NUMBER_FORMAT_OPTIONS} />
                     </div>
                 </div>
 
@@ -193,37 +221,25 @@ export function CompanySettingsScreen() {
                         <h3 className="text-sm font-bold text-primary-950 dark:text-white">Compliance</h3>
                     </div>
                     <div className="space-y-3">
-                        <Toggle label="India Compliance" description="Enable India-specific statutory compliance" checked={settings.indiaCompliance ?? false} onChange={(v) => updateField("indiaCompliance", v)} />
-                        <Toggle label="GDPR Mode" description="Enable GDPR data protection features" checked={settings.gdprMode ?? false} onChange={(v) => updateField("gdprMode", v)} />
-                        <Toggle label="Audit Trail" description="Maintain detailed audit trail for all changes" checked={settings.auditTrail ?? true} onChange={(v) => updateField("auditTrail", v)} />
-                    </div>
-                </div>
-
-                {/* Portal */}
-                <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm p-6">
-                    <div className="flex items-center gap-3 mb-5">
-                        <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center"><Monitor size={16} className="text-primary-600" /></div>
-                        <h3 className="text-sm font-bold text-primary-950 dark:text-white">Portal</h3>
-                    </div>
-                    <div className="space-y-3">
-                        <Toggle label="Web App" description="Enable web portal access" checked={settings.webApp ?? true} onChange={(v) => updateField("webApp", v)} />
-                        <Toggle label="Mobile App" description="Enable mobile app access" checked={settings.mobileApp ?? true} onChange={(v) => updateField("mobileApp", v)} />
-                        <Toggle label="System App" description="Enable desktop system app" checked={settings.systemApp ?? false} onChange={(v) => updateField("systemApp", v)} />
-                        <Toggle label="Biometric Login" description="Enable biometric authentication" checked={settings.biometric ?? false} onChange={(v) => updateField("biometric", v)} />
+                        <Toggle label="India Compliance" description="Enable India-specific statutory compliance" checked={settings.indiaCompliance} onChange={(v) => updateField("indiaCompliance", v)} />
+                        <Toggle label="GDPR Mode" description="Enable GDPR data protection features" checked={settings.gdprMode} onChange={(v) => updateField("gdprMode", v)} />
+                        <Toggle label="Audit Trail" description="Maintain detailed audit trail for all changes" checked={settings.auditTrail} onChange={(v) => updateField("auditTrail", v)} />
                     </div>
                 </div>
 
                 {/* Integrations */}
-                <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm p-6">
+                <div className="md:col-span-2 bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm p-6">
                     <div className="flex items-center gap-3 mb-5">
                         <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center"><Plug size={16} className="text-primary-600" /></div>
                         <h3 className="text-sm font-bold text-primary-950 dark:text-white">Integrations</h3>
                     </div>
-                    <div className="space-y-3">
-                        <Toggle label="Bank Integration" description="Enable bank account integration" checked={settings.bankIntegration ?? false} onChange={(v) => updateField("bankIntegration", v)} />
-                        <Toggle label="RazorpayX Payout" description="Enable RazorpayX for payroll disbursement" checked={settings.razorpayEnabled ?? false} onChange={(v) => updateField("razorpayEnabled", v)} />
-                        <Toggle label="Email Notifications" description="Send email alerts for key events" checked={settings.emailNotif ?? true} onChange={(v) => updateField("emailNotif", v)} />
-                        <Toggle label="WhatsApp Notifications" description="Send WhatsApp alerts" checked={settings.whatsapp ?? false} onChange={(v) => updateField("whatsapp", v)} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <Toggle label="Bank Integration" description="Enable bank account integration" checked={settings.bankIntegration} onChange={(v) => updateField("bankIntegration", v)} />
+                        <Toggle label="RazorpayX Payout" description="Enable RazorpayX for payroll disbursement" checked={settings.razorpayEnabled} onChange={(v) => updateField("razorpayEnabled", v)} />
+                        <Toggle label="Email Notifications" description="Send email alerts for key events" checked={settings.emailNotifications} onChange={(v) => updateField("emailNotifications", v)} />
+                        <Toggle label="WhatsApp Notifications" description="Send WhatsApp alerts" checked={settings.whatsappNotifications} onChange={(v) => updateField("whatsappNotifications", v)} />
+                        <Toggle label="Biometric Integration" description="Enable biometric device integration" checked={settings.biometricIntegration} onChange={(v) => updateField("biometricIntegration", v)} />
+                        <Toggle label="E-Sign Integration" description="Enable electronic signature workflows" checked={settings.eSignIntegration} onChange={(v) => updateField("eSignIntegration", v)} />
                     </div>
                 </div>
             </div>
