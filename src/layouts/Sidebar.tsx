@@ -1,5 +1,5 @@
 // ============================================================
-// Sidebar — Role-based, collapsible, sub-modules with dotted connector lines
+// Sidebar — Manifest-driven, collapsible, sub-modules with dotted connector lines
 // ============================================================
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
@@ -7,22 +7,20 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
     LayoutDashboard, Building2, CreditCard, Blocks, Activity,
-    Settings, LogOut, ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
+    Settings, LogOut, ChevronDown,
     Users, FileText, BarChart3, Package, Wrench, ClipboardList,
-    ShieldCheck, Bell, HelpCircle, PanelLeftClose, PanelLeftOpen,
+    ShieldCheck, HelpCircle, PanelLeftClose, PanelLeftOpen,
     MapPin, Clock, Hash, Cpu, SlidersHorizontal, UserCog, Shield, ToggleLeft,
     Briefcase, UserCheck, Wallet,
     CalendarCheck, Calendar, CalendarDays, Timer, BookOpen, Send, Scale,
     DollarSign, FileSpreadsheet, Landmark, HandCoins, Receipt, Calculator,
     Play, PauseCircle, TrendingUp, Stamp,
-    Settings2, GitBranch, Mail, BellRing, FileCheck, UserCircle, CalendarOff,
+    GitBranch, Mail, BellRing, FileCheck, UserCircle, CalendarOff,
     Target, Flag, MessageSquare, Star, Brain, GitFork,
     UserPlus, GraduationCap, Award, FileSignature, AlertTriangle, Gavel,
-    ArrowLeftRight, LogIn, CheckSquare, CheckCircle2,
-    Fingerprint, RefreshCw, Gift, Plane, PenTool, MessageCircle, Factory, Network,
+    ArrowLeftRight, LogIn, CheckCircle2,
 } from 'lucide-react';
 import { useAuthStore, getUserInitials, getDisplayName } from '@/store/useAuthStore';
-import { checkPermission } from '@/lib/api/auth';
 import { useNavigate } from 'react-router-dom';
 
 // ============================================================
@@ -81,384 +79,16 @@ function resolveIcon(iconName: string): React.ComponentType<any> {
 }
 
 // ============================================================
-// Nav Config — role-based (fallback when manifest is not available)
-// ============================================================
-
-export type SidebarUserRole = 'super_admin' | 'company_admin' | 'viewer';
-/** @deprecated Use SidebarUserRole */
-export type UserRole = SidebarUserRole;
-
-interface SubItem {
-    label: string;
-    path: string;
-    badge?: string | number;
-    requiredPerm?: string;
-}
-
-interface NavSection {
-    group: string;
-    /** When set, renders a styled module divider above this section */
-    moduleSeparator?: string;
-    roles?: SidebarUserRole[]; // undefined = visible to all
-    /** Permission required for the entire section */
-    requiredPerm?: string;
-    items: {
-        icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
-        label: string;
-        path: string;
-        badge?: string | number;
-        roles?: SidebarUserRole[];
-        /** Permission required for this specific item */
-        requiredPerm?: string;
-        children?: SubItem[];
-    }[];
-}
-
-const NAV_CONFIG: NavSection[] = [
-    // ── Overview ──
-    {
-        group: 'Overview',
-        items: [
-            { icon: LayoutDashboard, label: 'Dashboard', path: '/app/dashboard' },
-        ],
-    },
-
-    // ══════════ SUPER ADMIN: PLATFORM MANAGEMENT ══════════
-    {
-        group: 'Platform Management',
-        moduleSeparator: 'Platform Management',
-        roles: ['super_admin'],
-        items: [
-            { icon: Building2, label: 'Companies', path: '/app/companies' },
-            {
-                icon: CreditCard, label: 'Billing', path: '/app/billing',
-                children: [
-                    { label: 'Overview', path: '/app/billing' },
-                    { label: 'Invoices', path: '/app/billing/invoices' },
-                    { label: 'Payments', path: '/app/billing/payments' },
-                ],
-            },
-            { icon: ShieldCheck, label: 'Audit Log', path: '/app/reports/audit' },
-            { icon: MessageSquare, label: 'Support', path: '/app/support' },
-        ],
-    },
-    {
-        group: 'System',
-        moduleSeparator: 'System',
-        roles: ['super_admin'],
-        items: [
-            { icon: Blocks, label: 'Module Catalogue', path: '/app/modules' },
-            { icon: Activity, label: 'Platform Monitor', path: '/app/monitor' },
-            { icon: UserCog, label: 'User Management', path: '/app/admin/users' },
-        ],
-    },
-
-    // ══════════ COMPANY ADMIN ══════════
-    {
-        group: 'Company',
-        moduleSeparator: 'Company Admin',
-        roles: ['company_admin'],
-        requiredPerm: 'company:read',
-        items: [
-            { icon: Building2, label: 'Company Profile', path: '/app/company/profile', requiredPerm: 'company:read' },
-            { icon: MapPin, label: 'Locations', path: '/app/company/locations', requiredPerm: 'company:read' },
-            { icon: Clock, label: 'Shifts & Time', path: '/app/company/shifts', requiredPerm: 'company:read' },
-            { icon: Users, label: 'Key Contacts', path: '/app/company/contacts', requiredPerm: 'company:read' },
-        ],
-    },
-    {
-        group: 'People & Access',
-        roles: ['company_admin'],
-        items: [
-            { icon: UserCog, label: 'User Management', path: '/app/company/users', requiredPerm: 'user:read' },
-            { icon: Shield, label: 'Roles & Permissions', path: '/app/company/roles', requiredPerm: 'role:read' },
-            { icon: ToggleLeft, label: 'Feature Toggles', path: '/app/company/feature-toggles', requiredPerm: 'role:read' },
-        ],
-    },
-    {
-        group: 'Configuration',
-        roles: ['company_admin'],
-        requiredPerm: 'company:read',
-        items: [
-            { icon: Blocks, label: 'Module Catalogue', path: '/app/modules', requiredPerm: 'company:read' },
-            { icon: Hash, label: 'Number Series', path: '/app/company/no-series', requiredPerm: 'company:read' },
-            { icon: Cpu, label: 'IOT Reasons', path: '/app/company/iot-reasons', requiredPerm: 'company:read' },
-            { icon: SlidersHorizontal, label: 'System Controls', path: '/app/company/controls', requiredPerm: 'company:configure' },
-            { icon: Settings, label: 'Settings', path: '/app/company/settings', requiredPerm: 'company:read' },
-        ],
-    },
-    {
-        group: 'Billing',
-        roles: ['company_admin'],
-        requiredPerm: 'company:read',
-        items: [
-            {
-                icon: CreditCard, label: 'Billing', path: '/app/company/billing', requiredPerm: 'company:read',
-                children: [
-                    { label: 'Overview', path: '/app/company/billing' },
-                    { label: 'Invoices', path: '/app/company/billing/invoices' },
-                    { label: 'Payments', path: '/app/company/billing/payments' },
-                ],
-            },
-        ],
-    },
-
-    // ══════════ HRMS ══════════
-    {
-        group: 'Org Structure',
-        moduleSeparator: 'HRMS',
-        roles: ['company_admin'],
-        requiredPerm: 'hr:read',
-        items: [
-            { icon: Building2, label: 'Departments', path: '/app/company/hr/departments', requiredPerm: 'hr:read' },
-            { icon: Briefcase, label: 'Designations', path: '/app/company/hr/designations', requiredPerm: 'hr:read' },
-            { icon: BarChart3, label: 'Grades & Bands', path: '/app/company/hr/grades', requiredPerm: 'hr:read' },
-            { icon: UserCheck, label: 'Employee Types', path: '/app/company/hr/employee-types', requiredPerm: 'hr:read' },
-            { icon: Wallet, label: 'Cost Centres', path: '/app/company/hr/cost-centres', requiredPerm: 'hr:read' },
-            { icon: Users, label: 'Employee Directory', path: '/app/company/hr/employees', requiredPerm: 'hr:read' },
-            { icon: Network, label: 'Org Chart', path: '/app/company/hr/org-chart', requiredPerm: 'hr:read' },
-        ],
-    },
-    {
-        group: 'Attendance',
-        roles: ['company_admin'],
-        requiredPerm: 'hr:read',
-        items: [
-            { icon: CalendarCheck, label: 'Attendance Dashboard', path: '/app/company/hr/attendance', requiredPerm: 'hr:read' },
-            { icon: Calendar, label: 'Holiday Calendar', path: '/app/company/hr/holidays', requiredPerm: 'hr:read' },
-            { icon: CalendarDays, label: 'Rosters', path: '/app/company/hr/rosters', requiredPerm: 'hr:read' },
-            { icon: ClipboardList, label: 'Attendance Rules', path: '/app/company/hr/attendance-rules', requiredPerm: 'hr:read' },
-            { icon: Timer, label: 'Overtime Rules', path: '/app/company/hr/overtime-rules', requiredPerm: 'hr:read' },
-            { icon: Fingerprint, label: 'Biometric Devices', path: '/app/company/hr/biometric-devices', requiredPerm: 'hr:configure' },
-            { icon: RefreshCw, label: 'Shift Rotations', path: '/app/company/hr/shift-rotations', requiredPerm: 'hr:configure' },
-        ],
-    },
-    {
-        group: 'Leave Management',
-        roles: ['company_admin'],
-        requiredPerm: 'hr:read',
-        items: [
-            { icon: FileText, label: 'Leave Types', path: '/app/company/hr/leave-types', requiredPerm: 'hr:read' },
-            { icon: BookOpen, label: 'Leave Policies', path: '/app/company/hr/leave-policies', requiredPerm: 'hr:read' },
-            { icon: Send, label: 'Leave Requests', path: '/app/company/hr/leave-requests', requiredPerm: 'hr:read' },
-            { icon: Scale, label: 'Leave Balances', path: '/app/company/hr/leave-balances', requiredPerm: 'hr:read' },
-        ],
-    },
-    {
-        group: 'Payroll & Compliance',
-        roles: ['company_admin'],
-        requiredPerm: 'hr:read',
-        items: [
-            { icon: DollarSign, label: 'Salary Components', path: '/app/company/hr/salary-components', requiredPerm: 'hr:read' },
-            { icon: FileSpreadsheet, label: 'Salary Structures', path: '/app/company/hr/salary-structures', requiredPerm: 'hr:read' },
-            { icon: CreditCard, label: 'Employee Salary', path: '/app/company/hr/employee-salary', requiredPerm: 'hr:read' },
-            { icon: Shield, label: 'Statutory Config', path: '/app/company/hr/statutory-config', requiredPerm: 'hr:configure' },
-            { icon: Calculator, label: 'Tax & TDS', path: '/app/company/hr/tax-config', requiredPerm: 'hr:configure' },
-            { icon: Landmark, label: 'Bank Config', path: '/app/company/hr/bank-config', requiredPerm: 'hr:configure' },
-            { icon: HandCoins, label: 'Loan Policies', path: '/app/company/hr/loan-policies', requiredPerm: 'hr:read' },
-            { icon: Receipt, label: 'Loans', path: '/app/company/hr/loans', requiredPerm: 'hr:read' },
-        ],
-    },
-    {
-        group: 'Payroll Operations',
-        roles: ['company_admin'],
-        requiredPerm: 'hr:read',
-        items: [
-            { icon: Play, label: 'Payroll Runs', path: '/app/company/hr/payroll-runs', requiredPerm: 'hr:read' },
-            { icon: FileText, label: 'Payslips', path: '/app/company/hr/payslips', requiredPerm: 'hr:read' },
-            { icon: PauseCircle, label: 'Salary Holds', path: '/app/company/hr/salary-holds', requiredPerm: 'hr:read' },
-            { icon: TrendingUp, label: 'Salary Revisions', path: '/app/company/hr/salary-revisions', requiredPerm: 'hr:read' },
-            { icon: Stamp, label: 'Statutory Filings', path: '/app/company/hr/statutory-filings', requiredPerm: 'hr:read' },
-            { icon: BarChart3, label: 'Payroll Reports', path: '/app/company/hr/payroll-reports', requiredPerm: 'hr:read' },
-            { icon: Gift, label: 'Bonus Batches', path: '/app/company/hr/bonus-batches', requiredPerm: 'hr:read' },
-            { icon: FileText, label: 'Form 16 & 24Q', path: '/app/company/hr/form-16', requiredPerm: 'hr:read' },
-            { icon: Plane, label: 'Travel Advances', path: '/app/company/hr/travel-advances', requiredPerm: 'hr:read' },
-        ],
-    },
-    {
-        group: 'Self-Service',
-        roles: ['company_admin'],
-        requiredPerm: 'hr:read',
-        items: [
-            { icon: UserCircle, label: 'My Profile', path: '/app/company/hr/my-profile', requiredPerm: 'hr:read' },
-            { icon: Receipt, label: 'My Payslips', path: '/app/company/hr/my-payslips', requiredPerm: 'hr:read' },
-            { icon: CalendarOff, label: 'My Leave', path: '/app/company/hr/my-leave', requiredPerm: 'hr:read' },
-            { icon: Clock, label: 'My Attendance', path: '/app/company/hr/my-attendance', requiredPerm: 'hr:read' },
-            { icon: LogIn, label: 'Shift Check-In', path: '/app/company/hr/shift-check-in', requiredPerm: 'hr:read' },
-            { icon: Users, label: 'Team View (MSS)', path: '/app/company/hr/team-view', requiredPerm: 'hr:read' },
-        ],
-    },
-    {
-        group: 'ESS & Workflows',
-        roles: ['company_admin'],
-        requiredPerm: 'hr:read',
-        items: [
-            { icon: Settings2, label: 'ESS Config', path: '/app/company/hr/ess-config', requiredPerm: 'hr:configure' },
-            { icon: GitBranch, label: 'Approval Workflows', path: '/app/company/hr/approval-workflows', requiredPerm: 'hr:configure' },
-            { icon: Send, label: 'Approval Requests', path: '/app/company/hr/approval-requests', requiredPerm: 'hr:read' },
-            { icon: Mail, label: 'Notification Templates', path: '/app/company/hr/notification-templates', requiredPerm: 'hr:configure' },
-            { icon: BellRing, label: 'Notification Rules', path: '/app/company/hr/notification-rules', requiredPerm: 'hr:configure' },
-            { icon: FileCheck, label: 'IT Declarations', path: '/app/company/hr/it-declarations', requiredPerm: 'hr:read' },
-            { icon: PenTool, label: 'E-Sign Tracking', path: '/app/company/hr/esign', requiredPerm: 'hr:read' },
-        ],
-    },
-    {
-        group: 'Transfers & Promotions',
-        roles: ['company_admin'],
-        requiredPerm: 'hr:read',
-        items: [
-            { icon: ArrowLeftRight, label: 'Employee Transfers', path: '/app/company/hr/transfers', requiredPerm: 'hr:read' },
-            { icon: TrendingUp, label: 'Employee Promotions', path: '/app/company/hr/promotions', requiredPerm: 'hr:read' },
-            { icon: UserCheck, label: 'Manager Delegation', path: '/app/company/hr/delegates', requiredPerm: 'hr:read' },
-        ],
-    },
-    {
-        group: 'Performance',
-        roles: ['company_admin'],
-        requiredPerm: 'hr:read',
-        items: [
-            { icon: Target, label: 'Appraisal Cycles', path: '/app/company/hr/appraisal-cycles', requiredPerm: 'hr:read' },
-            { icon: Flag, label: 'Goals & OKRs', path: '/app/company/hr/goals', requiredPerm: 'hr:read' },
-            { icon: MessageSquare, label: '360 Feedback', path: '/app/company/hr/feedback-360', requiredPerm: 'hr:read' },
-            { icon: Star, label: 'Ratings & Calibration', path: '/app/company/hr/ratings', requiredPerm: 'hr:read' },
-            { icon: Brain, label: 'Skills & Mapping', path: '/app/company/hr/skills', requiredPerm: 'hr:read' },
-            { icon: GitFork, label: 'Succession Planning', path: '/app/company/hr/succession', requiredPerm: 'hr:read' },
-            { icon: Activity, label: 'Performance Dashboard', path: '/app/company/hr/performance-dashboard', requiredPerm: 'hr:read' },
-        ],
-    },
-    {
-        group: 'Recruitment & Training',
-        roles: ['company_admin'],
-        requiredPerm: 'hr:read',
-        items: [
-            { icon: Briefcase, label: 'Job Requisitions', path: '/app/company/hr/requisitions', requiredPerm: 'hr:read' },
-            { icon: UserPlus, label: 'Candidates', path: '/app/company/hr/candidates', requiredPerm: 'hr:read' },
-            { icon: GraduationCap, label: 'Training Catalogue', path: '/app/company/hr/training', requiredPerm: 'hr:read' },
-            { icon: Award, label: 'Training Nominations', path: '/app/company/hr/training-nominations', requiredPerm: 'hr:read' },
-            { icon: ClipboardList, label: 'Onboarding', path: '/app/company/hr/onboarding', requiredPerm: 'hr:read' },
-            { icon: UserCheck, label: 'Probation Reviews', path: '/app/company/hr/probation-reviews', requiredPerm: 'hr:read' },
-        ],
-    },
-    {
-        group: 'Exit & Separation',
-        roles: ['company_admin'],
-        requiredPerm: 'hr:read',
-        items: [
-            { icon: LogOut, label: 'Exit Requests', path: '/app/company/hr/exit-requests', requiredPerm: 'hr:read' },
-            { icon: ClipboardList, label: 'Clearance Dashboard', path: '/app/company/hr/clearance-dashboard', requiredPerm: 'hr:read' },
-            { icon: Calculator, label: 'F&F Settlement', path: '/app/company/hr/fnf-settlement', requiredPerm: 'hr:read' },
-        ],
-    },
-    {
-        group: 'Advanced HR',
-        roles: ['company_admin'],
-        requiredPerm: 'hr:read',
-        items: [
-            { icon: Package, label: 'Asset Management', path: '/app/company/hr/assets', requiredPerm: 'hr:read' },
-            { icon: Receipt, label: 'Expense Claims', path: '/app/company/hr/expenses', requiredPerm: 'hr:read' },
-            { icon: FileSignature, label: 'HR Letters', path: '/app/company/hr/hr-letters', requiredPerm: 'hr:read' },
-            { icon: AlertTriangle, label: 'Grievances', path: '/app/company/hr/grievances', requiredPerm: 'hr:read' },
-            { icon: Gavel, label: 'Disciplinary Actions', path: '/app/company/hr/disciplinary', requiredPerm: 'hr:read' },
-        ],
-    },
-
-    {
-        group: 'Advanced Features',
-        roles: ['company_admin'],
-        requiredPerm: 'hr:read',
-        items: [
-            { icon: MessageCircle, label: 'HR Chatbot', path: '/app/company/hr/chatbot', requiredPerm: 'hr:read' },
-            { icon: Shield, label: 'Data Retention', path: '/app/company/hr/data-retention', requiredPerm: 'hr:configure' },
-            { icon: Factory, label: 'Production Incentives', path: '/app/company/hr/production-incentives', requiredPerm: 'hr:read' },
-        ],
-    },
-
-    // ══════════ OPERATIONS ══════════
-    {
-        group: 'Operations',
-        moduleSeparator: 'Operations',
-        roles: ['company_admin'],
-        items: [
-            { icon: Package, label: 'Inventory', path: '/app/inventory', requiredPerm: 'inventory:read' },
-            {
-                icon: Wrench, label: 'Maintenance', path: '/app/maintenance', requiredPerm: 'maintenance:read',
-                children: [
-                    { label: 'Work Orders', path: '/app/maintenance/orders' },
-                    { label: 'Machine Registry', path: '/app/maintenance/machines' },
-                ],
-            },
-            { icon: ClipboardList, label: 'Production', path: '/app/production', requiredPerm: 'production:read' },
-        ],
-    },
-
-    // ══════════ REPORTS ══════════
-    {
-        group: 'Reports',
-        roles: ['company_admin'],
-        requiredPerm: 'audit:read',
-        items: [
-            { icon: FileText, label: 'Audit Logs', path: '/app/reports/audit', requiredPerm: 'audit:read' },
-        ],
-    },
-
-    // ══════════ EMPLOYEE SELF-SERVICE (company users only — not super admin) ══════════
-    {
-        group: 'Self-Service',
-        moduleSeparator: 'Self-Service',
-        roles: ['company_admin', 'viewer'],
-        items: [
-            { icon: UserCircle, label: 'My Profile', path: '/app/company/hr/my-profile', requiredPerm: 'ess:view-profile' },
-            { icon: FileText, label: 'My Payslips', path: '/app/company/hr/my-payslips', requiredPerm: 'ess:view-payslips' },
-            { icon: CalendarOff, label: 'My Leave', path: '/app/company/hr/my-leave', requiredPerm: 'ess:view-leave' },
-            { icon: Clock, label: 'My Attendance', path: '/app/company/hr/my-attendance', requiredPerm: 'ess:view-attendance' },
-            { icon: Fingerprint, label: 'Shift Check-In', path: '/app/company/hr/shift-check-in', requiredPerm: 'ess:view-attendance' },
-            { icon: CalendarDays, label: 'Holiday Calendar', path: '/app/company/hr/holidays', requiredPerm: 'ess:view-holidays' },
-            { icon: FileCheck, label: 'IT Declaration', path: '/app/company/hr/it-declarations', requiredPerm: 'ess:it-declaration' },
-            { icon: Users, label: 'Employee Directory', path: '/app/company/hr/employees', requiredPerm: 'ess:view-directory' },
-            { icon: MessageCircle, label: 'HR Chatbot', path: '/app/company/hr/chatbot', requiredPerm: 'ess:view-profile' },
-        ],
-    },
-    // ── Manager Tools (company users only — not super admin) ──
-    {
-        group: 'Team Management',
-        roles: ['company_admin', 'viewer'],
-        items: [
-            { icon: Users, label: 'Team View', path: '/app/company/hr/team-view', requiredPerm: 'hr:read' },
-            { icon: CheckSquare, label: 'Approvals', path: '/app/company/hr/approval-requests', requiredPerm: 'hr:approve' },
-        ],
-    },
-    // ── Performance (company users only — not super admin) ──
-    {
-        group: 'Performance',
-        moduleSeparator: 'Performance',
-        roles: ['company_admin', 'viewer'],
-        items: [
-            { icon: Target, label: 'My Goals', path: '/app/company/hr/goals', requiredPerm: 'ess:view-goals' },
-            { icon: Star, label: 'My Appraisal', path: '/app/company/hr/ratings', requiredPerm: 'ess:submit-appraisal' },
-            { icon: MessageSquare, label: '360 Feedback', path: '/app/company/hr/feedback-360', requiredPerm: 'ess:submit-feedback' },
-        ],
-    },
-];
-
-const BOTTOM_NAV = [
-    { icon: Bell, label: 'Notifications', path: '/app/notifications', badge: 3 },
-    { icon: Settings, label: 'Settings', path: '/app/settings' },
-    { icon: HelpCircle, label: 'Help & Support', path: '/app/help' },
-];
-
-// ============================================================
 // Sidebar Component
 // ============================================================
 
 interface SidebarProps {
     collapsed: boolean;
     onCollapse: (v: boolean) => void;
-    role?: SidebarUserRole;
-    permissions?: string[];
     manifestSections?: ManifestSection[];
 }
 
-export function Sidebar({ collapsed, onCollapse, role = 'super_admin', permissions = [], manifestSections }: SidebarProps) {
+export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProps) {
     const location = useLocation();
     const navigate = useNavigate();
     const signOut = useAuthStore((s) => s.signOut);
@@ -469,29 +99,31 @@ export function Sidebar({ collapsed, onCollapse, role = 'super_admin', permissio
 
     // Track which groups are expanded
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
-        // Auto-open the section that contains the current path
         const initial: Record<string, boolean> = {};
-        NAV_CONFIG.forEach((section) => {
-            section.items.forEach((item) => {
-                if (item.children?.some((c) => location.pathname.startsWith(c.path)) ||
-                    location.pathname.startsWith(item.path)) {
-                    initial[item.path] = true;
-                }
+        if (manifestSections) {
+            manifestSections.forEach((section) => {
+                section.items.forEach((item) => {
+                    if (item.children?.some((c) => location.pathname.startsWith(c.path)) ||
+                        location.pathname.startsWith(item.path)) {
+                        initial[item.path] = true;
+                    }
+                });
             });
-        });
+        }
         return initial;
     });
 
     // Auto-expand active section when route changes
     useEffect(() => {
-        NAV_CONFIG.forEach((section) => {
+        if (!manifestSections) return;
+        manifestSections.forEach((section) => {
             section.items.forEach((item) => {
                 if (item.children?.some((c) => location.pathname.startsWith(c.path))) {
                     setOpenGroups((prev) => ({ ...prev, [item.path]: true }));
                 }
             });
         });
-    }, [location.pathname]);
+    }, [location.pathname, manifestSections]);
 
     const handleLogout = () => {
         signOut();
@@ -502,42 +134,24 @@ export function Sidebar({ collapsed, onCollapse, role = 'super_admin', permissio
         setOpenGroups((prev) => ({ ...prev, [path]: !prev[path] }));
     };
 
-    const isItemActive = (item: NavSection['items'][number]) => {
+    const isItemActive = (item: { path: string; children?: { path: string }[] }) => {
         if (item.children) {
             return item.children.some((c) => location.pathname.startsWith(c.path));
         }
         return location.pathname === item.path || location.pathname.startsWith(item.path + '/');
     };
 
-    const hasPerm = (perm: string) => checkPermission(permissions, perm);
-
-    // Convert manifest sections to the internal format, or fall back to NAV_CONFIG filtering
-    const visibleSections = manifestSections
-        ? manifestSections.map((s) => ({
-            group: s.group,
-            moduleSeparator: s.moduleSeparator,
-            items: s.items.map((i) => ({
-                icon: resolveIcon(i.icon),
-                label: i.label,
-                path: i.path,
-                children: i.children,
-            })),
-        }))
-        : NAV_CONFIG.filter((s) => {
-            if (s.roles && !s.roles.includes(role)) return false;
-            if (s.requiredPerm && !hasPerm(s.requiredPerm)) return false;
-            return true;
-        }).map((s) => ({
-            ...s,
-            items: s.items.filter((i) => {
-                if (i.roles && !i.roles.includes(role)) return false;
-                if (i.requiredPerm && !hasPerm(i.requiredPerm)) return false;
-                return true;
-            }),
-        })).filter((s) => s.items.length > 0);
-
-    // Collapsible bottom strip (Notifications / Settings / Help) when sidebar is expanded — default collapsed
-    const [bottomToolsOpen, setBottomToolsOpen] = useState(false);
+    // Sections come pre-filtered from the navigation manifest API
+    const visibleSections = (manifestSections ?? []).map((s) => ({
+        group: s.group,
+        moduleSeparator: s.moduleSeparator,
+        items: s.items.map((i) => ({
+            icon: resolveIcon(i.icon),
+            label: i.label,
+            path: i.path,
+            children: i.children,
+        })),
+    }));
 
     // Global Tooltip State for Collapsed Mode
     const [hoveredLabel, setHoveredLabel] = useState<string | null>(null);
@@ -747,101 +361,14 @@ export function Sidebar({ collapsed, onCollapse, role = 'super_admin', permissio
                 ))}
             </nav>
 
-            {/* ---- Bottom Items (collapsible when sidebar expanded) ---- */}
+            {/* ---- Bottom: User profile card & sign-out ---- */}
             <div className={cn(
                 'border-t border-neutral-100 dark:border-neutral-800 flex-shrink-0',
-                collapsed ? 'py-3 px-2' : cn('px-3', bottomToolsOpen ? 'py-1.5' : 'py-0.5')
+                collapsed ? 'py-3 px-2' : 'px-3 py-2'
             )}>
-                {!collapsed && (
-                    <button
-                        type="button"
-                        onClick={() => setBottomToolsOpen((v) => !v)}
-                        aria-expanded={bottomToolsOpen}
-                        className={cn(
-                            'w-full flex text-left transition-colors',
-                            bottomToolsOpen
-                                ? 'items-start gap-2 rounded-xl px-2 py-1.5 mb-1 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800/80'
-                                : 'items-center gap-1.5 rounded-md px-1 py-0.5 mb-0 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50/80 dark:hover:bg-neutral-800/60',
-                            'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-neutral-900'
-                        )}
-                    >
-                        {bottomToolsOpen ? (
-                            <>
-                                <span className="flex-1 min-w-0 pt-0.5 text-[10px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
-                                    Quick access
-                                </span>
-                                <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300" aria-hidden>
-                                    <ChevronDown size={14} strokeWidth={2.25} />
-                                </span>
-                                <span className="sr-only">Collapse notifications, settings, and help</span>
-                            </>
-                        ) : (
-                            <>
-                                <p className="flex-1 min-w-0 text-[10px] leading-tight text-neutral-500 dark:text-neutral-400 line-clamp-2">
-                                    Quick links — click ↑ to open.
-                                </p>
-                                <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md bg-primary-50/80 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400" aria-hidden>
-                                    <ChevronUp size={12} strokeWidth={2.25} />
-                                </span>
-                                <span className="sr-only">Expand notifications, settings, and help</span>
-                            </>
-                        )}
-                    </button>
-                )}
-
-                {(collapsed || bottomToolsOpen) && (
-                    <div className={cn(!collapsed && 'pb-1')}>
-                        {BOTTOM_NAV.map((item) => {
-                            const active = location.pathname === item.path;
-                            return (
-                                <NavLink
-                                    key={item.path}
-                                    to={item.path}
-                                    onMouseEnter={(e) => handleMouseEnter(e, item.label)}
-                                    onMouseLeave={handleMouseLeave}
-                                    title={undefined}
-                                    className={cn(
-                                        'w-full flex items-center gap-3 rounded-xl transition-all duration-150 group relative mb-0.5',
-                                        collapsed ? 'px-2.5 py-2.5 justify-center' : 'px-3 py-2.5',
-                                        active
-                                            ? 'bg-primary-50 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
-                                            : 'text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-800 dark:hover:text-neutral-200'
-                                    )}
-                                >
-                                    <div className="relative flex-shrink-0">
-                                        <item.icon
-                                            size={17}
-                                            strokeWidth={active ? 2.5 : 2}
-                                            className={active ? 'text-primary-600 dark:text-primary-400' : 'text-neutral-400 dark:text-neutral-500 group-hover:text-neutral-700 dark:group-hover:text-neutral-300'}
-                                        />
-                                        {item.badge !== undefined && (
-                                            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-danger-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
-                                                {item.badge}
-                                            </span>
-                                        )}
-                                    </div>
-                                    {!collapsed && (
-                                        <>
-                                            <span className={cn('flex-1 text-sm font-medium', active && 'font-semibold')}>
-                                                {item.label}
-                                            </span>
-                                            {item.badge !== undefined && (
-                                                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-danger-100 text-danger-700">
-                                                    {item.badge}
-                                                </span>
-                                            )}
-                                        </>
-                                    )}
-                                </NavLink>
-                            );
-                        })}
-                    </div>
-                )}
-
                 {/* User profile card */}
                 <div className={cn(
-                    'border-t border-neutral-100 dark:border-neutral-800',
-                    collapsed ? 'mt-3 pt-3 flex justify-center' : cn(!bottomToolsOpen ? 'mt-1.5 pt-2' : 'mt-2.5 pt-2.5')
+                    collapsed && 'flex justify-center'
                 )}>
                     {collapsed ? (
                         <button

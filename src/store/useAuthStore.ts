@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { AuthTokens, AuthUser } from '@/lib/api/auth';
 import { checkPermission } from '@/lib/api/auth';
+import { queryClient } from '@/lib/api/provider';
 
 export type UserRole = 'super-admin' | 'company-admin' | 'user';
 
@@ -70,6 +71,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         localStorage.removeItem('auth_tokens');
         localStorage.removeItem('auth_user');
         localStorage.removeItem('user_role');
+        // Clear all React Query caches so new user doesn't see stale data
+        queryClient.clear();
         set({ status: 'signOut', token: null, user: null, userRole: null, permissions: [], featureToggles: [] });
     },
 
