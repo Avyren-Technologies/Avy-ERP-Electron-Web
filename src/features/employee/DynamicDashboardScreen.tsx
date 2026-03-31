@@ -29,6 +29,9 @@ import {
     TrendingUp,
     TrendingDown,
     Coffee,
+    Bell,
+    BarChart3,
+    CalendarDays,
 } from "lucide-react";
 import {
     BarChart,
@@ -39,6 +42,7 @@ import {
     ResponsiveContainer,
     PieChart,
     Pie,
+    Cell, // eslint-disable-line deprecation/deprecation
     AreaChart,
     Area,
     CartesianGrid,
@@ -147,6 +151,53 @@ function normalizeDashboardData(data: DashboardData): DashboardData {
     };
 }
 
+/** Returns how many days from now until the given date string */
+function daysUntil(dateStr: string): number {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const target = new Date(dateStr);
+    target.setHours(0, 0, 0, 0);
+    return Math.round((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+/** Check if a holiday falls within the current week */
+function isThisWeek(dateStr: string): boolean {
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+    startOfWeek.setHours(0, 0, 0, 0);
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+    const target = new Date(dateStr);
+    return target >= startOfWeek && target <= endOfWeek;
+}
+
+/* ================================================================
+   Empty State Component
+   ================================================================ */
+
+function EmptyState({
+    icon: Icon,
+    title,
+    subtitle,
+}: {
+    icon: React.ComponentType<{ className?: string }>;
+    title: string;
+    subtitle: string;
+}) {
+    return (
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="w-12 h-12 rounded-xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mb-3">
+                <Icon className="w-6 h-6 text-neutral-400 dark:text-neutral-500" />
+            </div>
+            <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">{title}</p>
+            <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1 max-w-[240px]">{subtitle}</p>
+        </div>
+    );
+}
+
 /* ================================================================
    Shared Card Shell — Premium Design
    ================================================================ */
@@ -209,8 +260,40 @@ function WidgetSkeleton({ className, height = 200 }: { className?: string; heigh
 }
 
 /* ================================================================
-   ROW 1: Welcome Header + Announcements
+   Marquee Ticker Keyframes (injected once)
    ================================================================ */
+
+const marqueeStyleId = "marquee-ticker-style";
+
+function ensureMarqueeStyles() {
+    if (typeof document === "undefined") return;
+    if (document.getElementById(marqueeStyleId)) return;
+    const style = document.createElement("style");
+    style.id = marqueeStyleId;
+    style.textContent = `
+        @keyframes marquee-scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        .marquee-track {
+            animation: marquee-scroll var(--marquee-duration, 30s) linear infinite;
+        }
+        .marquee-track:hover {
+            animation-play-state: paused;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+/* ================================================================
+   ROW 1: Welcome Header + Marquee Announcements
+   ================================================================ */
+
+function announcementPriorityClasses(p: DashboardAnnouncement["priority"]): string {
+    if (p === "URGENT") return "bg-danger-50 dark:bg-danger-900/20 text-danger-700 dark:text-danger-300";
+    if (p === "HIGH") return "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300";
+    return "bg-primary-50 dark:bg-primary-900/10 text-primary-700 dark:text-primary-300";
+}
 
 function WelcomeHeader({
     firstName,
@@ -219,124 +302,90 @@ function WelcomeHeader({
     firstName: string;
     announcements: DashboardAnnouncement[];
 }) {
-    const [currentSlide, setCurrentSlide] = useState(0);
+    const navigate = useNavigate();
 
     useEffect(() => {
-        if (announcements.length <= 1) return;
-        const id = setInterval(() => {
-            setCurrentSlide((prev) => (prev + 1) % announcements.length);
-        }, 5000);
-        return () => clearInterval(id);
-    }, [announcements.length]);
+        ensureMarqueeStyles();
+    }, []);
 
-    const priorityColor = (p: DashboardAnnouncement["priority"]) => {
-        if (p === "URGENT") return "border-danger-500/40 bg-danger-50/50 dark:bg-danger-900/10";
-        if (p === "HIGH") return "border-warning-500/40 bg-warning-50/50 dark:bg-warning-900/10";
-        return "border-primary-200/60 dark:border-neutral-700/60 bg-white dark:bg-neutral-900";
-    };
+    const tickerContent = useMemo(() => {
+        if (announcements.length === 0) return null;
+        return announcements.map((a) => (
+            <span
+                key={a.id}
+                className={cn(
+                    "inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-medium mr-6 whitespace-nowrap transition-opacity",
+                    announcementPriorityClasses(a.priority)
+                )}
+            >
+                {a.priority === "URGENT" && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-danger-500 animate-pulse flex-shrink-0" />
+                )}
+                {a.priority === "HIGH" && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0" />
+                )}
+                <span className="font-semibold">{a.title}</span>
+                <span className="opacity-60">—</span>
+                <span className="opacity-80 max-w-xs truncate">{a.body}</span>
+            </span>
+        ));
+    }, [announcements]);
+
+    // Estimate duration based on content count
+    const marqueeDuration = Math.max(20, announcements.length * 10);
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
-            {/* Left: Welcome */}
-            <div className="lg:col-span-2 space-y-1">
-                <h1 className="text-2xl sm:text-3xl font-bold text-primary-950 dark:text-white tracking-tight">
-                    {getGreeting()}, {firstName}
-                </h1>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">{formatTodayDate()}</p>
+        <div className="space-y-3">
+            {/* Welcome Row */}
+            <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-primary-950 dark:text-white tracking-tight truncate">
+                        {getGreeting()}, {firstName}
+                    </h1>
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400">{formatTodayDate()}</p>
+                </div>
+                <button
+                    onClick={() => navigate("/app/notifications")}
+                    className="relative ml-4 w-10 h-10 rounded-xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors flex-shrink-0"
+                    title="Notifications"
+                >
+                    <Bell className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
+                </button>
             </div>
 
-            {/* Right: Announcements */}
-            <div className="lg:col-span-3">
-                {announcements.length === 0 ? (
-                    <div className="rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 shadow-sm p-5">
-                        <div className="flex items-center gap-2 mb-2">
-                            <Megaphone className="w-4 h-4 text-accent-500" />
-                            <span className="text-xs font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
-                                Announcements
-                            </span>
-                        </div>
-                        <p className="text-sm text-neutral-400 dark:text-neutral-500">No recent announcements.</p>
-                    </div>
-                ) : (
-                    <div
-                        className={cn(
-                            "rounded-2xl border shadow-sm p-5 transition-colors duration-500",
-                            priorityColor(announcements[currentSlide]?.priority ?? "LOW")
-                        )}
-                    >
-                        <div className="flex items-center gap-2 mb-3">
+            {/* Marquee Ticker */}
+            {announcements.length > 0 && (
+                <div className="relative overflow-hidden rounded-xl bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 shadow-sm">
+                    <div className="flex items-center">
+                        {/* Left: Announcement icon */}
+                        <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2 border-r border-neutral-100 dark:border-neutral-800">
                             <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-accent-500 to-primary-500 flex items-center justify-center">
                                 <Megaphone className="w-3 h-3 text-white" />
                             </div>
-                            <span className="text-xs font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
-                                Announcements
-                            </span>
-                            {announcements[currentSlide]?.priority === "URGENT" && (
-                                <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-danger-500 text-white animate-pulse">
-                                    Urgent
-                                </span>
-                            )}
                         </div>
 
-                        <div className="relative overflow-hidden">
+                        {/* Scrolling ticker area */}
+                        <div className="flex-1 overflow-hidden py-2">
                             <div
-                                className="transition-transform duration-500 ease-in-out flex"
-                                style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+                                className="marquee-track flex items-center"
+                                style={{ "--marquee-duration": `${marqueeDuration}s` } as React.CSSProperties}
                             >
-                                {announcements.map((a) => (
-                                    <div key={a.id} className="min-w-full flex-shrink-0 pr-4">
-                                        <p className="text-sm font-semibold text-primary-950 dark:text-white truncate">
-                                            {a.title}
-                                        </p>
-                                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-2">
-                                            {a.body}
-                                        </p>
-                                    </div>
-                                ))}
+                                {/* Duplicate content for seamless loop */}
+                                {tickerContent}
+                                {tickerContent}
                             </div>
                         </div>
 
-                        {announcements.length > 1 && (
-                            <div className="flex items-center justify-between mt-3">
-                                <div className="flex gap-1.5">
-                                    {announcements.map((_, i) => (
-                                        <button
-                                            key={i}
-                                            onClick={() => setCurrentSlide(i)}
-                                            className={cn(
-                                                "w-2 h-2 rounded-full transition-all duration-300",
-                                                i === currentSlide
-                                                    ? "bg-primary-500 w-5"
-                                                    : "bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600"
-                                            )}
-                                        />
-                                    ))}
-                                </div>
-                                <div className="flex gap-1">
-                                    <button
-                                        onClick={() =>
-                                            setCurrentSlide(
-                                                (p) => (p - 1 + announcements.length) % announcements.length
-                                            )
-                                        }
-                                        className="w-6 h-6 rounded-full flex items-center justify-center text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-                                    >
-                                        <ChevronLeft className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                        onClick={() =>
-                                            setCurrentSlide((p) => (p + 1) % announcements.length)
-                                        }
-                                        className="w-6 h-6 rounded-full flex items-center justify-center text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-                                    >
-                                        <ChevronRight className="w-3.5 h-3.5" />
-                                    </button>
-                                </div>
-                            </div>
-                        )}
+                        {/* Right: View All link */}
+                        <button
+                            onClick={() => navigate("/app/announcements")}
+                            className="flex-shrink-0 px-3 py-2 border-l border-neutral-100 dark:border-neutral-800 text-xs font-semibold text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors whitespace-nowrap"
+                        >
+                            View All &rarr;
+                        </button>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -625,7 +674,7 @@ function ShiftCheckInHero({ shift }: { shift: DashboardShiftInfo | null }) {
 }
 
 /* ================================================================
-   ROW 3: Shift Calendar — 14-Day Strip
+   ROW 3: Shift Calendar — Proper Month Calendar
    ================================================================ */
 
 function shiftTypeColor(shiftType: string | null): string {
@@ -637,123 +686,281 @@ function shiftTypeColor(shiftType: string | null): string {
     return "bg-primary-500";
 }
 
-function ShiftCalendarStrip({ calendar }: { calendar: DashboardShiftCalendarDay[] | null }) {
-    const scrollRef = useRef<HTMLDivElement>(null);
+function shiftTypeDotColor(shiftType: string | null): string {
+    if (!shiftType) return "#94A3B8";
+    const t = shiftType.toUpperCase();
+    if (t === "DAY" || t === "GENERAL" || t === "MORNING") return "#3B82F6";
+    if (t === "NIGHT" || t === "EVENING") return "#4338CA";
+    if (t === "FLEXIBLE" || t === "ROTATIONAL") return "#8B5CF6";
+    return "#6366F1";
+}
 
-    // Auto-scroll to "today" on mount
-    useEffect(() => {
-        if (!scrollRef.current || !calendar) return;
-        const todayIdx = calendar.findIndex((d) => d.isToday);
-        if (todayIdx < 0) return;
-        const container = scrollRef.current;
-        const cardWidth = 96 + 12; // w-24 (96px) + gap-3 (12px)
-        container.scrollLeft = Math.max(0, todayIdx * cardWidth - container.clientWidth / 2 + cardWidth / 2);
+const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function ShiftCalendarMonth({ calendar }: { calendar: DashboardShiftCalendarDay[] | null }) {
+    const today = new Date();
+    const [viewMonth, setViewMonth] = useState(today.getMonth());
+    const [viewYear, setViewYear] = useState(today.getFullYear());
+    const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+    // Build a map from the API data
+    const calendarMap = useMemo(() => {
+        const map = new Map<string, DashboardShiftCalendarDay>();
+        if (calendar) {
+            for (const day of calendar) {
+                map.set(day.date, day);
+            }
+        }
+        return map;
     }, [calendar]);
 
-    if (!calendar || calendar.length === 0) {
-        return (
-            <PremiumCard gradientAccent gradientFrom="from-primary-500" gradientTo="to-info-500">
-                <CardHeader title="Shift Calendar" subtitle="14-day view" />
-                <p className="text-sm text-neutral-400 dark:text-neutral-500 py-4">
-                    No shift schedule available.
-                </p>
-            </PremiumCard>
-        );
-    }
+    // Build the month grid
+    const monthGrid = useMemo(() => {
+        const firstDay = new Date(viewYear, viewMonth, 1);
+        const lastDay = new Date(viewYear, viewMonth + 1, 0);
+        const daysInMonth = lastDay.getDate();
+
+        // Get the day of week of the 1st (0=Sun, convert to Mon-start)
+        let startDow = firstDay.getDay() - 1;
+        if (startDow < 0) startDow = 6;
+
+        const cells: Array<{
+            date: number;
+            dateStr: string;
+            inMonth: boolean;
+            data: DashboardShiftCalendarDay | null;
+        }> = [];
+
+        // Fill leading blanks
+        for (let i = 0; i < startDow; i++) {
+            const prevDate = new Date(viewYear, viewMonth, -(startDow - 1 - i));
+            cells.push({
+                date: prevDate.getDate(),
+                dateStr: prevDate.toISOString().split("T")[0],
+                inMonth: false,
+                data: null,
+            });
+        }
+
+        // Fill month days
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+            cells.push({
+                date: d,
+                dateStr,
+                inMonth: true,
+                data: calendarMap.get(dateStr) ?? null,
+            });
+        }
+
+        // Fill trailing blanks to complete the grid
+        const remaining = cells.length % 7 === 0 ? 0 : 7 - (cells.length % 7);
+        for (let i = 1; i <= remaining; i++) {
+            const nextDate = new Date(viewYear, viewMonth + 1, i);
+            cells.push({
+                date: nextDate.getDate(),
+                dateStr: nextDate.toISOString().split("T")[0],
+                inMonth: false,
+                data: null,
+            });
+        }
+
+        return cells;
+    }, [viewYear, viewMonth, calendarMap]);
+
+    const selectedDayData = selectedDate ? calendarMap.get(selectedDate) : null;
+
+    const monthName = new Date(viewYear, viewMonth).toLocaleDateString("en-IN", {
+        month: "long",
+        year: "numeric",
+    });
+
+    const goToPrevMonth = () => {
+        if (viewMonth === 0) {
+            setViewMonth(11);
+            setViewYear(viewYear - 1);
+        } else {
+            setViewMonth(viewMonth - 1);
+        }
+        setSelectedDate(null);
+    };
+
+    const goToNextMonth = () => {
+        if (viewMonth === 11) {
+            setViewMonth(0);
+            setViewYear(viewYear + 1);
+        } else {
+            setViewMonth(viewMonth + 1);
+        }
+        setSelectedDate(null);
+    };
+
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
     return (
         <PremiumCard gradientAccent gradientFrom="from-primary-500" gradientTo="to-info-500">
-            <CardHeader title="Shift Calendar" subtitle="14-day view" />
-            <div
-                ref={scrollRef}
-                className="flex gap-3 overflow-x-auto pb-2 scrollbar-none scroll-smooth"
-                style={{ scrollbarWidth: "none" }}
-            >
-                {calendar.map((day) => {
-                    const isToday = day.isToday;
-                    const isHoliday = day.isHoliday;
-                    const isWeekOff = day.isWeekOff;
-                    const dateNum = new Date(day.date).getDate();
+            <CardHeader title="Shift Calendar" subtitle={monthName} />
+
+            {/* Month navigation */}
+            <div className="flex items-center justify-between mb-4">
+                <button
+                    onClick={goToPrevMonth}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                >
+                    <ChevronLeft className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
+                </button>
+                <span className="text-sm font-bold text-primary-950 dark:text-white">{monthName}</span>
+                <button
+                    onClick={goToNextMonth}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                >
+                    <ChevronRight className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
+                </button>
+            </div>
+
+            {/* Weekday headers */}
+            <div className="grid grid-cols-7 gap-1 mb-1">
+                {WEEKDAY_LABELS.map((d) => (
+                    <div key={d} className="text-center text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 py-1">
+                        {d}
+                    </div>
+                ))}
+            </div>
+
+            {/* Calendar grid */}
+            <div className="grid grid-cols-7 gap-1">
+                {monthGrid.map((cell, idx) => {
+                    const isToday = cell.dateStr === todayStr;
+                    const isSelected = cell.dateStr === selectedDate;
+                    const isHoliday = cell.data?.isHoliday ?? false;
+                    const isWeekOff = cell.data?.isWeekOff ?? false;
+                    const hasShift = !!cell.data?.shiftName;
 
                     return (
-                        <div
-                            key={day.date}
+                        <button
+                            key={idx}
+                            onClick={() => {
+                                if (cell.inMonth) {
+                                    setSelectedDate(isSelected ? null : cell.dateStr);
+                                }
+                            }}
                             className={cn(
-                                "flex-shrink-0 w-24 rounded-xl border p-3 text-center transition-all duration-200",
-                                isToday &&
-                                    "ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-neutral-900 border-primary-300 dark:border-primary-600 bg-primary-50 dark:bg-primary-900/20",
-                                isHoliday &&
-                                    !isToday &&
-                                    "bg-gradient-to-b from-warning-50 to-warning-100/50 dark:from-warning-900/20 dark:to-warning-900/10 border-warning-200 dark:border-warning-800/50",
-                                isWeekOff &&
-                                    !isToday &&
-                                    !isHoliday &&
-                                    "bg-neutral-50 dark:bg-neutral-800/50 border-neutral-200 dark:border-neutral-700 bg-[repeating-linear-gradient(135deg,transparent,transparent_4px,rgba(0,0,0,0.03)_4px,rgba(0,0,0,0.03)_8px)]",
-                                !isToday &&
-                                    !isHoliday &&
-                                    !isWeekOff &&
-                                    "bg-white dark:bg-neutral-900 border-neutral-100 dark:border-neutral-800 hover:border-primary-200 dark:hover:border-primary-700"
+                                "relative flex flex-col items-center justify-center rounded-lg py-1.5 min-h-[40px] transition-all duration-200",
+                                !cell.inMonth && "opacity-30 cursor-default",
+                                cell.inMonth && "cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50",
+                                isToday && "ring-2 ring-primary-500 ring-offset-1 dark:ring-offset-neutral-900",
+                                isSelected && cell.inMonth && "bg-primary-50 dark:bg-primary-900/20",
+                                isHoliday && cell.inMonth && !isSelected && "bg-amber-50/60 dark:bg-amber-900/10",
+                                isWeekOff && cell.inMonth && !isHoliday && !isSelected && "bg-neutral-50 dark:bg-neutral-800/30"
                             )}
                         >
-                            <p
+                            <span
                                 className={cn(
-                                    "text-[10px] font-bold uppercase tracking-wider",
-                                    isToday
-                                        ? "text-primary-600 dark:text-primary-400"
-                                        : "text-neutral-400 dark:text-neutral-500"
+                                    "text-xs font-semibold leading-none",
+                                    !cell.inMonth && "text-neutral-300 dark:text-neutral-600",
+                                    cell.inMonth && "text-primary-950 dark:text-white",
+                                    isToday && "text-primary-600 dark:text-primary-400 font-bold"
                                 )}
                             >
-                                {day.dayName}
-                            </p>
-                            <p
-                                className={cn(
-                                    "text-xl font-bold mt-0.5",
-                                    isToday
-                                        ? "text-primary-700 dark:text-primary-300"
-                                        : "text-primary-950 dark:text-white"
-                                )}
-                            >
-                                {dateNum}
-                            </p>
-
-                            {isToday && (
-                                <span className="inline-block text-[8px] font-bold uppercase tracking-widest text-primary-500 mt-0.5">
-                                    Today
-                                </span>
+                                {cell.date}
+                            </span>
+                            {/* Colored dot for shift type */}
+                            {cell.inMonth && hasShift && !isHoliday && !isWeekOff && (
+                                <span
+                                    className="w-1.5 h-1.5 rounded-full mt-0.5"
+                                    style={{ backgroundColor: shiftTypeDotColor(cell.data!.shiftType) }}
+                                />
                             )}
-
-                            {isHoliday ? (
-                                <div className="mt-1.5">
-                                    <span className="text-[9px] font-bold text-warning-600 dark:text-warning-400 leading-tight line-clamp-2">
-                                        {day.holidayName ?? "Holiday"}
-                                    </span>
-                                </div>
-                            ) : isWeekOff ? (
-                                <div className="mt-1.5">
-                                    <span className="text-[9px] font-medium text-neutral-400 dark:text-neutral-500">
-                                        Week Off
-                                    </span>
-                                </div>
-                            ) : day.shiftName ? (
-                                <div className="mt-1.5 space-y-1">
-                                    <div className={cn("h-1 w-full rounded-full", shiftTypeColor(day.shiftType))} />
-                                    <p className="text-[9px] font-medium text-neutral-500 dark:text-neutral-400 truncate">
-                                        {day.shiftName}
-                                    </p>
-                                    {day.startTime && day.endTime && (
-                                        <p className="text-[8px] text-neutral-400 dark:text-neutral-500 tabular-nums">
-                                            {day.startTime} - {day.endTime}
-                                        </p>
-                                    )}
-                                </div>
-                            ) : (
-                                <div className="mt-1.5">
-                                    <span className="text-[9px] text-neutral-400 dark:text-neutral-500">--</span>
-                                </div>
+                            {cell.inMonth && isHoliday && (
+                                <span className="w-1.5 h-1.5 rounded-full mt-0.5 bg-amber-500" />
                             )}
-                        </div>
+                            {cell.inMonth && isWeekOff && !isHoliday && (
+                                <span className="w-1.5 h-1.5 rounded-full mt-0.5 bg-neutral-400" />
+                            )}
+                        </button>
                     );
                 })}
+            </div>
+
+            {/* Selected date detail panel */}
+            {selectedDate && (
+                <div className="mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
+                    {selectedDayData ? (
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-bold text-primary-950 dark:text-white">
+                                    {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-IN", {
+                                        weekday: "long",
+                                        day: "numeric",
+                                        month: "short",
+                                    })}
+                                </span>
+                                {selectedDayData.isHoliday && (
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400">
+                                        Holiday
+                                    </span>
+                                )}
+                                {selectedDayData.isWeekOff && !selectedDayData.isHoliday && (
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
+                                        Week Off
+                                    </span>
+                                )}
+                            </div>
+                            {selectedDayData.isHoliday && selectedDayData.holidayName && (
+                                <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                                    {selectedDayData.holidayName}
+                                </p>
+                            )}
+                            {selectedDayData.shiftName && (
+                                <div className="flex items-center gap-3">
+                                    <div className={cn("w-2 h-8 rounded-full", shiftTypeColor(selectedDayData.shiftType))} />
+                                    <div>
+                                        <p className="text-sm font-semibold text-primary-950 dark:text-white">
+                                            {selectedDayData.shiftName}
+                                        </p>
+                                        {selectedDayData.startTime && selectedDayData.endTime && (
+                                            <p className="text-xs text-neutral-500 dark:text-neutral-400 tabular-nums">
+                                                {selectedDayData.startTime} - {selectedDayData.endTime}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                            {!selectedDayData.shiftName && !selectedDayData.isHoliday && !selectedDayData.isWeekOff && (
+                                <p className="text-xs text-neutral-400 dark:text-neutral-500">No shift assigned</p>
+                            )}
+                        </div>
+                    ) : (
+                        <p className="text-xs text-neutral-400 dark:text-neutral-500">
+                            {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-IN", {
+                                weekday: "long",
+                                day: "numeric",
+                                month: "short",
+                            })}
+                            {" "}&mdash; No schedule data available
+                        </p>
+                    )}
+                </div>
+            )}
+
+            {/* Legend */}
+            <div className="flex flex-wrap gap-3 mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-800">
+                <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-info-500" />
+                    <span className="text-[10px] text-neutral-500 dark:text-neutral-400">Day/General</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-primary-700" />
+                    <span className="text-[10px] text-neutral-500 dark:text-neutral-400">Night/Evening</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                    <span className="text-[10px] text-neutral-500 dark:text-neutral-400">Holiday</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-neutral-400" />
+                    <span className="text-[10px] text-neutral-500 dark:text-neutral-400">Week Off</span>
+                </div>
             </div>
         </PremiumCard>
     );
@@ -962,9 +1169,7 @@ function WeeklyAttendanceChart({ weeklyChart }: { weeklyChart: DashboardWeeklyCh
         return (
             <PremiumCard gradientAccent gradientFrom="from-success-500" gradientTo="to-info-500">
                 <CardHeader title="Weekly Attendance" subtitle="Hours worked per day" />
-                <div className="h-[260px] flex items-center justify-center">
-                    <p className="text-sm text-neutral-400 dark:text-neutral-500">No attendance data available.</p>
-                </div>
+                <EmptyState icon={BarChart3} title="No attendance data" subtitle="Attendance data will appear once you start checking in." />
             </PremiumCard>
         );
     }
@@ -974,6 +1179,13 @@ function WeeklyAttendanceChart({ weeklyChart }: { weeklyChart: DashboardWeeklyCh
         fill: getBarColor(d.status, d.isHoliday, d.isWeekOff),
         shortDate: d.dayName.slice(0, 3),
     }));
+
+    // Dynamic Y-axis max: auto-calculate from data
+    const maxHours = Math.max(...weeklyChart.map((d) => d.hoursWorked), 0);
+    const yMax = Math.max(Math.ceil(maxHours * 1.2), 4); // at least 4, with 20% headroom
+
+    // Dynamic X-axis: show every Nth label to avoid clutter
+    const labelInterval = weeklyChart.length > 14 ? Math.floor(weeklyChart.length / 7) - 1 : 0;
 
     return (
         <PremiumCard gradientAccent gradientFrom="from-success-500" gradientTo="to-info-500">
@@ -995,9 +1207,10 @@ function WeeklyAttendanceChart({ weeklyChart }: { weeklyChart: DashboardWeeklyCh
                             tick={{ fontSize: 11, fill: "#94A3B8" }}
                             tickLine={false}
                             axisLine={false}
+                            interval={labelInterval}
                         />
                         <YAxis
-                            domain={[0, 12]}
+                            domain={[0, yMax]}
                             tick={{ fontSize: 11, fill: "#94A3B8" }}
                             tickLine={false}
                             axisLine={false}
@@ -1063,14 +1276,13 @@ function getDonutColor(category: string, fallback: string): string {
 
 function LeaveDonutChart({ leaveDonut }: { leaveDonut: DashboardLeaveDonutItem[] | null }) {
     const chartId = useId();
+    const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
     if (!leaveDonut || leaveDonut.length === 0) {
         return (
             <PremiumCard gradientAccent gradientFrom="from-accent-500" gradientTo="to-primary-500">
                 <CardHeader title="Leave Balance" subtitle="Category breakdown" />
-                <div className="h-[260px] flex items-center justify-center">
-                    <p className="text-sm text-neutral-400 dark:text-neutral-500">No leave data available.</p>
-                </div>
+                <EmptyState icon={Calendar} title="No leave data" subtitle="Leave balance will appear once leave types are configured." />
             </PremiumCard>
         );
     }
@@ -1104,14 +1316,32 @@ function LeaveDonutChart({ leaveDonut }: { leaveDonut: DashboardLeaveDonutItem[]
                             stroke="none"
                             animationBegin={0}
                             animationDuration={800}
-                        />
+                            onMouseEnter={(_, index) => setActiveIndex(index)}
+                            onMouseLeave={() => setActiveIndex(null)}
+                        >
+                            {chartData.map((entry, index) => (
+                                <Cell
+                                    key={entry.name}
+                                    fill={entry.fill}
+                                    opacity={activeIndex === null || activeIndex === index ? 1 : 0.4}
+                                    style={{
+                                        transform: activeIndex === index ? "scale(1.05)" : "scale(1)",
+                                        transformOrigin: "center",
+                                        transition: "transform 200ms ease, opacity 200ms ease",
+                                    }}
+                                />
+                            ))}
+                        </Pie>
                         <Tooltip
                             content={({ active, payload }) => {
                                 if (!active || !payload?.[0]) return null;
                                 const d = payload[0].payload;
                                 return (
                                     <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-lg p-3 text-xs">
-                                        <p className="font-bold text-primary-950 dark:text-white">{d.name}</p>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.fill }} />
+                                            <p className="font-bold text-primary-950 dark:text-white">{d.name}</p>
+                                        </div>
                                         <p className="text-neutral-500 dark:text-neutral-400 mt-1">
                                             Remaining: <span className="font-semibold">{d.value}</span> / {d.total} days
                                         </p>
@@ -1331,9 +1561,7 @@ function LeaveBalanceBreakdown({ balances }: { balances: DashboardLeaveBalanceIt
         return (
             <PremiumCard gradientAccent gradientFrom="from-primary-500" gradientTo="to-accent-500">
                 <CardHeader title="Leave Balance" subtitle="Breakdown by type" />
-                <p className="text-sm text-neutral-400 dark:text-neutral-500 py-4">
-                    No leave types configured.
-                </p>
+                <EmptyState icon={Calendar} title="No leave types" subtitle="Leave types will appear once configured by your HR team." />
             </PremiumCard>
         );
     }
@@ -1397,7 +1625,6 @@ function attendanceStatusColor(status: string): string {
 }
 
 function isLateAttendance(day: DashboardAttendanceDay): boolean {
-    // Heuristic: if status includes "late"
     return day.status.toLowerCase().includes("late");
 }
 
@@ -1408,9 +1635,7 @@ function RecentAttendanceList({ records }: { records: DashboardAttendanceDay[] }
         return (
             <PremiumCard gradientAccent gradientFrom="from-success-500" gradientTo="to-primary-500">
                 <CardHeader title="Recent Attendance" subtitle="Last 7 days" />
-                <p className="text-sm text-neutral-400 dark:text-neutral-500 py-4">
-                    No attendance records found.
-                </p>
+                <EmptyState icon={Clock} title="No attendance records" subtitle="Your attendance history will appear here once you start checking in." />
             </PremiumCard>
         );
     }
@@ -1553,6 +1778,7 @@ function MonthlyTrendChart({ monthlyTrend }: { monthlyTrend: DashboardMonthlyTre
                             fill="url(#attendanceGradient)"
                             animationDuration={1000}
                             name="Attendance %"
+                            activeDot={{ r: 6, strokeWidth: 2, stroke: "#6366F1", fill: "#fff" }}
                         />
                         <Area
                             type="monotone"
@@ -1563,6 +1789,7 @@ function MonthlyTrendChart({ monthlyTrend }: { monthlyTrend: DashboardMonthlyTre
                             fill="transparent"
                             animationDuration={1200}
                             name="Present Days"
+                            activeDot={{ r: 5, strokeWidth: 2, stroke: "#8B5CF6", fill: "#fff" }}
                         />
                         <Legend
                             iconType="line"
@@ -1687,7 +1914,7 @@ function PendingApprovalsWidget({ approvals }: { approvals: DashboardPendingAppr
         <PremiumCard gradientAccent gradientFrom="from-warning-500" gradientTo="to-danger-500">
             <CardHeader title="Pending Approvals" subtitle={`${approvals.length} total`} />
             {top3.length === 0 ? (
-                <p className="text-sm text-neutral-400 dark:text-neutral-500 py-2">No pending approvals.</p>
+                <EmptyState icon={CheckSquare} title="No pending approvals" subtitle="All approval requests have been handled." />
             ) : (
                 <div className="space-y-3">
                     {top3.map((item) => {
@@ -1742,14 +1969,8 @@ function PendingApprovalsWidget({ approvals }: { approvals: DashboardPendingAppr
 }
 
 /* ================================================================
-   ROW 10: Upcoming Holidays — Horizontal Scrollable Cards
+   ROW 10: Upcoming Holidays — Vertical List
    ================================================================ */
-
-function holidayMonthIsCurrentMonth(dateStr: string): boolean {
-    const now = new Date();
-    const d = new Date(dateStr);
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-}
 
 function holidayTypeBadge(type: string): string {
     const lower = type.toLowerCase();
@@ -1762,91 +1983,94 @@ function holidayTypeBadge(type: string): string {
     return "bg-accent-50 text-accent-700 dark:bg-accent-900/20 dark:text-accent-400";
 }
 
-function UpcomingHolidaysStrip({ holidays }: { holidays: DashboardHoliday[] }) {
+function UpcomingHolidaysList({ holidays }: { holidays: DashboardHoliday[] }) {
     if (holidays.length === 0) {
         return (
             <PremiumCard gradientAccent gradientFrom="from-warning-500" gradientTo="to-accent-500">
                 <CardHeader title="Upcoming Holidays" />
-                <p className="text-sm text-neutral-400 dark:text-neutral-500 py-4">
-                    No upcoming holidays.
-                </p>
+                <EmptyState icon={CalendarDays} title="No upcoming holidays" subtitle="Holiday calendar will be updated by your HR team." />
             </PremiumCard>
         );
     }
 
     return (
-        <div>
-            <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-3">
-                Upcoming Holidays
-            </h2>
-            <div
-                className="flex gap-3 overflow-x-auto pb-2"
-                style={{ scrollbarWidth: "none" }}
-            >
+        <PremiumCard gradientAccent gradientFrom="from-warning-500" gradientTo="to-accent-500">
+            <CardHeader title="Upcoming Holidays" subtitle={`${holidays.length} upcoming`} />
+            <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
                 {holidays.slice(0, 8).map((h) => {
                     const d = new Date(h.date);
-                    const isThisMonth = holidayMonthIsCurrentMonth(h.date);
+                    const thisWeek = isThisWeek(h.date);
+                    const daysLeft = daysUntil(h.date);
+                    const daysLabel =
+                        daysLeft === 0 ? "Today" : daysLeft === 1 ? "Tomorrow" : `in ${daysLeft} days`;
 
                     return (
                         <div
                             key={h.id}
                             className={cn(
-                                "flex-shrink-0 w-52 rounded-2xl border shadow-sm p-4 transition-all duration-200 hover:shadow-md",
-                                isThisMonth
-                                    ? "border-primary-200 dark:border-primary-700 bg-gradient-to-br from-white to-primary-50/30 dark:from-neutral-900 dark:to-primary-900/10"
-                                    : "border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900"
+                                "flex items-center gap-4 py-3 first:pt-0 last:pb-0 transition-all",
+                                thisWeek && "pl-3 border-l-[3px] border-l-transparent bg-gradient-to-r from-primary-50/50 to-transparent dark:from-primary-900/10 dark:to-transparent -ml-1 rounded-r-lg",
+                                thisWeek && "border-l-primary-500"
                             )}
                         >
-                            <div className="flex items-start gap-3">
-                                <div
+                            {/* Date badge */}
+                            <div
+                                className={cn(
+                                    "w-14 h-14 rounded-xl flex flex-col items-center justify-center flex-shrink-0",
+                                    thisWeek
+                                        ? "bg-gradient-to-br from-primary-500 to-accent-500 text-white shadow-sm"
+                                        : "bg-primary-50 dark:bg-primary-900/20"
+                                )}
+                            >
+                                <span
                                     className={cn(
-                                        "w-12 h-12 rounded-xl flex flex-col items-center justify-center flex-shrink-0",
-                                        isThisMonth
-                                            ? "bg-gradient-to-br from-primary-500 to-accent-500 text-white"
-                                            : "bg-primary-50 dark:bg-primary-900/20"
+                                        "text-lg font-bold leading-none",
+                                        !thisWeek && "text-primary-600 dark:text-primary-400"
                                     )}
                                 >
-                                    <span
-                                        className={cn(
-                                            "text-lg font-bold leading-none",
-                                            !isThisMonth && "text-primary-600 dark:text-primary-400"
-                                        )}
-                                    >
-                                        {d.getDate()}
-                                    </span>
-                                    <span
-                                        className={cn(
-                                            "text-[8px] font-bold uppercase",
-                                            isThisMonth
-                                                ? "text-white/80"
-                                                : "text-primary-400 dark:text-primary-500"
-                                        )}
-                                    >
-                                        {d.toLocaleDateString("en-IN", { month: "short" })}
-                                    </span>
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-sm font-semibold text-primary-950 dark:text-white truncate">
-                                        {h.name}
-                                    </p>
-                                    <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">
+                                    {d.getDate()}
+                                </span>
+                                <span
+                                    className={cn(
+                                        "text-[8px] font-bold uppercase mt-0.5",
+                                        thisWeek
+                                            ? "text-white/80"
+                                            : "text-primary-400 dark:text-primary-500"
+                                    )}
+                                >
+                                    {d.toLocaleDateString("en-IN", { month: "short" })}
+                                </span>
+                            </div>
+
+                            {/* Name + weekday + days until */}
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-primary-950 dark:text-white truncate">
+                                    {h.name}
+                                </p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                    <span className="text-xs text-neutral-500 dark:text-neutral-400">
                                         {d.toLocaleDateString("en-IN", { weekday: "long" })}
-                                    </p>
-                                    <span
-                                        className={cn(
-                                            "inline-flex mt-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full",
-                                            holidayTypeBadge(h.type)
-                                        )}
-                                    >
-                                        {h.type}
+                                    </span>
+                                    <span className="text-[10px] text-neutral-400 dark:text-neutral-500">
+                                        {daysLabel}
                                     </span>
                                 </div>
                             </div>
+
+                            {/* Type badge */}
+                            <span
+                                className={cn(
+                                    "flex-shrink-0 text-[9px] font-bold px-2 py-1 rounded-full",
+                                    holidayTypeBadge(h.type)
+                                )}
+                            >
+                                {h.type}
+                            </span>
                         </div>
                     );
                 })}
             </div>
-        </div>
+        </PremiumCard>
     );
 }
 
@@ -1858,19 +2082,19 @@ function DashboardSkeleton() {
     return (
         <div className="space-y-6">
             {/* Welcome row */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                <div className="lg:col-span-2 space-y-2">
+            <div className="flex items-center justify-between">
+                <div className="space-y-2">
                     <Skeleton width="280px" height={32} />
                     <Skeleton width="200px" height={16} />
                 </div>
-                <div className="lg:col-span-3">
-                    <WidgetSkeleton height={100} />
-                </div>
+                <Skeleton width={40} height={40} borderRadius={12} />
             </div>
+            {/* Ticker */}
+            <Skeleton height={44} borderRadius={12} />
             {/* Hero */}
             <Skeleton height={200} borderRadius={16} />
-            {/* Calendar strip */}
-            <WidgetSkeleton height={160} />
+            {/* Calendar */}
+            <WidgetSkeleton height={360} />
             {/* KPIs */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[1, 2, 3, 4].map((i) => (
@@ -1925,14 +2149,14 @@ export function DynamicDashboardScreen() {
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-            {/* ROW 1: Welcome + Announcements */}
+            {/* ROW 1: Welcome + Marquee Announcements */}
             <WelcomeHeader firstName={firstName} announcements={data.announcements} />
 
             {/* ROW 2: Shift Check-In Hero */}
             <ShiftCheckInHero shift={data.shift} />
 
-            {/* ROW 3: Shift Calendar (14-day strip) */}
-            <ShiftCalendarStrip calendar={data.shiftCalendar} />
+            {/* ROW 3: Shift Calendar (Proper Month View) */}
+            <ShiftCalendarMonth calendar={data.shiftCalendar} />
 
             {/* ROW 4: Quick Stats KPIs */}
             <QuickStatsRow data={data} />
@@ -1967,8 +2191,8 @@ export function DynamicDashboardScreen() {
                 </div>
             )}
 
-            {/* ROW 10: Upcoming Holidays */}
-            <UpcomingHolidaysStrip holidays={data.upcomingHolidays} />
+            {/* ROW 10: Upcoming Holidays (Vertical List) */}
+            <UpcomingHolidaysList holidays={data.upcomingHolidays} />
         </div>
     );
 }

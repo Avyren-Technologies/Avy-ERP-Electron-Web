@@ -16,6 +16,7 @@ import { VerifyResetCodeScreen } from "./features/auth/VerifyResetCodeScreen";
 import { ResetPasswordScreen } from "./features/auth/ResetPasswordScreen";
 import { DashboardScreen } from "./features/super-admin/DashboardScreen";
 import { DynamicDashboardScreen } from "./features/employee/DynamicDashboardScreen";
+import { AnnouncementsScreen } from "./features/employee/AnnouncementsScreen";
 import { CompanyListScreen } from "./features/super-admin/CompanyListScreen";
 import { CompanyDetailScreen } from "./features/super-admin/CompanyDetailScreen";
 import { AddCompanyWizard } from "./features/super-admin/AddCompanyWizard";
@@ -390,6 +391,7 @@ function App() {
         <Route path="modules" element={<RequireRole roles={['super-admin', 'company-admin']}><ModuleCatalogueScreen /></RequireRole>} />
         <Route path="monitor" element={<RequireRole roles={['super-admin', 'company-admin']}><PlatformMonitorScreen /></RequireRole>} />
         {/* All authenticated users */}
+        <Route path="announcements" element={<AnnouncementsScreen />} />
         <Route path="help/ticket/:id" element={<TicketChatScreen />} />
         <Route path="help" element={<HelpSupportScreen />} />
         <Route path="notifications" element={<Placeholder name="Notifications" />} />
