@@ -13,6 +13,7 @@ import {
   HeatmapChart,
   ZeroDataState,
   type DrilldownColumn,
+  type FilterValues,
 } from '@/components/analytics';
 
 const managerColumns: DrilldownColumn[] = [
@@ -25,7 +26,7 @@ const managerColumns: DrilldownColumn[] = [
 ];
 
 export function PerformanceAnalyticsDashboardScreen() {
-  const [filters, setFilters] = useState<Record<string, unknown>>({});
+  const [filters, setFilters] = useState<FilterValues>({});
   const [tablePage, setTablePage] = useState(1);
   const { data: response, isLoading, error } = useAnalyticsDashboard('performance', filters);
   const navigate = useNavigate();

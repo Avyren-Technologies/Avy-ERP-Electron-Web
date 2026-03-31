@@ -9,10 +9,11 @@ import {
   InsightsPanel,
   AlertsBanner,
   ZeroDataState,
+  type FilterValues,
 } from '@/components/analytics';
 
 export function ComplianceDashboardScreen() {
-  const [filters, setFilters] = useState<Record<string, unknown>>({});
+  const [filters, setFilters] = useState<FilterValues>({});
   const { data: response, isLoading, error } = useAnalyticsDashboard('compliance', filters);
   const navigate = useNavigate();
 

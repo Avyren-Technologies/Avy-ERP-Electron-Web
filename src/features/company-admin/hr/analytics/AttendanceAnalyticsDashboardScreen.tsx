@@ -12,6 +12,7 @@ import {
   HeatmapChart,
   ZeroDataState,
   type DrilldownColumn,
+  type FilterValues,
 } from '@/components/analytics';
 
 const attendanceColumns: DrilldownColumn[] = [
@@ -24,7 +25,7 @@ const attendanceColumns: DrilldownColumn[] = [
 ];
 
 export function AttendanceAnalyticsDashboardScreen() {
-  const [filters, setFilters] = useState<Record<string, unknown>>({});
+  const [filters, setFilters] = useState<FilterValues>({});
   const [drilldownPage, setDrilldownPage] = useState(1);
   const { data: response, isLoading, error } = useAnalyticsDashboard('attendance', filters);
   const navigate = useNavigate();

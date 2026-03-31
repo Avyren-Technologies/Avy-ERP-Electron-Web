@@ -10,10 +10,11 @@ import {
   AlertsBanner,
   HeatmapChart,
   ZeroDataState,
+  type FilterValues,
 } from '@/components/analytics';
 
 export function LeaveAnalyticsDashboardScreen() {
-  const [filters, setFilters] = useState<Record<string, unknown>>({});
+  const [filters, setFilters] = useState<FilterValues>({});
   const { data: response, isLoading, error } = useAnalyticsDashboard('leave', filters);
   const navigate = useNavigate();
 

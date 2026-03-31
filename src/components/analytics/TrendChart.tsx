@@ -18,9 +18,18 @@ export interface TrendSeries {
   type?: 'line' | 'area';
 }
 
+/** An API trend object that carries its own data points. */
+interface ApiTrendSeries {
+  key: string;
+  label: string;
+  data: { date: string; value: number }[];
+  chartType?: string;
+}
+
 interface TrendChartProps {
-  data: Record<string, unknown>[];
-  series: TrendSeries[];
+  /** Explicit data rows. If omitted, derived from series when they carry `data` (API trend objects). */
+  data?: Record<string, unknown>[];
+  series: (TrendSeries | ApiTrendSeries)[];
   xKey?: string;
   height?: number;
 }
@@ -58,7 +67,31 @@ function CustomTooltip({ active, payload, label }: any) {
   );
 }
 
-export function TrendChart({ data, series, xKey = 'period', height = 320 }: TrendChartProps) {
+export function TrendChart({ data: dataProp, series: rawSeries, xKey = 'period', height = 320 }: TrendChartProps) {
+  // Normalise series: API trend objects carry { label, data[] }, convert to TrendSeries
+  const series: TrendSeries[] = rawSeries.map((s) => ({
+    key: s.key,
+    name: 'name' in s ? s.name : (s as ApiTrendSeries).label,
+    color: 'color' in s ? (s as TrendSeries).color : undefined,
+    type: 'type' in s && (s as any).type !== 'line' && (s as any).type !== 'area' ? undefined : (s as TrendSeries).type,
+  }));
+
+  // Derive data from API trend objects if not explicitly provided
+  const data: Record<string, unknown>[] = dataProp ?? (() => {
+    const apiSeries = rawSeries.filter((s): s is ApiTrendSeries => 'data' in s && Array.isArray((s as any).data));
+    if (apiSeries.length === 0) return [];
+    // Merge all series data by date
+    const byDate = new Map<string, Record<string, unknown>>();
+    for (const s of apiSeries) {
+      for (const point of s.data) {
+        const existing = byDate.get(point.date) ?? { [xKey]: point.date };
+        existing[s.key] = point.value;
+        byDate.set(point.date, existing);
+      }
+    }
+    return Array.from(byDate.values());
+  })();
+
   const hasArea = series.some((s) => s.type === 'area');
   const ChartComponent = hasArea ? AreaChart : LineChart;
 

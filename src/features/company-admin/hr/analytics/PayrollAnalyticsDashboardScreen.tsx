@@ -10,10 +10,11 @@ import {
   AlertsBanner,
   ScatterChart,
   ZeroDataState,
+  type FilterValues,
 } from '@/components/analytics';
 
 export function PayrollAnalyticsDashboardScreen() {
-  const [filters, setFilters] = useState<Record<string, unknown>>({});
+  const [filters, setFilters] = useState<FilterValues>({});
   const { data: response, isLoading, error } = useAnalyticsDashboard('payroll', filters);
   const navigate = useNavigate();
 

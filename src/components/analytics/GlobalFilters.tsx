@@ -1,6 +1,7 @@
 import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/SearchableSelect';
 
 export interface FilterValues {
+  [key: string]: string | undefined;
   dateFrom?: string;
   dateTo?: string;
   departmentId?: string;
