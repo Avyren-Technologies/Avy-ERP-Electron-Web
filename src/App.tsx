@@ -15,8 +15,7 @@ import { ForgotPasswordScreen } from "./features/auth/ForgotPasswordScreen";
 import { VerifyResetCodeScreen } from "./features/auth/VerifyResetCodeScreen";
 import { ResetPasswordScreen } from "./features/auth/ResetPasswordScreen";
 import { DashboardScreen } from "./features/super-admin/DashboardScreen";
-import { CompanyAdminDashboard } from "./features/company-admin/CompanyAdminDashboard";
-import { RoleBasedDashboardScreen } from "./features/employee/EmployeeDashboard";
+import { DynamicDashboardScreen } from "./features/employee/DynamicDashboardScreen";
 import { CompanyListScreen } from "./features/super-admin/CompanyListScreen";
 import { CompanyDetailScreen } from "./features/super-admin/CompanyDetailScreen";
 import { AddCompanyWizard } from "./features/super-admin/AddCompanyWizard";
@@ -225,16 +224,12 @@ const RequirePermission = ({ children, permission }: { children: React.ReactNode
 
 function RoleBasedDashboard() {
   const userRole = useAuthStore((s) => s.userRole);
-  const permissions = useAuthStore((s) => s.permissions) || [];
 
   if (userRole === 'super-admin') return <DashboardScreen />;
 
-  // Check if user has company admin-level access (not just COMPANY_ADMIN role)
-  const hasCompanyAccess = checkPermission(permissions, 'company:read');
-  if (hasCompanyAccess) return <CompanyAdminDashboard />;
-
-  // Everyone else (employees, managers without company:read) gets the role-based dashboard
-  return <RoleBasedDashboardScreen />;
+  // All other roles (Company Admin, employees, managers) use the dynamic dashboard
+  // which adapts its widgets based on permissions and role
+  return <DynamicDashboardScreen />;
 }
 
 function App() {
