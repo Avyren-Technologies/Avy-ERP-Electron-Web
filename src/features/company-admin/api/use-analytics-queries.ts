@@ -36,3 +36,25 @@ export function useAnalyticsAlerts(params?: Record<string, unknown>) {
     queryFn: () => analyticsApi.getAlerts(params),
   });
 }
+
+export function useReportCatalog() {
+  return useQuery({
+    queryKey: [...analyticsKeys.all, 'report-catalog'] as const,
+    queryFn: () => analyticsApi.getReportCatalog(),
+  });
+}
+
+export function useReportHistory(params?: Record<string, unknown>) {
+  return useQuery({
+    queryKey: params ? [...analyticsKeys.all, 'report-history', params] as const : [...analyticsKeys.all, 'report-history'] as const,
+    queryFn: () => analyticsApi.getReportHistory(params),
+  });
+}
+
+export function useRateLimit() {
+  return useQuery({
+    queryKey: [...analyticsKeys.all, 'rate-limit'] as const,
+    queryFn: () => analyticsApi.getRateLimit(),
+    refetchInterval: 30000,
+  });
+}
