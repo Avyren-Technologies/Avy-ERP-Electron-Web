@@ -1,5 +1,5 @@
 export { DashboardShell } from './DashboardShell';
-export { GlobalFilters, type FilterValues, type FilterOptions } from './GlobalFilters';
+export { GlobalFilters, type FilterValues } from './GlobalFilters';
 export { KPIGrid, type KPICardData } from './KPIGrid';
 export { InsightsPanel, type Insight } from './InsightsPanel';
 export { AlertsBanner, type AlertData } from './AlertsBanner';

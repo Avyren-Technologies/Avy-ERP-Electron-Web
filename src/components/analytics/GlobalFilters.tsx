@@ -1,4 +1,7 @@
+import { useMemo } from 'react';
 import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/SearchableSelect';
+import { useDepartments, useGrades, useEmployeeTypes } from '@/features/company-admin/api';
+import { useCompanyLocations } from '@/features/company-admin/api';
 
 export interface FilterValues {
   [key: string]: string | undefined;
@@ -17,7 +20,7 @@ export interface FilterOptions {
   employeeTypes?: SearchableSelectOption[];
 }
 
-interface GlobalFiltersProps extends FilterOptions {
+interface GlobalFiltersProps {
   filters: FilterValues;
   onChange: (filters: FilterValues) => void;
 }
@@ -25,11 +28,44 @@ interface GlobalFiltersProps extends FilterOptions {
 export function GlobalFilters({
   filters,
   onChange,
-  departments = [],
-  locations = [],
-  grades = [],
-  employeeTypes = [],
 }: GlobalFiltersProps) {
+  const { data: deptResponse } = useDepartments();
+  const { data: locResponse } = useCompanyLocations();
+  const { data: gradeResponse } = useGrades();
+  const { data: empTypeResponse } = useEmployeeTypes();
+
+  const departments = useMemo<SearchableSelectOption[]>(() => {
+    const items = deptResponse?.data ?? [];
+    return (items as Array<{ id: string; name: string }>).map((d) => ({
+      value: d.id,
+      label: d.name,
+    }));
+  }, [deptResponse]);
+
+  const locations = useMemo<SearchableSelectOption[]>(() => {
+    const items = locResponse?.data ?? [];
+    return (items as Array<{ id: string; name: string }>).map((l) => ({
+      value: l.id,
+      label: l.name,
+    }));
+  }, [locResponse]);
+
+  const grades = useMemo<SearchableSelectOption[]>(() => {
+    const items = gradeResponse?.data ?? [];
+    return (items as Array<{ id: string; name: string }>).map((g) => ({
+      value: g.id,
+      label: g.name,
+    }));
+  }, [gradeResponse]);
+
+  const employeeTypes = useMemo<SearchableSelectOption[]>(() => {
+    const items = empTypeResponse?.data ?? [];
+    return (items as Array<{ id: string; name: string }>).map((t) => ({
+      value: t.id,
+      label: t.name,
+    }));
+  }, [empTypeResponse]);
+
   const update = (patch: Partial<FilterValues>) => onChange({ ...filters, ...patch });
 
   return (

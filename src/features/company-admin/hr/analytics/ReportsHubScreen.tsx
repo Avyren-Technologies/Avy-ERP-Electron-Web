@@ -305,17 +305,17 @@ function summarizeFilters(filters: Record<string, unknown>): string {
 
 function SkeletonCard() {
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden animate-pulse">
-      <div className="h-1.5 bg-gray-200 dark:bg-gray-700" />
+    <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 overflow-hidden animate-pulse">
+      <div className="h-1.5 bg-neutral-200 dark:bg-neutral-700" />
       <div className="p-5 space-y-3">
-        <div className="h-5 w-3/4 bg-gray-200 dark:bg-gray-700 rounded" />
-        <div className="h-4 w-full bg-gray-100 dark:bg-gray-700/50 rounded" />
-        <div className="h-4 w-2/3 bg-gray-100 dark:bg-gray-700/50 rounded" />
+        <div className="h-5 w-3/4 bg-neutral-200 dark:bg-neutral-700 rounded" />
+        <div className="h-4 w-full bg-neutral-100 dark:bg-neutral-700/50 rounded" />
+        <div className="h-4 w-2/3 bg-neutral-100 dark:bg-neutral-700/50 rounded" />
         <div className="flex gap-2 mt-3">
-          <div className="h-6 w-16 bg-gray-200 dark:bg-gray-700 rounded-full" />
-          <div className="h-6 w-16 bg-gray-200 dark:bg-gray-700 rounded-full" />
+          <div className="h-6 w-16 bg-neutral-200 dark:bg-neutral-700 rounded-full" />
+          <div className="h-6 w-16 bg-neutral-200 dark:bg-neutral-700 rounded-full" />
         </div>
-        <div className="h-9 w-full bg-gray-200 dark:bg-gray-700 rounded-lg mt-4" />
+        <div className="h-9 w-full bg-neutral-200 dark:bg-neutral-700 rounded-lg mt-4" />
       </div>
     </div>
   );
@@ -325,12 +325,12 @@ function SkeletonTable() {
   return (
     <div className="space-y-3 animate-pulse">
       {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="flex gap-4 p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-          <div className="h-5 w-1/4 bg-gray-200 dark:bg-gray-700 rounded" />
-          <div className="h-5 w-1/6 bg-gray-200 dark:bg-gray-700 rounded" />
-          <div className="h-5 w-1/6 bg-gray-200 dark:bg-gray-700 rounded" />
-          <div className="h-5 w-1/4 bg-gray-200 dark:bg-gray-700 rounded" />
-          <div className="h-5 w-1/6 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div key={i} className="flex gap-4 p-4 rounded-lg bg-neutral-50 dark:bg-neutral-800/50">
+          <div className="h-5 w-1/4 bg-neutral-200 dark:bg-neutral-700 rounded" />
+          <div className="h-5 w-1/6 bg-neutral-200 dark:bg-neutral-700 rounded" />
+          <div className="h-5 w-1/6 bg-neutral-200 dark:bg-neutral-700 rounded" />
+          <div className="h-5 w-1/4 bg-neutral-200 dark:bg-neutral-700 rounded" />
+          <div className="h-5 w-1/6 bg-neutral-200 dark:bg-neutral-700 rounded" />
         </div>
       ))}
     </div>
@@ -416,37 +416,37 @@ function FiltersPanel({
   );
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+        className="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors"
       >
-        <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
+        <div className="flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200">
           <Filter className="w-4 h-4" />
           Report Filters
         </div>
-        {expanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+        {expanded ? <ChevronUp className="w-4 h-4 text-neutral-400" /> : <ChevronDown className="w-4 h-4 text-neutral-400" />}
       </button>
 
       {expanded && (
-        <div className="px-5 pb-5 border-t border-gray-100 dark:border-gray-700">
+        <div className="px-5 pb-5 border-t border-neutral-100 dark:border-neutral-700">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4">
             <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Date From</label>
+              <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Date From</label>
               <input
                 type="date"
                 value={filters.dateFrom}
                 onChange={e => onChange({ ...filters, dateFrom: e.target.value })}
-                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Date To</label>
+              <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Date To</label>
               <input
                 type="date"
                 value={filters.dateTo}
                 onChange={e => onChange({ ...filters, dateTo: e.target.value })}
-                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
             </div>
             <SearchableSelect
@@ -495,7 +495,7 @@ function FiltersPanel({
           <div className="flex justify-end mt-4">
             <button
               onClick={onReset}
-              className="text-sm text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors flex items-center gap-1"
+              className="text-sm text-neutral-500 dark:text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors flex items-center gap-1"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               Reset Filters
@@ -522,16 +522,16 @@ function RateLimitBadge() {
   const textColor = remaining > 10 ? 'text-emerald-700 dark:text-emerald-400' : remaining > 5 ? 'text-amber-700 dark:text-amber-400' : 'text-red-700 dark:text-red-400';
 
   return (
-    <div className="flex items-center gap-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2.5">
-      <FileDown className="w-4 h-4 text-gray-400" />
+    <div className="flex items-center gap-3 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 px-4 py-2.5">
+      <FileDown className="w-4 h-4 text-neutral-400" />
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-1">
           <span className={cn('text-sm font-medium', textColor)}>
             {remaining}/{limit} exports remaining
           </span>
-          <span className="text-xs text-gray-400">this hour</span>
+          <span className="text-xs text-neutral-400">this hour</span>
         </div>
-        <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+        <div className="h-1.5 w-full bg-neutral-100 dark:bg-neutral-700 rounded-full overflow-hidden">
           <div
             className={cn('h-full rounded-full transition-all duration-500', barColor)}
             style={{ width: `${pct}%` }}
@@ -558,13 +558,13 @@ function ReportCard({
   const config = CATEGORY_CONFIG[report.category as Category];
 
   return (
-    <div className="group rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow-md hover:scale-[1.01] transition-all duration-200 overflow-hidden flex flex-col">
+    <div className="group rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-sm hover:shadow-md hover:scale-[1.01] transition-all duration-200 overflow-hidden flex flex-col">
       {/* Category accent bar */}
       <div className={cn('h-1.5', config.color)} />
 
       <div className="p-5 flex-1 flex flex-col">
         <div className="flex items-start justify-between gap-2 mb-2">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white leading-snug">
+          <h3 className="text-sm font-semibold text-neutral-900 dark:text-white leading-snug">
             {report.title}
           </h3>
           <span className={cn('shrink-0 inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full', config.bgColor, config.textColor)}>
@@ -572,7 +572,7 @@ function ReportCard({
           </span>
         </div>
 
-        <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mb-3 line-clamp-2">
+        <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed mb-3 line-clamp-2">
           {report.description}
         </p>
 
@@ -580,7 +580,7 @@ function ReportCard({
           {report.sheets.map(sheet => (
             <span
               key={sheet}
-              className="text-[10px] font-medium px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+              className="text-[10px] font-medium px-2 py-0.5 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300"
             >
               {sheet}
             </span>
@@ -594,7 +594,7 @@ function ReportCard({
             className={cn(
               'w-full flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200',
               rateLimitExceeded
-                ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                ? 'bg-neutral-100 dark:bg-neutral-700 text-neutral-400 dark:text-neutral-500 cursor-not-allowed'
                 : downloading
                   ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-500 cursor-wait'
                   : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm hover:shadow',
@@ -647,8 +647,8 @@ function CategorySection({
         <div className={cn('flex items-center justify-center w-8 h-8 rounded-lg', config.bgColor)}>
           <Icon className={cn('w-4 h-4', config.textColor)} />
         </div>
-        <h2 className="text-base font-semibold text-gray-900 dark:text-white">{category} Reports</h2>
-        <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
+        <h2 className="text-base font-semibold text-neutral-900 dark:text-white">{category} Reports</h2>
+        <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
           {reports.length} {reports.length === 1 ? 'report' : 'reports'}
         </span>
       </div>
@@ -720,34 +720,34 @@ function HistoryTable({
         <SkeletonTable />
       ) : entries.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <History className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-4" />
-          <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400 mb-1">No reports generated yet</h3>
-          <p className="text-sm text-gray-400 dark:text-gray-500">Switch to the Report Catalog tab to generate your first report.</p>
+          <History className="w-12 h-12 text-neutral-300 dark:text-neutral-600 mb-4" />
+          <h3 className="text-lg font-semibold text-neutral-600 dark:text-neutral-400 mb-1">No reports generated yet</h3>
+          <p className="text-sm text-neutral-400 dark:text-neutral-500">Switch to the Report Catalog tab to generate your first report.</p>
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+          <div className="overflow-x-auto rounded-xl border border-neutral-200 dark:border-neutral-700">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-gray-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-left font-semibold text-gray-600 dark:text-gray-300 px-5 py-3">Report</th>
-                  <th className="text-left font-semibold text-gray-600 dark:text-gray-300 px-5 py-3">Generated By</th>
-                  <th className="text-left font-semibold text-gray-600 dark:text-gray-300 px-5 py-3">Date</th>
-                  <th className="text-left font-semibold text-gray-600 dark:text-gray-300 px-5 py-3">Filters</th>
-                  <th className="text-right font-semibold text-gray-600 dark:text-gray-300 px-5 py-3">Action</th>
+                <tr className="bg-neutral-50 dark:bg-neutral-800/80 border-b border-neutral-200 dark:border-neutral-700">
+                  <th className="text-left font-semibold text-neutral-600 dark:text-neutral-300 px-5 py-3">Report</th>
+                  <th className="text-left font-semibold text-neutral-600 dark:text-neutral-300 px-5 py-3">Generated By</th>
+                  <th className="text-left font-semibold text-neutral-600 dark:text-neutral-300 px-5 py-3">Date</th>
+                  <th className="text-left font-semibold text-neutral-600 dark:text-neutral-300 px-5 py-3">Filters</th>
+                  <th className="text-right font-semibold text-neutral-600 dark:text-neutral-300 px-5 py-3">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
+              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-700/50">
                 {entries.map(entry => {
                   const def = REPORT_DEFINITIONS[entry.reportType];
                   const catConfig = def ? CATEGORY_CONFIG[def.category as Category] : null;
                   const { date, time } = formatDateTime(entry.createdAt);
 
                   return (
-                    <tr key={entry.id} className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                    <tr key={entry.id} className="bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-700/30 transition-colors">
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-gray-900 dark:text-white">
+                          <span className="font-medium text-neutral-900 dark:text-white">
                             {def?.title ?? entry.reportType}
                           </span>
                           {catConfig && (
@@ -757,14 +757,14 @@ function HistoryTable({
                           )}
                         </div>
                       </td>
-                      <td className="px-5 py-3.5 text-gray-600 dark:text-gray-300">
+                      <td className="px-5 py-3.5 text-neutral-600 dark:text-neutral-300">
                         {entry.generatedBy?.name ?? 'Unknown'}
                       </td>
                       <td className="px-5 py-3.5">
-                        <div className="text-gray-900 dark:text-white">{date}</div>
-                        <div className="text-xs text-gray-400">{time}</div>
+                        <div className="text-neutral-900 dark:text-white">{date}</div>
+                        <div className="text-xs text-neutral-400">{time}</div>
                       </td>
-                      <td className="px-5 py-3.5 text-gray-500 dark:text-gray-400 text-xs">
+                      <td className="px-5 py-3.5 text-neutral-500 dark:text-neutral-400 text-xs">
                         {summarizeFilters(entry.filters ?? {})}
                       </td>
                       <td className="px-5 py-3.5 text-right">
@@ -774,7 +774,7 @@ function HistoryTable({
                           className={cn(
                             'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200',
                             rateLimitExceeded
-                              ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
+                              ? 'bg-neutral-100 dark:bg-neutral-700 text-neutral-400 cursor-not-allowed'
                               : downloading[entry.reportType]
                                 ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-400 cursor-wait'
                                 : 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/40',
@@ -801,17 +801,17 @@ function HistoryTable({
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 disabled:text-gray-300 dark:disabled:text-gray-600 disabled:cursor-not-allowed transition-colors"
+                className="text-sm font-medium text-neutral-600 dark:text-neutral-300 hover:text-indigo-600 dark:hover:text-indigo-400 disabled:text-neutral-300 dark:disabled:text-neutral-600 disabled:cursor-not-allowed transition-colors"
               >
                 &larr; Prev
               </button>
-              <span className="text-sm text-gray-500 dark:text-gray-400">
+              <span className="text-sm text-neutral-500 dark:text-neutral-400">
                 Page {page} of {meta.totalPages}
               </span>
               <button
                 onClick={() => setPage(p => Math.min(meta.totalPages, p + 1))}
                 disabled={page >= meta.totalPages}
-                className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 disabled:text-gray-300 dark:disabled:text-gray-600 disabled:cursor-not-allowed transition-colors"
+                className="text-sm font-medium text-neutral-600 dark:text-neutral-300 hover:text-indigo-600 dark:hover:text-indigo-400 disabled:text-neutral-300 dark:disabled:text-neutral-600 disabled:cursor-not-allowed transition-colors"
               >
                 Next &rarr;
               </button>
@@ -875,7 +875,7 @@ export function ReportsHubScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900">
       {/* Header */}
       <div className="bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-500 dark:from-indigo-800 dark:via-indigo-700 dark:to-violet-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -891,7 +891,7 @@ export function ReportsHubScreen() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-4">
         {/* Tabs + Rate Limit */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-1.5 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-700 p-1.5 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex gap-1">
             <button
               onClick={() => setActiveTab('catalog')}
@@ -899,12 +899,12 @@ export function ReportsHubScreen() {
                 'flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
                 activeTab === 'catalog'
                   ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 shadow-sm'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50',
+                  : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700/50',
               )}
             >
               <FileSpreadsheet className="w-4 h-4" />
               Report Catalog
-              <span className="text-xs font-normal text-gray-400 dark:text-gray-500">({REPORT_LIST.length})</span>
+              <span className="text-xs font-normal text-neutral-400 dark:text-neutral-500">({REPORT_LIST.length})</span>
             </button>
             <button
               onClick={() => setActiveTab('history')}
@@ -912,7 +912,7 @@ export function ReportsHubScreen() {
                 'flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
                 activeTab === 'history'
                   ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 shadow-sm'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50',
+                  : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700/50',
               )}
             >
               <History className="w-4 h-4" />
@@ -944,8 +944,8 @@ export function ReportsHubScreen() {
                 {CATEGORIES.slice(0, 3).map(cat => (
                   <div key={cat}>
                     <div className="flex items-center gap-3 mb-4">
-                      <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
-                      <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                      <div className="w-8 h-8 bg-neutral-200 dark:bg-neutral-700 rounded-lg animate-pulse" />
+                      <div className="h-5 w-40 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse" />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                       {Array.from({ length: 3 }).map((_, i) => (

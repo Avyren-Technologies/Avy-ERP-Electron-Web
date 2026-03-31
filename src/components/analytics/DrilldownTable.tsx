@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ExportMenu } from './ExportMenu';
@@ -23,9 +23,17 @@ interface DrilldownTableProps<T = Record<string, unknown>> {
   exportFilters?: Record<string, unknown>;
 }
 
+function toHeaderLabel(key: string): string {
+  return key
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/[_-]/g, ' ')
+    .replace(/^\w/, (c) => c.toUpperCase())
+    .trim();
+}
+
 export function DrilldownTable<T extends Record<string, unknown>>({
   data,
-  columns,
+  columns: columnsProp,
   total,
   page,
   limit,
@@ -38,6 +46,14 @@ export function DrilldownTable<T extends Record<string, unknown>>({
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Auto-generate columns from data keys when none provided
+  const columns = useMemo<DrilldownColumn<T>[]>(() => {
+    if (columnsProp.length > 0) return columnsProp;
+    if (data.length === 0) return [];
+    const keys = Object.keys(data[0]).filter((k) => k !== 'id' && !k.endsWith('Id'));
+    return keys.map((key) => ({ key, header: toHeaderLabel(key), sortable: true }));
+  }, [columnsProp, data]);
 
   const totalPages = Math.ceil(total / limit);
 
@@ -132,7 +148,7 @@ export function DrilldownTable<T extends Record<string, unknown>>({
             {data.length === 0 && (
               <tr>
                 <td
-                  colSpan={columns.length}
+                  colSpan={columns.length || 1}
                   className="px-5 py-12 text-center text-sm text-neutral-400"
                 >
                   No data available

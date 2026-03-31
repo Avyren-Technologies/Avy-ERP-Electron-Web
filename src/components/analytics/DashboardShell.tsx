@@ -1,14 +1,27 @@
 import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { GlobalFilters, type FilterValues, type FilterOptions } from './GlobalFilters';
+import { GlobalFilters, type FilterValues } from './GlobalFilters';
+
+const ANALYTICS_NAV = [
+  { label: 'Executive', path: '/app/company/hr/analytics/executive' },
+  { label: 'Workforce', path: '/app/company/hr/analytics/workforce' },
+  { label: 'Attendance', path: '/app/company/hr/analytics/attendance' },
+  { label: 'Leave', path: '/app/company/hr/analytics/leave' },
+  { label: 'Payroll', path: '/app/company/hr/analytics/payroll' },
+  { label: 'Compliance', path: '/app/company/hr/analytics/compliance' },
+  { label: 'Performance', path: '/app/company/hr/analytics/performance' },
+  { label: 'Recruitment', path: '/app/company/hr/analytics/recruitment' },
+  { label: 'Attrition', path: '/app/company/hr/analytics/attrition' },
+  { label: 'Reports', path: '/app/company/hr/analytics/reports' },
+];
 
 interface DashboardShellProps {
   title: string;
   children: React.ReactNode;
   filters?: FilterValues;
   onFiltersChange?: (filters: FilterValues) => void;
-  filterOptions?: FilterOptions;
   loading?: boolean;
   error?: string | null;
 }
@@ -18,10 +31,11 @@ export function DashboardShell({
   children,
   filters,
   onFiltersChange,
-  filterOptions,
   loading,
   error,
 }: DashboardShellProps) {
+  const { pathname } = useLocation();
+
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
       {/* Gradient Header */}
@@ -32,13 +46,35 @@ export function DashboardShell({
         </h1>
       </div>
 
+      {/* Analytics Sub-Navigation */}
+      <div className="border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-x-auto">
+        <nav className="flex px-6 sm:px-8 gap-1 min-w-max">
+          {ANALYTICS_NAV.map((item) => {
+            const isActive = pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={cn(
+                  'px-3 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors',
+                  isActive
+                    ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                    : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600',
+                )}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+
       {/* Filters */}
-      {filters && onFiltersChange && filterOptions && (
+      {filters && onFiltersChange && (
         <div className="border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-6 py-4 sm:px-8">
           <GlobalFilters
             filters={filters}
             onChange={onFiltersChange}
-            {...filterOptions}
           />
         </div>
       )}
