@@ -281,6 +281,10 @@ export {
     usePendingMssApprovals,
     useTeamAttendance,
     useTeamLeaveCalendar,
+    useMyShiftSwaps,
+    useMyWfhRequests,
+    useMyDocuments,
+    usePolicyDocuments,
 } from './use-ess-queries';
 
 export {
@@ -303,6 +307,11 @@ export {
     useLockITDeclaration,
     useApplyLeave,
     useRegularizeAttendance,
+    useCreateShiftSwap,
+    useCancelShiftSwap,
+    useCreateWfhRequest,
+    useCancelWfhRequest,
+    useUploadMyDocument,
 } from './use-ess-mutations';
 
 // Performance Management

@@ -14,9 +14,10 @@ import {
     Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMyLeaveBalance } from "@/features/company-admin/api/use-ess-queries";
-import { useLeaveRequests, useLeaveTypes } from "@/features/company-admin/api/use-leave-queries";
-import { useApplyLeave } from "@/features/company-admin/api/use-ess-mutations";
+import { useLeaveRequests, useLeaveTypes, leaveKeys } from "@/features/company-admin/api/use-leave-queries";
+import { useApplyLeave, useCancelLeave } from "@/features/company-admin/api/use-ess-mutations";
 import { SkeletonTable, SkeletonCard } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
@@ -75,10 +76,12 @@ export function MyLeaveScreen() {
     const [modalOpen, setModalOpen] = useState(false);
     const [form, setForm] = useState({ ...EMPTY_FORM });
 
+    const queryClient = useQueryClient();
     const balanceQuery = useMyLeaveBalance();
     const leaveTypesQuery = useLeaveTypes();
     const requestsQuery = useLeaveRequests({ employeeId: "me" });
     const applyMutation = useApplyLeave();
+    const cancelMutation = useCancelLeave();
 
     const balances: any[] = (balanceQuery.data?.data as any) ?? [];
     const leaveTypes: any[] = leaveTypesQuery.data?.data ?? [];
@@ -121,6 +124,17 @@ export function MyLeaveScreen() {
     const openApply = () => {
         setForm({ ...EMPTY_FORM });
         setModalOpen(true);
+    };
+
+    const handleCancelLeave = async (requestId: string) => {
+        if (!window.confirm("Are you sure you want to cancel this leave request?")) return;
+        try {
+            await cancelMutation.mutateAsync(requestId);
+            queryClient.invalidateQueries({ queryKey: leaveKeys.requests() });
+            showSuccess("Leave Cancelled", "Leave request cancelled successfully.");
+        } catch (err) {
+            showApiError(err);
+        }
     };
 
     const saving = applyMutation.isPending;
@@ -192,6 +206,7 @@ export function MyLeaveScreen() {
                                     <th className="py-4 px-6 font-bold text-center">Days</th>
                                     <th className="py-4 px-6 font-bold text-center">Status</th>
                                     <th className="py-4 px-6 font-bold">Reason</th>
+                                    <th className="py-4 px-6 font-bold text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="text-sm">
@@ -203,6 +218,18 @@ export function MyLeaveScreen() {
                                         <td className="py-4 px-6 text-center font-semibold text-primary-950 dark:text-white">{r.days ?? "—"}</td>
                                         <td className="py-4 px-6 text-center"><StatusBadge status={r.status ?? "Pending"} /></td>
                                         <td className="py-4 px-6 text-neutral-500 dark:text-neutral-400 text-xs truncate max-w-[200px]">{r.reason || "—"}</td>
+                                        <td className="py-4 px-6 text-center">
+                                            {(r.status === "PENDING" || r.status === "APPROVED") && (
+                                                <button
+                                                    onClick={() => handleCancelLeave(r.id)}
+                                                    disabled={cancelMutation.isPending}
+                                                    className="inline-flex items-center gap-1 text-xs font-bold text-danger-600 dark:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-900/20 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                                                >
+                                                    <Ban size={12} />
+                                                    Cancel
+                                                </button>
+                                            )}
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>

@@ -174,6 +174,10 @@ import { MyForm16Screen } from './features/ess/MyForm16Screen';
 import { MyGrievancesScreen } from './features/ess/MyGrievancesScreen';
 import { MyTrainingScreen } from './features/ess/MyTrainingScreen';
 import { MyAssetsScreen } from './features/ess/MyAssetsScreen';
+import { ShiftSwapScreen } from './features/ess/ShiftSwapScreen';
+import { WfhRequestScreen } from './features/ess/WfhRequestScreen';
+import { MyDocumentsScreen } from './features/ess/MyDocumentsScreen';
+import { PolicyDocumentsScreen } from './features/ess/PolicyDocumentsScreen';
 
 // Operations Module Screens
 import { InventoryScreen } from "./features/inventory/InventoryScreen";
@@ -353,6 +357,10 @@ function App() {
         <Route path="company/hr/my-grievances" element={<RequirePermission permission="ess:raise-grievance"><MyGrievancesScreen /></RequirePermission>} />
         <Route path="company/hr/my-training" element={<RequirePermission permission="ess:enroll-training"><MyTrainingScreen /></RequirePermission>} />
         <Route path="company/hr/my-assets" element={<RequirePermission permission="ess:view-assets"><MyAssetsScreen /></RequirePermission>} />
+        <Route path="company/hr/shift-swap" element={<RequirePermission permission="ess:swap-shift"><ShiftSwapScreen /></RequirePermission>} />
+        <Route path="company/hr/wfh-requests" element={<RequirePermission permission="ess:request-wfh"><WfhRequestScreen /></RequirePermission>} />
+        <Route path="company/hr/my-documents" element={<RequirePermission permission="ess:upload-document"><MyDocumentsScreen /></RequirePermission>} />
+        <Route path="company/hr/policy-documents" element={<RequirePermission permission="ess:view-policies"><PolicyDocumentsScreen /></RequirePermission>} />
         {/* Company-admin Recruitment & Training routes */}
         <Route path="company/hr/requisitions" element={<RequirePermission permission="hr:read"><RequisitionScreen /></RequirePermission>} />
         <Route path="company/hr/candidates" element={<RequirePermission permission="hr:read"><CandidateScreen /></RequirePermission>} />

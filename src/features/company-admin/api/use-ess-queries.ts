@@ -52,6 +52,12 @@ export const essKeys = {
     myDeclarations: () =>
         [...essKeys.all, 'my-declarations'] as const,
 
+    // Shift Swap, WFH, Documents, Policies
+    myShiftSwaps: () => [...essKeys.all, 'my-shift-swaps'] as const,
+    myWfhRequests: () => [...essKeys.all, 'my-wfh-requests'] as const,
+    myDocuments: () => [...essKeys.all, 'my-documents'] as const,
+    policyDocuments: () => [...essKeys.all, 'policy-documents'] as const,
+
     // MSS Manager Self-Service
     teamMembers: (params?: Record<string, unknown>) =>
         [...essKeys.all, 'team-members', params] as const,
@@ -222,5 +228,35 @@ export function useTeamLeaveCalendar() {
     return useQuery({
         queryKey: essKeys.teamLeaveCalendar(),
         queryFn: () => essApi.getTeamLeaveCalendar(),
+    });
+}
+
+// ── Shift Swap, WFH, Documents, Policies ──
+
+export function useMyShiftSwaps() {
+    return useQuery({
+        queryKey: essKeys.myShiftSwaps(),
+        queryFn: () => essApi.getMyShiftSwaps(),
+    });
+}
+
+export function useMyWfhRequests() {
+    return useQuery({
+        queryKey: essKeys.myWfhRequests(),
+        queryFn: () => essApi.getMyWfhRequests(),
+    });
+}
+
+export function useMyDocuments() {
+    return useQuery({
+        queryKey: essKeys.myDocuments(),
+        queryFn: () => essApi.getMyDocuments(),
+    });
+}
+
+export function usePolicyDocuments() {
+    return useQuery({
+        queryKey: essKeys.policyDocuments(),
+        queryFn: () => essApi.getPolicyDocuments(),
     });
 }

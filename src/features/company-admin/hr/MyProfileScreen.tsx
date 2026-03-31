@@ -1,7 +1,9 @@
-import { UserCircle, Mail, Phone, Briefcase, CreditCard, Shield, Pencil } from "lucide-react";
+import { useState } from "react";
+import { UserCircle, Mail, Phone, Briefcase, CreditCard, Shield, Pencil, X, Loader2 } from "lucide-react";
 import { useMyProfile } from "@/features/company-admin/api/use-ess-queries";
+import { useUpdateMyProfile } from "@/features/company-admin/api/use-ess-mutations";
 import { SkeletonCard } from "@/components/ui/Skeleton";
-import { showInfo } from "@/lib/toast";
+import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Types (align with GET /hr/ess/my-profile `data`) ── */
 
@@ -222,12 +224,51 @@ function ProfileSection({
 
 /* ── Screen ── */
 
+const MARITAL_OPTIONS = ["Single", "Married", "Divorced", "Widowed"];
+
+const EMPTY_EDIT_FORM = {
+    personalMobile: "",
+    alternativeMobile: "",
+    personalEmail: "",
+    emergencyContactName: "",
+    emergencyContactRelation: "",
+    emergencyContactMobile: "",
+    maritalStatus: "",
+    bloodGroup: "",
+};
+
 export function MyProfileScreen() {
+    const [editOpen, setEditOpen] = useState(false);
+    const [editForm, setEditForm] = useState({ ...EMPTY_EDIT_FORM });
+
     const { data, isLoading, isError } = useMyProfile();
+    const updateProfile = useUpdateMyProfile();
     const profile = (data?.data ?? null) as EssMyProfileData | null;
 
-    const handleRequestUpdate = () => {
-        showInfo("Request Sent", "A profile update request has been sent to HR. You will be notified once it is reviewed.");
+    const openEdit = () => {
+        if (profile) {
+            setEditForm({
+                personalMobile: profile.personalMobile ?? profile.phone ?? "",
+                alternativeMobile: profile.alternativeMobile ?? "",
+                personalEmail: profile.personalEmail ?? profile.email ?? "",
+                emergencyContactName: profile.emergencyContactName ?? "",
+                emergencyContactRelation: profile.emergencyContactRelation ?? "",
+                emergencyContactMobile: profile.emergencyContactMobile ?? "",
+                maritalStatus: profile.maritalStatus ?? "",
+                bloodGroup: profile.bloodGroup ?? "",
+            });
+        }
+        setEditOpen(true);
+    };
+
+    const handleSaveProfile = async () => {
+        try {
+            await updateProfile.mutateAsync(editForm);
+            showSuccess("Profile Updated", "Your profile has been updated successfully.");
+            setEditOpen(false);
+        } catch (err) {
+            showApiError(err);
+        }
     };
 
     if (isLoading) {
@@ -288,11 +329,11 @@ export function MyProfileScreen() {
                     <p className="text-neutral-500 dark:text-neutral-400 mt-1">View your personal and employment information</p>
                 </div>
                 <button
-                    onClick={handleRequestUpdate}
+                    onClick={openEdit}
                     className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none"
                 >
                     <Pencil className="w-4 h-4" />
-                    Request Update
+                    Edit Profile
                 </button>
             </div>
 
@@ -425,6 +466,73 @@ export function MyProfileScreen() {
                     <InfoRow label="ESI IP Number" value={esi ?? undefined} />
                 </ProfileSection>
             </div>
+
+            {/* ── Edit Profile Modal ── */}
+            {editOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-lg animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
+                            <h2 className="text-lg font-bold text-primary-950 dark:text-white">Edit Profile</h2>
+                            <button onClick={() => setEditOpen(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Personal Mobile</label>
+                                <input type="tel" value={editForm.personalMobile} onChange={(e) => setEditForm((p) => ({ ...p, personalMobile: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Alternative Mobile</label>
+                                <input type="tel" value={editForm.alternativeMobile} onChange={(e) => setEditForm((p) => ({ ...p, alternativeMobile: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Personal Email</label>
+                                <input type="email" value={editForm.personalEmail} onChange={(e) => setEditForm((p) => ({ ...p, personalEmail: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Marital Status</label>
+                                    <select value={editForm.maritalStatus} onChange={(e) => setEditForm((p) => ({ ...p, maritalStatus: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
+                                        <option value="">Select...</option>
+                                        {MARITAL_OPTIONS.map((opt) => (<option key={opt} value={opt.toUpperCase()}>{opt}</option>))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Blood Group</label>
+                                    <input type="text" value={editForm.bloodGroup} onChange={(e) => setEditForm((p) => ({ ...p, bloodGroup: e.target.value }))} placeholder="e.g. O+" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                </div>
+                            </div>
+                            <div className="pt-2">
+                                <h4 className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">Emergency Contact</h4>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Contact Name</label>
+                                        <input type="text" value={editForm.emergencyContactName} onChange={(e) => setEditForm((p) => ({ ...p, emergencyContactName: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Relation</label>
+                                            <input type="text" value={editForm.emergencyContactRelation} onChange={(e) => setEditForm((p) => ({ ...p, emergencyContactRelation: e.target.value }))} placeholder="e.g. Spouse" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Mobile</label>
+                                            <input type="tel" value={editForm.emergencyContactMobile} onChange={(e) => setEditForm((p) => ({ ...p, emergencyContactMobile: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
+                            <button onClick={() => setEditOpen(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
+                            <button onClick={handleSaveProfile} disabled={updateProfile.isPending} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                                {updateProfile.isPending && <Loader2 size={14} className="animate-spin" />}
+                                {updateProfile.isPending ? "Saving..." : "Save Changes"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

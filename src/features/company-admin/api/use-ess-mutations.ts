@@ -220,3 +220,85 @@ export function useRegularizeAttendance() {
         },
     });
 }
+
+export function useUpdateMyProfile() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (data: any) => essApi.updateMyProfile(data),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: essKeys.myProfile() });
+        },
+    });
+}
+
+export function useCancelLeave() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => essApi.cancelLeave(id),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: essKeys.myLeaveBalance() });
+        },
+    });
+}
+
+export function useDownloadPayslipPdf() {
+    return useMutation({
+        mutationFn: (payslipId: string) => essApi.downloadPayslipPdf(payslipId),
+    });
+}
+
+// ── Shift Swap ──
+
+export function useCreateShiftSwap() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (data: any) => essApi.createShiftSwap(data),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: essKeys.myShiftSwaps() });
+        },
+    });
+}
+
+export function useCancelShiftSwap() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => essApi.cancelShiftSwap(id),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: essKeys.myShiftSwaps() });
+        },
+    });
+}
+
+// ── WFH ──
+
+export function useCreateWfhRequest() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (data: any) => essApi.createWfhRequest(data),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: essKeys.myWfhRequests() });
+        },
+    });
+}
+
+export function useCancelWfhRequest() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => essApi.cancelWfhRequest(id),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: essKeys.myWfhRequests() });
+        },
+    });
+}
+
+// ── Documents ──
+
+export function useUploadMyDocument() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (data: any) => essApi.uploadMyDocument(data),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: essKeys.myDocuments() });
+        },
+    });
+}

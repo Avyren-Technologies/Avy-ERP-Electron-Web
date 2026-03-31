@@ -12,9 +12,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMyPayslips } from "@/features/company-admin/api/use-ess-queries";
+import { useDownloadPayslipPdf } from "@/features/company-admin/api/use-ess-mutations";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { showInfo } from "@/lib/toast";
+import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Helpers ── */
 
@@ -34,6 +35,7 @@ export function MyPayslipsScreen() {
     const [detailTarget, setDetailTarget] = useState<any>(null);
 
     const { data, isLoading, isError } = useMyPayslips();
+    const downloadPdf = useDownloadPayslipPdf();
     const payslips: any[] = (data?.data as any) ?? [];
 
     const filtered = payslips.filter((p: any) => {
@@ -42,8 +44,21 @@ export function MyPayslipsScreen() {
         return true;
     });
 
-    const handleDownload = (payslip: any) => {
-        showInfo("Download Started", `Payslip for ${payslip.monthLabel ?? payslip.month} ${payslip.year} is being prepared.`);
+    const handleDownload = async (payslip: any) => {
+        try {
+            const blob = await downloadPdf.mutateAsync(payslip.id);
+            const url = window.URL.createObjectURL(new Blob([blob]));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `payslip-${payslip.month}-${payslip.year}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            showSuccess('Payslip Downloaded', `Payslip for ${payslip.monthLabel ?? payslip.month} ${payslip.year} has been downloaded.`);
+        } catch (err) {
+            showApiError(err);
+        }
     };
 
     // Build detail breakdown
