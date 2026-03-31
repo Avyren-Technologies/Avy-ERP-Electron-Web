@@ -17,6 +17,12 @@ import {
     ChevronDown,
     ChevronRight,
     RotateCcw,
+    X,
+    Mail,
+    MapPin,
+    Calendar,
+    Hash,
+    Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useOrgChart } from "@/features/company-admin/api/use-hr-queries";
@@ -33,6 +39,10 @@ interface OrgNode {
     department?: string;
     employeeId?: string;
     imageUrl?: string;
+    joiningDate?: string;
+    officialEmail?: string;
+    status?: string;
+    location?: string;
     reportees: OrgNode[];
 }
 
@@ -72,6 +82,10 @@ function transformNode(node: any): OrgNode {
         department: node.department?.name ?? node.department ?? undefined,
         employeeId: node.employeeId,
         imageUrl: node.profilePhotoUrl ?? node.imageUrl ?? undefined,
+        joiningDate: node.joiningDate ?? undefined,
+        officialEmail: node.officialEmail ?? undefined,
+        status: node.status ?? undefined,
+        location: node.location?.name ?? node.location ?? undefined,
         reportees: (node.reportees ?? node.children ?? []).map(transformNode),
     };
 }
@@ -173,44 +187,208 @@ function Avatar({
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Node Hover Tooltip (shared by Root + Employee cards)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+function NodeHoverTooltip({ node }: { node: OrgNode }) {
+    return (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2.5 z-50 pointer-events-none invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-150 w-56">
+            <div className="bg-white dark:bg-neutral-800 border border-neutral-200/80 dark:border-neutral-700 rounded-xl shadow-xl shadow-neutral-900/10 p-3">
+                <div className="flex items-center gap-2.5 mb-2.5">
+                    <Avatar name={node.name} imageUrl={node.imageUrl} size="sm" />
+                    <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-sm text-primary-950 dark:text-white leading-tight truncate">{node.name}</p>
+                        {node.designation && (
+                            <p className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate">{node.designation}</p>
+                        )}
+                    </div>
+                </div>
+                {node.department && (
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                        <Building2 size={11} className="text-accent-500 shrink-0" />
+                        <span className="text-[11px] text-neutral-600 dark:text-neutral-300 truncate">{node.department}</span>
+                    </div>
+                )}
+                {node.location && (
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                        <MapPin size={11} className="text-neutral-400 shrink-0" />
+                        <span className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate">{node.location}</span>
+                    </div>
+                )}
+                {node.employeeId && (
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                        <Hash size={11} className="text-neutral-400 shrink-0" />
+                        <span className="text-[11px] text-neutral-500 dark:text-neutral-400">{node.employeeId}</span>
+                    </div>
+                )}
+                {node.reportees.length > 0 && (
+                    <div className="flex items-center gap-1.5 pt-1.5 mt-1.5 border-t border-neutral-100 dark:border-neutral-700">
+                        <Users size={11} className="text-primary-500 shrink-0" />
+                        <span className="text-[11px] text-primary-600 dark:text-primary-400 font-medium">
+                            {node.reportees.length} direct report{node.reportees.length !== 1 ? "s" : ""}
+                        </span>
+                    </div>
+                )}
+                <p className="text-[10px] text-neutral-400 dark:text-neutral-600 mt-1.5 text-center">Click to view details</p>
+            </div>
+            {/* Arrow */}
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-white dark:border-t-neutral-800 drop-shadow-sm" />
+        </div>
+    );
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Employee Detail Modal (on click)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+function DetailRow({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
+    return (
+        <div className="flex items-start gap-3 py-2 border-b border-neutral-100 dark:border-neutral-800 last:border-0">
+            {icon && <span className="mt-0.5 shrink-0 text-neutral-400 dark:text-neutral-500">{icon}</span>}
+            <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-0.5">{label}</p>
+                <p className="text-sm text-primary-950 dark:text-white font-medium break-all">{value}</p>
+            </div>
+        </div>
+    );
+}
+
+function EmployeeDetailModal({ node, onClose }: { node: OrgNode; onClose: () => void }) {
+    const joinDate = node.joiningDate
+        ? new Date(node.joiningDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+        : null;
+    const statusLabel = node.status ? node.status.replace(/_/g, " ") : null;
+
+    return (
+        <div
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+            onClick={onClose}
+        >
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+
+            {/* Modal card */}
+            <div
+                className="relative bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-sm z-10 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* Header gradient */}
+                <div className="bg-gradient-to-r from-primary-600 to-accent-600 p-5 pb-10">
+                    <button
+                        onClick={onClose}
+                        className="absolute top-3 right-3 p-1.5 rounded-lg bg-white/20 hover:bg-white/30 transition-colors cursor-pointer"
+                    >
+                        <X size={14} className="text-white" />
+                    </button>
+                    <div className="flex items-center gap-3">
+                        <div className="ring-2 ring-white/40 rounded-full">
+                            <Avatar name={node.name} imageUrl={node.imageUrl} size="lg" />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-lg text-white leading-tight">{node.name}</h3>
+                            {node.designation && (
+                                <p className="text-sm text-white/80 mt-0.5">{node.designation}</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Status badge floating over header/content boundary */}
+                {node.status && (
+                    <div className="px-5 -mt-4 mb-1">
+                        <span className={cn(
+                            "inline-block text-[11px] font-bold px-3 py-1 rounded-full border shadow-sm",
+                            node.status === "ACTIVE"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800"
+                                : node.status === "PROBATION"
+                                    ? "bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/30 dark:text-warning-300 dark:border-warning-800"
+                                    : "bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700"
+                        )}>
+                            {statusLabel}
+                        </span>
+                    </div>
+                )}
+
+                {/* Details */}
+                <div className="px-5 pb-5 pt-2">
+                    {node.employeeId && (
+                        <DetailRow label="Employee ID" value={node.employeeId} icon={<Hash size={14} />} />
+                    )}
+                    {node.department && (
+                        <DetailRow label="Department" value={node.department} icon={<Building2 size={14} />} />
+                    )}
+                    {node.location && (
+                        <DetailRow label="Location" value={node.location} icon={<MapPin size={14} />} />
+                    )}
+                    {node.officialEmail && (
+                        <DetailRow label="Email" value={node.officialEmail} icon={<Mail size={14} />} />
+                    )}
+                    {joinDate && (
+                        <DetailRow label="Joined" value={joinDate} icon={<Calendar size={14} />} />
+                    )}
+                    {node.reportees.length > 0 && (
+                        <DetailRow
+                            label="Direct Reports"
+                            value={`${node.reportees.length} member${node.reportees.length !== 1 ? "s" : ""}`}
+                            icon={<Users size={14} />}
+                        />
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    Root Node Card (CEO/Founder)
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 function RootNodeCard({
     node,
     isHighlighted,
+    onSelect,
 }: {
     node: OrgNode;
     isHighlighted: boolean;
+    onSelect?: (node: OrgNode) => void;
 }) {
     return (
         <div className="flex flex-col items-center">
-            <div
-                id={`org-node-${node.id}`}
-                className={cn(
-                    "relative flex flex-col items-center gap-2 px-8 py-5 rounded-2xl border transition-all duration-200",
-                    "bg-white dark:bg-neutral-900 shadow-lg shadow-neutral-900/5 dark:shadow-black/20",
-                    isHighlighted
-                        ? "border-primary-400 dark:border-primary-500 ring-2 ring-primary-300/50 dark:ring-primary-500/30 shadow-primary-500/20"
-                        : "border-neutral-200/80 dark:border-neutral-700/80 hover:shadow-xl hover:border-primary-200 dark:hover:border-primary-800"
-                )}
-            >
-                <Avatar name={node.name} imageUrl={node.imageUrl} size="lg" />
-                <div className="text-center">
-                    <p className="font-bold text-base text-primary-950 dark:text-white leading-tight">
-                        {node.name}
-                    </p>
-                    {node.designation && (
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                            {node.designation}
+            <div className="relative group">
+                <div
+                    id={`org-node-${node.id}`}
+                    className={cn(
+                        "relative flex flex-col items-center gap-2 px-8 py-5 rounded-2xl border transition-all duration-200 cursor-pointer",
+                        "bg-white dark:bg-neutral-900 shadow-lg shadow-neutral-900/5 dark:shadow-black/20",
+                        isHighlighted
+                            ? "border-primary-400 dark:border-primary-500 ring-2 ring-primary-300/50 dark:ring-primary-500/30 shadow-primary-500/20"
+                            : "border-neutral-200/80 dark:border-neutral-700/80 hover:shadow-xl hover:border-primary-200 dark:hover:border-primary-800"
+                    )}
+                    onClick={() => onSelect?.(node)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === "Enter" && onSelect?.(node)}
+                    data-org-card="true"
+                >
+                    <Avatar name={node.name} imageUrl={node.imageUrl} size="lg" />
+                    <div className="text-center">
+                        <p className="font-bold text-base text-primary-950 dark:text-white leading-tight">
+                            {node.name}
                         </p>
+                        {node.designation && (
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                                {node.designation}
+                            </p>
+                        )}
+                    </div>
+                    {node.department && (
+                        <span className="inline-block text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 border border-primary-200/50 dark:border-primary-800/50">
+                            {node.department}
+                        </span>
                     )}
                 </div>
-                {node.department && (
-                    <span className="inline-block text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 border border-primary-200/50 dark:border-primary-800/50">
-                        {node.department}
-                    </span>
-                )}
+                {/* Hover tooltip */}
+                <NodeHoverTooltip node={node} />
             </div>
         </div>
     );
@@ -223,32 +401,43 @@ function RootNodeCard({
 function EmployeeCard({
     node,
     isHighlighted,
+    onSelect,
 }: {
     node: OrgNode;
     isHighlighted: boolean;
+    onSelect?: (node: OrgNode) => void;
 }) {
     return (
-        <div
-            id={`org-node-${node.id}`}
-            className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-200 min-w-[180px] max-w-[240px]",
-                "bg-white dark:bg-neutral-900 shadow-sm hover:shadow-md",
-                isHighlighted
-                    ? "border-primary-400 dark:border-primary-500 ring-2 ring-primary-300/50 dark:ring-primary-500/30 shadow-primary-500/20"
-                    : "border-neutral-200/60 dark:border-neutral-800 hover:border-primary-200 dark:hover:border-primary-700"
-            )}
-        >
-            <Avatar name={node.name} imageUrl={node.imageUrl} size="sm" />
-            <div className="min-w-0 flex-1">
-                <p className="font-semibold text-sm text-primary-950 dark:text-white truncate leading-tight">
-                    {node.name}
-                </p>
-                {node.designation && (
-                    <p className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate">
-                        {node.designation}
-                    </p>
+        <div className="relative group">
+            <div
+                id={`org-node-${node.id}`}
+                className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-200 min-w-[180px] max-w-[240px] cursor-pointer",
+                    "bg-white dark:bg-neutral-900 shadow-sm hover:shadow-md",
+                    isHighlighted
+                        ? "border-primary-400 dark:border-primary-500 ring-2 ring-primary-300/50 dark:ring-primary-500/30 shadow-primary-500/20"
+                        : "border-neutral-200/60 dark:border-neutral-800 hover:border-primary-200 dark:hover:border-primary-700"
                 )}
+                onClick={() => onSelect?.(node)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === "Enter" && onSelect?.(node)}
+                data-org-card="true"
+            >
+                <Avatar name={node.name} imageUrl={node.imageUrl} size="sm" />
+                <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-sm text-primary-950 dark:text-white truncate leading-tight">
+                        {node.name}
+                    </p>
+                    {node.designation && (
+                        <p className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate">
+                            {node.designation}
+                        </p>
+                    )}
+                </div>
             </div>
+            {/* Hover tooltip */}
+            <NodeHoverTooltip node={node} />
         </div>
     );
 }
@@ -262,12 +451,14 @@ function SubTree({
     highlightId,
     expanded,
     onToggle,
+    onSelect,
     depth,
 }: {
     node: OrgNode;
     highlightId: string | null;
     expanded: Set<string>;
     onToggle: (id: string) => void;
+    onSelect: (node: OrgNode) => void;
     depth: number;
 }) {
     const hasReportees = node.reportees.length > 0;
@@ -278,7 +469,7 @@ function SubTree({
         <div className="flex flex-col items-center">
             {/* Employee card */}
             <div className="relative">
-                <EmployeeCard node={node} isHighlighted={isHighlighted} />
+                <EmployeeCard node={node} isHighlighted={isHighlighted} onSelect={onSelect} />
                 {hasReportees && (
                     <button
                         onClick={() => onToggle(node.id)}
@@ -313,6 +504,7 @@ function SubTree({
                                 highlightId={highlightId}
                                 expanded={expanded}
                                 onToggle={onToggle}
+                                onSelect={onSelect}
                                 depth={depth + 1}
                             />
                         </div>
@@ -335,6 +527,7 @@ function SubTree({
                                         highlightId={highlightId}
                                         expanded={expanded}
                                         onToggle={onToggle}
+                                        onSelect={onSelect}
                                         depth={depth + 1}
                                     />
                                 </div>
@@ -356,6 +549,7 @@ function DepartmentColumn({
     highlightId,
     expanded,
     onToggle,
+    onSelect,
     isCollapsed,
     onToggleCollapse,
 }: {
@@ -363,6 +557,7 @@ function DepartmentColumn({
     highlightId: string | null;
     expanded: Set<string>;
     onToggle: (id: string) => void;
+    onSelect: (node: OrgNode) => void;
     isCollapsed: boolean;
     onToggleCollapse: () => void;
 }) {
@@ -416,6 +611,7 @@ function DepartmentColumn({
                                 highlightId={highlightId}
                                 expanded={expanded}
                                 onToggle={onToggle}
+                                onSelect={onSelect}
                                 depth={1}
                             />
                         </div>
@@ -437,6 +633,7 @@ function DepartmentColumn({
                                         highlightId={highlightId}
                                         expanded={expanded}
                                         onToggle={onToggle}
+                                        onSelect={onSelect}
                                         depth={1}
                                     />
                                 </div>
@@ -458,6 +655,7 @@ function OrgTree({
     highlightId,
     expanded,
     onToggle,
+    onSelect,
     collapsedDepts,
     onToggleDept,
 }: {
@@ -465,6 +663,7 @@ function OrgTree({
     highlightId: string | null;
     expanded: Set<string>;
     onToggle: (id: string) => void;
+    onSelect: (node: OrgNode) => void;
     collapsedDepts: Set<string>;
     onToggleDept: (deptKey: string) => void;
 }) {
@@ -477,7 +676,7 @@ function OrgTree({
     return (
         <div className="flex flex-col items-center">
             {/* Root card */}
-            <RootNodeCard node={root} isHighlighted={highlightId === root.id} />
+            <RootNodeCard node={root} isHighlighted={highlightId === root.id} onSelect={onSelect} />
 
             {hasDepts && (
                 <>
@@ -494,6 +693,7 @@ function OrgTree({
                             highlightId={highlightId}
                             expanded={expanded}
                             onToggle={onToggle}
+                            onSelect={onSelect}
                             isCollapsed={collapsedDepts.has(`${root.id}:${deptGroups[0].department}`)}
                             onToggleCollapse={() =>
                                 onToggleDept(`${root.id}:${deptGroups[0].department}`)
@@ -517,6 +717,7 @@ function OrgTree({
                                     highlightId={highlightId}
                                     expanded={expanded}
                                     onToggle={onToggle}
+                                    onSelect={onSelect}
                                     isCollapsed={collapsedDepts.has(`${root.id}:${group.department}`)}
                                     onToggleCollapse={() =>
                                         onToggleDept(`${root.id}:${group.department}`)
@@ -603,6 +804,7 @@ export function OrgChartScreen() {
     const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
     const [panStart, setPanStart] = useState({ x: 0, y: 0 });
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [selectedEmployee, setSelectedEmployee] = useState<OrgNode | null>(null);
 
     const canvasRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
@@ -906,6 +1108,7 @@ export function OrgChartScreen() {
                                             highlightId={highlightId}
                                             expanded={expanded}
                                             onToggle={handleToggle}
+                                            onSelect={setSelectedEmployee}
                                             collapsedDepts={collapsedDepts}
                                             onToggleDept={handleToggleDept}
                                         />
@@ -938,6 +1141,14 @@ export function OrgChartScreen() {
                     </>
                 )}
             </div>
+
+            {/* Employee detail modal */}
+            {selectedEmployee && (
+                <EmployeeDetailModal
+                    node={selectedEmployee}
+                    onClose={() => setSelectedEmployee(null)}
+                />
+            )}
         </div>
     );
 }

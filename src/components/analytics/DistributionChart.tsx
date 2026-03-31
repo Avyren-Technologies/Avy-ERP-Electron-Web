@@ -47,16 +47,16 @@ function CustomTooltip({ active, payload }: any) {
   const entry = payload[0];
 
   return (
-    <div className="rounded-xl border border-neutral-200/60 dark:border-neutral-700/60 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-sm shadow-lg px-4 py-3">
-      <div className="flex items-center gap-2 text-sm">
+    <div className="rounded-2xl border border-white/20 dark:border-neutral-700/40 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl shadow-2xl shadow-black/10 px-5 py-3.5">
+      <div className="flex items-center gap-2.5 text-sm">
         <div
-          className="w-2.5 h-2.5 rounded-full"
+          className="w-3 h-3 rounded-full ring-2 ring-white dark:ring-neutral-800"
           style={{ backgroundColor: entry.payload?.fill || entry.color }}
         />
-        <span className="text-neutral-600 dark:text-neutral-300">
-          {entry.name || entry.payload?.label}:
+        <span className="text-neutral-500 dark:text-neutral-400 font-medium">
+          {entry.name || entry.payload?.label}
         </span>
-        <span className="font-semibold text-neutral-800 dark:text-neutral-100">
+        <span className="font-bold text-neutral-800 dark:text-neutral-100 ml-auto">
           {typeof entry.value === 'number' ? entry.value.toLocaleString() : entry.value}
         </span>
       </div>
@@ -64,9 +64,29 @@ function CustomTooltip({ active, payload }: any) {
   );
 }
 
+/* Center label for donut chart */
+function DonutCenterLabel({ viewBox, total }: { viewBox?: any; total: number }) {
+  if (!viewBox) return null;
+  const { cx, cy } = viewBox;
+  return (
+    <g>
+      <text x={cx} y={cy - 6} textAnchor="middle" dominantBaseline="central"
+        className="fill-neutral-800 dark:fill-neutral-100" fontSize={22} fontWeight={800}>
+        {total.toLocaleString()}
+      </text>
+      <text x={cx} y={cy + 16} textAnchor="middle" dominantBaseline="central"
+        className="fill-neutral-400 dark:fill-neutral-500" fontSize={11} fontWeight={600}>
+        Total
+      </text>
+    </g>
+  );
+}
+
 export function DistributionChart({ distribution, height = 300 }: DistributionChartProps) {
   const { chartType, title } = distribution;
   const items = Array.isArray(distribution.items) ? distribution.items : [];
+
+  const total = items.reduce((sum, item) => sum + (item.value || 0), 0);
 
   const coloredItems = items.map((item, idx) => ({
     ...item,
@@ -77,66 +97,108 @@ export function DistributionChart({ distribution, height = 300 }: DistributionCh
   const isHorizontal = chartType === 'horizontal-bar';
 
   return (
-    <div className="rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
+    <div className="rounded-2xl border border-neutral-200/60 dark:border-neutral-700/60 bg-white dark:bg-neutral-900 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
+      {/* Chart header */}
       {title && (
-        <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-4">
-          {title}
-        </h3>
+        <div className="px-6 pt-5 pb-1">
+          <h3 className="text-sm font-bold text-neutral-800 dark:text-neutral-100">
+            {title}
+          </h3>
+          <p className="text-[11px] text-neutral-400 dark:text-neutral-500 mt-0.5">
+            {isPie ? 'Distribution breakdown' : `${items.length} categories`}
+          </p>
+        </div>
       )}
 
-      <ResponsiveContainer width="100%" height={height}>
-        {isPie ? (
-          <PieChart>
-            <Pie
+      <div className="px-5 pb-3 pt-2">
+        <ResponsiveContainer width="100%" height={height}>
+          {isPie ? (
+            <PieChart>
+              <Pie
+                data={coloredItems}
+                dataKey="value"
+                nameKey="label"
+                cx="50%"
+                cy="50%"
+                innerRadius={chartType === 'donut' ? '55%' : 0}
+                outerRadius="80%"
+                paddingAngle={3}
+                strokeWidth={0}
+                label={chartType !== 'donut' ? undefined : false}
+              >
+                {coloredItems.map((item, idx) => (
+                  <Cell key={idx} fill={item.fill} />
+                ))}
+                {chartType === 'donut' && (
+                  <Label content={<DonutCenterLabel total={total} />} position="center" />
+                )}
+              </Pie>
+              <Tooltip content={<CustomTooltip />} />
+              <Legend
+                wrapperStyle={{ fontSize: 12, paddingTop: 8, fontWeight: 500 }}
+                iconType="circle"
+                iconSize={8}
+                formatter={(value: string) => (
+                  <span className="text-neutral-600 dark:text-neutral-300">{value}</span>
+                )}
+              />
+            </PieChart>
+          ) : (
+            <BarChart
               data={coloredItems}
-              dataKey="value"
-              nameKey="label"
-              cx="50%"
-              cy="50%"
-              innerRadius={chartType === 'donut' ? '55%' : 0}
-              outerRadius="80%"
-              paddingAngle={2}
-              strokeWidth={0}
+              layout={isHorizontal ? 'vertical' : 'horizontal'}
+              margin={{ top: 5, right: 10, left: isHorizontal ? 80 : -10, bottom: 5 }}
             >
-              {coloredItems.map((item, idx) => (
-                <Cell key={idx} fill={item.fill} />
-              ))}
-            </Pie>
-            <Tooltip content={<CustomTooltip />} />
-            <Legend
-              wrapperStyle={{ fontSize: 12 }}
-              formatter={(value: string) => (
-                <span className="text-neutral-600 dark:text-neutral-300">{value}</span>
+              <defs>
+                {coloredItems.map((item, idx) => (
+                  <linearGradient key={`bar-grad-${idx}`} id={`bar-gradient-${idx}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={item.fill} stopOpacity={0.9} />
+                    <stop offset="100%" stopColor={item.fill} stopOpacity={0.55} />
+                  </linearGradient>
+                ))}
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-neutral-100 dark:text-neutral-800" vertical={false} />
+              {isHorizontal ? (
+                <>
+                  <XAxis type="number" tick={{ fontSize: 11, fill: '#a3a3a3', fontWeight: 500 }} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="label" tick={{ fontSize: 11, fill: '#a3a3a3', fontWeight: 500 }} axisLine={false} tickLine={false} width={75} />
+                </>
+              ) : (
+                <>
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#a3a3a3', fontWeight: 500 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: '#a3a3a3', fontWeight: 500 }} axisLine={false} tickLine={false} />
+                </>
               )}
-            />
-          </PieChart>
-        ) : (
-          <BarChart
-            data={coloredItems}
-            layout={isHorizontal ? 'vertical' : 'horizontal'}
-            margin={{ top: 5, right: 20, left: isHorizontal ? 80 : 0, bottom: 5 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-neutral-200 dark:text-neutral-800" />
-            {isHorizontal ? (
-              <>
-                <XAxis type="number" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="label" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={75} />
-              </>
-            ) : (
-              <>
-                <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={{ stroke: '#e2e8f0' }} tickLine={false} />
-                <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              </>
-            )}
-            <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-              {coloredItems.map((item, idx) => (
-                <Cell key={idx} fill={item.fill} />
-              ))}
-            </Bar>
-          </BarChart>
-        )}
-      </ResponsiveContainer>
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(99, 102, 241, 0.06)' }} />
+              <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={isHorizontal ? 20 : undefined}>
+                {coloredItems.map((item, idx) => (
+                  <Cell key={idx} fill={`url(#bar-gradient-${idx})`} />
+                ))}
+              </Bar>
+            </BarChart>
+          )}
+        </ResponsiveContainer>
+      </div>
+
+      {/* Enhanced legend with percentages for pie/donut */}
+      {isPie && total > 0 && (
+        <div className="border-t border-neutral-100 dark:border-neutral-800 px-5 py-3">
+          <div className="grid grid-cols-2 gap-2">
+            {coloredItems.slice(0, 6).map((item, idx) => (
+              <div key={idx} className="flex items-center gap-2 text-xs">
+                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: item.fill }} />
+                <span className="text-neutral-500 dark:text-neutral-400 truncate flex-1">{item.label}</span>
+                <span className="font-bold text-neutral-700 dark:text-neutral-200">
+                  {((item.value / total) * 100).toFixed(0)}%
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+// Need Label import for donut center
+import { Label } from 'recharts';

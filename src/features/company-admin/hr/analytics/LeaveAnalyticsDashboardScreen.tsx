@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAnalyticsDashboard, useAnalyticsDrilldown } from '@/features/company-admin/api/use-analytics-queries';
+import { useNavigate } from 'react-router-dom';
+import { BarChart3, PieChart, Grid3X3 } from 'lucide-react';
+import { useAnalyticsDashboard } from '@/features/company-admin/api/use-analytics-queries';
 import {
   DashboardShell,
   KPIGrid,
@@ -8,7 +9,6 @@ import {
   DistributionChart,
   InsightsPanel,
   AlertsBanner,
-  DrilldownTable,
   HeatmapChart,
   ZeroDataState,
   type FilterValues,
@@ -16,21 +16,20 @@ import {
 
 export function LeaveAnalyticsDashboardScreen() {
   const [filters, setFilters] = useState<FilterValues>({});
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [tablePage, setTablePage] = useState(1);
   const { data: response, isLoading, error } = useAnalyticsDashboard('leave', filters);
   const navigate = useNavigate();
 
-  const activeDrilldown = searchParams.get('drilldown');
-
-  const { data: drilldownData } = useAnalyticsDrilldown('leave', {
-    type: activeDrilldown || '',
-    ...filters,
-    page: tablePage,
-    limit: 20,
-  });
-
   const dashboardData = response?.data;
+  const alertCount = dashboardData?.alerts?.length ?? 0;
+  const kpiCount = dashboardData?.kpis?.length ?? 0;
+  const lastComputedAt = dashboardData?.meta?.lastComputedAt
+    ? new Date(dashboardData.meta.lastComputedAt).toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : 'Pending';
 
   const handleDrilldown = (type: string) => {
     navigate(`/app/company/hr/analytics/leave?drilldown=${type}`);
@@ -50,6 +49,23 @@ export function LeaveAnalyticsDashboardScreen() {
   return (
     <DashboardShell
       title="Leave Analytics"
+      headerSubtitle="Monitor leave consumption, policy utilization, and team availability patterns."
+      headerAside={(
+        <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/20 bg-white/10 p-2.5 backdrop-blur-sm md:min-w-[360px]">
+          <div className="rounded-xl bg-white/10 px-3 py-2">
+            <p className="text-[10px] uppercase tracking-wide text-white/70 font-semibold">Last refresh</p>
+            <p className="mt-1 text-xs font-semibold text-white">{lastComputedAt}</p>
+          </div>
+          <div className="rounded-xl bg-white/10 px-3 py-2">
+            <p className="text-[10px] uppercase tracking-wide text-white/70 font-semibold">KPIs</p>
+            <p className="mt-1 text-sm font-bold text-white">{kpiCount}</p>
+          </div>
+          <div className="rounded-xl bg-white/10 px-3 py-2">
+            <p className="text-[10px] uppercase tracking-wide text-white/70 font-semibold">Alerts</p>
+            <p className="mt-1 text-sm font-bold text-white">{alertCount}</p>
+          </div>
+        </div>
+      )}
       filters={filters}
       onFiltersChange={setFilters}
       loading={isLoading}
@@ -61,55 +77,58 @@ export function LeaveAnalyticsDashboardScreen() {
 
       <KPIGrid kpis={dashboardData?.kpis ?? []} onDrilldown={handleDrilldown} />
 
-      {/* Monthly Consumption Stacked */}
-      <div className="grid grid-cols-1 gap-6 mt-6">
-        {dashboardData?.trends?.[0] && (
-          <TrendChart series={[dashboardData.trends[0]]} />
-        )}
-      </div>
-
-      {/* Leave Density Heatmap */}
-      {dashboardData?.heatmap && (
-        <HeatmapChart
-          title="Leave Density Heatmap"
-          cells={dashboardData.heatmap.cells ?? []}
-          rows={dashboardData.heatmap.rows ?? []}
-          columns={dashboardData.heatmap.columns ?? []}
-        />
-      )}
-
-      {/* Type Utilization Donut */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {dashboardData?.distributions?.[0] && (
-          <DistributionChart distribution={dashboardData.distributions[0]} />
-        )}
-        {dashboardData?.distributions?.[1] && (
-          <DistributionChart distribution={dashboardData.distributions[1]} />
-        )}
-      </div>
-
-      <InsightsPanel insights={dashboardData?.insights ?? []} onDrilldown={handleDrilldown} />
-
-      {activeDrilldown && (
-        <div className="mt-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
-              {activeDrilldown.replace(/([A-Z])/g, ' $1').trim()}
-            </h3>
-            <button onClick={() => setSearchParams({})} className="text-sm text-neutral-500 hover:text-neutral-700">
-              Close
-            </button>
+      {/* ── Monthly Consumption ── */}
+      <div>
+        <div className="flex items-center gap-2.5 mb-4">
+          <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
+            <BarChart3 className="h-4 w-4 text-indigo-500" />
           </div>
-          <DrilldownTable
-            data={drilldownData?.data?.data ?? []}
-            columns={[]}
-            total={drilldownData?.data?.meta?.total ?? 0}
-            page={tablePage}
-            limit={20}
-            onPageChange={setTablePage}
+          <h2 className="text-sm font-bold text-neutral-800 dark:text-neutral-100">Monthly Consumption</h2>
+        </div>
+        <div className="grid grid-cols-1 gap-6">
+          {dashboardData?.trends?.[0] && (
+            <TrendChart series={[dashboardData.trends[0]]} />
+          )}
+        </div>
+      </div>
+
+      {/* ── Leave Density Heatmap ── */}
+      {dashboardData?.heatmap && (
+        <div>
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
+              <Grid3X3 className="h-4 w-4 text-emerald-500" />
+            </div>
+            <h2 className="text-sm font-bold text-neutral-800 dark:text-neutral-100">Leave Density</h2>
+          </div>
+          <HeatmapChart
+            title="Leave Density Heatmap"
+            cells={dashboardData.heatmap.cells ?? []}
+            rows={dashboardData.heatmap.rows ?? []}
+            columns={dashboardData.heatmap.columns ?? []}
           />
         </div>
       )}
+
+      {/* ── Type Utilization ── */}
+      <div>
+        <div className="flex items-center gap-2.5 mb-4">
+          <div className="w-8 h-8 rounded-xl bg-violet-50 dark:bg-violet-900/20 flex items-center justify-center">
+            <PieChart className="h-4 w-4 text-violet-500" />
+          </div>
+          <h2 className="text-sm font-bold text-neutral-800 dark:text-neutral-100">Type Utilization</h2>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {dashboardData?.distributions?.[0] && (
+            <DistributionChart distribution={dashboardData.distributions[0]} />
+          )}
+          {dashboardData?.distributions?.[1] && (
+            <DistributionChart distribution={dashboardData.distributions[1]} />
+          )}
+        </div>
+      </div>
+
+      <InsightsPanel insights={dashboardData?.insights ?? []} onDrilldown={handleDrilldown} />
     </DashboardShell>
   );
 }

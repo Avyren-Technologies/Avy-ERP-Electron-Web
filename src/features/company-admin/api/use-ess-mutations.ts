@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { essApi } from '@/lib/api/ess';
 import { essKeys } from './use-ess-queries';
+import { leaveKeys } from './use-leave-queries';
 
 // ── ESS Config ──
 
@@ -237,6 +238,9 @@ export function useCancelLeave() {
         mutationFn: (id: string) => essApi.cancelLeave(id),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: essKeys.myLeaveBalance() });
+            qc.invalidateQueries({ queryKey: leaveKeys.requests() });
+            qc.invalidateQueries({ queryKey: leaveKeys.balances() });
+            qc.invalidateQueries({ queryKey: leaveKeys.summary() });
         },
     });
 }
@@ -287,6 +291,40 @@ export function useCancelWfhRequest() {
         mutationFn: (id: string) => essApi.cancelWfhRequest(id),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: essKeys.myWfhRequests() });
+        },
+    });
+}
+
+// ── Expense Claims ──
+
+export function useCreateMyExpenseClaim() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (data: any) => essApi.createMyExpenseClaim(data),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: essKeys.myExpenseClaims() });
+        },
+    });
+}
+
+export function useSubmitMyExpenseClaim() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => essApi.submitMyExpenseClaim(id),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: essKeys.myExpenseClaims() });
+        },
+    });
+}
+
+// ── Loan Application ──
+
+export function useApplyForLoan() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (data: any) => essApi.applyForLoan(data),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: essKeys.myLoans() });
         },
     });
 }

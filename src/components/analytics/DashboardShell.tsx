@@ -1,98 +1,102 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { GlobalFilters, type FilterValues } from './GlobalFilters';
-
-const ANALYTICS_NAV = [
-  { label: 'Executive', path: '/app/company/hr/analytics/executive' },
-  { label: 'Workforce', path: '/app/company/hr/analytics/workforce' },
-  { label: 'Attendance', path: '/app/company/hr/analytics/attendance' },
-  { label: 'Leave', path: '/app/company/hr/analytics/leave' },
-  { label: 'Payroll', path: '/app/company/hr/analytics/payroll' },
-  { label: 'Compliance', path: '/app/company/hr/analytics/compliance' },
-  { label: 'Performance', path: '/app/company/hr/analytics/performance' },
-  { label: 'Recruitment', path: '/app/company/hr/analytics/recruitment' },
-  { label: 'Attrition', path: '/app/company/hr/analytics/attrition' },
-  { label: 'Reports', path: '/app/company/hr/analytics/reports' },
-];
+import { GlobalFilters, type FilterValues, type FilterOptions } from './GlobalFilters';
 
 interface DashboardShellProps {
   title: string;
+  headerSubtitle?: string;
+  headerAside?: React.ReactNode;
   children: React.ReactNode;
   filters?: FilterValues;
   onFiltersChange?: (filters: FilterValues) => void;
+  filterOptions?: FilterOptions;
   loading?: boolean;
   error?: string | null;
 }
 
 export function DashboardShell({
   title,
+  headerSubtitle = 'Real-time analytics & insights',
+  headerAside,
   children,
   filters,
   onFiltersChange,
+  filterOptions,
   loading,
   error,
 }: DashboardShellProps) {
-  const { pathname } = useLocation();
-
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
-      {/* Gradient Header */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-500 px-6 py-8 sm:px-8">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIvPjwvZz48L2c+PC9zdmc+')] opacity-40" />
-        <h1 className="relative text-2xl font-bold text-white sm:text-3xl tracking-tight">
-          {title}
-        </h1>
+    <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-neutral-100/50 dark:from-neutral-950 dark:to-neutral-900/50">
+      {/* ── Gradient Header ── */}
+      <div className="relative overflow-hidden rounded-2xl border border-white/15 bg-gradient-to-br from-[#4338CA] via-indigo-500 to-violet-500 px-6 py-6 shadow-[0_18px_40px_-22px_rgba(67,56,202,0.65)] sm:px-8 sm:py-7">
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.18)_0%,rgba(255,255,255,0.04)_42%,rgba(255,255,255,0.02)_100%)]" />
+        {/* Decorative circles */}
+        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-white/[0.08] blur-sm" />
+        <div className="absolute -bottom-12 -left-8 h-44 w-44 rounded-full bg-white/[0.05]" />
+        <div className="absolute right-24 top-6 h-20 w-20 rounded-full bg-white/[0.07]" />
+
+        {/* Dot grid pattern */}
+        <div
+          className="absolute inset-0 opacity-[0.09]"
+          style={{
+            backgroundImage:
+              'radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px)',
+            backgroundSize: '22px 22px',
+          }}
+        />
+
+        <div className="relative z-10 flex flex-col gap-3.5 md:flex-row md:items-start md:justify-between">
+          <div className="max-w-3xl">
+            <h1 className="text-xl font-extrabold text-white sm:text-2xl tracking-tight">
+              {title}
+            </h1>
+            <p className="mt-1.5 text-xs sm:text-sm font-medium text-white/85">
+              {headerSubtitle}
+            </p>
+          </div>
+          {headerAside ? (
+            <div className="flex-shrink-0 rounded-2xl border border-white/20 bg-white/10 p-1.5 backdrop-blur-md">
+              {headerAside}
+            </div>
+          ) : null}
+        </div>
       </div>
 
-      {/* Analytics Sub-Navigation */}
-      <div className="border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-x-auto">
-        <nav className="flex px-6 sm:px-8 gap-1 min-w-max">
-          {ANALYTICS_NAV.map((item) => {
-            const isActive = pathname === item.path;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={cn(
-                  'px-3 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors',
-                  isActive
-                    ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
-                    : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600',
-                )}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
-
-      {/* Filters */}
-      {filters && onFiltersChange && (
-        <div className="border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-6 py-4 sm:px-8">
+      {/* ── Filters ── */}
+      {filters && onFiltersChange && filterOptions && (
+        <div className="border-b border-neutral-200/80 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm px-6 py-4 sm:px-8 shadow-sm">
           <GlobalFilters
             filters={filters}
             onChange={onFiltersChange}
+            {...filterOptions}
           />
         </div>
       )}
 
-      {/* Content */}
-      <div className="px-6 py-6 sm:px-8">
+      {/* ── Content ── */}
+      <div className="px-6 py-8 sm:px-8">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading analytics...</p>
+          <div className="flex flex-col items-center justify-center py-32 gap-4">
+            <div className="relative">
+              <div className="absolute inset-0 rounded-full bg-indigo-500/20 animate-ping" />
+              <Loader2 className="relative h-10 w-10 animate-spin text-indigo-500" />
+            </div>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 font-medium">
+              Loading analytics...
+            </p>
           </div>
         ) : error ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-3">
-            <AlertTriangle className="h-8 w-8 text-amber-500" />
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">{error}</p>
+          <div className="flex flex-col items-center justify-center py-32 gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center">
+              <AlertTriangle className="h-8 w-8 text-amber-500" />
+            </div>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400 font-medium">
+              {error}
+            </p>
           </div>
         ) : (
-          <div className={cn('space-y-6 animate-in fade-in duration-300')}>
+          <div className={cn('space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500')}>
             {children}
           </div>
         )}

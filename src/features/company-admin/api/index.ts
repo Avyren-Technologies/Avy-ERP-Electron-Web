@@ -285,6 +285,10 @@ export {
     useMyWfhRequests,
     useMyDocuments,
     usePolicyDocuments,
+    useMyHolidays,
+    useMyExpenseClaims,
+    useMyLoans,
+    useEssLoanPolicies,
 } from './use-ess-queries';
 
 export {
@@ -312,6 +316,9 @@ export {
     useCreateWfhRequest,
     useCancelWfhRequest,
     useUploadMyDocument,
+    useCreateMyExpenseClaim,
+    useSubmitMyExpenseClaim,
+    useApplyForLoan,
 } from './use-ess-mutations';
 
 // Performance Management

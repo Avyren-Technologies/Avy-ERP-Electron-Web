@@ -4,7 +4,6 @@ import {
     Eye,
     Download,
     X,
-    Search,
     Filter,
     IndianRupee,
     ArrowUpRight,
@@ -25,7 +24,8 @@ const formatCurrency = (amount: number | string | undefined) => {
 };
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-const YEARS = ["2026", "2025", "2024", "2023"];
+const currentYear = new Date().getFullYear();
+const YEARS = Array.from({ length: 4 }, (_, i) => String(currentYear - i));
 
 /* ── Screen ── */
 
@@ -39,8 +39,8 @@ export function MyPayslipsScreen() {
     const payslips: any[] = (data?.data as any) ?? [];
 
     const filtered = payslips.filter((p: any) => {
-        if (monthFilter && p.month !== monthFilter) return false;
-        if (yearFilter && p.year !== yearFilter) return false;
+        if (monthFilter && String(p.month) !== monthFilter) return false;
+        if (yearFilter && String(p.year) !== yearFilter) return false;
         return true;
     });
 

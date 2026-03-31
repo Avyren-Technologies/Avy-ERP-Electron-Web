@@ -1,7 +1,5 @@
-import { useMemo } from 'react';
 import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/SearchableSelect';
-import { useDepartments, useGrades, useEmployeeTypes } from '@/features/company-admin/api';
-import { useCompanyLocations } from '@/features/company-admin/api';
+import { Calendar } from 'lucide-react';
 
 export interface FilterValues {
   [key: string]: string | undefined;
@@ -20,7 +18,7 @@ export interface FilterOptions {
   employeeTypes?: SearchableSelectOption[];
 }
 
-interface GlobalFiltersProps {
+interface GlobalFiltersProps extends FilterOptions {
   filters: FilterValues;
   onChange: (filters: FilterValues) => void;
 }
@@ -28,69 +26,38 @@ interface GlobalFiltersProps {
 export function GlobalFilters({
   filters,
   onChange,
+  departments = [],
+  locations = [],
+  grades = [],
+  employeeTypes = [],
 }: GlobalFiltersProps) {
-  const { data: deptResponse } = useDepartments();
-  const { data: locResponse } = useCompanyLocations();
-  const { data: gradeResponse } = useGrades();
-  const { data: empTypeResponse } = useEmployeeTypes();
-
-  const departments = useMemo<SearchableSelectOption[]>(() => {
-    const items = deptResponse?.data ?? [];
-    return (items as Array<{ id: string; name: string }>).map((d) => ({
-      value: d.id,
-      label: d.name,
-    }));
-  }, [deptResponse]);
-
-  const locations = useMemo<SearchableSelectOption[]>(() => {
-    const items = locResponse?.data ?? [];
-    return (items as Array<{ id: string; name: string }>).map((l) => ({
-      value: l.id,
-      label: l.name,
-    }));
-  }, [locResponse]);
-
-  const grades = useMemo<SearchableSelectOption[]>(() => {
-    const items = gradeResponse?.data ?? [];
-    return (items as Array<{ id: string; name: string }>).map((g) => ({
-      value: g.id,
-      label: g.name,
-    }));
-  }, [gradeResponse]);
-
-  const employeeTypes = useMemo<SearchableSelectOption[]>(() => {
-    const items = empTypeResponse?.data ?? [];
-    return (items as Array<{ id: string; name: string }>).map((t) => ({
-      value: t.id,
-      label: t.name,
-    }));
-  }, [empTypeResponse]);
-
   const update = (patch: Partial<FilterValues>) => onChange({ ...filters, ...patch });
 
   return (
     <div className="flex flex-wrap items-end gap-3">
       {/* Date Range */}
       <div className="flex-shrink-0">
-        <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
+        <label className="flex items-center gap-1.5 text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mb-1.5">
+          <Calendar className="h-3 w-3" />
           From
         </label>
         <input
           type="date"
           value={filters.dateFrom ?? ''}
           onChange={(e) => update({ dateFrom: e.target.value || undefined })}
-          className="px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-white transition-all"
+          className="px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 dark:text-white transition-all"
         />
       </div>
       <div className="flex-shrink-0">
-        <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
+        <label className="flex items-center gap-1.5 text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mb-1.5">
+          <Calendar className="h-3 w-3" />
           To
         </label>
         <input
           type="date"
           value={filters.dateTo ?? ''}
           onChange={(e) => update({ dateTo: e.target.value || undefined })}
-          className="px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-white transition-all"
+          className="px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 dark:text-white transition-all"
         />
       </div>
 

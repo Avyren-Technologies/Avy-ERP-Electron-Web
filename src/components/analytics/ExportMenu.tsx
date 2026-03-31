@@ -11,10 +11,10 @@ interface ExportMenuProps {
 
 type ExportFormat = 'xlsx' | 'pdf' | 'csv';
 
-const formatOptions: { format: ExportFormat; label: string; icon: typeof FileSpreadsheet }[] = [
-  { format: 'xlsx', label: 'Excel (.xlsx)', icon: FileSpreadsheet },
-  { format: 'pdf', label: 'PDF (.pdf)', icon: FileText },
-  { format: 'csv', label: 'CSV (.csv)', icon: File },
+const formatOptions: { format: ExportFormat; label: string; description: string; icon: typeof FileSpreadsheet; iconColor: string; iconBg: string }[] = [
+  { format: 'xlsx', label: 'Excel', description: '.xlsx with formatting', icon: FileSpreadsheet, iconColor: 'text-emerald-600', iconBg: 'bg-emerald-50 dark:bg-emerald-900/20' },
+  { format: 'pdf', label: 'PDF', description: '.pdf summary report', icon: FileText, iconColor: 'text-red-500', iconBg: 'bg-red-50 dark:bg-red-900/20' },
+  { format: 'csv', label: 'CSV', description: '.csv raw data', icon: File, iconColor: 'text-blue-500', iconBg: 'bg-blue-50 dark:bg-blue-900/20' },
 ];
 
 export function ExportMenu({ reportType, filters }: ExportMenuProps) {
@@ -64,30 +64,37 @@ export function ExportMenu({ reportType, filters }: ExportMenuProps) {
         onClick={() => setOpen(!open)}
         disabled={exporting}
         className={cn(
-          'flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all',
-          'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400',
-          'hover:bg-indigo-100 dark:hover:bg-indigo-900/30',
-          'border border-indigo-200/60 dark:border-indigo-800/60',
-          exporting && 'opacity-50 cursor-not-allowed',
+          'flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200',
+          'bg-gradient-to-r from-indigo-500 to-violet-500 text-white',
+          'hover:from-indigo-600 hover:to-violet-600 hover:shadow-lg hover:shadow-indigo-500/20',
+          'active:scale-95',
+          exporting && 'opacity-60 cursor-not-allowed',
         )}
       >
-        <Download className={cn('h-3.5 w-3.5', exporting && 'animate-pulse')} />
+        <Download className={cn('h-3.5 w-3.5', exporting && 'animate-bounce')} />
         Export
       </button>
 
       {open && (
-        <div className="absolute right-0 z-50 mt-1 w-44 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-          {formatOptions.map(({ format, label, icon: Icon }) => (
-            <button
-              key={format}
-              type="button"
-              onClick={() => handleExport(format)}
-              className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
-            >
-              <Icon className="h-4 w-4 text-neutral-400" />
-              {label}
-            </button>
-          ))}
+        <div className="absolute right-0 z-50 mt-2 w-52 bg-white dark:bg-neutral-800 border border-neutral-200/60 dark:border-neutral-700/60 rounded-2xl shadow-2xl shadow-black/10 overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200">
+          <div className="p-1.5">
+            {formatOptions.map(({ format, label, description, icon: Icon, iconColor, iconBg }) => (
+              <button
+                key={format}
+                type="button"
+                onClick={() => handleExport(format)}
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors"
+              >
+                <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center', iconBg)}>
+                  <Icon className={cn('h-4 w-4', iconColor)} />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">{label}</div>
+                  <div className="text-[10px] text-neutral-400 dark:text-neutral-500">{description}</div>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>

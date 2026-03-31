@@ -20,7 +20,7 @@ export function PolicyDocumentsScreen() {
     return (
         <div className="space-y-6 animate-in fade-in">
             <div>
-                <h1 className="text-2xl font-bold text-primary-950 dark:text-white">Policy Documents</h1>
+                <h1 className="text-3xl font-bold text-primary-950 dark:text-white">Policy Documents</h1>
                 <p className="text-neutral-500 dark:text-neutral-400 mt-1">Company policies and guidelines</p>
             </div>
 

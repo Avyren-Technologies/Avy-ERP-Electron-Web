@@ -178,6 +178,9 @@ import { ShiftSwapScreen } from './features/ess/ShiftSwapScreen';
 import { WfhRequestScreen } from './features/ess/WfhRequestScreen';
 import { MyDocumentsScreen } from './features/ess/MyDocumentsScreen';
 import { PolicyDocumentsScreen } from './features/ess/PolicyDocumentsScreen';
+import { MyHolidaysScreen } from './features/ess/MyHolidaysScreen';
+import { MyExpenseClaimsScreen } from './features/ess/MyExpenseClaimsScreen';
+import { MyLoanScreen } from './features/ess/MyLoanScreen';
 
 // Operations Module Screens
 import { InventoryScreen } from "./features/inventory/InventoryScreen";
@@ -361,6 +364,9 @@ function App() {
         <Route path="company/hr/wfh-requests" element={<RequirePermission permission="ess:request-wfh"><WfhRequestScreen /></RequirePermission>} />
         <Route path="company/hr/my-documents" element={<RequirePermission permission="ess:upload-document"><MyDocumentsScreen /></RequirePermission>} />
         <Route path="company/hr/policy-documents" element={<RequirePermission permission="ess:view-policies"><PolicyDocumentsScreen /></RequirePermission>} />
+        <Route path="company/hr/my-holidays" element={<RequirePermission permission="ess:view-holidays"><MyHolidaysScreen /></RequirePermission>} />
+        <Route path="company/hr/my-expense-claims" element={<RequirePermission permission="ess:claim-expense"><MyExpenseClaimsScreen /></RequirePermission>} />
+        <Route path="company/hr/my-loans" element={<RequirePermission permission="ess:apply-loan"><MyLoanScreen /></RequirePermission>} />
         {/* Company-admin Recruitment & Training routes */}
         <Route path="company/hr/requisitions" element={<RequirePermission permission="hr:read"><RequisitionScreen /></RequirePermission>} />
         <Route path="company/hr/candidates" element={<RequirePermission permission="hr:read"><CandidateScreen /></RequirePermission>} />

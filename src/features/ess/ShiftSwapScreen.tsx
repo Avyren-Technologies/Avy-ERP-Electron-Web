@@ -34,6 +34,7 @@ export function ShiftSwapScreen() {
     }
 
     function handleCancel(id: string) {
+        if (!window.confirm('Are you sure you want to cancel this request?')) return;
         cancelMutation.mutate(id, {
             onSuccess: () => showSuccess('Shift swap request cancelled'),
             onError: (err) => showApiError(err),
@@ -53,7 +54,7 @@ export function ShiftSwapScreen() {
         <div className="space-y-6 animate-in fade-in">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-primary-950 dark:text-white">Shift Swap Requests</h1>
+                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white">Shift Swap Requests</h1>
                     <p className="text-neutral-500 dark:text-neutral-400 mt-1">Request and track shift swap changes</p>
                 </div>
                 <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-bold hover:bg-primary-700 transition-colors">

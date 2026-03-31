@@ -487,6 +487,14 @@ export const essApi = {
     uploadMyDocument: async (data: any) => { const r = await client.post('/hr/ess/my-documents', data); return r.data; },
     // Policy Documents
     getPolicyDocuments: async () => { const r = await client.get('/hr/ess/policy-documents'); return r.data; },
+    // Holidays, Expense Claims, Loans (ESS)
+    getMyHolidays: async (year?: number) => { const r = await client.get('/hr/ess/my-holidays', { params: year ? { year } : {} }); return r.data; },
+    getMyExpenseClaims: async () => { const r = await client.get('/hr/ess/my-expense-claims'); return r.data; },
+    createMyExpenseClaim: async (data: any) => { const r = await client.post('/hr/ess/my-expense-claims', data); return r.data; },
+    submitMyExpenseClaim: async (id: string) => { const r = await client.patch(`/hr/ess/my-expense-claims/${id}/submit`); return r.data; },
+    getMyLoans: async () => { const r = await client.get('/hr/ess/my-loans'); return r.data; },
+    getAvailableLoanPolicies: async () => { const r = await client.get('/hr/ess/loan-policies'); return r.data; },
+    applyForLoan: async (data: any) => { const r = await client.post('/hr/ess/apply-loan', data); return r.data; },
     // MSS Manager Self-Service
     getTeamMembers,
     getPendingMssApprovals,
