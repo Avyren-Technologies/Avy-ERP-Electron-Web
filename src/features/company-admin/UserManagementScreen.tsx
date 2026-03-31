@@ -14,7 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useCompanyUsers, useRbacRoles, useCompanyLocations } from "@/features/company-admin/api/use-company-admin-queries";
 import { useDepartments } from "@/features/company-admin/api/use-hr-queries";
-import { useCreateUser, useUpdateUser, useUpdateUserStatus, useAssignRole } from "@/features/company-admin/api/use-company-admin-mutations";
+import { useCreateUser, useUpdateUser, useUpdateUserStatus } from "@/features/company-admin/api/use-company-admin-mutations";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { CompanyUser, PaginationMeta } from "@/lib/api/company-admin";
@@ -157,7 +157,7 @@ const EMPTY_USER = {
     lastName: "",
     email: "",
     password: "",
-    role: "operator",
+    role: "",
     department: "",
     location: "",
 };
@@ -189,7 +189,6 @@ export function UserManagementScreen() {
     const createMutation = useCreateUser();
     const updateMutation = useUpdateUser();
     const statusMutation = useUpdateUserStatus();
-    const assignRoleMutation = useAssignRole();
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -212,7 +211,7 @@ export function UserManagementScreen() {
             lastName: user.lastName ?? "",
             email: user.email ?? "",
             password: "",
-            role: user.role ?? "operator",
+            role: user.roleId ?? "",
             department: user.department ?? "",
             location: user.location ?? "",
         });
@@ -238,11 +237,8 @@ export function UserManagementScreen() {
         try {
             if (editingId) {
                 const { password: _pw, department: _dept, location: _loc, role: selectedRole, ...updateData } = form;
-                await updateMutation.mutateAsync({ id: editingId, data: updateData });
-                // Assign role via RBAC endpoint if a dynamic role is selected
-                if (selectedRole && dynamicRoles.some((r) => r.id === selectedRole)) {
-                    await assignRoleMutation.mutateAsync({ userId: editingId, roleId: selectedRole });
-                }
+                // Include roleId in update payload so backend handles assignment
+                await updateMutation.mutateAsync({ id: editingId, data: { ...updateData, role: selectedRole || undefined } });
                 showSuccess("User Updated", `${form.firstName} ${form.lastName} has been updated.`);
             } else {
                 const { department: _dept, location: _loc, ...createData } = form;
@@ -380,7 +376,7 @@ export function UserManagementScreen() {
                                             </td>
                                             <td className="py-4 px-6">
                                                 <span className="text-[10px] font-bold bg-primary-50 text-primary-700 px-2 py-0.5 rounded dark:bg-primary-900/30 dark:text-primary-400">
-                                                    {user.role}
+                                                    {user.roleName ?? user.role ?? "—"}
                                                 </span>
                                             </td>
                                             <td className="py-4 px-6"><StatusBadge active={isActive} /></td>

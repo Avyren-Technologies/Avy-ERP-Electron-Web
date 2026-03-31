@@ -260,6 +260,8 @@ export interface CompanyUser {
     fullName?: string;
     email: string;
     role?: string;
+    roleId?: string;
+    roleName?: string;
     department?: string;
     location?: string;
     isActive?: boolean;
