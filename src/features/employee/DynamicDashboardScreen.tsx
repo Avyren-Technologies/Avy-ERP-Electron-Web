@@ -66,6 +66,7 @@ import {
 } from "recharts";
 import type { BarShapeProps } from "recharts";
 import { cn } from "@/lib/utils";
+import { KPIGrid, type KPICardData } from "@/components/analytics/KPIGrid";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { client } from "@/lib/api/client";
 import { showSuccess, showApiError } from "@/lib/toast";
@@ -204,7 +205,7 @@ function PremiumCard({
     return (
         <div
             className={cn(
-                "relative overflow-hidden rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200/60 dark:border-neutral-800 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] transition-shadow duration-300",
+                "relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#F5F8FF] via-white to-[#F0EDFF] dark:from-indigo-950/20 dark:via-neutral-900 dark:to-violet-950/20 border border-neutral-200/60 dark:border-neutral-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] transition-shadow duration-300",
                 className
             )}
         >
@@ -340,7 +341,7 @@ function ProfileCard({
             </div>
             <div className="px-5 pb-5">
                 {/* Avatar */}
-                <div className="-mt-10 mb-3 flex justify-center">
+                <div className="relative z-10 -mt-10 mb-3 flex justify-center">
                     <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-400 to-accent-500 flex items-center justify-center ring-4 ring-white dark:ring-neutral-900 shadow-lg">
                         <span className="text-2xl font-bold text-white">{initials}</span>
                     </div>
@@ -703,44 +704,9 @@ function ShiftCheckInHero({ shift }: { shift: DashboardShiftInfo | null }) {
    SECTION: Quick Stats — Premium Glassmorphic KPI Cards
    ================================================================ */
 
-interface QuickStatCardProps {
-    icon: React.ComponentType<{ className?: string }>;
-    value: string;
-    label: string;
-    subtitle?: string;
-    gradientFrom: string;
-    gradientTo: string;
-    iconBg: string;
-    iconColor: string;
-    trend?: { direction: "up" | "down"; value: string } | null;
-}
-
-function QuickStatCard({ icon: Icon, value, label, subtitle, gradientFrom, gradientTo, iconBg, iconColor, trend }: QuickStatCardProps) {
-    return (
-        <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200/60 dark:border-neutral-800 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] transition-all duration-300 group">
-            <div className={cn("absolute inset-0 opacity-[0.04] dark:opacity-[0.06] bg-gradient-to-br", gradientFrom, gradientTo)} />
-            <div className="relative p-4 sm:p-5">
-                <div className="flex items-start justify-between">
-                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", iconBg)}>
-                        <Icon className={cn("w-5 h-5", iconColor)} />
-                    </div>
-                    {trend && (
-                        <div className={cn(
-                            "flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full",
-                            trend.direction === "up" ? "bg-success-50 text-success-600 dark:bg-success-900/20 dark:text-success-400" : "bg-danger-50 text-danger-600 dark:bg-danger-900/20 dark:text-danger-400"
-                        )}>
-                            {trend.direction === "up" ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                            {trend.value}
-                        </div>
-                    )}
-                </div>
-                <p className="text-2xl font-bold text-neutral-800 dark:text-white tabular-nums mt-3">{value}</p>
-                <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mt-0.5">{label}</p>
-                {subtitle && <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{subtitle}</p>}
-            </div>
-        </div>
-    );
-}
+/* ================================================================
+   SECTION: Quick Stats — Premium Glassmorphic KPI Cards
+   ================================================================ */
 
 function QuickStatsRow({ data }: { data: DashboardData }) {
     const stats = data.stats;
@@ -760,49 +726,38 @@ function QuickStatsRow({ data }: { data: DashboardData }) {
         return { direction: diff > 0 ? ("up" as const) : ("down" as const), value: `${Math.abs(diff).toFixed(1)}%` };
     }, [data.monthlyTrend]);
 
+    const kpis: KPICardData[] = [
+        {
+            key: "leave",
+            label: "Leave Balance",
+            value: stats.leaveBalanceTotal.toString(),
+            icon: Calendar,
+        },
+        {
+            key: "attendance",
+            label: "Attendance",
+            value: `${stats.attendancePercentage}%`,
+            trend: attendanceTrend ? parseFloat(attendanceTrend.value) : undefined,
+            trendDirection: attendanceTrend?.direction,
+            icon: Clock,
+        },
+        {
+            key: "approvals",
+            label: "Pending Approvals",
+            value: stats.pendingApprovalsCount.toString(),
+            icon: CheckSquare,
+        },
+        {
+            key: "goals",
+            label: "Active Goals",
+            value: stats.goals.activeCount.toString(),
+            icon: Target,
+        },
+    ];
+
     return (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <QuickStatCard
-                icon={Calendar}
-                value={stats.leaveBalanceTotal.toString()}
-                label="Leave Balance"
-                subtitle="Remaining days"
-                gradientFrom="from-primary-400"
-                gradientTo="to-primary-600"
-                iconBg="bg-primary-50 dark:bg-primary-900/20"
-                iconColor="text-primary-600 dark:text-primary-400"
-            />
-            <QuickStatCard
-                icon={Clock}
-                value={`${stats.attendancePercentage}%`}
-                label="Attendance"
-                subtitle={`${stats.presentDays}/${stats.workingDays} days this month`}
-                gradientFrom="from-success-400"
-                gradientTo="to-success-600"
-                iconBg="bg-success-50 dark:bg-success-900/20"
-                iconColor="text-success-600 dark:text-success-400"
-                trend={attendanceTrend}
-            />
-            <QuickStatCard
-                icon={CheckSquare}
-                value={stats.pendingApprovalsCount.toString()}
-                label="Pending Approvals"
-                subtitle={stats.pendingApprovalsCount > 0 ? "Awaiting your action" : "All caught up"}
-                gradientFrom="from-warning-400"
-                gradientTo="to-warning-600"
-                iconBg={stats.pendingApprovalsCount > 0 ? "bg-warning-50 dark:bg-warning-900/20" : "bg-neutral-100 dark:bg-neutral-800"}
-                iconColor={stats.pendingApprovalsCount > 0 ? "text-warning-600 dark:text-warning-400" : "text-neutral-400 dark:text-neutral-500"}
-            />
-            <QuickStatCard
-                icon={Target}
-                value={stats.goals.activeCount.toString()}
-                label="Active Goals"
-                subtitle={`Avg ${stats.goals.avgCompletion}% complete`}
-                gradientFrom="from-accent-400"
-                gradientTo="to-accent-600"
-                iconBg="bg-accent-50 dark:bg-accent-900/20"
-                iconColor="text-accent-600 dark:text-accent-400"
-            />
+        <div className="mb-2">
+            <KPIGrid kpis={kpis} />
         </div>
     );
 }
@@ -952,8 +907,8 @@ function ShiftCalendarMonth({ calendar }: { calendar: DashboardShiftCalendarDay[
     };
 
     return (
-        <PremiumCard>
-            <CardHeader title="Shift Calendar" subtitle={monthName} icon={CalendarDays} iconClass="bg-info-50 dark:bg-info-900/20" />
+        <PremiumCard className="bg-gradient-to-br from-[#F5F8FF] via-white to-[#F0EDFF] dark:from-indigo-950/20 dark:via-neutral-900 dark:to-violet-950/20">
+            <CardHeader title="Shift Calendar" subtitle={monthName} icon={CalendarDays} iconClass="bg-indigo-100/60 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400" />
 
             {/* Month navigation */}
             <div className="flex items-center justify-between mb-3">
@@ -983,31 +938,33 @@ function ShiftCalendarMonth({ calendar }: { calendar: DashboardShiftCalendarDay[
                     const hasShift = !!cell.data?.shiftName;
 
                     return (
-                        <button
-                            key={idx}
-                            onClick={() => { if (cell.inMonth) setSelectedDate(isSelected ? null : cell.dateStr); }}
-                            className={cn(
-                                "relative flex flex-col items-center justify-center rounded-lg py-1.5 min-h-[40px] transition-all duration-200",
-                                !cell.inMonth && "opacity-30 cursor-default",
-                                cell.inMonth && "cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50",
-                                isToday && "ring-2 ring-primary-500 ring-offset-1 dark:ring-offset-neutral-900",
-                                isSelected && cell.inMonth && "bg-primary-50 dark:bg-primary-900/20",
-                                isHoliday && cell.inMonth && !isSelected && "bg-amber-50/60 dark:bg-amber-900/10",
-                                isWeekOff && cell.inMonth && !isHoliday && !isSelected && "bg-neutral-50 dark:bg-neutral-800/30"
-                            )}
-                        >
-                            <span className={cn(
-                                "text-xs font-semibold leading-none",
-                                !cell.inMonth && "text-neutral-300 dark:text-neutral-600",
-                                cell.inMonth && "text-neutral-800 dark:text-white",
-                                isToday && "text-primary-600 dark:text-primary-400 font-bold"
-                            )}>{cell.date}</span>
-                            {cell.inMonth && hasShift && !isHoliday && !isWeekOff && (
-                                <span className="w-1.5 h-1.5 rounded-full mt-0.5" style={{ backgroundColor: shiftTypeDotColor(cell.data!.shiftType) }} />
-                            )}
-                            {cell.inMonth && isHoliday && <span className="w-1.5 h-1.5 rounded-full mt-0.5 bg-amber-500" />}
-                            {cell.inMonth && isWeekOff && !isHoliday && <span className="w-1.5 h-1.5 rounded-full mt-0.5 bg-neutral-400" />}
-                        </button>
+                        <div key={idx} className="flex items-center justify-center py-0.5">
+                            <button
+                                onClick={() => { if (cell.inMonth) setSelectedDate(isSelected ? null : cell.dateStr); }}
+                                className={cn(
+                                    "relative flex flex-col items-center justify-center rounded-full h-8 w-8 sm:h-[42px] sm:w-[42px] transition-all duration-300",
+                                    !cell.inMonth && "opacity-30 cursor-default",
+                                    cell.inMonth && "cursor-pointer hover:bg-white/80 dark:hover:bg-neutral-800/50 hover:shadow-sm hover:-translate-y-0.5",
+                                    isToday && !isSelected && "ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-transparent",
+                                    isSelected && cell.inMonth && "border-[2px] border-indigo-600 bg-white shadow-[0_4px_12px_rgba(79,70,229,0.15)] dark:bg-primary-900/30",
+                                    isHoliday && cell.inMonth && !isSelected && "bg-amber-100/50 dark:bg-amber-900/20",
+                                    isWeekOff && cell.inMonth && !isHoliday && !isSelected && "bg-slate-100/80 dark:bg-neutral-800/40"
+                                )}
+                            >
+                                <span className={cn(
+                                    "text-[13px] font-bold leading-none mb-[2px]",
+                                    !cell.inMonth && "text-neutral-300 dark:text-neutral-600",
+                                    cell.inMonth && !isSelected && "text-neutral-800 dark:text-white",
+                                    isSelected && "text-indigo-700 dark:text-indigo-400",
+                                    isToday && !isSelected && "text-primary-600 dark:text-primary-400"
+                                )}>{cell.date}</span>
+                                {cell.inMonth && hasShift && !isHoliday && !isWeekOff && (
+                                    <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full" style={{ backgroundColor: shiftTypeDotColor(cell.data!.shiftType) }} />
+                                )}
+                                {cell.inMonth && isHoliday && <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-amber-500" />}
+                                {cell.inMonth && isWeekOff && !isHoliday && <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-neutral-400" />}
+                            </button>
+                        </div>
                     );
                 })}
             </div>

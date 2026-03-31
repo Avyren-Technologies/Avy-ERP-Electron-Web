@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useMyAttendance } from "@/features/company-admin/api/use-ess-queries";
 import { useRegularizeAttendance } from "@/features/company-admin/api/use-ess-mutations";
+import { KPIGrid, type KPICardData } from "@/components/analytics/KPIGrid";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { showSuccess, showApiError } from "@/lib/toast";
 
@@ -56,6 +57,38 @@ function getDaysInMonth(year: number, month: number) {
 
 function getFirstDayOfMonth(year: number, month: number) {
     return new Date(year, month, 1).getDay();
+}
+
+/* ── Premium Shared Wrappers ── */
+
+function PremiumCard({ children, className, noPadding = false }: { children: React.ReactNode; className?: string; noPadding?: boolean }) {
+    return (
+        <div
+            className={cn(
+                "relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#F5F8FF] via-white to-[#F0EDFF] dark:from-indigo-950/20 dark:via-neutral-900 dark:to-violet-950/20 border border-neutral-200/60 dark:border-neutral-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] transition-shadow duration-300",
+                className
+            )}
+        >
+            {!noPadding && <div className="p-5 sm:p-6">{children}</div>}
+            {noPadding && children}
+        </div>
+    );
+}
+
+function CardHeader({ title, subtitle, icon: Icon, iconClass }: { title: string; subtitle?: string; icon?: React.ComponentType<{ className?: string }>; iconClass?: string }) {
+    return (
+        <div className="flex items-center gap-2.5 mb-5">
+            {Icon && (
+                <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shadow-sm", iconClass ?? "bg-indigo-100/60 dark:bg-indigo-900/40")}>
+                    <Icon className={cn("w-4.5 h-4.5", "text-indigo-600 dark:text-indigo-400")} />
+                </div>
+            )}
+            <div>
+                <h3 className="text-sm sm:text-base font-bold text-neutral-800 dark:text-white leading-tight">{title}</h3>
+                {subtitle && <p className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 mt-0.5">{subtitle}</p>}
+            </div>
+        </div>
+    );
 }
 
 /* ── Screen ── */
@@ -173,12 +206,19 @@ export function MyAttendanceScreen() {
         ? (records.reduce((sum: number, r: any) => sum + (Number(r.hoursWorked) || 0), 0) / Math.max(presentCount, 1)).toFixed(1)
         : "0.0";
 
+    const kpis: KPICardData[] = [
+        { key: "present", label: "Present", value: presentCount.toString(), icon: CheckCircle2 },
+        { key: "absent", label: "Absent", value: absentCount.toString(), icon: XCircle },
+        { key: "leave", label: "On Leave", value: leaveCount.toString(), icon: CalendarDays },
+        { key: "avg", label: "Avg Hours", value: avgHours, icon: Timer },
+    ];
+
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="space-y-6 animate-in fade-in duration-500 pb-20">
             {/* Header */}
             <div>
-                <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">My Attendance</h1>
-                <p className="text-neutral-500 dark:text-neutral-400 mt-1">View your attendance records and request regularizations</p>
+                <h1 className="text-2xl sm:text-3xl font-bold text-primary-950 dark:text-white tracking-tight">My Attendance</h1>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">View your attendance records and request regularizations</p>
             </div>
 
             {/* Summary Stats */}
@@ -187,116 +227,93 @@ export function MyAttendanceScreen() {
                     <SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard />
                 </div>
             ) : (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm p-5">
-                        <div className="flex items-center gap-2 mb-2">
-                            <CheckCircle2 size={16} className="text-success-500" />
-                            <span className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase">Present</span>
-                        </div>
-                        <p className="text-2xl font-bold text-success-700 dark:text-success-400">{presentCount}</p>
-                    </div>
-                    <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm p-5">
-                        <div className="flex items-center gap-2 mb-2">
-                            <XCircle size={16} className="text-danger-500" />
-                            <span className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase">Absent</span>
-                        </div>
-                        <p className="text-2xl font-bold text-danger-700 dark:text-danger-400">{absentCount}</p>
-                    </div>
-                    <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm p-5">
-                        <div className="flex items-center gap-2 mb-2">
-                            <CalendarDays size={16} className="text-primary-500" />
-                            <span className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase">On Leave</span>
-                        </div>
-                        <p className="text-2xl font-bold text-primary-700 dark:text-primary-400">{leaveCount}</p>
-                    </div>
-                    <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm p-5">
-                        <div className="flex items-center gap-2 mb-2">
-                            <Timer size={16} className="text-accent-500" />
-                            <span className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase">Avg Hours</span>
-                        </div>
-                        <p className="text-2xl font-bold text-accent-700 dark:text-accent-400">{avgHours}</p>
-                    </div>
-                </div>
+                <KPIGrid kpis={kpis} />
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Calendar */}
-                <div className="lg:col-span-2 bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm p-6">
-                    <div className="flex items-center justify-between mb-5">
-                        <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
-                            <ChevronLeft size={18} className="text-neutral-500" />
-                        </button>
-                        <h3 className="text-sm font-bold text-primary-950 dark:text-white">
-                            {MONTHS[currentMonth]} {currentYear}
-                        </h3>
-                        <button onClick={nextMonth} className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
-                            <ChevronRight size={18} className="text-neutral-500" />
-                        </button>
-                    </div>
-
-                    {/* Weekday headers */}
-                    <div className="grid grid-cols-7 gap-1 mb-2">
-                        {WEEKDAYS.map((wd) => (
-                            <div key={wd} className="text-center text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase py-1">
-                                {wd}
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Days */}
-                    <div className="grid grid-cols-7 gap-1">
-                        {Array.from({ length: firstDay }).map((_, i) => (
-                            <div key={`empty-${i}`} className="aspect-square" />
-                        ))}
-                        {Array.from({ length: daysInMonth }).map((_, i) => {
-                            const day = i + 1;
-                            const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                            const record = attendanceMap[dateStr];
-                            const status = record?.status ?? "";
-                            const isSelected = selectedDate === dateStr;
-                            const isToday = dateStr === today.toISOString().split("T")[0];
-                            const dotColor = STATUS_COLORS[status] ?? "";
-
-                            return (
-                                <button
-                                    key={day}
-                                    onClick={() => setSelectedDate(dateStr)}
-                                    className={cn(
-                                        "aspect-square rounded-lg flex flex-col items-center justify-center text-sm font-semibold transition-all relative",
-                                        isSelected
-                                            ? "bg-primary-600 text-white shadow-md"
-                                            : isToday
-                                            ? "bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 ring-1 ring-primary-300 dark:ring-primary-700"
-                                            : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                                    )}
-                                >
-                                    {day}
-                                    {dotColor && (
-                                        <div className={cn("w-1.5 h-1.5 rounded-full absolute bottom-1", isSelected ? "bg-white" : dotColor)} />
-                                    )}
+                <div className="lg:col-span-2">
+                    <PremiumCard>
+                        <div className="flex items-center justify-between mb-2">
+                            <CardHeader title="Attendance Calendar" subtitle={`${MONTHS[currentMonth]} ${currentYear}`} icon={CalendarDays} />
+                            <div className="flex items-center gap-1.5 -mt-4">
+                                <button onClick={prevMonth} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
+                                    <ChevronLeft className="w-4 h-4 text-neutral-500" />
                                 </button>
-                            );
-                        })}
-                    </div>
-
-                    {/* Legend */}
-                    <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
-                        {Object.entries(STATUS_LABELS).map(([key, label]) => (
-                            <div key={key} className="flex items-center gap-1.5">
-                                <div className={cn("w-2.5 h-2.5 rounded-full", STATUS_COLORS[key])} />
-                                <span className="text-[10px] text-neutral-500 dark:text-neutral-400">{label}</span>
+                                <button onClick={nextMonth} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
+                                    <ChevronRight className="w-4 h-4 text-neutral-500" />
+                                </button>
                             </div>
-                        ))}
-                    </div>
+                        </div>
+
+                        {/* Weekday headers */}
+                        <div className="grid grid-cols-7 gap-1 mb-1">
+                            {WEEKDAYS.map((wd) => (
+                                <div key={wd} className="text-center text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider py-1">
+                                    {wd}
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Days */}
+                        <div className="grid grid-cols-7 gap-y-1 gap-x-1">
+                            {Array.from({ length: firstDay }).map((_, i) => (
+                                <div key={`empty-${i}`} className="min-h-[44px]" />
+                            ))}
+                            {Array.from({ length: daysInMonth }).map((_, i) => {
+                                const day = i + 1;
+                                const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                                const record = attendanceMap[dateStr];
+                                const status = record?.status ?? "";
+                                const isSelected = selectedDate === dateStr;
+                                const isToday = dateStr === today.toISOString().split("T")[0];
+                                const dotColor = STATUS_COLORS[status] ?? "";
+
+                                return (
+                                    <div key={day} className="flex flex-col items-center justify-center py-[2px]">
+                                        <button
+                                            onClick={() => setSelectedDate(dateStr)}
+                                            className={cn(
+                                                "relative flex flex-col items-center justify-center rounded-full h-8 w-8 sm:h-[40px] sm:w-[40px] transition-all duration-300",
+                                                isSelected
+                                                    ? "border-[2px] border-indigo-600 bg-white shadow-[0_4px_12px_rgba(79,70,229,0.15)] dark:bg-primary-900/30"
+                                                    : isToday
+                                                    ? "ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-transparent bg-primary-50 dark:bg-primary-900/20"
+                                                    : "hover:bg-white/80 dark:hover:bg-neutral-800/50 hover:shadow-sm hover:-translate-y-0.5 cursor-pointer"
+                                            )}
+                                        >
+                                            <span className={cn(
+                                                "text-[13px] font-bold leading-none select-none",
+                                                isSelected ? "text-indigo-700 dark:text-indigo-400 mb-[2px]" : (isToday ? "text-primary-700 dark:text-primary-400" : "text-neutral-700 dark:text-neutral-300"),
+                                                (dotColor && !isSelected) && "mb-1"
+                                            )}>
+                                                {day}
+                                            </span>
+                                            {dotColor && (
+                                                <div className={cn("w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full absolute bottom-1.5 sm:bottom-2", isSelected ? "bg-indigo-600 dark:bg-indigo-400" : dotColor)} />
+                                            )}
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Legend */}
+                        <div className="flex flex-wrap gap-x-4 gap-y-2 mt-5 pt-4 border-t border-neutral-100 dark:border-neutral-800">
+                            {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                                <div key={key} className="flex items-center gap-1.5">
+                                    <div className={cn("w-2 h-2 rounded-full", STATUS_COLORS[key])} />
+                                    <span className="text-[10px] font-medium tracking-wide text-neutral-500 dark:text-neutral-400 capitalize">{label}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </PremiumCard>
                 </div>
 
                 {/* Selected Date Detail */}
-                <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm p-6">
-                    <h3 className="text-sm font-bold text-primary-950 dark:text-white mb-4">
-                        {selectedDate
-                            ? new Date(selectedDate + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short", year: "numeric" })
-                            : "Select a date"}
-                    </h3>
+                <div className="h-full">
+                <PremiumCard className="h-full flex flex-col">
+                    <CardHeader title="Day Details" subtitle={selectedDate ? new Date(selectedDate + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" }) : "Select a date"} icon={Clock} iconClass="bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400" />
 
                     {!selectedDate ? (
                         <div className="text-center py-8">
@@ -340,25 +357,26 @@ export function MyAttendanceScreen() {
                             {(selectedRecord.status === "absent" || selectedRecord.status === "half_day" || !selectedRecord.punchIn || !selectedRecord.punchOut || selectedRecord.lateBy) && (
                                 <button
                                     onClick={() => openRegularize(selectedRecord)}
-                                    className="w-full mt-3 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors flex items-center justify-center gap-2"
+                                    className="w-full mt-4 py-2.5 rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 hover:from-primary-700 hover:to-indigo-700 text-white text-sm font-bold shadow-sm hover:shadow transition-all flex items-center justify-center gap-2"
                                 >
                                     <AlertTriangle size={14} />
-                                    Regularize
+                                    Regularize Request
                                 </button>
                             )}
                         </div>
                     ) : (
-                        <div className="text-center py-6">
-                            <p className="text-sm text-neutral-400">No attendance record for this date.</p>
+                        <div className="text-center py-8 flex-1 flex flex-col justify-center">
+                            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">No attendance record for this date.</p>
                             <button
                                 onClick={() => openRegularize()}
-                                className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 transition-colors"
+                                className="mt-4 mx-auto inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-xs font-bold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 hover:text-neutral-800 transition-colors"
                             >
                                 <AlertTriangle size={12} />
                                 Request Regularization
                             </button>
                         </div>
                     )}
+                </PremiumCard>
                 </div>
             </div>
 

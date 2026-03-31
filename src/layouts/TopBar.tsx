@@ -332,7 +332,13 @@ function ProfileDropdown() {
     const userRole = useAuthStore((s) => s.userRole);
     const initials = getUserInitials(user);
     const displayName = getDisplayName(user);
-    const roleLabel = getRoleLabel(userRole);
+    
+    // Dynamically format the role string from the backend (e.g. "COMPANY_ADMIN" -> "Company Admin", "HR_MANAGER" -> "Hr Manager")
+    const rawRole = user?.role || '';
+    const roleLabel = rawRole
+        ? rawRole.replace(/[_-]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
+        : getRoleLabel(userRole);
+
     const email = user?.email ?? '';
 
     useEffect(() => {
