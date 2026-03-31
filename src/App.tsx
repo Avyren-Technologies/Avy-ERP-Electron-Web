@@ -156,6 +156,17 @@ import { ShiftRotationScreen } from "./features/company-admin/hr/ShiftRotationSc
 import { ProductionIncentiveScreen } from "./features/company-admin/hr/ProductionIncentiveScreen";
 import { TravelAdvanceScreen } from "./features/company-admin/hr/TravelAdvanceScreen";
 
+// HR Analytics Dashboard Screens
+import { ExecutiveDashboardScreen as ExecAnalyticsScreen } from './features/company-admin/hr/analytics/ExecutiveDashboardScreen';
+import { WorkforceDashboardScreen } from './features/company-admin/hr/analytics/WorkforceDashboardScreen';
+import { AttendanceAnalyticsDashboardScreen } from './features/company-admin/hr/analytics/AttendanceAnalyticsDashboardScreen';
+import { LeaveAnalyticsDashboardScreen } from './features/company-admin/hr/analytics/LeaveAnalyticsDashboardScreen';
+import { PayrollAnalyticsDashboardScreen } from './features/company-admin/hr/analytics/PayrollAnalyticsDashboardScreen';
+import { ComplianceDashboardScreen } from './features/company-admin/hr/analytics/ComplianceDashboardScreen';
+import { PerformanceAnalyticsDashboardScreen } from './features/company-admin/hr/analytics/PerformanceAnalyticsDashboardScreen';
+import { RecruitmentDashboardScreen } from './features/company-admin/hr/analytics/RecruitmentDashboardScreen';
+import { AttritionDashboardScreen } from './features/company-admin/hr/analytics/AttritionDashboardScreen';
+
 // ESS Self-Service Screens (Employee)
 import { MyGoalsScreen } from './features/ess/MyGoalsScreen';
 import { MyForm16Screen } from './features/ess/MyForm16Screen';
@@ -381,6 +392,17 @@ function App() {
         <Route path="company/hr/shift-rotations" element={<RequirePermission permission="hr:read"><ShiftRotationScreen /></RequirePermission>} />
         <Route path="company/hr/production-incentives" element={<RequirePermission permission="hr:read"><ProductionIncentiveScreen /></RequirePermission>} />
         <Route path="company/hr/travel-advances" element={<RequirePermission permission="hr:read"><TravelAdvanceScreen /></RequirePermission>} />
+        {/* HR Analytics Dashboard routes */}
+        <Route path="company/hr/analytics" element={<RequirePermission permission="hr:read"><ExecAnalyticsScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/executive" element={<RequirePermission permission="hr:read"><ExecAnalyticsScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/workforce" element={<RequirePermission permission="hr:read"><WorkforceDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/attendance" element={<RequirePermission permission="hr:read"><AttendanceAnalyticsDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/leave" element={<RequirePermission permission="hr:read"><LeaveAnalyticsDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/payroll" element={<RequirePermission permission="hr:read"><PayrollAnalyticsDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/compliance" element={<RequirePermission permission="hr:read"><ComplianceDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/performance" element={<RequirePermission permission="hr:read"><PerformanceAnalyticsDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/recruitment" element={<RequirePermission permission="hr:read"><RecruitmentDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/attrition" element={<RequirePermission permission="hr:read"><AttritionDashboardScreen /></RequirePermission>} />
         {/* Operations module routes */}
         <Route path="inventory" element={<RequireRole roles={['super-admin', 'company-admin']}><InventoryScreen /></RequireRole>} />
         <Route path="production" element={<RequireRole roles={['super-admin', 'company-admin']}><ProductionScreen /></RequireRole>} />
