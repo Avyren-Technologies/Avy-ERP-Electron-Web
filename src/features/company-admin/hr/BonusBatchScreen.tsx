@@ -165,7 +165,7 @@ export function BonusBatchScreen() {
     const [showPreview, setShowPreview] = useState(false);
 
     const { data, isLoading, isError } = useBonusBatches();
-    const { data: detailData, isLoading: detailLoading } = useBonusBatch(detailId);
+    const { data: detailData, isLoading: detailLoading } = useBonusBatch(detailId ?? '');
     const createMutation = useCreateBonusBatch();
     const approveMutation = useApproveBonusBatch();
     const mergeMutation = useMergeBonusBatch();

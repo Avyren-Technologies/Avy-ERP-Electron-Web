@@ -150,6 +150,7 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
             label: i.label,
             path: i.path,
             children: i.children,
+            badge: (i as any).badge as number | undefined,
         })),
     }));
 
@@ -342,9 +343,9 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
                                                                 childActive ? 'bg-primary-600 dark:bg-primary-400' : 'bg-neutral-300 dark:bg-neutral-600'
                                                             )} />
                                                             {child.label}
-                                                            {child.badge !== undefined && (
+                                                            {(child as any).badge !== undefined && (
                                                                 <span className="ml-auto px-1.5 py-0.5 text-[9px] font-bold bg-danger-100 text-danger-700 rounded-full">
-                                                                    {child.badge}
+                                                                    {(child as any).badge}
                                                                 </span>
                                                             )}
                                                         </NavLink>

@@ -71,8 +71,8 @@ export function ESignScreen() {
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
 
-    const { data, isLoading, isError } = usePendingESign({ status: statusFilter || undefined });
-    const { data: statsData } = useESignStatus();
+    const { data, isLoading, isError } = usePendingESign();
+    const { data: statsData } = useESignStatus('');
     const dispatchMutation = useDispatchESign();
 
     const records: any[] = (data as any)?.data ?? [];
