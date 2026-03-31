@@ -252,12 +252,6 @@ const CATEGORY_CONFIG: Record<Category, { color: string; bgColor: string; textCo
   Compliance: { color: 'bg-teal-500', bgColor: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-700 dark:text-teal-300', borderColor: 'border-teal-200 dark:border-teal-800', icon: ShieldCheck },
 };
 
-const REPORT_LIST = Object.values(REPORT_DEFINITIONS);
-
-function getReportsByCategory(category: string) {
-  return REPORT_LIST.filter(r => r.category === category);
-}
-
 // ── Helpers ──
 
 function getCurrentMonth() {
@@ -376,11 +370,11 @@ const MONTHS = [
   { value: '12', label: 'December' },
 ];
 
-const YEARS = [
-  { value: '2024', label: '2024' },
-  { value: '2025', label: '2025' },
-  { value: '2026', label: '2026' },
-];
+const currentYear = new Date().getFullYear();
+const YEARS = Array.from({ length: 3 }, (_, i) => {
+  const y = String(currentYear - 2 + i);
+  return { value: y, label: y };
+});
 
 function FiltersPanel({
   filters,
@@ -834,7 +828,28 @@ export function ReportsHubScreen() {
   const queryClient = useQueryClient();
 
   const { data: rateLimitData } = useRateLimit();
-  const { isLoading: catalogLoading } = useReportCatalog();
+  const { data: catalogResponse, isLoading: catalogLoading } = useReportCatalog();
+  const catalogData = catalogResponse?.data;
+
+  // Transform API catalog response into the shape the UI needs
+  const catalogCategories = useMemo(() => {
+    if (!catalogData) return [];
+    return Object.entries(catalogData).map(([categoryKey, reports]) => ({
+      category: categoryKey as Category,
+      reports: (reports as Array<{ key: string; title: string; description: string; sheetNames: string[] }>).map(r => ({
+        key: r.key,
+        title: r.title,
+        description: r.description,
+        category: categoryKey,
+        sheets: r.sheetNames,
+      })),
+    }));
+  }, [catalogData]);
+
+  const totalReportCount = useMemo(
+    () => catalogCategories.reduce((sum, c) => sum + c.reports.length, 0),
+    [catalogCategories],
+  );
 
   const remaining = rateLimitData?.data?.remaining ?? 20;
   const rateLimitExceeded = remaining <= 0;
@@ -918,7 +933,7 @@ export function ReportsHubScreen() {
             >
               <FileSpreadsheet className="w-4 h-4" />
               Report Catalog
-              <span className="text-xs font-normal text-neutral-400 dark:text-neutral-500">({REPORT_LIST.length})</span>
+              <span className="text-xs font-normal text-neutral-400 dark:text-neutral-500">({totalReportCount})</span>
             </button>
             <button
               onClick={() => setActiveTab('history')}
@@ -955,8 +970,8 @@ export function ReportsHubScreen() {
           <div className="space-y-10 pb-12">
             {catalogLoading ? (
               <div className="space-y-10">
-                {CATEGORIES.slice(0, 3).map(cat => (
-                  <div key={cat}>
+                {Array.from({ length: 3 }).map((_, idx) => (
+                  <div key={idx}>
                     <div className="flex items-center gap-3 mb-4">
                       <div className="w-8 h-8 bg-neutral-200 dark:bg-neutral-700 rounded-lg animate-pulse" />
                       <div className="h-5 w-40 bg-neutral-200 dark:bg-neutral-700 rounded animate-pulse" />
@@ -970,8 +985,7 @@ export function ReportsHubScreen() {
                 ))}
               </div>
             ) : (
-              CATEGORIES.map(category => {
-                const reports = getReportsByCategory(category);
+              catalogCategories.map(({ category, reports }) => {
                 if (reports.length === 0) return null;
                 return (
                   <CategorySection
