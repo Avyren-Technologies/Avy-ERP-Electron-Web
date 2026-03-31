@@ -29,10 +29,11 @@ import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Constants ── */
 
+// Backend enum: SuccessorReadiness { READY_NOW, ONE_YEAR, TWO_YEARS, NOT_READY }
 const READINESS_LEVELS = [
     { value: "READY_NOW", label: "Ready Now", color: "bg-success-500", textColor: "text-success-700 dark:text-success-400", bgColor: "bg-success-50 dark:bg-success-900/20 border-success-200 dark:border-success-800/50" },
-    { value: "READY_1_2_YEARS", label: "Ready 1-2 Years", color: "bg-primary-500", textColor: "text-primary-700 dark:text-primary-400", bgColor: "bg-primary-50 dark:bg-primary-900/20 border-primary-200 dark:border-primary-800/50" },
-    { value: "READY_3_5_YEARS", label: "Ready 3-5 Years", color: "bg-warning-500", textColor: "text-warning-700 dark:text-warning-400", bgColor: "bg-warning-50 dark:bg-warning-900/20 border-warning-200 dark:border-warning-800/50" },
+    { value: "ONE_YEAR", label: "1-2 Years", color: "bg-primary-500", textColor: "text-primary-700 dark:text-primary-400", bgColor: "bg-primary-50 dark:bg-primary-900/20 border-primary-200 dark:border-primary-800/50" },
+    { value: "TWO_YEARS", label: "3-5 Years", color: "bg-warning-500", textColor: "text-warning-700 dark:text-warning-400", bgColor: "bg-warning-50 dark:bg-warning-900/20 border-warning-200 dark:border-warning-800/50" },
     { value: "NOT_READY", label: "Not Ready", color: "bg-neutral-400", textColor: "text-neutral-600 dark:text-neutral-400", bgColor: "bg-neutral-100 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700" },
 ];
 
@@ -55,7 +56,7 @@ const EMPTY_FORM = {
     role: "",
     currentHolderId: "",
     status: "ACTIVE",
-    successors: [{ employeeId: "", readiness: "READY_1_2_YEARS", notes: "" }],
+    successors: [{ employeeId: "", readiness: "ONE_YEAR", notes: "" }],
 };
 
 /* ── Helpers ── */
@@ -125,7 +126,7 @@ export function SuccessionScreen() {
 
     const openCreate = () => {
         setEditingId(null);
-        setForm({ ...EMPTY_FORM, successors: [{ employeeId: "", readiness: "READY_1_2_YEARS", notes: "" }] });
+        setForm({ ...EMPTY_FORM, successors: [{ employeeId: "", readiness: "ONE_YEAR", notes: "" }] });
         setModalOpen(true);
     };
 
@@ -138,15 +139,15 @@ export function SuccessionScreen() {
             status: p.status ?? "ACTIVE",
             successors: p.successors?.length ? p.successors.map((s: any) => ({
                 employeeId: s.employeeId ?? "",
-                readiness: s.readiness ?? "READY_1_2_YEARS",
+                readiness: s.readiness ?? "ONE_YEAR",
                 notes: s.notes ?? "",
-            })) : [{ employeeId: "", readiness: "READY_1_2_YEARS", notes: "" }],
+            })) : [{ employeeId: "", readiness: "ONE_YEAR", notes: "" }],
         });
         setModalOpen(true);
     };
 
     const addSuccessor = () => {
-        setForm((p: any) => ({ ...p, successors: [...p.successors, { employeeId: "", readiness: "READY_1_2_YEARS", notes: "" }] }));
+        setForm((p: any) => ({ ...p, successors: [...p.successors, { employeeId: "", readiness: "ONE_YEAR", notes: "" }] }));
     };
 
     const removeSuccessor = (index: number) => {

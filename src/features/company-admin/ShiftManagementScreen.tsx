@@ -13,10 +13,11 @@ import {
     Coffee,
     CheckCircle2,
     XCircle,
+    Info,
 } from "lucide-react";
 import { InfoTooltip } from "@/components/ui/InfoTooltip";
 import { cn } from "@/lib/utils";
-import { useCompanyShifts } from "@/features/company-admin/api/use-company-admin-queries";
+import { useCompanyShifts, useShiftBreaks } from "@/features/company-admin/api/use-company-admin-queries";
 import {
     useCreateShift,
     useUpdateShift,
@@ -212,6 +213,7 @@ const EMPTY_BREAK: BreakFormState = {
 /* ── Screen ── */
 
 export function ShiftManagementScreen() {
+    const [showHelp, setShowHelp] = useState(false);
     const { data, isLoading, isError } = useCompanyShifts();
     const createMutation = useCreateShift();
     const updateMutation = useUpdateShift();
@@ -230,7 +232,10 @@ export function ShiftManagementScreen() {
     const [breakForm, setBreakForm] = useState<BreakFormState>({ ...EMPTY_BREAK });
     const [editingBreakId, setEditingBreakId] = useState<string | null>(null);
     const [showBreakForm, setShowBreakForm] = useState(false);
-    const [currentBreaks, setCurrentBreaks] = useState<ShiftBreak[]>([]);
+
+    // Fetch breaks from API when editing a shift (replaces local state)
+    const { data: breaksData } = useShiftBreaks(editingId ?? "");
+    const currentBreaks: ShiftBreak[] = (breaksData as any)?.data ?? (breaksData as any) ?? [];
 
     const shifts: CompanyShift[] = data?.data ?? [];
     const filtered = shifts.filter((s) => {
@@ -241,7 +246,7 @@ export function ShiftManagementScreen() {
     const openCreate = () => {
         setEditingId(null);
         setForm({ ...EMPTY_SHIFT });
-        setCurrentBreaks([]);
+        // breaks auto-fetched via useShiftBreaks query
         setShowBreakForm(false);
         setModalOpen(true);
     };
@@ -265,7 +270,7 @@ export function ShiftManagementScreen() {
             requireSelfie: shift.requireSelfie ?? null,
             requireGPS: shift.requireGPS ?? null,
         });
-        setCurrentBreaks(shift.breaks ?? []);
+        // breaks auto-fetched via useShiftBreaks query
         setShowBreakForm(false);
         setModalOpen(true);
     };
@@ -344,7 +349,7 @@ export function ShiftManagementScreen() {
         try {
             await deleteBreakMutation.mutateAsync({ shiftId: editingId, breakId: brk.id });
             showSuccess("Break Deleted", `${brk.name} has been removed.`);
-            setCurrentBreaks((prev) => prev.filter((b) => b.id !== brk.id));
+            // breaks auto-refetched via query invalidation
         } catch (err) {
             showApiError(err);
         }
@@ -373,13 +378,22 @@ export function ShiftManagementScreen() {
                     <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Shifts</h1>
                     <p className="text-neutral-500 dark:text-neutral-400 mt-1">Configure work shifts, breaks, and policy overrides</p>
                 </div>
-                <button
-                    onClick={openCreate}
-                    className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none"
-                >
-                    <Plus className="w-5 h-5" />
-                    Add Shift
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setShowHelp(true)}
+                        className="p-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-500 hover:text-primary-600 hover:border-primary-300 dark:hover:text-primary-400 transition-all"
+                        title="How to use Shifts"
+                    >
+                        <Info size={18} />
+                    </button>
+                    <button
+                        onClick={openCreate}
+                        className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none"
+                    >
+                        <Plus className="w-5 h-5" />
+                        Add Shift
+                    </button>
+                </div>
             </div>
 
             {/* Toolbar */}
@@ -609,6 +623,72 @@ export function ShiftManagementScreen() {
                                 {saving && <Loader2 size={14} className="animate-spin" />}
                                 {saving ? "Saving..." : editingId ? "Update" : "Create"}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Help / Info Modal ── */}
+            {showHelp && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => setShowHelp(false)}>
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-2xl animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
+                            <div className="flex items-center gap-2">
+                                <Info size={18} className="text-primary-600" />
+                                <h2 className="text-lg font-bold text-primary-950 dark:text-white">Shifts & Time — Guide</h2>
+                            </div>
+                            <button onClick={() => setShowHelp(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"><X size={18} /></button>
+                        </div>
+                        <div className="p-6 overflow-y-auto flex-1 space-y-5 text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed">
+                            <section>
+                                <h3 className="font-bold text-primary-950 dark:text-white mb-2">What is this screen?</h3>
+                                <p>Define all work shifts in your organisation — morning, evening, night, flexible, or rotational. Each shift controls when employees are expected to work and how attendance is evaluated.</p>
+                            </section>
+                            <section>
+                                <h3 className="font-bold text-primary-950 dark:text-white mb-2">Creating a Shift</h3>
+                                <ul className="list-disc pl-5 space-y-1">
+                                    <li><strong>Name & Type:</strong> Give a clear name (e.g., "Morning Shift") and select Day, Night, Rotational, or Flexible.</li>
+                                    <li><strong>Start / End Time:</strong> The expected clock-in and clock-out times.</li>
+                                    <li><strong>Cross-Day Shift:</strong> Enable for night shifts that span midnight (e.g., 22:00–06:00). The attendance date will use the shift start date.</li>
+                                    <li><strong>No Shuffle:</strong> When ON, this shift is <em>excluded from automatic rotation</em> — employees on this shift won't be rotated.</li>
+                                </ul>
+                            </section>
+                            <section>
+                                <h3 className="font-bold text-primary-950 dark:text-white mb-2">Adding Breaks</h3>
+                                <ul className="list-disc pl-5 space-y-1">
+                                    <li>Breaks can only be added after creating a shift (click <strong>Edit</strong> on an existing shift).</li>
+                                    <li>Scroll down in the edit modal to find the <strong>Breaks</strong> section.</li>
+                                    <li><strong>Fixed breaks</strong> have a set start time (e.g., Lunch at 12:30).</li>
+                                    <li><strong>Flexible breaks</strong> can be taken anytime within the shift.</li>
+                                    <li>Mark breaks as <strong>Paid</strong> or <strong>Unpaid</strong> — unpaid breaks are deducted from working hours.</li>
+                                </ul>
+                            </section>
+                            <section>
+                                <h3 className="font-bold text-primary-950 dark:text-white mb-2">Policy Overrides</h3>
+                                <p>Each shift can override company-wide attendance rules. Leave fields empty to inherit the default:</p>
+                                <ul className="list-disc pl-5 space-y-1">
+                                    <li><strong>Grace Period:</strong> Minutes after shift start before marking late.</li>
+                                    <li><strong>Half/Full Day Thresholds:</strong> Hours needed to qualify as half-day or full-day.</li>
+                                    <li><strong>Auto Clock-Out:</strong> Auto-clock out after N minutes past shift end.</li>
+                                    <li><strong>Require Selfie / GPS:</strong> Override capture requirements per shift.</li>
+                                </ul>
+                            </section>
+                            <section>
+                                <h3 className="font-bold text-primary-950 dark:text-white mb-2">Best Practices</h3>
+                                <ul className="list-disc pl-5 space-y-1">
+                                    <li>Create a "General Shift" with <strong>No Shuffle ON</strong> for office staff who shouldn't be rotated.</li>
+                                    <li>Use <strong>Shift Rotations</strong> (separate screen) to auto-cycle production employees through shifts.</li>
+                                    <li>Set realistic grace periods (10–15 min) to avoid excessive late markings.</li>
+                                    <li>Configure auto-clock-out to handle forgotten punch-outs.</li>
+                                </ul>
+                            </section>
+                            <section>
+                                <h3 className="font-bold text-primary-950 dark:text-white mb-2">Assigning Shifts to Employees</h3>
+                                <p>Shifts are assigned to employees in the <strong>Employee Directory → Professional Tab → Shift field</strong>. Each employee can have one active shift. Use Shift Rotations for automatic cycling.</p>
+                            </section>
+                        </div>
+                        <div className="px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
+                            <button onClick={() => setShowHelp(false)} className="w-full py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors">Got it</button>
                         </div>
                     </div>
                 </div>

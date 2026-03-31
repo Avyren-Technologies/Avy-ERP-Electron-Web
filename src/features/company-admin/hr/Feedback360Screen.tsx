@@ -25,12 +25,24 @@ import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Constants ── */
 
+// Backend enum: RaterType { SELF, MANAGER, PEER, SUBORDINATE, CROSS_FUNCTION, INTERNAL_CUSTOMER }
 const RATER_TYPES = [
+    { value: "SELF", label: "Self" },
     { value: "MANAGER", label: "Manager" },
     { value: "PEER", label: "Peer" },
-    { value: "DIRECT_REPORT", label: "Direct Report" },
-    { value: "EXTERNAL", label: "External" },
+    { value: "SUBORDINATE", label: "Direct Report" },
+    { value: "CROSS_FUNCTION", label: "Cross Function" },
+    { value: "INTERNAL_CUSTOMER", label: "Internal Customer" },
 ];
+
+const RATER_TYPE_LABELS: Record<string, string> = {
+    SELF: "Self",
+    MANAGER: "Manager",
+    PEER: "Peer",
+    SUBORDINATE: "Direct Report",
+    CROSS_FUNCTION: "Cross Function",
+    INTERNAL_CUSTOMER: "Internal Customer",
+};
 
 const STATUS_FILTERS = ["All", "Pending", "Submitted", "Completed"];
 
@@ -50,6 +62,7 @@ const SUBMIT_FORM = {
     comments: "",
     strengths: "",
     improvements: "",
+    wouldWorkAgain: null as boolean | null,
 };
 
 /* ── Helpers ── */
@@ -67,12 +80,15 @@ function StatusBadge({ status }: { status: string }) {
 
 function RaterTypeBadge({ type }: { type: string }) {
     const map: Record<string, string> = {
+        self: "bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700",
         manager: "bg-accent-50 text-accent-700 border-accent-200 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50",
         peer: "bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50",
-        direct_report: "bg-info-50 text-info-700 border-info-200 dark:bg-info-900/20 dark:text-info-400 dark:border-info-800/50",
-        external: "bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700",
+        subordinate: "bg-info-50 text-info-700 border-info-200 dark:bg-info-900/20 dark:text-info-400 dark:border-info-800/50",
+        cross_function: "bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50",
+        internal_customer: "bg-success-50 text-success-700 border-success-200 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50",
     };
-    return <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize", map[type?.toLowerCase()] ?? map.peer)}>{type?.replace("_", " ")}</span>;
+    const label = RATER_TYPE_LABELS[type] ?? type?.replace(/_/g, " ");
+    return <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize", map[type?.toLowerCase()] ?? map.peer)}>{label}</span>;
 }
 
 function StarRating({ value, onChange, readonly = false }: { value: number; onChange?: (v: number) => void; readonly?: boolean }) {
@@ -439,6 +455,33 @@ export function Feedback360Screen() {
                             <div>
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Additional Comments</label>
                                 <textarea value={submitForm.comments} onChange={(e) => updateSubmitField("comments", e.target.value)} rows={2} placeholder="Any additional observations..." className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all resize-none" />
+                            </div>
+
+                            <SectionLabel title="Would Work Again" />
+                            <div className="flex items-center gap-4">
+                                <label className="text-sm font-medium text-primary-950 dark:text-white">Would you work with this person again?</label>
+                                <div className="flex items-center gap-2">
+                                    {[
+                                        { value: true, label: "Yes" },
+                                        { value: false, label: "No" },
+                                    ].map((opt) => (
+                                        <button
+                                            key={String(opt.value)}
+                                            type="button"
+                                            onClick={() => updateSubmitField("wouldWorkAgain", opt.value)}
+                                            className={cn(
+                                                "px-4 py-1.5 rounded-lg text-sm font-bold border transition-all",
+                                                submitForm.wouldWorkAgain === opt.value
+                                                    ? opt.value
+                                                        ? "bg-success-50 text-success-700 border-success-300 dark:bg-success-900/30 dark:text-success-400 dark:border-success-700"
+                                                        : "bg-danger-50 text-danger-700 border-danger-300 dark:bg-danger-900/30 dark:text-danger-400 dark:border-danger-700"
+                                                    : "bg-neutral-50 text-neutral-500 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700"
+                                            )}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">

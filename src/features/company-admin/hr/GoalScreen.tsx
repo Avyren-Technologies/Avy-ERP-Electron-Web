@@ -53,16 +53,23 @@ const EMPTY_FORM = {
 
 /* ── Helpers ── */
 
+// Backend Goal.level values: COMPANY, DEPARTMENT, INDIVIDUAL
+const GOAL_LEVEL_LABELS: Record<string, string> = {
+    COMPANY: "Company",
+    DEPARTMENT: "Department",
+    INDIVIDUAL: "Individual",
+};
+
 function LevelBadge({ level }: { level: string }) {
     const map: Record<string, string> = {
-        organization: "bg-accent-50 text-accent-700 border-accent-200 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50",
+        company: "bg-accent-50 text-accent-700 border-accent-200 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50",
         department: "bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50",
-        team: "bg-info-50 text-info-700 border-info-200 dark:bg-info-900/20 dark:text-info-400 dark:border-info-800/50",
         individual: "bg-success-50 text-success-700 border-success-200 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50",
     };
+    const label = GOAL_LEVEL_LABELS[level] ?? level?.replace(/_/g, " ");
     return (
-        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize", map[level] ?? map.individual)}>
-            {level}
+        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize", map[level?.toLowerCase()] ?? map.individual)}>
+            {label}
         </span>
     );
 }
