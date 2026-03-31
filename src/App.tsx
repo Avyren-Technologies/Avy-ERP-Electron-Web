@@ -256,7 +256,7 @@ function App() {
         }
       >
         <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<RoleBasedDashboard />} />
+        <Route path="dashboard" element={<RequirePermission permission={['hr:read', 'ess:view-dashboard', 'ess:view-profile']}><RoleBasedDashboard /></RequirePermission>} />
         {/* Super-admin-only routes */}
         <Route path="companies" element={<RequireRole roles={['super-admin']}><CompanyListScreen /></RequireRole>} />
         <Route path="companies/add" element={<RequireRole roles={['super-admin']}><AddCompanyWizard /></RequireRole>} />
