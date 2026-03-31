@@ -65,7 +65,8 @@ function CustomTooltip({ active, payload }: any) {
 }
 
 export function DistributionChart({ distribution, height = 300 }: DistributionChartProps) {
-  const { chartType, items, title } = distribution;
+  const { chartType, title } = distribution;
+  const items = Array.isArray(distribution.items) ? distribution.items : [];
 
   const coloredItems = items.map((item, idx) => ({
     ...item,

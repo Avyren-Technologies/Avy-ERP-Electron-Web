@@ -52,8 +52,9 @@ const severityConfig = {
 
 export function InsightsPanel({ insights, onDrilldown }: InsightsPanelProps) {
   const [expanded, setExpanded] = useState(true);
+  const safeInsights = Array.isArray(insights) ? insights.filter(Boolean) : [];
 
-  if (insights.length === 0) return null;
+  if (safeInsights.length === 0) return null;
 
   return (
     <div className="rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 overflow-hidden">
@@ -69,7 +70,7 @@ export function InsightsPanel({ insights, onDrilldown }: InsightsPanelProps) {
             AI Insights
           </span>
           <span className="px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 text-xs font-medium">
-            {insights.length}
+            {safeInsights.length}
           </span>
         </div>
         {expanded ? (
@@ -82,8 +83,8 @@ export function InsightsPanel({ insights, onDrilldown }: InsightsPanelProps) {
       {/* Insight Items */}
       {expanded && (
         <div className="border-t border-neutral-100 dark:border-neutral-800 divide-y divide-neutral-100 dark:divide-neutral-800">
-          {insights.map((insight, idx) => {
-            const config = severityConfig[insight.severity];
+          {safeInsights.map((insight, idx) => {
+            const config = severityConfig[insight.severity] ?? severityConfig.info;
             const Icon = config.icon;
             const isClickable = !!(insight.drilldownType && onDrilldown);
 
