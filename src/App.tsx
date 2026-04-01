@@ -357,16 +357,16 @@ function App() {
         <Route path="company/hr/team-view" element={<RequirePermission permission="hr:read"><TeamViewScreen /></RequirePermission>} />
         <Route path="company/hr/my-goals" element={<RequirePermission permission="ess:view-goals"><MyGoalsScreen /></RequirePermission>} />
         <Route path="company/hr/my-form16" element={<RequirePermission permission="ess:download-form16"><MyForm16Screen /></RequirePermission>} />
-        <Route path="company/hr/my-grievances" element={<RequirePermission permission="ess:raise-grievance"><MyGrievancesScreen /></RequirePermission>} />
-        <Route path="company/hr/my-training" element={<RequirePermission permission="ess:enroll-training"><MyTrainingScreen /></RequirePermission>} />
-        <Route path="company/hr/my-assets" element={<RequirePermission permission="ess:view-assets"><MyAssetsScreen /></RequirePermission>} />
-        <Route path="company/hr/shift-swap" element={<RequirePermission permission="ess:swap-shift"><ShiftSwapScreen /></RequirePermission>} />
+        <Route path="company/hr/my-grievances" element={<RequirePermission permission={['hr:read', 'ess:raise-grievance']}><MyGrievancesScreen /></RequirePermission>} />
+        <Route path="company/hr/my-training" element={<RequirePermission permission={['hr:read', 'ess:enroll-training']}><MyTrainingScreen /></RequirePermission>} />
+        <Route path="company/hr/my-assets" element={<RequirePermission permission={['hr:read', 'ess:view-assets']}><MyAssetsScreen /></RequirePermission>} />
+        <Route path="company/hr/shift-swap" element={<RequirePermission permission={['hr:read', 'ess:swap-shift']}><ShiftSwapScreen /></RequirePermission>} />
         <Route path="company/hr/wfh-requests" element={<RequirePermission permission="ess:request-wfh"><WfhRequestScreen /></RequirePermission>} />
         <Route path="company/hr/my-documents" element={<RequirePermission permission="ess:upload-document"><MyDocumentsScreen /></RequirePermission>} />
         <Route path="company/hr/policy-documents" element={<RequirePermission permission="ess:view-policies"><PolicyDocumentsScreen /></RequirePermission>} />
         <Route path="company/hr/my-holidays" element={<RequirePermission permission="ess:view-holidays"><MyHolidaysScreen /></RequirePermission>} />
-        <Route path="company/hr/my-expense-claims" element={<RequirePermission permission="ess:claim-expense"><MyExpenseClaimsScreen /></RequirePermission>} />
-        <Route path="company/hr/my-loans" element={<RequirePermission permission="ess:apply-loan"><MyLoanScreen /></RequirePermission>} />
+        <Route path="company/hr/my-expense-claims" element={<RequirePermission permission={['hr:read', 'ess:claim-expense']}><MyExpenseClaimsScreen /></RequirePermission>} />
+        <Route path="company/hr/my-loans" element={<RequirePermission permission={['hr:read', 'ess:apply-loan']}><MyLoanScreen /></RequirePermission>} />
         {/* Company-admin Recruitment & Training routes */}
         <Route path="company/hr/requisitions" element={<RequirePermission permission="hr:read"><RequisitionScreen /></RequirePermission>} />
         <Route path="company/hr/candidates" element={<RequirePermission permission="hr:read"><CandidateScreen /></RequirePermission>} />
@@ -397,7 +397,7 @@ function App() {
         {/* Company-admin Additional HR routes */}
         <Route path="company/hr/onboarding" element={<RequirePermission permission="hr:read"><OnboardingScreen /></RequirePermission>} />
         <Route path="company/hr/probation-reviews" element={<RequirePermission permission="hr:read"><ProbationReviewScreen /></RequirePermission>} />
-        <Route path="company/hr/org-chart" element={<RequirePermission permission="hr:read"><OrgChartScreen /></RequirePermission>} />
+        <Route path="company/hr/org-chart" element={<RequirePermission permission={['hr:read', 'ess:view-org-chart']}><OrgChartScreen /></RequirePermission>} />
         <Route path="company/hr/form-16" element={<RequirePermission permission="hr:read"><Form16Screen /></RequirePermission>} />
         <Route path="company/hr/chatbot" element={<RequirePermission permission={['hr:read', 'ess:view-profile']}><ChatbotScreen /></RequirePermission>} />
         <Route path="company/hr/bonus-batches" element={<RequirePermission permission="hr:read"><BonusBatchScreen /></RequirePermission>} />
