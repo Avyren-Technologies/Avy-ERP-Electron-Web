@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
     Receipt,
     Plus,
@@ -17,6 +17,7 @@ import {
     ExternalLink,
     FileText,
     Settings,
+    Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -42,16 +43,25 @@ import { showSuccess, showApiError } from "@/lib/toast";
 
 const STATUS_FILTERS = ["All", "Draft", "Submitted", "Approved", "Rejected", "Paid"];
 
+const PAYMENT_METHODS = [
+    { value: 'CASH', label: 'Cash' },
+    { value: 'PERSONAL_CARD', label: 'Personal Card' },
+    { value: 'COMPANY_CARD', label: 'Company Card' },
+    { value: 'BANK_TRANSFER', label: 'Bank Transfer' },
+    { value: 'UPI', label: 'UPI' },
+    { value: 'OTHER', label: 'Other' },
+];
+
 const EMPTY_CLAIM = {
     employeeId: "",
     title: "",
-    category: "Travel",
-    amount: "",
-    currency: "INR",
-    expenseDate: "",
-    description: "",
-    receiptUrl: "",
+    category: "",
+    fromDate: "",
+    toDate: "",
+    paymentMethod: "",
+    merchantName: "",
     projectCode: "",
+    description: "",
 };
 
 const EMPTY_CATEGORY = {
@@ -65,6 +75,31 @@ const EMPTY_CATEGORY = {
     maxAmountPerYear: "",
 };
 
+interface LineItem {
+    id?: string;
+    categoryCode: string;
+    categoryId?: string;
+    description: string;
+    amount: string;
+    expenseDate: string;
+    merchantName: string;
+}
+
+interface ReceiptFile {
+    fileName: string;
+    fileUrl: string;
+    previewUrl?: string;
+    size?: number;
+}
+
+const EMPTY_LINE_ITEM: LineItem = {
+    categoryCode: "",
+    description: "",
+    amount: "",
+    expenseDate: "",
+    merchantName: "",
+};
+
 const formatDate = (d: string | null | undefined) => {
     if (!d) return "—";
     return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
@@ -74,6 +109,21 @@ const formatCurrency = (amt: any) => {
     if (!amt && amt !== 0) return "—";
     return `\u20B9${Number(amt).toLocaleString("en-IN")}`;
 };
+
+function fileToDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+function formatFileSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 /* ── Badge ── */
 
@@ -106,6 +156,9 @@ export function ExpenseClaimScreen() {
     const [modalOpen, setModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [form, setForm] = useState({ ...EMPTY_CLAIM });
+    const [lineItems, setLineItems] = useState<LineItem[]>([{ ...EMPTY_LINE_ITEM }]);
+    const [receiptFiles, setReceiptFiles] = useState<ReceiptFile[]>([]);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [detailTarget, setDetailTarget] = useState<any>(null);
     const [approveTarget, setApproveTarget] = useState<any>(null);
     const [approvedAmount, setApprovedAmount] = useState("");
@@ -137,7 +190,7 @@ export function ExpenseClaimScreen() {
     const claims: any[] = claimsQuery.data?.data ?? [];
     const employees: any[] = employeesQuery.data?.data ?? [];
     const categories: any[] = categoriesQuery.data?.data ?? [];
-    const categoryNames = categories.filter((c: any) => c.isActive !== false).map((c: any) => c.name);
+    const activeCategories = categories.filter((c: any) => c.isActive !== false);
 
     const employeeName = (id: string) => {
         const emp = employees.find((e: any) => e.id === id);
@@ -153,15 +206,113 @@ export function ExpenseClaimScreen() {
 
     const totalAmount = filtered.reduce((sum: number, c: any) => sum + (Number(c.amount) || 0), 0);
 
-    const openCreate = () => { setEditingId(null); setForm({ ...EMPTY_CLAIM }); setModalOpen(true); };
+    const openCreate = () => {
+        setEditingId(null);
+        setForm({ ...EMPTY_CLAIM });
+        setLineItems([{ ...EMPTY_LINE_ITEM }]);
+        setReceiptFiles([]);
+        setModalOpen(true);
+    };
+
     const openEdit = (c: any) => {
         setEditingId(c.id);
         setForm({
-            employeeId: c.employeeId ?? "", title: c.title ?? "", category: c.category ?? "Travel",
-            amount: c.amount ?? "", currency: c.currency ?? "INR", expenseDate: c.expenseDate ?? "",
-            description: c.description ?? "", receiptUrl: c.receiptUrl ?? "", projectCode: c.projectCode ?? "",
+            employeeId: c.employeeId ?? "",
+            title: c.title ?? "",
+            category: c.category ?? "",
+            fromDate: c.fromDate ? c.fromDate.slice(0, 10) : c.expenseDate ? c.expenseDate.slice(0, 10) : "",
+            toDate: c.toDate ? c.toDate.slice(0, 10) : "",
+            paymentMethod: c.paymentMethod ?? "",
+            merchantName: c.merchantName ?? "",
+            projectCode: c.projectCode ?? "",
+            description: c.description ?? "",
         });
+        // Populate line items from claim
+        const claimItems = c.items ?? [];
+        if (claimItems.length > 0) {
+            setLineItems(claimItems.map((item: any) => ({
+                id: item.id,
+                categoryCode: item.categoryCode ?? "",
+                categoryId: item.categoryId ?? "",
+                description: item.description ?? "",
+                amount: String(item.amount ?? ""),
+                expenseDate: item.expenseDate ? item.expenseDate.slice(0, 10) : "",
+                merchantName: item.merchantName ?? "",
+            })));
+        } else {
+            setLineItems([{ ...EMPTY_LINE_ITEM }]);
+        }
+        // Populate receipts from claim
+        const claimReceipts = c.receipts ?? [];
+        if (claimReceipts.length > 0) {
+            setReceiptFiles(claimReceipts.map((r: any) => ({
+                fileName: r.fileName ?? "Receipt",
+                fileUrl: r.fileUrl ?? "",
+                previewUrl: r.fileUrl ?? "",
+                size: r.size ?? undefined,
+            })));
+        } else {
+            setReceiptFiles([]);
+        }
         setModalOpen(true);
+    };
+
+    const lineItemsTotal = lineItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+
+    const addLineItem = () => {
+        setLineItems(prev => [...prev, { ...EMPTY_LINE_ITEM }]);
+    };
+
+    const removeLineItem = (index: number) => {
+        setLineItems(prev => prev.length <= 1 ? prev : prev.filter((_, i) => i !== index));
+    };
+
+    const updateLineItem = (index: number, field: keyof LineItem, value: string) => {
+        setLineItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item));
+    };
+
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files) return;
+        const newReceipts: ReceiptFile[] = [];
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (file.size > 10 * 1024 * 1024) continue; // skip files > 10MB
+            const dataUrl = await fileToDataUrl(file);
+            newReceipts.push({
+                fileName: file.name,
+                fileUrl: dataUrl,
+                previewUrl: dataUrl,
+                size: file.size,
+            });
+        }
+        setReceiptFiles(prev => [...prev, ...newReceipts]);
+        // Reset input so same file can be selected again
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+
+    const handleFileDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const files = e.dataTransfer.files;
+        if (!files) return;
+        const newReceipts: ReceiptFile[] = [];
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (file.size > 10 * 1024 * 1024) continue;
+            const dataUrl = await fileToDataUrl(file);
+            newReceipts.push({
+                fileName: file.name,
+                fileUrl: dataUrl,
+                previewUrl: dataUrl,
+                size: file.size,
+            });
+        }
+        setReceiptFiles(prev => [...prev, ...newReceipts]);
+    };
+
+    const removeReceipt = (index: number) => {
+        setReceiptFiles(prev => prev.filter((_, i) => i !== index));
     };
 
     const handleSave = async () => {
@@ -169,13 +320,35 @@ export function ExpenseClaimScreen() {
             const payload: any = {
                 employeeId: form.employeeId,
                 title: form.title,
-                amount: Number(form.amount) || 0,
-                category: form.category,
+                category: form.category || undefined,
+                amount: lineItemsTotal || 0,
+                fromDate: form.fromDate || undefined,
+                toDate: form.toDate || undefined,
+                paymentMethod: form.paymentMethod || undefined,
+                merchantName: form.merchantName || undefined,
+                projectCode: form.projectCode || undefined,
                 description: form.description || undefined,
-                tripDate: form.expenseDate || undefined,
+                items: lineItems
+                    .filter(item => item.description || item.amount)
+                    .map(item => ({
+                        categoryCode: item.categoryCode || undefined,
+                        description: item.description,
+                        amount: Number(item.amount) || 0,
+                        expenseDate: item.expenseDate || undefined,
+                        merchantName: item.merchantName || undefined,
+                    })),
+                receipts: receiptFiles.map(r => ({
+                    fileName: r.fileName,
+                    fileUrl: r.fileUrl,
+                })),
             };
-            if (editingId) { await updateClaim.mutateAsync({ id: editingId, data: payload }); showSuccess("Claim Updated", `${form.title} updated.`); }
-            else { await createClaim.mutateAsync(payload); showSuccess("Claim Created", `${form.title} submitted.`); }
+            if (editingId) {
+                await updateClaim.mutateAsync({ id: editingId, data: payload });
+                showSuccess("Claim Updated", `${form.title} updated.`);
+            } else {
+                await createClaim.mutateAsync(payload);
+                showSuccess("Claim Created", `${form.title} submitted.`);
+            }
             setModalOpen(false);
         } catch (err) { showApiError(err); }
     };
@@ -287,6 +460,9 @@ export function ExpenseClaimScreen() {
     const detailData = detailQuery.data?.data ?? detailTarget;
     const detailItems: any[] = detailData?.items ?? [];
     const detailReceipts: any[] = detailData?.receipts ?? [];
+
+    const inputCls = "w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all";
+    const labelCls = "block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5";
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -487,48 +663,182 @@ export function ExpenseClaimScreen() {
             {/* ── Create/Edit Claim Modal ── */}
             {modalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-lg animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-2xl animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
                             <h2 className="text-lg font-bold text-primary-950 dark:text-white">{editingId ? "Edit Claim" : "New Expense Claim"}</h2>
                             <button onClick={() => setModalOpen(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"><X size={18} /></button>
                         </div>
-                        <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                        <div className="p-6 overflow-y-auto flex-1 space-y-6">
+                            {/* Section: Employee */}
                             <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Employee</label>
-                                <select value={form.employeeId} onChange={(e) => updateField("employeeId", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
+                                <label className={labelCls}>Employee</label>
+                                <select value={form.employeeId} onChange={(e) => updateField("employeeId", e.target.value)} className={inputCls}>
                                     <option value="">Select employee...</option>
                                     {employees.map((e: any) => <option key={e.id} value={e.id}>{[e.firstName, e.lastName].filter(Boolean).join(" ") || e.email}</option>)}
                                 </select>
                             </div>
+
+                            {/* Section: Claim Details */}
                             <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Title</label>
-                                <input type="text" value={form.title} onChange={(e) => updateField("title", e.target.value)} placeholder="e.g., Client meeting travel" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                <h3 className="text-xs font-bold text-primary-600 dark:text-primary-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                    <Receipt size={12} /> Claim Details
+                                </h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className={labelCls}>Title</label>
+                                        <input type="text" value={form.title} onChange={(e) => updateField("title", e.target.value)} placeholder="e.g., Client meeting travel expenses" className={inputCls} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className={labelCls}>Overall Category</label>
+                                            <select value={form.category} onChange={(e) => updateField("category", e.target.value)} className={inputCls}>
+                                                <option value="">Select category...</option>
+                                                {activeCategories.map((c: any) => <option key={c.id} value={c.code}>{c.name}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className={labelCls}>Payment Method</label>
+                                            <select value={form.paymentMethod} onChange={(e) => updateField("paymentMethod", e.target.value)} className={inputCls}>
+                                                <option value="">Select method...</option>
+                                                {PAYMENT_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className={labelCls}>From Date</label>
+                                            <input type="date" value={form.fromDate} onChange={(e) => updateField("fromDate", e.target.value)} className={inputCls} />
+                                        </div>
+                                        <div>
+                                            <label className={labelCls}>To Date</label>
+                                            <input type="date" value={form.toDate} onChange={(e) => updateField("toDate", e.target.value)} className={inputCls} />
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Category</label>
-                                    <select value={form.category} onChange={(e) => updateField("category", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
-                                        {categoryNames.length > 0 ? categoryNames.map((c) => <option key={c} value={c}>{c}</option>) : <option value="">No categories available</option>}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Amount (INR)</label>
-                                    <input type="number" value={form.amount} onChange={(e) => updateField("amount", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Expense Date</label>
-                                    <input type="date" value={form.expenseDate} onChange={(e) => updateField("expenseDate", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Project Code</label>
-                                    <input type="text" value={form.projectCode} onChange={(e) => updateField("projectCode", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
-                                </div>
-                            </div>
+
+                            {/* Section: Additional Info */}
                             <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Description</label>
-                                <textarea value={form.description} onChange={(e) => updateField("description", e.target.value)} rows={3} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all resize-none" />
+                                <h3 className="text-xs font-bold text-primary-600 dark:text-primary-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                    <FileText size={12} /> Additional Info
+                                </h3>
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className={labelCls}>Merchant Name</label>
+                                            <input type="text" value={form.merchantName} onChange={(e) => updateField("merchantName", e.target.value)} placeholder="e.g., Uber, Marriott" className={inputCls} />
+                                        </div>
+                                        <div>
+                                            <label className={labelCls}>Project Code</label>
+                                            <input type="text" value={form.projectCode} onChange={(e) => updateField("projectCode", e.target.value)} placeholder="e.g., PRJ-001" className={inputCls} />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className={labelCls}>Description</label>
+                                        <textarea value={form.description} onChange={(e) => updateField("description", e.target.value)} rows={2} placeholder="Provide details about the expense..." className={cn(inputCls, "resize-none")} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Section: Line Items */}
+                            <div>
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="text-xs font-bold text-primary-600 dark:text-primary-400 uppercase tracking-wider flex items-center gap-2">
+                                        <Receipt size={12} /> Expense Line Items
+                                    </h3>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-sm font-bold text-primary-950 dark:text-white">
+                                            Total: {formatCurrency(lineItemsTotal)}
+                                        </span>
+                                        <button onClick={addLineItem} type="button" className="inline-flex items-center gap-1 text-xs font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors">
+                                            <Plus size={14} /> Add Item
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    {lineItems.map((item, index) => (
+                                        <div key={index} className="p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-700 space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] font-bold text-neutral-400 uppercase">Item {index + 1}</span>
+                                                {lineItems.length > 1 && (
+                                                    <button onClick={() => removeLineItem(index)} type="button" className="p-1 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors" title="Remove item">
+                                                        <Trash2 size={13} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="block text-[10px] font-semibold text-neutral-400 uppercase mb-1">Category</label>
+                                                    <select value={item.categoryCode} onChange={(e) => updateLineItem(index, "categoryCode", e.target.value)} className="w-full px-2.5 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
+                                                        <option value="">Select...</option>
+                                                        {activeCategories.map((c: any) => <option key={c.id} value={c.code}>{c.name}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-semibold text-neutral-400 uppercase mb-1">Amount (INR)</label>
+                                                    <input type="number" value={item.amount} onChange={(e) => updateLineItem(index, "amount", e.target.value)} placeholder="0" className="w-full px-2.5 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-semibold text-neutral-400 uppercase mb-1">Description</label>
+                                                <input type="text" value={item.description} onChange={(e) => updateLineItem(index, "description", e.target.value)} placeholder="What was this expense for?" className="w-full px-2.5 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="block text-[10px] font-semibold text-neutral-400 uppercase mb-1">Expense Date</label>
+                                                    <input type="date" value={item.expenseDate} onChange={(e) => updateLineItem(index, "expenseDate", e.target.value)} className="w-full px-2.5 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-semibold text-neutral-400 uppercase mb-1">Merchant</label>
+                                                    <input type="text" value={item.merchantName} onChange={(e) => updateLineItem(index, "merchantName", e.target.value)} placeholder="e.g., Uber" className="w-full px-2.5 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Section: Receipts & Attachments */}
+                            <div>
+                                <h3 className="text-xs font-bold text-primary-600 dark:text-primary-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                    <Paperclip size={12} /> Receipts & Attachments
+                                </h3>
+                                <div
+                                    className="border-2 border-dashed border-neutral-300 dark:border-neutral-600 rounded-xl p-6 text-center hover:border-primary-400 hover:bg-primary-50/50 dark:hover:bg-primary-900/10 transition-all cursor-pointer"
+                                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                    onDrop={handleFileDrop}
+                                    onClick={() => fileInputRef.current?.click()}
+                                >
+                                    <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={handleFileSelect} />
+                                    <Upload className="w-8 h-8 mx-auto text-neutral-400 mb-2" />
+                                    <p className="text-sm font-semibold text-neutral-600 dark:text-neutral-300">Drop files here or click to browse</p>
+                                    <p className="text-xs text-neutral-400 mt-1">PDF, Images, Documents (max 10MB each)</p>
+                                </div>
+                                {receiptFiles.length > 0 && (
+                                    <div className="mt-3 space-y-2">
+                                        {receiptFiles.map((receipt, index) => {
+                                            const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(receipt.fileName) || receipt.fileUrl?.startsWith("data:image/");
+                                            return (
+                                                <div key={index} className="flex items-center gap-3 p-2.5 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700">
+                                                    {isImage && receipt.previewUrl ? (
+                                                        <img src={receipt.previewUrl} alt={receipt.fileName} className="w-10 h-10 rounded-lg object-cover border border-neutral-200 dark:border-neutral-700" />
+                                                    ) : (
+                                                        <div className="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
+                                                            <FileText size={16} className="text-primary-600 dark:text-primary-400" />
+                                                        </div>
+                                                    )}
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-semibold text-primary-950 dark:text-white truncate">{receipt.fileName}</p>
+                                                        {receipt.size && <p className="text-[10px] text-neutral-400">{formatFileSize(receipt.size)}</p>}
+                                                    </div>
+                                                    <button onClick={(e) => { e.stopPropagation(); removeReceipt(index); }} className="p-1.5 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors" title="Remove">
+                                                        <X size={14} />
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
