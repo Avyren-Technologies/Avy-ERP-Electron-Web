@@ -381,7 +381,7 @@ function App() {
         <Route path="company/hr/expenses" element={<RequirePermission permission="hr:read"><ExpenseClaimScreen /></RequirePermission>} />
         <Route path="company/hr/hr-letters" element={<RequirePermission permission="hr:read"><HRLetterScreen /></RequirePermission>} />
         <Route path="company/hr/grievances" element={<RequirePermission permission="hr:read"><GrievanceScreen /></RequirePermission>} />
-        <Route path="company/hr/disciplinary" element={<RequirePermission permission="hr:read"><DisciplinaryScreen /></RequirePermission>} />
+        <Route path="company/hr/disciplinary" element={<RequirePermission permission={['hr:read', 'ess:view-disciplinary']}><DisciplinaryScreen /></RequirePermission>} />
         {/* Company-admin Transfer, Promotion & Delegation routes */}
         <Route path="company/hr/transfers" element={<RequirePermission permission="hr:read"><TransferScreen /></RequirePermission>} />
         <Route path="company/hr/promotions" element={<RequirePermission permission="hr:read"><PromotionScreen /></RequirePermission>} />
@@ -401,7 +401,7 @@ function App() {
         <Route path="company/hr/form-16" element={<RequirePermission permission="hr:read"><Form16Screen /></RequirePermission>} />
         <Route path="company/hr/chatbot" element={<RequirePermission permission={['hr:read', 'ess:view-profile']}><ChatbotScreen /></RequirePermission>} />
         <Route path="company/hr/bonus-batches" element={<RequirePermission permission="hr:read"><BonusBatchScreen /></RequirePermission>} />
-        <Route path="company/hr/esign" element={<RequirePermission permission="hr:read"><ESignScreen /></RequirePermission>} />
+        <Route path="company/hr/esign" element={<RequirePermission permission={['hr:read', 'ess:view-esign']}><ESignScreen /></RequirePermission>} />
         <Route path="company/hr/data-retention" element={<RequirePermission permission="hr:read"><DataRetentionScreen /></RequirePermission>} />
         <Route path="company/hr/biometric-devices" element={<RequirePermission permission="hr:read"><BiometricDeviceScreen /></RequirePermission>} />
         <Route path="company/hr/shift-rotations" element={<RequirePermission permission="hr:read"><ShiftRotationScreen /></RequirePermission>} />

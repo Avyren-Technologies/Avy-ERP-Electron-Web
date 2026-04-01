@@ -255,13 +255,40 @@ async function updateExpenseClaim(id: string, data: any): Promise<ApiResponse<an
     return response.data;
 }
 
-async function approveExpenseClaim(id: string): Promise<ApiResponse<any>> {
-    const response = await client.patch(`/hr/expense-claims/${id}/approve-reject`, { action: 'approve' });
+async function approveExpenseClaim(id: string, data?: { approvedAmount?: number; itemApprovals?: any[] }): Promise<ApiResponse<any>> {
+    const response = await client.patch(`/hr/expense-claims/${id}/approve-reject`, { action: 'approve', ...data });
     return response.data;
 }
 
-async function rejectExpenseClaim(id: string): Promise<ApiResponse<any>> {
-    const response = await client.patch(`/hr/expense-claims/${id}/approve-reject`, { action: 'reject' });
+async function rejectExpenseClaim(id: string, data?: { rejectionReason?: string }): Promise<ApiResponse<any>> {
+    const response = await client.patch(`/hr/expense-claims/${id}/approve-reject`, { action: 'reject', ...data });
+    return response.data;
+}
+
+// ── Expense Categories ──
+
+async function listExpenseCategories(params?: { includeInactive?: boolean }): Promise<ApiResponse<any>> {
+    const response = await client.get('/hr/expense-categories', { params });
+    return response.data;
+}
+
+async function getExpenseCategory(id: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/expense-categories/${id}`);
+    return response.data;
+}
+
+async function createExpenseCategory(data: any): Promise<ApiResponse<any>> {
+    const response = await client.post('/hr/expense-categories', data);
+    return response.data;
+}
+
+async function updateExpenseCategory(id: string, data: any): Promise<ApiResponse<any>> {
+    const response = await client.patch(`/hr/expense-categories/${id}`, data);
+    return response.data;
+}
+
+async function deleteExpenseCategory(id: string): Promise<ApiResponse<any>> {
+    const response = await client.delete(`/hr/expense-categories/${id}`);
     return response.data;
 }
 
@@ -476,6 +503,12 @@ export const recruitmentApi = {
     updateExpenseClaim,
     approveExpenseClaim,
     rejectExpenseClaim,
+    // Expense Categories
+    listExpenseCategories,
+    getExpenseCategory,
+    createExpenseCategory,
+    updateExpenseCategory,
+    deleteExpenseCategory,
     // Letter Templates
     listLetterTemplates,
     createLetterTemplate,

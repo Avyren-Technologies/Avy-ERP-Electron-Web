@@ -27,6 +27,7 @@ import {
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
+import { useCanPerform } from "@/hooks/useCanPerform";
 
 /* ── Constants ── */
 
@@ -172,6 +173,10 @@ const formatCurrency = (amount: number | string | undefined) => {
 /* ── Screen ── */
 
 export function ITDeclarationScreen() {
+    const canVerify = useCanPerform('hr:approve') || useCanPerform('hr:update') || useCanPerform('company:configure');
+    const canLock = useCanPerform('hr:approve') || useCanPerform('hr:update') || useCanPerform('company:configure');
+    const isHrUser = useCanPerform('hr:read');
+
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("All");
     const [fyFilter, setFyFilter] = useState("");
@@ -294,7 +299,7 @@ export function ITDeclarationScreen() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">IT Declarations</h1>
-                    <p className="text-neutral-500 dark:text-neutral-400 mt-1">Manage employee income tax declarations (Form 12BB)</p>
+                    <p className="text-neutral-500 dark:text-neutral-400 mt-1">{isHrUser ? "Manage employee income tax declarations (Form 12BB)" : "Your income tax declarations (Form 12BB)"}</p>
                 </div>
                 <button
                     onClick={openCreate}
@@ -307,16 +312,18 @@ export function ITDeclarationScreen() {
 
             {/* Toolbar */}
             <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div className="relative max-w-md w-full">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400 dark:text-neutral-500" />
-                    <input
-                        type="text"
-                        placeholder="Search by employee..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-11 pr-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
-                    />
-                </div>
+                {isHrUser && (
+                    <div className="relative max-w-md w-full">
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400 dark:text-neutral-500" />
+                        <input
+                            type="text"
+                            placeholder="Search by employee..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full pl-11 pr-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
+                        />
+                    </div>
+                )}
                 <div className="flex items-center gap-4 overflow-x-auto pb-1 lg:pb-0">
                     <div className="flex items-center gap-2">
                         <Filter size={14} className="text-neutral-400 flex-shrink-0" />
@@ -381,12 +388,12 @@ export function ITDeclarationScreen() {
                                                         Submit
                                                     </button>
                                                 )}
-                                                {d.status?.toLowerCase() === "submitted" && (
+                                                {canVerify && d.status?.toLowerCase() === "submitted" && (
                                                     <button onClick={() => handleVerify(d.id)} disabled={verifyMutation.isPending} className="px-2.5 py-1.5 text-xs font-bold text-success-600 hover:bg-success-50 dark:hover:bg-success-900/20 rounded-lg transition-colors">
                                                         Verify
                                                     </button>
                                                 )}
-                                                {d.status?.toLowerCase() === "verified" && (
+                                                {canLock && d.status?.toLowerCase() === "verified" && (
                                                     <button onClick={() => handleLock(d.id)} disabled={lockMutation.isPending} className="px-2.5 py-1.5 text-xs font-bold text-warning-600 hover:bg-warning-50 dark:hover:bg-warning-900/20 rounded-lg transition-colors">
                                                         Lock
                                                     </button>
@@ -413,14 +420,16 @@ export function ITDeclarationScreen() {
                         </div>
                         <div className="p-6 overflow-y-auto flex-1 space-y-5">
                             {/* Top fields */}
-                            <div className="grid grid-cols-3 gap-4">
-                                <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Employee</label>
-                                    <select value={form.employeeId} onChange={(e) => setForm((p) => ({ ...p, employeeId: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
-                                        <option value="">Select employee...</option>
-                                        {employees.map((e: any) => (<option key={e.id} value={e.id}>{[e.firstName, e.lastName].filter(Boolean).join(" ") || e.fullName || e.email}</option>))}
-                                    </select>
-                                </div>
+                            <div className={`grid ${isHrUser ? 'grid-cols-3' : 'grid-cols-2'} gap-4`}>
+                                {isHrUser && (
+                                    <div>
+                                        <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Employee</label>
+                                        <select value={form.employeeId} onChange={(e) => setForm((p) => ({ ...p, employeeId: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
+                                            <option value="">Select employee...</option>
+                                            {employees.map((e: any) => (<option key={e.id} value={e.id}>{[e.firstName, e.lastName].filter(Boolean).join(" ") || e.fullName || e.email}</option>))}
+                                        </select>
+                                    </div>
+                                )}
                                 <div>
                                     <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Financial Year</label>
                                     <select value={form.financialYear} onChange={(e) => setForm((p) => ({ ...p, financialYear: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">

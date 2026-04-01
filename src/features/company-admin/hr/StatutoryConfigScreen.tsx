@@ -113,6 +113,28 @@ const INDIAN_STATES = [
     "Uttarakhand", "West Bengal", "Delhi", "Jammu & Kashmir", "Ladakh",
 ];
 
+function formatFinancialYear(startYear: number): string {
+    const endYearShort = String((startYear + 1) % 100).padStart(2, "0");
+    return `${startYear}-${endYearShort}`;
+}
+
+function getFinancialYearOptions(selectedFinancialYear?: string) {
+    const currentYear = new Date().getFullYear();
+    const fiscalYearStart = new Date().getMonth() >= 3 ? currentYear : currentYear - 1;
+    const options: { value: string; label: string }[] = [{ value: "", label: "Select Financial Year" }];
+
+    for (let start = fiscalYearStart - 4; start <= fiscalYearStart + 5; start += 1) {
+        const fy = formatFinancialYear(start);
+        options.push({ value: fy, label: fy });
+    }
+
+    if (selectedFinancialYear && !options.some((o) => o.value === selectedFinancialYear)) {
+        options.push({ value: selectedFinancialYear, label: selectedFinancialYear });
+    }
+
+    return options;
+}
+
 /* ── Screen ── */
 
 export function StatutoryConfigScreen() {
@@ -152,7 +174,7 @@ export function StatutoryConfigScreen() {
 
     // PT state (array)
     const ptConfigs: any[] = ptQuery.data?.data ?? [];
-    const [ptForm, setPTForm] = useState({ state: "", slabs: [{ from: 0, to: 0, rate: 0 }] });
+    const [ptForm, setPTForm] = useState({ state: "", slabs: [{ from: 0, to: 0, rate: 0 }], financialYear: "", monthlyOverrides: {} as Record<string, number> });
     const [ptModalOpen, setPTModalOpen] = useState(false);
     const [ptEditId, setPTEditId] = useState<string | null>(null);
 
@@ -188,8 +210,8 @@ export function StatutoryConfigScreen() {
     const saveGratuity = async () => { try { await updateGratuity.mutateAsync(gratuity); showSuccess("Gratuity Config Saved", "Gratuity settings updated."); } catch (err) { showApiError(err); } };
     const saveBonus = async () => { try { await updateBonus.mutateAsync(bonus); showSuccess("Bonus Config Saved", "Bonus settings updated."); } catch (err) { showApiError(err); } };
 
-    const openPTCreate = () => { setPTEditId(null); setPTForm({ state: "", slabs: [{ from: 0, to: 0, rate: 0 }] }); setPTModalOpen(true); };
-    const openPTEdit = (pt: any) => { setPTEditId(pt.id); setPTForm({ state: pt.state ?? "", slabs: pt.slabs ?? [{ from: 0, to: 0, rate: 0 }] }); setPTModalOpen(true); };
+    const openPTCreate = () => { setPTEditId(null); setPTForm({ state: "", slabs: [{ from: 0, to: 0, rate: 0 }], financialYear: "", monthlyOverrides: {} }); setPTModalOpen(true); };
+    const openPTEdit = (pt: any) => { setPTEditId(pt.id); setPTForm({ state: pt.state ?? "", slabs: pt.slabs ?? [{ from: 0, to: 0, rate: 0 }], financialYear: pt.financialYear ?? "", monthlyOverrides: pt.monthlyOverrides ?? {} }); setPTModalOpen(true); };
     const savePT = async () => {
         try {
             if (ptEditId) { await updatePT.mutateAsync({ id: ptEditId, data: ptForm }); showSuccess("PT Config Updated", `${ptForm.state} PT updated.`); }
@@ -287,7 +309,9 @@ export function StatutoryConfigScreen() {
                                 <thead>
                                     <tr className="border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
                                         <th className="py-3 px-4 font-bold">State</th>
+                                        <th className="py-3 px-4 font-bold">FY</th>
                                         <th className="py-3 px-4 font-bold text-center">Slabs</th>
+                                        <th className="py-3 px-4 font-bold text-center">Overrides</th>
                                         <th className="py-3 px-4 font-bold text-right">Actions</th>
                                     </tr>
                                 </thead>
@@ -295,7 +319,9 @@ export function StatutoryConfigScreen() {
                                     {ptConfigs.map((pt: any) => (
                                         <tr key={pt.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
                                             <td className="py-3 px-4 font-semibold text-primary-950 dark:text-white">{pt.state}</td>
+                                            <td className="py-3 px-4 text-neutral-600 dark:text-neutral-400 text-xs">{pt.financialYear || "—"}</td>
                                             <td className="py-3 px-4 text-center text-neutral-600 dark:text-neutral-400">{(pt.slabs ?? []).length} slabs</td>
+                                            <td className="py-3 px-4 text-center text-neutral-600 dark:text-neutral-400">{Object.keys(pt.monthlyOverrides ?? {}).length || "—"}</td>
                                             <td className="py-3 px-4 text-right">
                                                 <div className="flex items-center justify-end gap-1">
                                                     <button onClick={() => openPTEdit(pt)} className="p-1.5 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors"><Pencil size={14} /></button>
@@ -371,6 +397,12 @@ export function StatutoryConfigScreen() {
                         </div>
                         <div className="p-6 overflow-y-auto flex-1 space-y-4">
                             <SelectField label="State" value={ptForm.state} onChange={(v) => setPTForm((p) => ({ ...p, state: v }))} options={INDIAN_STATES.map((s) => ({ value: s, label: s }))} />
+                            <SelectField
+                                label="Financial Year"
+                                value={ptForm.financialYear}
+                                onChange={(v) => setPTForm((p) => ({ ...p, financialYear: v }))}
+                                options={getFinancialYearOptions(ptForm.financialYear)}
+                            />
                             <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Tax Slabs</label>
                             {ptForm.slabs.map((slab, i) => (
                                 <div key={i} className="grid grid-cols-4 gap-2 items-end">
@@ -392,6 +424,27 @@ export function StatutoryConfigScreen() {
                             <button onClick={() => setPTForm((p) => ({ ...p, slabs: [...p.slabs, { from: 0, to: 0, rate: 0 }] }))} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 transition-colors">
                                 <Plus size={14} /> Add Slab
                             </button>
+                            <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mt-2">Monthly Overrides</label>
+                            <p className="text-[10px] text-neutral-400 dark:text-neutral-500">Override PT amount for specific months (1 = Jan, 2 = Feb, ... 12 = Dec)</p>
+                            <div className="grid grid-cols-4 gap-2">
+                                {Array.from({ length: 12 }, (_, i) => {
+                                    const month = String(i + 1);
+                                    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                                    return (
+                                        <div key={month}>
+                                            <label className="block text-[10px] text-neutral-400 mb-1">{monthNames[i]}</label>
+                                            <input type="number" value={ptForm.monthlyOverrides[month] ?? ""} onChange={(e) => {
+                                                const val = e.target.value;
+                                                setPTForm((p) => {
+                                                    const overrides = { ...p.monthlyOverrides };
+                                                    if (val === "" || val === undefined) { delete overrides[month]; } else { overrides[month] = Number(val); }
+                                                    return { ...p, monthlyOverrides: overrides };
+                                                });
+                                            }} placeholder="-" className="w-full px-2 py-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm font-mono focus:outline-none dark:text-white placeholder:text-neutral-300" />
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
                             <button onClick={() => setPTModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>

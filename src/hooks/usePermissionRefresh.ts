@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { client } from '@/lib/api/client';
+import type { AuthUser } from '@/lib/api/auth';
 
 /**
  * Auto-refreshes user permissions on mount by calling GET /auth/profile.
@@ -10,6 +11,7 @@ import { client } from '@/lib/api/client';
 export function usePermissionRefresh() {
     const status = useAuthStore((s) => s.status);
     const currentPermissions = useAuthStore((s) => s.permissions);
+    const currentUser = useAuthStore((s) => s.user);
 
     useEffect(() => {
         if (status !== 'signIn') return;
@@ -20,18 +22,26 @@ export function usePermissionRefresh() {
             try {
                 const res = await client.get('/auth/profile').then(r => r.data);
                 if (cancelled) return;
+                const freshUser = (res?.data?.user ?? res?.user ?? null) as Partial<AuthUser> | null;
                 const freshPermissions: string[] = res?.data?.user?.permissions ?? res?.user?.permissions ?? [];
+
+                if (freshUser) {
+                    const mergedPermissions =
+                        freshPermissions.length > 0 ? freshPermissions : (currentPermissions ?? []);
+                    const mergedUser: AuthUser = {
+                        ...(currentUser ?? {}),
+                        ...freshUser,
+                        permissions: mergedPermissions,
+                    } as AuthUser;
+                    useAuthStore.setState({ user: mergedUser, permissions: mergedPermissions });
+                    try {
+                        localStorage.setItem('auth_user', JSON.stringify(mergedUser));
+                    } catch { /* ignore */ }
+                    return;
+                }
+
                 if (freshPermissions.length > 0 && JSON.stringify(freshPermissions) !== JSON.stringify(currentPermissions)) {
                     useAuthStore.setState({ permissions: freshPermissions });
-                    // Also update the cached user object in localStorage
-                    try {
-                        const userRaw = localStorage.getItem('auth_user');
-                        if (userRaw) {
-                            const user = JSON.parse(userRaw);
-                            user.permissions = freshPermissions;
-                            localStorage.setItem('auth_user', JSON.stringify(user));
-                        }
-                    } catch { /* ignore */ }
                 }
             } catch {
                 // Silent fail — don't break the app if profile fetch fails

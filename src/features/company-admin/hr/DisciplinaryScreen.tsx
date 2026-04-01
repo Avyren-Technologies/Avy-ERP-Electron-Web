@@ -23,6 +23,7 @@ import {
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
+import { useCanPerform } from "@/hooks/useCanPerform";
 
 /* ── Constants ── */
 
@@ -116,6 +117,8 @@ export function DisciplinaryScreen() {
     const [form, setForm] = useState({ ...EMPTY_ACTION });
     const [detailTarget, setDetailTarget] = useState<any>(null);
 
+    const isHrAdmin = useCanPerform('hr:read');
+
     const actionsQuery = useDisciplinaryActions(statusFilter !== "All" ? { status: statusFilter.toLowerCase() } : undefined);
     const employeesQuery = useEmployees();
 
@@ -187,12 +190,14 @@ export function DisciplinaryScreen() {
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Disciplinary Actions</h1>
-                    <p className="text-neutral-500 dark:text-neutral-400 mt-1">Record and manage employee disciplinary proceedings</p>
+                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">{isHrAdmin ? "Disciplinary Actions" : "My Disciplinary Actions"}</h1>
+                    <p className="text-neutral-500 dark:text-neutral-400 mt-1">{isHrAdmin ? "Record and manage employee disciplinary proceedings" : "View disciplinary actions related to you"}</p>
                 </div>
-                <button onClick={openCreate} className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none">
-                    <Plus className="w-5 h-5" /> New Action
-                </button>
+                {isHrAdmin && (
+                    <button onClick={openCreate} className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none">
+                        <Plus className="w-5 h-5" /> New Action
+                    </button>
+                )}
             </div>
 
             {/* Toolbar */}
@@ -223,7 +228,7 @@ export function DisciplinaryScreen() {
                                     <th className="py-4 px-6 font-bold">Incident Date</th>
                                     <th className="py-4 px-6 font-bold">Issued</th>
                                     <th className="py-4 px-6 font-bold text-center">Status</th>
-                                    <th className="py-4 px-6 font-bold text-right">Actions</th>
+                                    {isHrAdmin && <th className="py-4 px-6 font-bold text-right">Actions</th>}
                                 </tr>
                             </thead>
                             <tbody className="text-sm">
@@ -243,16 +248,18 @@ export function DisciplinaryScreen() {
                                         <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(a.incidentDate)}</td>
                                         <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(a.issuedDate)}</td>
                                         <td className="py-4 px-6 text-center"><ActionStatusBadge status={a.status ?? "Draft"} /></td>
-                                        <td className="py-4 px-6 text-right">
-                                            <div className="flex items-center justify-end gap-1">
-                                                <button onClick={() => setDetailTarget(a)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="View"><Eye size={15} /></button>
-                                                <button onClick={() => openEdit(a)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit"><Edit3 size={15} /></button>
-                                            </div>
-                                        </td>
+                                        {isHrAdmin && (
+                                            <td className="py-4 px-6 text-right">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <button onClick={() => setDetailTarget(a)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="View"><Eye size={15} /></button>
+                                                    <button onClick={() => openEdit(a)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit"><Edit3 size={15} /></button>
+                                                </div>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))}
                                 {filtered.length === 0 && !actionsQuery.isLoading && (
-                                    <tr><td colSpan={8}><EmptyState icon="list" title="No disciplinary actions found" message="Record a new disciplinary action." action={{ label: "New Action", onClick: openCreate }} /></td></tr>
+                                    <tr><td colSpan={isHrAdmin ? 8 : 7}><EmptyState icon="list" title="No disciplinary actions found" message={isHrAdmin ? "Record a new disciplinary action." : "No disciplinary actions on record."} action={isHrAdmin ? { label: "New Action", onClick: openCreate } : undefined} /></td></tr>
                                 )}
                             </tbody>
                         </table>

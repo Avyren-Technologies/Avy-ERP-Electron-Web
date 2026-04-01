@@ -11,6 +11,7 @@ import {
     AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useCanPerform } from "@/hooks/useCanPerform";
 import { useHolidays } from "@/features/company-admin/api/use-attendance-queries";
 import {
     useCreateHoliday,
@@ -140,6 +141,9 @@ const HOLIDAY_TYPES = [
 /* ── Screen ── */
 
 export function HolidayScreen() {
+    const canCreate = useCanPerform('hr:create') || useCanPerform('company:configure');
+    const canUpdate = useCanPerform('hr:update') || useCanPerform('company:configure');
+
     const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
     const [search, setSearch] = useState("");
     const [modalOpen, setModalOpen] = useState(false);
@@ -240,22 +244,24 @@ export function HolidayScreen() {
                     <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Holidays</h1>
                     <p className="text-neutral-500 dark:text-neutral-400 mt-1">Manage company holiday calendar</p>
                 </div>
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => setCloneModalOpen(true)}
-                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
-                    >
-                        <Copy className="w-4 h-4" />
-                        Clone Year
-                    </button>
-                    <button
-                        onClick={openCreate}
-                        className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none"
-                    >
-                        <Plus className="w-5 h-5" />
-                        Add Holiday
-                    </button>
-                </div>
+                {canCreate && (
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setCloneModalOpen(true)}
+                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                        >
+                            <Copy className="w-4 h-4" />
+                            Clone Year
+                        </button>
+                        <button
+                            onClick={openCreate}
+                            className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none"
+                        >
+                            <Plus className="w-5 h-5" />
+                            Add Holiday
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* Year Tabs */}
@@ -310,7 +316,7 @@ export function HolidayScreen() {
                                     <th className="py-4 px-6 font-bold text-center">Type</th>
                                     <th className="py-4 px-6 font-bold">Description</th>
                                     <th className="py-4 px-6 font-bold text-center">Optional</th>
-                                    <th className="py-4 px-6 font-bold text-right">Actions</th>
+                                    {canUpdate && <th className="py-4 px-6 font-bold text-right">Actions</th>}
                                 </tr>
                             </thead>
                             <tbody className="text-sm">
@@ -337,22 +343,24 @@ export function HolidayScreen() {
                                         <td className="py-4 px-6 text-center">
                                             <CheckBadge checked={h.isOptional ?? false} />
                                         </td>
-                                        <td className="py-4 px-6 text-right">
-                                            <div className="flex items-center justify-end gap-1">
-                                                <button onClick={() => openEdit(h)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit">
-                                                    <Edit3 size={15} />
-                                                </button>
-                                                <button onClick={() => setDeleteTarget(h)} className="p-2 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors" title="Delete">
-                                                    <Trash2 size={15} />
-                                                </button>
-                                            </div>
-                                        </td>
+                                        {canUpdate && (
+                                            <td className="py-4 px-6 text-right">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <button onClick={() => openEdit(h)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit">
+                                                        <Edit3 size={15} />
+                                                    </button>
+                                                    <button onClick={() => setDeleteTarget(h)} className="p-2 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors" title="Delete">
+                                                        <Trash2 size={15} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))}
                                 {filtered.length === 0 && !isLoading && (
                                     <tr>
-                                        <td colSpan={6}>
-                                            <EmptyState icon="list" title="No holidays found" message={`Add holidays for ${selectedYear} to get started.`} action={{ label: "Add Holiday", onClick: openCreate }} />
+                                        <td colSpan={canUpdate ? 6 : 5}>
+                                            <EmptyState icon="list" title="No holidays found" message={canCreate ? `Add holidays for ${selectedYear} to get started.` : `No holidays for ${selectedYear}.`} action={canCreate ? { label: "Add Holiday", onClick: openCreate } : undefined} />
                                         </td>
                                     </tr>
                                 )}

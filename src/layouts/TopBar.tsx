@@ -3,6 +3,7 @@
 // ============================================================
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import {
     Search, Sun, Moon, Monitor, Bell, ChevronDown, X,
@@ -12,6 +13,8 @@ import {
 } from 'lucide-react';
 import { useThemeStore } from '@/store/useThemeStore';
 import { useAuthStore, getUserInitials, getDisplayName, getRoleLabel } from '@/store/useAuthStore';
+import { checkPermission } from '@/lib/api/auth';
+import { essApi } from '@/lib/api/ess';
 import { useNavigationManifest } from '@/features/company-admin/api';
 
 
@@ -325,21 +328,47 @@ function NotificationsPanel() {
 // ============================================================
 function ProfileDropdown() {
     const [open, setOpen] = useState(false);
+    const [imageLoadFailed, setImageLoadFailed] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
     const signOut = useAuthStore((s) => s.signOut);
+    const status = useAuthStore((s) => s.status);
     const user = useAuthStore((s) => s.user);
     const userRole = useAuthStore((s) => s.userRole);
+    const permissions = useAuthStore((s) => s.permissions);
     const initials = getUserInitials(user);
     const displayName = getDisplayName(user);
     
-    // Dynamically format the role string from the backend (e.g. "COMPANY_ADMIN" -> "Company Admin", "HR_MANAGER" -> "Hr Manager")
+    // Prefer tenant role name when available; fall back to platform role label.
+    const tenantRoleName = typeof user?.roleName === 'string' ? user.roleName.trim() : '';
     const rawRole = user?.role || '';
-    const roleLabel = rawRole
+    const roleLabel = tenantRoleName
+        ? tenantRoleName
+        : rawRole
         ? rawRole.replace(/[_-]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
         : getRoleLabel(userRole);
 
     const email = user?.email ?? '';
+    const canFetchEssProfile = checkPermission(permissions, 'ess:view-profile');
+
+    const { data: myProfileData } = useQuery({
+        queryKey: ['topbar', 'my-profile-avatar'],
+        queryFn: () => essApi.getMyProfile(),
+        enabled: status === 'signIn' && canFetchEssProfile,
+        staleTime: 5 * 60 * 1000,
+        retry: false,
+    });
+
+    const profilePhotoUrl = myProfileData?.data?.profilePhotoUrl;
+    const showProfilePhoto =
+        !imageLoadFailed &&
+        typeof profilePhotoUrl === 'string' &&
+        profilePhotoUrl.length > 0 &&
+        (profilePhotoUrl.startsWith('http://') || profilePhotoUrl.startsWith('https://') || profilePhotoUrl.startsWith('/') || profilePhotoUrl.startsWith('data:image/'));
+
+    useEffect(() => {
+        setImageLoadFailed(false);
+    }, [profilePhotoUrl]);
 
     useEffect(() => {
         const handler = (e: MouseEvent) => {
@@ -359,9 +388,18 @@ function ProfileDropdown() {
                     open && 'bg-neutral-100 dark:bg-neutral-800'
                 )}
             >
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-accent-400 to-primary-500 flex items-center justify-center shadow-sm flex-shrink-0">
-                    <span className="text-white font-bold text-[11px]">{initials}</span>
-                </div>
+                {showProfilePhoto ? (
+                    <img
+                        src={profilePhotoUrl}
+                        alt={displayName}
+                        onError={() => setImageLoadFailed(true)}
+                        className="w-8 h-8 rounded-xl object-cover border border-neutral-200 dark:border-neutral-700 shadow-sm flex-shrink-0"
+                    />
+                ) : (
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-accent-400 to-primary-500 flex items-center justify-center shadow-sm flex-shrink-0">
+                        <span className="text-white font-bold text-[11px]">{initials}</span>
+                    </div>
+                )}
                 <div className="hidden md:block text-left">
                     <p className="text-xs font-bold text-primary-950 dark:text-white leading-none">{displayName}</p>
                     <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{roleLabel}</p>
@@ -373,9 +411,18 @@ function ProfileDropdown() {
                 <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-2xl shadow-2xl shadow-neutral-900/15 z-50 animate-in fade-in slide-in-from-top-2 duration-100 overflow-hidden">
                     <div className="px-4 py-4 border-b border-neutral-100 dark:border-neutral-800">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-accent-400 to-primary-500 flex items-center justify-center shadow-sm">
-                                <span className="text-white font-bold text-sm">{initials}</span>
-                            </div>
+                            {showProfilePhoto ? (
+                                <img
+                                    src={profilePhotoUrl}
+                                    alt={displayName}
+                                    onError={() => setImageLoadFailed(true)}
+                                    className="w-10 h-10 rounded-xl object-cover border border-neutral-200 dark:border-neutral-700 shadow-sm"
+                                />
+                            ) : (
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-accent-400 to-primary-500 flex items-center justify-center shadow-sm">
+                                    <span className="text-white font-bold text-sm">{initials}</span>
+                                </div>
+                            )}
                             <div>
                                 <p className="text-sm font-bold text-primary-950 dark:text-white">{displayName}</p>
                                 <p className="text-xs text-neutral-500 dark:text-neutral-400">{email}</p>
@@ -384,8 +431,7 @@ function ProfileDropdown() {
                     </div>
                     <div className="p-2">
                         {[
-                            { icon: Users, label: 'My Profile', action: () => { } },
-                            { icon: Settings, label: 'Preferences', action: () => navigate('/app/settings') },
+                            { icon: Users, label: 'My Profile', action: () => navigate('/app/company/hr/my-profile') },
                         ].map(({ icon: Icon, label, action }) => (
                             <button
                                 key={label}

@@ -15,6 +15,7 @@ import { useDispatchESign } from "@/features/company-admin/api/use-recruitment-m
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
+import { useCanPerform } from "@/hooks/useCanPerform";
 
 /* ── Atoms ── */
 
@@ -71,6 +72,8 @@ export function ESignScreen() {
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
 
+    const isHrAdmin = useCanPerform('hr:read');
+
     const { data, isLoading, isError } = usePendingESign();
     const { data: statsData } = useESignStatus('');
     const dispatchMutation = useDispatchESign();
@@ -101,8 +104,8 @@ export function ESignScreen() {
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
             <div>
-                <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">E-Signatures</h1>
-                <p className="text-neutral-500 dark:text-neutral-400 mt-1">Track and manage electronic signature requests for HR letters</p>
+                <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">{isHrAdmin ? "E-Signatures" : "My E-Sign Requests"}</h1>
+                <p className="text-neutral-500 dark:text-neutral-400 mt-1">{isHrAdmin ? "Track and manage electronic signature requests for HR letters" : "View your pending and completed e-signature requests"}</p>
             </div>
 
             {/* Stats */}
@@ -160,10 +163,10 @@ export function ESignScreen() {
                             <thead>
                                 <tr className="bg-neutral-50/50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
                                     <th className="py-4 px-6 font-bold">Letter Type</th>
-                                    <th className="py-4 px-6 font-bold">Employee</th>
+                                    {isHrAdmin && <th className="py-4 px-6 font-bold">Employee</th>}
                                     <th className="py-4 px-6 font-bold">Dispatched</th>
                                     <th className="py-4 px-6 font-bold text-center">Status</th>
-                                    <th className="py-4 px-6 font-bold text-right">Actions</th>
+                                    {isHrAdmin && <th className="py-4 px-6 font-bold text-right">Actions</th>}
                                 </tr>
                             </thead>
                             <tbody className="text-sm">
@@ -180,30 +183,32 @@ export function ESignScreen() {
                                                 <span className="font-bold text-primary-950 dark:text-white">{r.letterType ?? "HR Letter"}</span>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6 text-neutral-700 dark:text-neutral-300 font-medium">{r.employeeName ?? "—"}</td>
+                                        {isHrAdmin && <td className="py-4 px-6 text-neutral-700 dark:text-neutral-300 font-medium">{r.employeeName ?? "—"}</td>}
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
                                             {r.dispatchedAt ? new Date(r.dispatchedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
                                         </td>
                                         <td className="py-4 px-6 text-center">
                                             <StatusBadge status={r.status ?? "PENDING"} />
                                         </td>
-                                        <td className="py-4 px-6 text-right">
-                                            {r.status === "PENDING" && (
-                                                <button
-                                                    onClick={() => handleResend(r.id)}
-                                                    disabled={dispatchMutation.isPending}
-                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-colors"
-                                                >
-                                                    <RefreshCw size={13} />
-                                                    Resend
-                                                </button>
-                                            )}
-                                        </td>
+                                        {isHrAdmin && (
+                                            <td className="py-4 px-6 text-right">
+                                                {r.status === "PENDING" && (
+                                                    <button
+                                                        onClick={() => handleResend(r.id)}
+                                                        disabled={dispatchMutation.isPending}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-colors"
+                                                    >
+                                                        <RefreshCw size={13} />
+                                                        Resend
+                                                    </button>
+                                                )}
+                                            </td>
+                                        )}
                                     </tr>
                                 ))}
                                 {filtered.length === 0 && !isLoading && (
                                     <tr>
-                                        <td colSpan={5}>
+                                        <td colSpan={isHrAdmin ? 5 : 3}>
                                             <EmptyState icon="list" title="No e-signature records" message={statusFilter ? `No ${statusFilter.toLowerCase()} requests found.` : "No e-signature requests found."} />
                                         </td>
                                     </tr>

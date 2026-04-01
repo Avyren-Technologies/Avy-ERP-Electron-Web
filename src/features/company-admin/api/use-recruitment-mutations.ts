@@ -191,7 +191,7 @@ export function useUpdateExpenseClaim() {
 export function useApproveExpenseClaim() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (id: string) => recruitmentApi.approveExpenseClaim(id),
+        mutationFn: ({ id, data }: { id: string; data?: { approvedAmount?: number; itemApprovals?: any[] } }) => recruitmentApi.approveExpenseClaim(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
     });
 }
@@ -199,7 +199,33 @@ export function useApproveExpenseClaim() {
 export function useRejectExpenseClaim() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (id: string) => recruitmentApi.rejectExpenseClaim(id),
+        mutationFn: ({ id, data }: { id: string; data?: { rejectionReason?: string } }) => recruitmentApi.rejectExpenseClaim(id, data),
+        onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+    });
+}
+
+// ── Expense Category Mutations ──
+
+export function useCreateExpenseCategory() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (data: any) => recruitmentApi.createExpenseCategory(data),
+        onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+    });
+}
+
+export function useUpdateExpenseCategory() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateExpenseCategory(id, data),
+        onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+    });
+}
+
+export function useDeleteExpenseCategory() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => recruitmentApi.deleteExpenseCategory(id),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
     });
 }

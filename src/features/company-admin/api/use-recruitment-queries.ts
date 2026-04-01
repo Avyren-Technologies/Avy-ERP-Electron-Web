@@ -56,6 +56,12 @@ export const recruitmentKeys = {
     assetAssignments: (params?: Record<string, unknown>) =>
         [...recruitmentKeys.all, 'asset-assignments', params] as const,
 
+    // Expense Categories
+    expenseCategories: (params?: Record<string, unknown>) =>
+        [...recruitmentKeys.all, 'expense-categories', params] as const,
+    expenseCategory: (id: string) =>
+        [...recruitmentKeys.all, 'expense-category', id] as const,
+
     // Expense Claims
     expenseClaims: (params?: Record<string, unknown>) =>
         [...recruitmentKeys.all, 'expense-claims', params] as const,
@@ -234,6 +240,23 @@ export function useAssetAssignments(params?: Record<string, unknown>) {
     return useQuery({
         queryKey: recruitmentKeys.assetAssignments(params),
         queryFn: () => recruitmentApi.listAssetAssignments(params as any),
+    });
+}
+
+// ── Expense Categories ──
+
+export function useExpenseCategories(params?: Record<string, unknown>) {
+    return useQuery({
+        queryKey: recruitmentKeys.expenseCategories(params),
+        queryFn: () => recruitmentApi.listExpenseCategories(params as any),
+    });
+}
+
+export function useExpenseCategory(id: string) {
+    return useQuery({
+        queryKey: recruitmentKeys.expenseCategory(id),
+        queryFn: () => recruitmentApi.getExpenseCategory(id),
+        enabled: !!id,
     });
 }
 

@@ -29,6 +29,17 @@ const formatDate = (d: string | null | undefined) => {
     return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 };
 
+function normalizeLeaveTypeValue(value: unknown): string {
+    if (typeof value === "string") return value;
+    if (value && typeof value === "object") {
+        const obj = value as Record<string, unknown>;
+        if (typeof obj.type === "string") return obj.type;
+        if (typeof obj.name === "string") return obj.name;
+        if (typeof obj.code === "string") return obj.code;
+    }
+    return "";
+}
+
 function StatusBadge({ status }: { status: string }) {
     const s = status?.toLowerCase();
     const config: Record<string, { icon: typeof Clock; cls: string }> = {
@@ -164,16 +175,21 @@ export function MyLeaveScreen() {
             ) : (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {balances.map((b: any) => {
-                        const key = (b.leaveType ?? b.type ?? "").toLowerCase();
+                        const key = normalizeLeaveTypeValue(b.leaveType ?? b.type).toLowerCase();
                         const colors = BALANCE_COLORS[key] ?? BALANCE_COLORS.casual;
                         const Icon = BALANCE_ICONS[key] ?? CalendarOff;
+                        const leaveLabel =
+                            normalizeLeaveTypeValue(b.leaveTypeName) ||
+                            normalizeLeaveTypeValue(b.leaveType) ||
+                            normalizeLeaveTypeValue(b.type) ||
+                            "Leave";
                         return (
-                            <div key={b.id ?? b.leaveType} className={cn("rounded-2xl border p-5 shadow-sm", colors.bg, "border-neutral-200/60 dark:border-neutral-800")}>
+                            <div key={b.id ?? leaveLabel} className={cn("rounded-2xl border p-5 shadow-sm", colors.bg, "border-neutral-200/60 dark:border-neutral-800")}>
                                 <div className="flex items-center justify-between mb-3">
                                     <Icon size={20} className={colors.icon} />
                                     <span className={cn("text-2xl font-bold font-mono", colors.text)}>{b.balance ?? b.available ?? 0}</span>
                                 </div>
-                                <p className="text-xs font-bold text-neutral-700 dark:text-neutral-300">{b.leaveTypeName ?? b.leaveType ?? "Leave"}</p>
+                                <p className="text-xs font-bold text-neutral-700 dark:text-neutral-300">{leaveLabel}</p>
                                 <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">
                                     {b.used ?? 0} used / {b.total ?? b.entitled ?? 0} entitled
                                 </p>

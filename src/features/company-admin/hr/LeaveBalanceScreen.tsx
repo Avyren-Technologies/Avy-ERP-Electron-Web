@@ -166,16 +166,37 @@ export function LeaveBalanceScreen() {
         reason: "",
     });
 
-    const { data, isLoading, isError } = useLeaveBalances({ year, employeeId: employeeFilter || undefined });
+    const { data, isLoading, isError } = useLeaveBalances({ year: Number(year), employeeId: employeeFilter || undefined });
     const leaveTypesQuery = useLeaveTypes();
     const employeesQuery = useEmployees();
     const adjustMutation = useAdjustLeaveBalance();
 
-    const balances: any[] = data?.data ?? [];
+    const rawBalances: any[] = data?.data ?? [];
     const leaveTypes: any[] = leaveTypesQuery.data?.data ?? [];
     const employees: any[] = employeesQuery.data?.data ?? [];
 
+    // Normalize API balance records: Prisma Decimal fields come as strings,
+    // and there is no `entitlement` field — compute it as openingBalance + accrued.
+    const balances: any[] = rawBalances.map((b: any) => ({
+        ...b,
+        openingBalance: Number(b.openingBalance ?? 0),
+        accrued: Number(b.accrued ?? 0),
+        taken: Number(b.taken ?? 0),
+        adjusted: Number(b.adjusted ?? 0),
+        balance: Number(b.balance ?? 0),
+        entitlement: Number(b.openingBalance ?? 0) + Number(b.accrued ?? 0),
+        // Flatten nested relations for display
+        employeeId: b.employeeId,
+        leaveTypeId: b.leaveTypeId ?? b.leaveType?.id,
+    }));
+
     const employeeName = (id: string) => {
+        // First check the balance records for nested employee data
+        const balanceWithEmp = balances.find((b: any) => b.employeeId === id && b.employee);
+        if (balanceWithEmp?.employee) {
+            const emp = balanceWithEmp.employee;
+            return [emp.firstName, emp.lastName].filter(Boolean).join(" ") || id;
+        }
         const emp = employees.find((e: any) => e.id === id);
         if (!emp) return id;
         return [emp.firstName, emp.lastName].filter(Boolean).join(" ") || emp.fullName || emp.email || id;
@@ -382,20 +403,19 @@ export function LeaveBalanceScreen() {
                                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                                     {empBalances.map((bal: any) => {
                                                         const lt = leaveTypes.find((l: any) => l.id === bal.leaveTypeId);
-                                                        const name = lt?.name ?? bal.leaveTypeId;
-                                                        const balance = (bal.entitlement ?? 0) - (bal.taken ?? 0) + (bal.adjusted ?? 0);
+                                                        const name = lt?.name ?? bal.leaveType?.name ?? bal.leaveTypeId;
                                                         return (
                                                             <div
                                                                 key={bal.leaveTypeId}
                                                                 className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-3"
                                                             >
                                                                 <p className="text-xs font-bold text-primary-700 dark:text-primary-400 mb-2">{name}</p>
-                                                                <DetailRow label="Opening" value={bal.opening ?? 0} />
-                                                                <DetailRow label="Accrued" value={bal.accrued ?? bal.entitlement ?? 0} />
-                                                                <DetailRow label="Taken" value={bal.taken ?? 0} />
-                                                                <DetailRow label="Adjusted" value={bal.adjusted ?? 0} />
+                                                                <DetailRow label="Opening" value={bal.openingBalance} />
+                                                                <DetailRow label="Accrued" value={bal.accrued} />
+                                                                <DetailRow label="Taken" value={bal.taken} />
+                                                                <DetailRow label="Adjusted" value={bal.adjusted} />
                                                                 <div className="border-t border-neutral-100 dark:border-neutral-800 mt-1 pt-1">
-                                                                    <DetailRow label="Balance" value={balance} />
+                                                                    <DetailRow label="Balance" value={bal.balance} />
                                                                 </div>
                                                             </div>
                                                         );

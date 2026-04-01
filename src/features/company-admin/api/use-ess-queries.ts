@@ -55,6 +55,8 @@ export const essKeys = {
     // Holidays, Expense Claims, Loans
     myHolidays: (year?: number) => year ? [...essKeys.all, 'my-holidays', year] as const : [...essKeys.all, 'my-holidays'] as const,
     myExpenseClaims: () => [...essKeys.all, 'my-expense-claims'] as const,
+    myExpenseSummary: () => [...essKeys.all, 'my-expense-summary'] as const,
+    expenseCategories: () => [...essKeys.all, 'expense-categories'] as const,
     myLoans: () => [...essKeys.all, 'my-loans'] as const,
     loanPolicies: () => [...essKeys.all, 'loan-policies'] as const,
 
@@ -280,6 +282,20 @@ export function useMyExpenseClaims() {
     return useQuery({
         queryKey: essKeys.myExpenseClaims(),
         queryFn: () => essApi.getMyExpenseClaims(),
+    });
+}
+
+export function useMyExpenseSummary() {
+    return useQuery({
+        queryKey: essKeys.myExpenseSummary(),
+        queryFn: () => essApi.getMyExpenseSummary(),
+    });
+}
+
+export function useEssExpenseCategories() {
+    return useQuery({
+        queryKey: essKeys.expenseCategories(),
+        queryFn: () => essApi.getExpenseCategories(),
     });
 }
 

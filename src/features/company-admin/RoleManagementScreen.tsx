@@ -9,6 +9,7 @@ import {
     Search,
     CheckSquare,
     Lock,
+    Minus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRbacRoles, usePermissionCatalogue, useReferenceRoles } from "@/features/company-admin/api/use-company-admin-queries";
@@ -131,6 +132,24 @@ export function RoleManagementScreen() {
 
     const togglePermission = (key: string) => {
         setMatrix((p) => ({ ...p, [key]: !p[key] }));
+    };
+
+    const toggleModuleAll = (mod: { module: string; actions: string[] }) => {
+        const moduleKeys = mod.actions.map((a) => `${mod.module}:${a}`);
+        const allSelected = moduleKeys.every((k) => matrix[k]);
+        setMatrix((prev) => {
+            const next = { ...prev };
+            moduleKeys.forEach((k) => { next[k] = !allSelected; });
+            return next;
+        });
+    };
+
+    const getModuleSelectionState = (mod: { module: string; actions: string[] }): 'none' | 'some' | 'all' => {
+        const moduleKeys = mod.actions.map((a) => `${mod.module}:${a}`);
+        const selectedCount = moduleKeys.filter((k) => matrix[k]).length;
+        if (selectedCount === 0) return 'none';
+        if (selectedCount === moduleKeys.length) return 'all';
+        return 'some';
     };
 
     const handleSave = async () => {
@@ -296,6 +315,7 @@ export function RoleManagementScreen() {
                                                 <thead>
                                                     <tr className="bg-neutral-50 dark:bg-neutral-800/50">
                                                         <th className="py-3 px-4 text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">Module</th>
+                                                        <th className="py-3 px-3 text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider text-center">All</th>
                                                         {allActions.map((a) => (
                                                             <th key={a} className="py-3 px-3 text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider text-center">{a}</th>
                                                         ))}
@@ -305,6 +325,28 @@ export function RoleManagementScreen() {
                                                     {catalogueModules.map((mod, i) => (
                                                         <tr key={mod.module} className={cn(i < catalogueModules.length - 1 && "border-b border-neutral-100 dark:border-neutral-800")}>
                                                             <td className="py-2.5 px-4 text-xs font-semibold text-primary-950 dark:text-white">{mod.label}</td>
+                                                            <td className="py-2.5 px-3 text-center">
+                                                                {(() => {
+                                                                    const state = getModuleSelectionState(mod);
+                                                                    return (
+                                                                        <button
+                                                                            onClick={() => toggleModuleAll(mod)}
+                                                                            title={state === 'all' ? `Deselect all ${mod.label} permissions` : `Select all ${mod.label} permissions`}
+                                                                            className={cn(
+                                                                                "w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors",
+                                                                                state === 'all'
+                                                                                    ? "bg-primary-600 border-primary-600 text-white"
+                                                                                    : state === 'some'
+                                                                                        ? "bg-primary-200 border-primary-400 text-primary-700 dark:bg-primary-800 dark:border-primary-500 dark:text-primary-300"
+                                                                                        : "border-neutral-300 dark:border-neutral-600 hover:border-primary-400"
+                                                                            )}
+                                                                        >
+                                                                            {state === 'all' && <CheckSquare size={12} />}
+                                                                            {state === 'some' && <Minus size={12} />}
+                                                                        </button>
+                                                                    );
+                                                                })()}
+                                                            </td>
                                                             {allActions.map((action) => {
                                                                 const hasAction = mod.actions.includes(action);
                                                                 const key = `${mod.module}:${action}`;

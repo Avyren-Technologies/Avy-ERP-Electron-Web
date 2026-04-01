@@ -287,6 +287,8 @@ export {
     usePolicyDocuments,
     useMyHolidays,
     useMyExpenseClaims,
+    useMyExpenseSummary,
+    useEssExpenseCategories,
     useMyLoans,
     useEssLoanPolicies,
 } from './use-ess-queries';
@@ -318,6 +320,8 @@ export {
     useUploadMyDocument,
     useCreateMyExpenseClaim,
     useSubmitMyExpenseClaim,
+    useUpdateMyExpenseClaim,
+    useCancelMyExpenseClaim,
     useApplyForLoan,
 } from './use-ess-mutations';
 
@@ -392,6 +396,8 @@ export {
     useAssets,
     useAsset,
     useAssetAssignments,
+    useExpenseCategories,
+    useExpenseCategory,
     useExpenseClaims,
     useExpenseClaim,
     useLetterTemplates,
@@ -432,6 +438,9 @@ export {
     useUpdateExpenseClaim,
     useApproveExpenseClaim,
     useRejectExpenseClaim,
+    useCreateExpenseCategory,
+    useUpdateExpenseCategory,
+    useDeleteExpenseCategory,
     useCreateLetterTemplate,
     useUpdateLetterTemplate,
     useDeleteLetterTemplate,

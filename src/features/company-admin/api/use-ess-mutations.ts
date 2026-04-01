@@ -313,6 +313,30 @@ export function useSubmitMyExpenseClaim() {
         mutationFn: (id: string) => essApi.submitMyExpenseClaim(id),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: essKeys.myExpenseClaims() });
+            qc.invalidateQueries({ queryKey: essKeys.myExpenseSummary() });
+        },
+    });
+}
+
+export function useUpdateMyExpenseClaim() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, data }: { id: string; data: any }) =>
+            essApi.updateMyExpenseClaim(id, data),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: essKeys.myExpenseClaims() });
+            qc.invalidateQueries({ queryKey: essKeys.myExpenseSummary() });
+        },
+    });
+}
+
+export function useCancelMyExpenseClaim() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => essApi.cancelMyExpenseClaim(id),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: essKeys.myExpenseClaims() });
+            qc.invalidateQueries({ queryKey: essKeys.myExpenseSummary() });
         },
     });
 }
