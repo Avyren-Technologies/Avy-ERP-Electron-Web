@@ -34,13 +34,23 @@ interface AttendanceRecord {
     checkInLongitude: number | null;
     checkOutLatitude: number | null;
     checkOutLongitude: number | null;
-    shift?: { name: string; startTime: string; endTime: string } | null;
+    shift?: { name: string; startTime: string; endTime: string; breaks?: ShiftBreakInfo[] } | null;
     location?: { name: string } | null;
+}
+
+interface ShiftBreakInfo {
+    id: string;
+    name: string;
+    startTime: string | null;
+    duration: number;
+    type: string;
+    isPaid: boolean;
 }
 
 interface StatusResponse {
     status: "NOT_CHECKED_IN" | "CHECKED_IN" | "CHECKED_OUT" | "NOT_LINKED";
     record: AttendanceRecord | null;
+    currentShift?: { name: string; startTime: string; endTime: string; breaks?: ShiftBreakInfo[] } | null;
     elapsedSeconds?: number;
 }
 
@@ -208,6 +218,8 @@ export function ShiftCheckInScreen() {
 
     const attendanceStatus = statusData?.status ?? "NOT_CHECKED_IN";
     const record = statusData?.record ?? null;
+    // Shift info: from attendance record if checked in, or from currentShift if not yet checked in
+    const shiftInfo = record?.shift ?? statusData?.currentShift ?? null;
 
     // Live elapsed
     const [elapsed, setElapsed] = useState(statusData?.elapsedSeconds ?? 0);
@@ -239,6 +251,7 @@ export function ShiftCheckInScreen() {
         onSuccess: () => {
             showSuccess("Checked in successfully!");
             queryClient.invalidateQueries({ queryKey: ["attendance", "my-status"] });
+            queryClient.invalidateQueries({ queryKey: ["ess", "dashboard"] });
         },
         onError: (err: any) => showApiError(err),
     });
@@ -257,6 +270,7 @@ export function ShiftCheckInScreen() {
         onSuccess: () => {
             showSuccess("Checked out successfully!");
             queryClient.invalidateQueries({ queryKey: ["attendance", "my-status"] });
+            queryClient.invalidateQueries({ queryKey: ["ess", "dashboard"] });
         },
         onError: (err: any) => showApiError(err),
     });
@@ -418,22 +432,35 @@ export function ShiftCheckInScreen() {
                     iconColor="bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400"
                     title="Today's Schedule"
                 >
-                    {record?.shift ? (
+                    {shiftInfo ? (
                         <div className="space-y-3">
                             <div>
                                 <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium mb-0.5">Shift</p>
-                                <p className="font-semibold text-primary-950 dark:text-white">{record.shift.name}</p>
+                                <p className="font-semibold text-primary-950 dark:text-white">{shiftInfo.name}</p>
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
                                     <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium mb-0.5">Start</p>
-                                    <p className="font-semibold text-primary-950 dark:text-white text-sm">{record.shift.startTime}</p>
+                                    <p className="font-semibold text-primary-950 dark:text-white text-sm">{shiftInfo.startTime}</p>
                                 </div>
                                 <div>
                                     <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium mb-0.5">End</p>
-                                    <p className="font-semibold text-primary-950 dark:text-white text-sm">{record.shift.endTime}</p>
+                                    <p className="font-semibold text-primary-950 dark:text-white text-sm">{shiftInfo.endTime}</p>
                                 </div>
                             </div>
+                            {shiftInfo.breaks && shiftInfo.breaks.length > 0 && (
+                                <div className="pt-2 border-t border-neutral-100 dark:border-neutral-800 space-y-1.5">
+                                    <p className="text-xs text-neutral-500 dark:text-neutral-400 font-semibold">Breaks</p>
+                                    {shiftInfo.breaks.map((b) => (
+                                        <div key={b.id} className="flex items-center gap-2 text-xs">
+                                            <span className={cn("w-1.5 h-1.5 rounded-full", b.isPaid ? "bg-success-500" : "bg-warning-500")} />
+                                            <span className="text-neutral-600 dark:text-neutral-300">
+                                                {b.name}{b.startTime ? ` at ${b.startTime}` : ""} — {b.duration}min{b.isPaid ? " (paid)" : ""}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <p className="text-sm text-neutral-400 dark:text-neutral-500">No shift assigned</p>

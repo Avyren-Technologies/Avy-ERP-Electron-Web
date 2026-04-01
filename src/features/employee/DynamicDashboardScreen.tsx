@@ -126,6 +126,12 @@ function parseWorkedHours(value: unknown): number | null {
     return null;
 }
 
+function formatMaxOneDecimal(value: number): string {
+    if (!Number.isFinite(value)) return "0";
+    const rounded = Math.round((value + Number.EPSILON) * 10) / 10;
+    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+}
+
 function formatTimeShort(iso: string | null | undefined): string {
     if (!iso) return "--:--";
     const d = new Date(iso);
@@ -144,19 +150,65 @@ const DEFAULT_DASHBOARD_STATS: DashboardData["stats"] = {
     },
 };
 
-function normalizeDashboardData(data: DashboardData): DashboardData {
+function normalizeDashboardData(raw: Record<string, unknown>): DashboardData {
+    const data = raw as Record<string, any>;
+
+    // Map backend response shape to frontend DashboardData.
+    // Backend returns `attendanceStatus` + `currentShift` separately;
+    // frontend expects a combined `shift: DashboardShiftInfo`.
+    let shift: DashboardShiftInfo | null = data.shift ?? null;
+    if (!shift && data.attendanceStatus) {
+        const att = data.attendanceStatus as Record<string, any>;
+        const cs = data.currentShift as Record<string, any> | null;
+        shift = {
+            shiftName: cs?.name ?? "Unknown Shift",
+            startTime: cs?.startTime ?? "--:--",
+            endTime: cs?.endTime ?? "--:--",
+            status: att.status ?? "NOT_CHECKED_IN",
+            attendanceRecordId: att.record?.id ?? null,
+            punchIn: att.record?.punchIn ?? null,
+            punchOut: att.record?.punchOut ?? null,
+            elapsedSeconds: att.elapsedSeconds ?? 0,
+            workedHours: att.record?.workedHours ?? null,
+            locationName: att.record?.location?.name ?? null,
+        };
+    }
+
+    // Map backend `leaveBalance` → frontend `leaveBalances`
+    const leaveBalances: DashboardLeaveBalanceItem[] = (data.leaveBalances ?? data.leaveBalance ?? []).map(
+        (lb: Record<string, any>) => ({
+            leaveTypeName: lb.leaveTypeName ?? lb.leaveTypeCode ?? "",
+            allocated: lb.allocated ?? lb.accrued ?? 0,
+            used: lb.used ?? lb.taken ?? 0,
+            remaining: lb.remaining ?? lb.balance ?? 0,
+            color: lb.color,
+        }),
+    );
+
+    // Map backend `myGoals` → frontend `stats.goals`
+    const myGoals = data.myGoals as Record<string, any> | null;
+    const monthlyTrend = data.monthlyTrend as any[] | null;
+    const currentMonth = monthlyTrend?.length ? monthlyTrend[monthlyTrend.length - 1] : null;
+
     return {
         announcements: data.announcements ?? [],
-        shift: data.shift ?? null,
+        shift,
         stats: {
             ...DEFAULT_DASHBOARD_STATS,
             ...(data.stats ?? {}),
+            leaveBalanceTotal: data.stats?.leaveBalanceTotal ?? leaveBalances.reduce((s: number, lb: DashboardLeaveBalanceItem) => s + lb.remaining, 0),
+            presentDays: data.stats?.presentDays ?? currentMonth?.presentDays ?? 0,
+            workingDays: data.stats?.workingDays ?? currentMonth?.workingDays ?? 0,
+            attendancePercentage: data.stats?.attendancePercentage ?? currentMonth?.attendancePercentage ?? 0,
+            pendingApprovalsCount: data.stats?.pendingApprovalsCount ?? (data.pendingApprovals as any[] | null)?.length ?? 0,
             goals: {
                 ...DEFAULT_DASHBOARD_STATS.goals,
                 ...(data.stats?.goals ?? {}),
+                activeCount: data.stats?.goals?.activeCount ?? myGoals?.totalActive ?? 0,
+                avgCompletion: data.stats?.goals?.avgCompletion ?? myGoals?.averageCompletion ?? 0,
             },
         },
-        leaveBalances: data.leaveBalances ?? [],
+        leaveBalances,
         recentAttendance: data.recentAttendance ?? [],
         teamSummary: data.teamSummary ?? null,
         pendingApprovals: data.pendingApprovals ?? [],
@@ -566,18 +618,18 @@ function ShiftCheckInHero({ shift }: { shift: DashboardShiftInfo | null }) {
                 }}
             />
 
-            <div className="relative z-10 p-6 sm:p-8 text-white">
-                <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+            <div className="relative z-10 p-5 sm:p-6 text-white">
+                <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
                     {/* Left: shift info */}
-                    <div className="text-center lg:text-left flex-1 min-w-0 space-y-2">
-                        <p className="text-lg sm:text-xl font-bold tracking-tight">
+                    <div className="text-center lg:text-left flex-1 min-w-0 space-y-1.5">
+                        <p className="text-base sm:text-lg font-bold tracking-tight">
                             {shift ? shift.shiftName : "No shift assigned"}
                         </p>
                         {shift ? (
-                            <div className="space-y-1">
+                            <div className="space-y-0.5">
                                 <div className="flex items-center gap-2 justify-center lg:justify-start">
-                                    <Clock className="w-4 h-4 text-white/70" />
-                                    <span className="text-sm text-white/90 font-medium tracking-wide">
+                                    <Clock className="w-3.5 h-3.5 text-white/70" />
+                                    <span className="text-xs sm:text-sm text-white/90 font-medium tracking-wide">
                                         {shift.startTime} &mdash; {shift.endTime}
                                     </span>
                                 </div>
@@ -622,7 +674,7 @@ function ShiftCheckInHero({ shift }: { shift: DashboardShiftInfo | null }) {
                     {/* Center: Live digital clock */}
                     <div className="text-center flex-shrink-0">
                         <p
-                            className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-wider tabular-nums"
+                            className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-wide tabular-nums"
                             style={{ fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace" }}
                         >
                             {now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}
@@ -633,13 +685,13 @@ function ShiftCheckInHero({ shift }: { shift: DashboardShiftInfo | null }) {
                     </div>
 
                     {/* Right: action buttons */}
-                    <div className="flex flex-col items-center gap-3 flex-shrink-0 min-w-[160px]">
+                    <div className="flex flex-col items-center gap-2.5 flex-shrink-0 min-w-[140px]">
                         {isCheckedIn && (
                             <>
-                                <div className="flex items-center gap-2.5 bg-white/10 backdrop-blur-md rounded-xl px-5 py-2.5 border border-white/10">
+                                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-xl px-4 py-2 border border-white/10">
                                     <Timer className="w-4 h-4 text-white/70" />
                                     <span
-                                        className="text-xl font-bold tabular-nums"
+                                        className="text-lg font-bold tabular-nums"
                                         style={{ fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace" }}
                                     >
                                         {formatDuration(elapsed)}
@@ -648,7 +700,7 @@ function ShiftCheckInHero({ shift }: { shift: DashboardShiftInfo | null }) {
                                 <button
                                     onClick={handleAction}
                                     disabled={isMutating}
-                                    className="w-full px-8 py-3 rounded-xl font-bold text-sm bg-white/15 backdrop-blur-md border border-white/20 hover:bg-danger-500/80 hover:border-danger-400 hover:shadow-[0_0_20px_rgba(239,68,68,0.3)] transition-all duration-300 disabled:opacity-60"
+                                    className="w-full px-7 py-2.5 rounded-xl font-bold text-sm bg-white/15 backdrop-blur-md border border-white/20 hover:bg-danger-500/80 hover:border-danger-400 hover:shadow-[0_0_20px_rgba(239,68,68,0.3)] transition-all duration-300 disabled:opacity-60"
                                 >
                                     {isMutating ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : (
                                         <span className="flex items-center justify-center gap-2"><LogOut className="w-4 h-4" /> Check Out</span>
@@ -661,7 +713,7 @@ function ShiftCheckInHero({ shift }: { shift: DashboardShiftInfo | null }) {
                             <button
                                 onClick={handleAction}
                                 disabled={isMutating}
-                                className="px-10 py-4 rounded-xl font-bold text-base bg-white/15 backdrop-blur-md border-2 border-white/25 hover:bg-success-500/80 hover:border-success-400 hover:shadow-[0_0_30px_rgba(16,185,129,0.3)] hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-60"
+                                className="px-8 py-3 rounded-xl font-bold text-sm sm:text-base bg-white/15 backdrop-blur-md border-2 border-white/25 hover:bg-success-500/80 hover:border-success-400 hover:shadow-[0_0_30px_rgba(16,185,129,0.3)] hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-60"
                             >
                                 {isMutating ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : (
                                     <span className="flex items-center gap-2"><LogIn className="w-5 h-5" /> Check In</span>
@@ -670,14 +722,16 @@ function ShiftCheckInHero({ shift }: { shift: DashboardShiftInfo | null }) {
                         )}
 
                         {isCheckedOut && (
-                            <div className="flex flex-col items-center gap-2">
-                                <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border-2 border-white/20">
-                                    <CheckCircle2 className="w-8 h-8 text-success-300" />
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
+                                    <CheckCircle2 className="w-6 h-6 text-success-300" />
                                 </div>
-                                <span className="text-sm font-bold text-white/90">Shift Complete</span>
-                                {workedHrs != null && (
-                                    <span className="text-xs text-white/60 font-medium">{workedHrs.toFixed(1)} hrs worked</span>
-                                )}
+                                <div className="flex flex-col items-start">
+                                    <span className="text-sm font-bold text-white/90">Shift Complete</span>
+                                    {workedHrs != null && (
+                                        <span className="text-xs text-white/60 font-medium">{workedHrs.toFixed(1)} hrs worked</span>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>
@@ -685,7 +739,7 @@ function ShiftCheckInHero({ shift }: { shift: DashboardShiftInfo | null }) {
 
                 {/* Break schedule pills */}
                 {shift && shift.status !== "NOT_LINKED" && (
-                    <div className="mt-5 pt-4 border-t border-white/10 flex items-center gap-2 flex-wrap justify-center lg:justify-start">
+                    <div className="mt-3.5 pt-3 border-t border-white/10 flex items-center gap-2 flex-wrap justify-center lg:justify-start">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 mr-1">Breaks</span>
                         <span className="text-xs text-white/60 bg-white/10 backdrop-blur-sm rounded-lg px-2.5 py-1 border border-white/10">
                             <Coffee className="w-3 h-3 inline mr-1 -mt-px" />Lunch 12:30 - 1:00
@@ -1181,8 +1235,8 @@ function LeaveDonutChart({ leaveDonut }: { leaveDonut: DashboardLeaveDonutItem[]
                                             <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.fill }} />
                                             <p className="font-bold text-neutral-800 dark:text-white">{d.name}</p>
                                         </div>
-                                        <p className="text-neutral-500 dark:text-neutral-400 mt-1">Remaining: <span className="font-semibold">{d.value}</span> / {d.total} days</p>
-                                        <p className="text-neutral-500 dark:text-neutral-400">Used: <span className="font-semibold">{d.used}</span> days</p>
+                                        <p className="text-neutral-500 dark:text-neutral-400 mt-1">Remaining: <span className="font-semibold">{formatMaxOneDecimal(d.value)}</span> / {formatMaxOneDecimal(d.total)} days</p>
+                                        <p className="text-neutral-500 dark:text-neutral-400">Used: <span className="font-semibold">{formatMaxOneDecimal(d.used)}</span> days</p>
                                     </div>
                                 );
                             }}
@@ -1191,7 +1245,7 @@ function LeaveDonutChart({ leaveDonut }: { leaveDonut: DashboardLeaveDonutItem[]
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="text-center">
-                        <p className="text-2xl font-bold text-neutral-800 dark:text-white tabular-nums">{totalRemaining}</p>
+                        <p className="text-2xl font-bold text-neutral-800 dark:text-white tabular-nums">{formatMaxOneDecimal(totalRemaining)}</p>
                         <p className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">days left</p>
                     </div>
                 </div>
@@ -1201,7 +1255,7 @@ function LeaveDonutChart({ leaveDonut }: { leaveDonut: DashboardLeaveDonutItem[]
                     <div key={d.name} className="flex items-center gap-2">
                         <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: d.fill }} />
                         <span className="text-[10px] font-medium text-neutral-500 dark:text-neutral-400 truncate">{d.name}</span>
-                        <span className="text-[10px] font-bold text-neutral-800 dark:text-white tabular-nums ml-auto">{d.used}/{d.total}</span>
+                        <span className="text-[10px] font-bold text-neutral-800 dark:text-white tabular-nums ml-auto">{formatMaxOneDecimal(d.used)}/{formatMaxOneDecimal(d.total)}</span>
                     </div>
                 ))}
             </div>
@@ -1607,7 +1661,7 @@ export function DynamicDashboardScreen() {
     const permissions = useAuthStore((s) => s.permissions) || [];
     const firstName = user?.firstName ?? "there";
 
-    const rawData = dashboardResponse?.data as DashboardData | undefined;
+    const rawData = dashboardResponse?.data as Record<string, unknown> | undefined;
 
     if (isLoading || !rawData) {
         return (

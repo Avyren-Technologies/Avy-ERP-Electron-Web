@@ -73,23 +73,49 @@ function KpiCard({ label, value, icon: Icon, color }: KpiProps) {
     );
 }
 
+/* ── Helpers ── */
+
+function formatPunchTime(iso: string | null | undefined): string {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true });
+}
+
+function formatWorkedHrs(value: unknown): string {
+    if (value == null || value === "") return "—";
+    const n = typeof value === "number" ? value : parseFloat(String(value));
+    if (!Number.isFinite(n)) return "—";
+    return `${n.toFixed(1)} hrs`;
+}
+
+const SOURCE_LABELS: Record<string, string> = {
+    MOBILE_GPS: "Mobile",
+    WEB: "Web",
+    BIOMETRIC: "Biometric",
+    MANUAL: "Manual",
+    SYSTEM: "System",
+};
+
 /* ── Status Badge ── */
 
+const STATUS_STYLES: Record<string, string> = {
+    present: "bg-success-50 text-success-700 border-success-200 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50",
+    absent: "bg-danger-50 text-danger-700 border-danger-200 dark:bg-danger-900/20 dark:text-danger-400 dark:border-danger-800/50",
+    late: "bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50",
+    lop: "bg-danger-50 text-danger-700 border-danger-200 dark:bg-danger-900/20 dark:text-danger-400 dark:border-danger-800/50",
+    half_day: "bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50",
+    incomplete: "bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50",
+    on_leave: "bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50",
+    holiday: "bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50",
+    week_off: "bg-neutral-50 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700",
+};
+
 function StatusBadge({ status }: { status: string }) {
-    const s = status?.toLowerCase();
-    const cls =
-        s === "present"
-            ? "bg-success-50 text-success-700 border-success-200 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50"
-            : s === "absent"
-            ? "bg-danger-50 text-danger-700 border-danger-200 dark:bg-danger-900/20 dark:text-danger-400 dark:border-danger-800/50"
-            : s === "late"
-            ? "bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50"
-            : s === "on leave" || s === "leave"
-            ? "bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50"
-            : "bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700";
+    const key = status?.toLowerCase().replace(/ /g, "_");
+    const cls = STATUS_STYLES[key] ?? "bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700";
+    const label = status?.replace(/_/g, " ");
     return (
-        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border", cls)}>
-            {status}
+        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase", cls)}>
+            {label}
         </span>
     );
 }
@@ -99,9 +125,24 @@ function StatusBadge({ status }: { status: string }) {
 function SourceBadge({ source }: { source: string }) {
     return (
         <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700">
-            {source}
+            {SOURCE_LABELS[source] ?? source}
         </span>
     );
+}
+
+/** Normalize a backend attendance record into a flat shape for the table. */
+function normalizeRecord(r: any) {
+    const emp = r.employee ?? {};
+    const fullName = [emp.firstName, emp.lastName].filter(Boolean).join(" ");
+    return {
+        ...r,
+        employeeName: (r.employeeName ?? fullName) || "—",
+        employeeCode: r.employeeCode ?? emp.employeeId ?? "",
+        department: r.department ?? emp.department?.name ?? "",
+        designation: r.designation ?? emp.designation?.name ?? "",
+        shiftName: r.shift?.name ?? "",
+        shiftTime: r.shift ? `${r.shift.startTime} – ${r.shift.endTime}` : "",
+    };
 }
 
 /* ── Department Breakdown ── */
@@ -119,9 +160,9 @@ function DepartmentBreakdown({ departments }: { departments: any[] }) {
             </div>
             <div className="space-y-3">
                 {departments.map((dept: any) => (
-                    <div key={dept.name}>
+                    <div key={dept.departmentId ?? dept.name ?? dept.departmentName}>
                         <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">{dept.name}</span>
+                            <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">{dept.departmentName ?? dept.name}</span>
                             <span className="text-xs font-bold text-primary-950 dark:text-white">
                                 {dept.present}/{dept.total}
                             </span>
@@ -161,9 +202,12 @@ export function AttendanceDashboardScreen() {
     const processOverrideMutation = useUpdateAttendanceOverride();
     const createOverrideMutation = useCreateAttendanceOverride();
 
-    const summary = (summaryQuery.data as any)?.data ?? {};
-    const records: any[] = (recordsQuery.data as any)?.data ?? [];
-    const departmentBreakdown: any[] = summary.departments ?? [];
+    const summaryRaw = (summaryQuery.data as any)?.data ?? {};
+    // Backend wraps counts in a `summary` sub-object
+    const summary = summaryRaw.summary ?? summaryRaw;
+    const rawRecords: any[] = (recordsQuery.data as any)?.data ?? [];
+    const records = rawRecords.map(normalizeRecord);
+    const departmentBreakdown: any[] = summaryRaw.departmentBreakdown ?? summaryRaw.departments ?? [];
     const pendingOverrides: any[] = (overridesQuery.data as any)?.data ?? [];
 
     const filtered = records.filter((r: any) => {
@@ -171,7 +215,8 @@ export function AttendanceDashboardScreen() {
         const s = search.toLowerCase();
         return (
             r.employeeName?.toLowerCase().includes(s) ||
-            r.employeeCode?.toLowerCase().includes(s)
+            r.employeeCode?.toLowerCase().includes(s) ||
+            r.department?.toLowerCase().includes(s)
         );
     });
 
@@ -378,7 +423,7 @@ export function AttendanceDashboardScreen() {
                         >
                             <option value="">All Departments</option>
                             {departmentBreakdown.map((d: any) => (
-                                <option key={d.name} value={d.name}>{d.name}</option>
+                                <option key={d.departmentId ?? d.name} value={d.departmentId ?? d.name}>{d.departmentName ?? d.name}</option>
                             ))}
                         </select>
                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
@@ -392,50 +437,75 @@ export function AttendanceDashboardScreen() {
                     <SkeletonTable rows={8} cols={8} />
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse min-w-[1000px]">
+                        <table className="w-full text-left border-collapse min-w-[1100px]">
                             <thead>
                                 <tr className="bg-neutral-50/50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
-                                    <th className="py-4 px-6 font-bold">Employee</th>
-                                    <th className="py-4 px-6 font-bold">Punch In</th>
-                                    <th className="py-4 px-6 font-bold">Punch Out</th>
-                                    <th className="py-4 px-6 font-bold">Worked Hrs</th>
-                                    <th className="py-4 px-6 font-bold text-center">Status</th>
-                                    <th className="py-4 px-6 font-bold text-center">Late</th>
-                                    <th className="py-4 px-6 font-bold text-center">Source</th>
-                                    <th className="py-4 px-6 font-bold text-center">Actions</th>
+                                    <th className="py-4 px-5 font-bold">Employee</th>
+                                    <th className="py-4 px-5 font-bold">Shift</th>
+                                    <th className="py-4 px-5 font-bold">Punch In</th>
+                                    <th className="py-4 px-5 font-bold">Punch Out</th>
+                                    <th className="py-4 px-5 font-bold">Worked</th>
+                                    <th className="py-4 px-5 font-bold text-center">Status</th>
+                                    <th className="py-4 px-5 font-bold text-center">Late</th>
+                                    <th className="py-4 px-5 font-bold text-center">Source</th>
+                                    <th className="py-4 px-5 font-bold text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="text-sm">
                                 {filtered.map((rec: any) => (
                                     <tr
                                         key={rec.id}
-                                        className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors"
+                                        className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors group"
                                     >
-                                        <td className="py-4 px-6">
+                                        <td className="py-3.5 px-5">
                                             <div>
-                                                <span className="font-bold text-primary-950 dark:text-white">{rec.employeeName ?? "—"}</span>
-                                                {rec.employeeCode && (
-                                                    <span className="block text-[11px] font-mono text-neutral-400 dark:text-neutral-500 mt-0.5">{rec.employeeCode}</span>
-                                                )}
+                                                <span className="font-bold text-primary-950 dark:text-white">{rec.employeeName}</span>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    {rec.employeeCode && (
+                                                        <span className="text-[11px] font-mono text-neutral-400 dark:text-neutral-500">{rec.employeeCode}</span>
+                                                    )}
+                                                    {rec.department && (
+                                                        <span className="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500">· {rec.department}</span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{rec.punchIn ?? "—"}</td>
-                                        <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{rec.punchOut ?? "—"}</td>
-                                        <td className="py-4 px-6 font-semibold text-neutral-700 dark:text-neutral-300">{rec.workedHours ?? "—"}</td>
-                                        <td className="py-4 px-6 text-center">
-                                            <StatusBadge status={rec.status ?? "Unknown"} />
-                                        </td>
-                                        <td className="py-4 px-6 text-center">
-                                            {rec.lateMinutes ? (
-                                                <span className="text-xs font-semibold text-warning-600 dark:text-warning-400">{rec.lateMinutes}m</span>
+                                        <td className="py-3.5 px-5">
+                                            {rec.shiftName ? (
+                                                <div>
+                                                    <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">{rec.shiftName}</span>
+                                                    <span className="block text-[10px] text-neutral-400 dark:text-neutral-500 font-mono mt-0.5">{rec.shiftTime}</span>
+                                                </div>
                                             ) : (
                                                 <span className="text-xs text-neutral-400">—</span>
                                             )}
                                         </td>
-                                        <td className="py-4 px-6 text-center">
+                                        <td className="py-3.5 px-5 font-mono text-xs text-neutral-600 dark:text-neutral-400">{formatPunchTime(rec.punchIn)}</td>
+                                        <td className="py-3.5 px-5 font-mono text-xs text-neutral-600 dark:text-neutral-400">{formatPunchTime(rec.punchOut)}</td>
+                                        <td className="py-3.5 px-5 font-semibold text-neutral-700 dark:text-neutral-300 text-sm">{formatWorkedHrs(rec.workedHours)}</td>
+                                        <td className="py-3.5 px-5 text-center">
+                                            <div className="flex flex-col items-center gap-1">
+                                                <StatusBadge status={rec.status ?? "Unknown"} />
+                                                {rec.finalStatusReason && (
+                                                    <span className="text-[9px] text-neutral-400 dark:text-neutral-500 max-w-[140px] truncate" title={rec.finalStatusReason}>
+                                                        {rec.finalStatusReason}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="py-3.5 px-5 text-center">
+                                            {rec.isLate && rec.lateMinutes ? (
+                                                <span className="text-xs font-semibold text-warning-600 dark:text-warning-400">{rec.lateMinutes}m</span>
+                                            ) : rec.isEarlyExit && rec.earlyMinutes ? (
+                                                <span className="text-xs font-semibold text-danger-600 dark:text-danger-400">-{rec.earlyMinutes}m</span>
+                                            ) : (
+                                                <span className="text-xs text-neutral-400">—</span>
+                                            )}
+                                        </td>
+                                        <td className="py-3.5 px-5 text-center">
                                             <SourceBadge source={rec.source ?? "Manual"} />
                                         </td>
-                                        <td className="py-4 px-6 text-center">
+                                        <td className="py-3.5 px-5 text-center">
                                             <button
                                                 onClick={() => openOverrideModal(rec)}
                                                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100 dark:hover:bg-primary-900/40 border border-primary-200 dark:border-primary-800/50 transition-colors"
@@ -448,7 +518,7 @@ export function AttendanceDashboardScreen() {
                                 ))}
                                 {filtered.length === 0 && !recordsQuery.isLoading && (
                                     <tr>
-                                        <td colSpan={8}>
+                                        <td colSpan={9}>
                                             <EmptyState icon="list" title="No attendance records" message="No records found for the selected date and filters." />
                                         </td>
                                     </tr>
