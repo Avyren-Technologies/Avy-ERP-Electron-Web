@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     CalendarDays,
     CalendarCheck,
@@ -26,14 +27,7 @@ function getGreeting(): string {
     return "Good evening";
 }
 
-function formatDate(): string {
-    return new Date().toLocaleDateString("en-IN", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-    });
-}
+// formatDate moved inside component
 
 // ── Placeholder data (to be replaced with ESS hooks) ──
 const PLACEHOLDER_STATS = {
@@ -163,6 +157,7 @@ function KPICard({ title, value, subtitle, icon: Icon, iconBg, iconColor }: KPIC
 
 // ── Main Dashboard ──
 export function RoleBasedDashboardScreen() {
+    const fmt = useCompanyFormatter();
     const navigate = useNavigate();
     const user = useAuthStore((s) => s.user);
     const userRole = useAuthStore((s) => s.userRole);
@@ -182,7 +177,7 @@ export function RoleBasedDashboardScreen() {
                                 {getGreeting()}, {firstName}!
                             </h1>
                             <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                                {formatDate()}
+                                {fmt.date(new Date().toISOString())}
                             </p>
                         </div>
                         <span className="inline-flex items-center self-start px-3 py-1 rounded-full text-xs font-semibold bg-primary-50 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300 border border-primary-200 dark:border-primary-800">

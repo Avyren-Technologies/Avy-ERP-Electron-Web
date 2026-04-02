@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     Gavel,
     Plus,
@@ -58,10 +59,7 @@ const EMPTY_ACTION = {
     issuedById: "",
 };
 
-const formatDate = (d: string | null | undefined) => {
-    if (!d) return "—";
-    return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-};
+// formatDate moved inside component
 
 /* ── Badges ── */
 
@@ -109,6 +107,8 @@ function TypeBadge({ type }: { type: string }) {
 /* ── Screen ── */
 
 export function DisciplinaryScreen() {
+    const fmt = useCompanyFormatter();
+    const formatDate = (d: string | null | undefined) => d ? fmt.date(d) : "—";
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("All");
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { useNavigate } from 'react-router-dom';
 import { BarChart3, PieChart, ScatterChart as ScatterIcon } from 'lucide-react';
 import { useAnalyticsDashboard } from '@/features/company-admin/api/use-analytics-queries';
@@ -15,6 +16,7 @@ import {
 } from '@/components/analytics';
 
 export function PayrollAnalyticsDashboardScreen() {
+    const fmt = useCompanyFormatter();
   const [filters, setFilters] = useState<FilterValues>({});
   const { data: response, isLoading, error } = useAnalyticsDashboard('payroll', filters);
   const navigate = useNavigate();
@@ -23,12 +25,7 @@ export function PayrollAnalyticsDashboardScreen() {
   const alertCount = dashboardData?.alerts?.length ?? 0;
   const kpiCount = dashboardData?.kpis?.length ?? 0;
   const lastComputedAt = dashboardData?.meta?.lastComputedAt
-    ? new Date(dashboardData.meta.lastComputedAt).toLocaleString('en-IN', {
-        day: '2-digit',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
+    ? fmt.dateTime(dashboardData.meta.lastComputedAt)
     : 'Pending';
 
   const handleDrilldown = (type: string) => {

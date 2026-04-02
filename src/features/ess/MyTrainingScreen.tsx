@@ -1,4 +1,5 @@
 import { useMyTraining } from '@/features/company-admin/api';
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { Loader2, GraduationCap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -11,6 +12,7 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 export function MyTrainingScreen() {
+    const fmt = useCompanyFormatter();
     const { data, isLoading } = useMyTraining();
     const nominations = data?.data ?? [];
 
@@ -47,7 +49,7 @@ export function MyTrainingScreen() {
                             </div>
                             <div className="flex gap-4 text-xs text-neutral-500">
                                 {n.training?.duration && <span>Duration: {n.training.duration}h</span>}
-                                {n.batchDate && <span>Batch: {new Date(n.batchDate).toLocaleDateString()}</span>}
+                                {n.batchDate && <span>Batch: {fmt.date(n.batchDate)}</span>}
                                 {n.score != null && <span>Score: {n.score}</span>}
                             </div>
                         </div>

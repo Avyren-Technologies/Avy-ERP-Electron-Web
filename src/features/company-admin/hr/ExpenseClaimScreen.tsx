@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     Receipt,
     Plus,
@@ -101,10 +102,7 @@ const EMPTY_LINE_ITEM: LineItem = {
     merchantName: "",
 };
 
-const formatDate = (d: string | null | undefined) => {
-    if (!d) return "—";
-    return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-};
+// formatDate moved inside component
 
 const formatCurrency = (amt: any) => {
     if (!amt && amt !== 0) return "—";
@@ -149,6 +147,8 @@ function ClaimStatusBadge({ status }: { status: string }) {
 /* ── Screen ── */
 
 export function ExpenseClaimScreen() {
+    const fmt = useCompanyFormatter();
+    const formatDate = (d: string | null | undefined) => d ? fmt.date(d) : "—";
     const [mainTab, setMainTab] = useState<"claims" | "categories">("claims");
     const [activeTab, setActiveTab] = useState<"pending" | "all">("pending");
     const [search, setSearch] = useState("");

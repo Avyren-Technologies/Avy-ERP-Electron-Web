@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     FileEdit,
     Plus,
@@ -154,6 +155,7 @@ const EMPTY_OVERRIDE = {
 /* ── Screen ── */
 
 export function AttendanceOverrideScreen() {
+    const fmt = useCompanyFormatter();
     const [tab, setTab] = useState<TabValue>("All");
     const [search, setSearch] = useState("");
     const [modalOpen, setModalOpen] = useState(false);
@@ -293,7 +295,7 @@ export function AttendanceOverrideScreen() {
                                             </div>
                                         </td>
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                            {o.date ? new Date(o.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                                            {o.date ? fmt.date(o.date) : "—"}
                                         </td>
                                         <td className="py-4 px-6">
                                             <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800 px-2 py-1 rounded-lg">

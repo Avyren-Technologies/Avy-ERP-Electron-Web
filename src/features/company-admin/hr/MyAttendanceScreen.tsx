@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     Clock,
     X,
@@ -94,6 +95,7 @@ function CardHeader({ title, subtitle, icon: Icon, iconClass }: { title: string;
 /* ── Screen ── */
 
 export function MyAttendanceScreen() {
+    const fmt = useCompanyFormatter();
     const today = new Date();
     const [currentMonth, setCurrentMonth] = useState(today.getMonth());
     const [currentYear, setCurrentYear] = useState(today.getFullYear());
@@ -313,7 +315,7 @@ export function MyAttendanceScreen() {
                 {/* Selected Date Detail */}
                 <div className="h-full">
                 <PremiumCard className="h-full flex flex-col">
-                    <CardHeader title="Day Details" subtitle={selectedDate ? new Date(selectedDate + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" }) : "Select a date"} icon={Clock} iconClass="bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400" />
+                    <CardHeader title="Day Details" subtitle={selectedDate ? fmt.date(selectedDate + "T00:00:00") : "Select a date"} icon={Clock} iconClass="bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400" />
 
                     {!selectedDate ? (
                         <div className="text-center py-8">
@@ -395,7 +397,7 @@ export function MyAttendanceScreen() {
                             <div>
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Date</label>
                                 <div className="w-full px-3 py-2.5 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm text-neutral-700 dark:text-neutral-300">
-                                    {selectedDate ? new Date(selectedDate + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+                                    {selectedDate ? fmt.date(selectedDate + "T00:00:00") : "—"}
                                 </div>
                             </div>
 

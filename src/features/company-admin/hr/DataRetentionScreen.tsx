@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     Shield,
     Plus,
@@ -165,6 +166,7 @@ const RETENTION_ACTIONS = [
 /* ── Screen ── */
 
 export function DataRetentionScreen() {
+    const fmt = useCompanyFormatter();
     const [activeTab, setActiveTab] = useState<TabId>("policies");
     const [search, setSearch] = useState("");
     const [policyModalOpen, setPolicyModalOpen] = useState(false);
@@ -420,7 +422,7 @@ export function DataRetentionScreen() {
                                             <td className="py-4 px-6 font-bold text-primary-950 dark:text-white">{r.employeeName ?? "—"}</td>
                                             <td className="py-4 px-6 text-center"><TypeBadge type={r.type ?? "ACCESS"} /></td>
                                             <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                                {r.createdAt ? new Date(r.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                                                {r.createdAt ? fmt.date(r.createdAt) : "—"}
                                             </td>
                                             <td className="py-4 px-6 text-center"><StatusBadge status={r.status ?? "PENDING"} /></td>
                                             <td className="py-4 px-6 text-right">

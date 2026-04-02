@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     CreditCard,
     Search,
@@ -53,18 +54,7 @@ function formatCurrency(amount: number): string {
     }).format(amount);
 }
 
-function formatDate(dateStr: string): string {
-    try {
-        const d = new Date(dateStr);
-        return d.toLocaleDateString('en-IN', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-        });
-    } catch {
-        return dateStr;
-    }
-}
+// formatDate moved inside component
 
 // ============ RECORD PAYMENT MODAL ============
 
@@ -274,6 +264,8 @@ function RecordPaymentModal({
 // ============ MAIN COMPONENT ============
 
 export function PaymentHistoryScreen() {
+    const fmt = useCompanyFormatter();
+    const formatDate = (d: string) => d ? fmt.date(d) : '—';
     const [methodFilter, setMethodFilter] = useState('All');
     const [page, setPage] = useState(1);
     const [showRecordModal, setShowRecordModal] = useState(false);

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     CheckCircle2,
     XCircle,
@@ -21,10 +22,7 @@ import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Helpers ── */
 
-const formatDate = (d: string | null | undefined) => {
-    if (!d) return "—";
-    return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-};
+// formatDate moved inside component
 
 function StatusBadge({ status }: { status: string }) {
     const s = status?.toLowerCase();
@@ -78,12 +76,62 @@ function StepProgress({ steps, currentStep }: { steps: any[]; currentStep: numbe
     );
 }
 
-const STATUS_FILTERS = ["All", "Pending", "Approved", "Rejected", "Cancelled"];
-const TYPE_FILTERS = ["All", "leave_request", "attendance_regularization", "expense_claim", "salary_revision", "loan_request", "it_declaration", "profile_update"];
+const STATUS_FILTERS = ["All", "Pending", "Approved", "Rejected", "Escalated"];
+const TYPE_FILTERS = ["All", "LeaveRequest", "AttendanceOverride", "LoanRecord", "WfhRequest", "ShiftSwapRequest"];
+
+/** Map raw entityType to human-readable label */
+const ENTITY_LABELS: Record<string, string> = {
+    LeaveRequest: "Leave Request",
+    AttendanceOverride: "Attendance Regularization",
+    LoanRecord: "Loan Application",
+    WfhRequest: "WFH Request",
+    ShiftSwapRequest: "Shift Swap",
+    ExpenseClaim: "Expense Claim",
+    ITDeclaration: "IT Declaration",
+};
+
+/** Build a summary description from the request data payload */
+function buildSummary(entityType: string, data: any): string {
+    if (!data) return "";
+    switch (entityType) {
+        case "LeaveRequest":
+            return `${data.days ?? 1} day(s) leave: ${data.fromDate ?? ""} → ${data.toDate ?? ""}${data.reason ? ` — ${data.reason}` : ""}`;
+        case "LoanRecord":
+            return `${data.policyName ?? "Loan"}: ₹${Number(data.amount ?? 0).toLocaleString("en-IN")} for ${data.tenure ?? "—"} months${data.reason ? ` — ${data.reason}` : ""}`;
+        case "WfhRequest":
+            return `WFH ${data.fromDate ?? ""} → ${data.toDate ?? ""} (${data.days ?? 1} day${(data.days ?? 1) > 1 ? "s" : ""})${data.reason ? ` — ${data.reason}` : ""}`;
+        case "ShiftSwapRequest":
+            return `Shift swap on ${data.swapDate ?? ""}${data.reason ? ` — ${data.reason}` : ""}`;
+        case "AttendanceOverride":
+            return `${data.issueType ?? "Correction"}${data.reason ? ` — ${data.reason}` : ""}`;
+        default:
+            return data.reason ?? data.description ?? JSON.stringify(data);
+    }
+}
+
+/** Normalize API response item to a shape the UI can render */
+function mapRequest(raw: any): any {
+    const steps = raw.workflow?.steps ?? raw.steps ?? [];
+    const currentStep = (raw.currentStep ?? 1) - 1; // API is 1-based, UI is 0-based
+    const currentStepData = steps[currentStep];
+    return {
+        ...raw,
+        employeeName: raw.employeeName ?? raw.requesterName ?? raw.data?.employeeId ?? "Employee",
+        requestType: ENTITY_LABELS[raw.entityType] ?? raw.entityType ?? "",
+        description: raw.description ?? buildSummary(raw.entityType, raw.data),
+        steps,
+        currentStep,
+        currentStepLabel: currentStepData?.approverRole ? `Step ${currentStep + 1}: ${currentStepData.approverRole}` : `Step ${currentStep + 1}`,
+        currentApprover: currentStepData?.approverRole ?? "—",
+        totalSteps: steps.length,
+    };
+}
 
 /* ── Screen ── */
 
 export function ApprovalRequestScreen() {
+    const fmt = useCompanyFormatter();
+    const formatDate = (d: string | null | undefined) => d ? fmt.date(d) : "—";
     const [activeTab, setActiveTab] = useState<"pending" | "all">("pending");
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("All");
@@ -92,7 +140,7 @@ export function ApprovalRequestScreen() {
     const pendingQuery = usePendingApprovals();
     const allQuery = useApprovalRequests({
         status: statusFilter === "All" ? undefined : statusFilter.toLowerCase(),
-        type: typeFilter === "All" ? undefined : typeFilter,
+        entityType: typeFilter === "All" ? undefined : typeFilter,
     });
 
     const approveMutation = useApproveRequest();
@@ -103,7 +151,8 @@ export function ApprovalRequestScreen() {
     const [detailTarget, setDetailTarget] = useState<any>(null);
 
     const activeQuery = activeTab === "pending" ? pendingQuery : allQuery;
-    const requests: any[] = activeQuery.data?.data ?? [];
+    const rawRequests: any[] = activeQuery.data?.data ?? [];
+    const requests = rawRequests.map(mapRequest);
     const isLoading = activeQuery.isLoading;
     const isError = activeQuery.isError;
 

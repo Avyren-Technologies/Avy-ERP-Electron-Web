@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     Plus,
     Loader2,
@@ -179,6 +180,7 @@ function ConfirmDialog({
 /* ── Screen ── */
 
 export function PayrollRunScreen() {
+    const fmt = useCompanyFormatter();
     const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
     const [wizardStep, setWizardStep] = useState(0);
     const [newRunModal, setNewRunModal] = useState(false);
@@ -381,7 +383,7 @@ export function PayrollRunScreen() {
                                             {MONTHS[(runDetail?.month ?? 1) - 1]} {runDetail?.year} Payroll
                                         </h2>
                                         <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                                            {runDetail?.employeeCount ?? 0} employees &middot; Created {runDetail?.createdAt ? new Date(runDetail.createdAt).toLocaleDateString("en-IN") : ""}
+                                            {runDetail?.employeeCount ?? 0} employees &middot; Created {runDetail?.createdAt ? fmt.date(runDetail.createdAt) : ""}
                                         </p>
                                     </div>
                                     <RunStatusBadge status={runDetail?.status ?? "draft"} />

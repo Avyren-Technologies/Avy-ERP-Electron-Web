@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     RotateCcw,
     Plus,
@@ -145,6 +146,7 @@ const EMPTY_FORM = {
 /* ── Screen ── */
 
 export function ShiftRotationScreen() {
+    const fmt = useCompanyFormatter();
     const [search, setSearch] = useState("");
     const [modalOpen, setModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -377,7 +379,7 @@ export function ShiftRotationScreen() {
                                         <td className="py-4 px-6 text-center text-neutral-600 dark:text-neutral-400 font-bold">{s.shifts?.length ?? s.shiftCount ?? 0}</td>
                                         <td className="py-4 px-6 text-center text-neutral-600 dark:text-neutral-400 font-bold">{s.assignedEmployees?.length ?? s.employeeCount ?? 0}</td>
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                            {s.effectiveFrom ? new Date(s.effectiveFrom).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                                            {s.effectiveFrom ? fmt.date(s.effectiveFrom) : "—"}
                                         </td>
                                         <td className="py-4 px-6 text-center"><ActiveBadge active={s.isActive ?? true} /></td>
                                         <td className="py-4 px-6 text-right">
@@ -513,7 +515,7 @@ export function ShiftRotationScreen() {
                                 <ActiveBadge active={detailTarget.isActive ?? true} />
                             </div>
                             <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">
-                                Effective from: {detailTarget.effectiveFrom ? new Date(detailTarget.effectiveFrom).toLocaleDateString("en-IN") : "Not set"}
+                                Effective from: {detailTarget.effectiveFrom ? fmt.date(detailTarget.effectiveFrom) : "Not set"}
                             </p>
                             <div className="flex items-center justify-between mb-3">
                                 <h3 className="text-sm font-bold text-primary-950 dark:text-white">Assigned Employees</h3>

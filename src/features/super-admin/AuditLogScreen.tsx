@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { useQuery } from '@tanstack/react-query';
 import { Search, Filter, Calendar, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -41,24 +42,16 @@ function getActionBadgeStyle(action: string): string {
     return 'bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700';
 }
 
-function formatTimestamp(ts: string): string {
+function formatTimestamp(ts: string, fmt: ReturnType<typeof useCompanyFormatter>): string {
     try {
-        const date = new Date(ts);
-        return date.toLocaleString('en-IN', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: true,
-        });
+        return fmt.dateTime(ts);
     } catch {
         return ts;
     }
 }
 
 export function AuditLogScreen() {
+    const fmt = useCompanyFormatter();
     const userRole = useAuthStore((s) => s.userRole);
     const isCompanyAdmin = userRole === 'company-admin';
 
@@ -206,7 +199,7 @@ export function AuditLogScreen() {
                                     >
                                         <td className="py-4 px-6">
                                             <span className="text-neutral-700 dark:text-neutral-300 font-medium text-xs">
-                                                {formatTimestamp(log.createdAt ?? log.timestamp)}
+                                                {formatTimestamp(log.createdAt ?? log.timestamp, fmt)}
                                             </span>
                                         </td>
 

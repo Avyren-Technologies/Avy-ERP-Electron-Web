@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { useNavigate } from "react-router-dom";
 import {
     FileText, Search, Filter, Download, Eye, X, ChevronLeft, ChevronRight,
@@ -19,10 +20,7 @@ function formatCurrency(amount: number): string {
     return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
 }
 
-function formatDate(dateStr?: string): string {
-    if (!dateStr) return "—";
-    return new Date(dateStr).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-}
+// formatDate moved inside component
 
 // ── Status Badge ──
 
@@ -176,6 +174,8 @@ function InvoiceDetailModal({ invoiceId, onClose }: { invoiceId: string; onClose
 // ── Main Screen ──
 
 export function MyInvoicesScreen() {
+    const fmt = useCompanyFormatter();
+    const formatDate = (d: string | null | undefined) => d ? fmt.date(d) : "—";
     const navigate = useNavigate();
     const [page, setPage] = useState(1);
     const [statusFilter, setStatusFilter] = useState("All");

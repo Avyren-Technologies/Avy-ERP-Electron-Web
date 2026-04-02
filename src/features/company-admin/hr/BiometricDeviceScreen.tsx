@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     Fingerprint,
     Plus,
@@ -139,6 +140,7 @@ const EMPTY_FORM = {
 /* ── Screen ── */
 
 export function BiometricDeviceScreen() {
+    const fmt = useCompanyFormatter();
     const [search, setSearch] = useState("");
     const [modalOpen, setModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -276,7 +278,7 @@ export function BiometricDeviceScreen() {
                     { label: "Total Devices", value: totalDevices, icon: Fingerprint, color: "primary" },
                     { label: "Online", value: onlineCount, icon: Wifi, color: "success" },
                     { label: "Offline", value: offlineCount, icon: WifiOff, color: "danger" },
-                    { label: "Last Sync", value: lastSync ? new Date(lastSync).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "Never", icon: Clock, color: "accent" },
+                    { label: "Last Sync", value: lastSync ? fmt.dateTime(lastSync) : "Never", icon: Clock, color: "accent" },
                 ].map((stat) => (
                     <div key={stat.label} className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 p-4 shadow-sm">
                         <div className="flex items-center gap-3">
@@ -351,7 +353,7 @@ export function BiometricDeviceScreen() {
                                             <StatusBadge status={d.status ?? "OFFLINE"} />
                                         </td>
                                         <td className="py-4 px-6 text-xs text-neutral-500 dark:text-neutral-400">
-                                            {d.lastSyncAt ? new Date(d.lastSyncAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}
+                                            {d.lastSyncAt ? fmt.dateTime(d.lastSyncAt) : "—"}
                                         </td>
                                         <td className="py-4 px-6 text-right">
                                             <div className="flex items-center justify-end gap-1">

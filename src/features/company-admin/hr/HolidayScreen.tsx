@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     CalendarDays,
     Plus,
@@ -141,6 +142,7 @@ const HOLIDAY_TYPES = [
 /* ── Screen ── */
 
 export function HolidayScreen() {
+    const fmt = useCompanyFormatter();
     const canCreate = useCanPerform('hr:create') || useCanPerform('company:configure');
     const canUpdate = useCanPerform('hr:update') || useCanPerform('company:configure');
 
@@ -334,7 +336,7 @@ export function HolidayScreen() {
                                             </div>
                                         </td>
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                            {h.date ? new Date(h.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                                            {h.date ? fmt.date(h.date) : "—"}
                                         </td>
                                         <td className="py-4 px-6 text-center">
                                             <TypeBadge type={h.type ?? "NATIONAL"} />

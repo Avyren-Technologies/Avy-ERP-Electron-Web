@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { useNavigate } from "react-router-dom";
 import {
     Users,
@@ -52,14 +53,13 @@ function getInitials(firstName?: string, lastName?: string): string {
     return (f + l).toUpperCase() || "?";
 }
 
-function formatDate(d: string | null | undefined) {
-    if (!d) return "—";
-    return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-}
+// formatDate moved inside component
 
 /* ── Screen ── */
 
 export function EmployeeDirectoryScreen() {
+    const fmt = useCompanyFormatter();
+    const formatDate = (d: string | null | undefined) => d ? fmt.date(d) : "—";
     const navigate = useNavigate();
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("All");

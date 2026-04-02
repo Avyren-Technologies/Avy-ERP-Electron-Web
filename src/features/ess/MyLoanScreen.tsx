@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { useMyLoans, useEssLoanPolicies, useApplyForLoan } from '@/features/company-admin/api';
 import { Loader2, Landmark, X, Percent, Clock, IndianRupee } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -19,6 +20,7 @@ const STATUS_STYLES: Record<string, string> = {
 const formatCurrency = (v: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(v);
 
 export function MyLoanScreen() {
+    const fmt = useCompanyFormatter();
     const { data: loansData, isLoading: loansLoading } = useMyLoans();
     const { data: policiesData, isLoading: policiesLoading } = useEssLoanPolicies();
     const applyMutation = useApplyForLoan();
@@ -46,9 +48,9 @@ export function MyLoanScreen() {
         if (!applyPolicy || !loanAmount || !tenure) return;
         applyMutation.mutate(
             {
-                loanPolicyId: applyPolicy.id,
+                policyId: applyPolicy.id,
                 amount: parseFloat(loanAmount),
-                tenureMonths: parseInt(tenure, 10),
+                tenure: parseInt(tenure, 10),
                 reason: reason.trim() || undefined,
             },
             {
@@ -180,7 +182,7 @@ export function MyLoanScreen() {
                                         <h3 className="font-semibold text-primary-950 dark:text-white">
                                             {l.loanPolicy?.name ?? l.policy?.name ?? 'Loan'}
                                         </h3>
-                                        <p className="text-xs text-neutral-500 mt-0.5">{new Date(l.createdAt).toLocaleDateString()}</p>
+                                        <p className="text-xs text-neutral-500 mt-0.5">{fmt.date(l.createdAt)}</p>
                                     </div>
                                     <span className={cn('px-2 py-0.5 text-[10px] font-bold uppercase rounded-full', STATUS_STYLES[l.status] ?? STATUS_STYLES.PENDING)}>
                                         {l.status}

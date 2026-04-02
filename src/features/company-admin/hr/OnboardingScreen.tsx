@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     ClipboardList,
     Plus,
@@ -161,6 +162,7 @@ const EMPTY_TEMPLATE = {
 /* ── Screen ── */
 
 export function OnboardingScreen() {
+    const fmt = useCompanyFormatter();
     const [activeTab, setActiveTab] = useState<Tab>("templates");
     const [search, setSearch] = useState("");
     const [modalOpen, setModalOpen] = useState(false);
@@ -483,7 +485,7 @@ export function OnboardingScreen() {
                                                 <StatusBadge status={t.status ?? "PENDING"} />
                                             </td>
                                             <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                                {t.dueDate ? new Date(t.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                                                {t.dueDate ? fmt.date(t.dueDate) : "—"}
                                             </td>
                                             <td className="py-4 px-6 text-right">
                                                 {(t.status === "PENDING" || t.status === "pending") && (

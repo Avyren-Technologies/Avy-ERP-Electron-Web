@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     CalendarCheck,
     Plus,
@@ -165,10 +166,7 @@ const EMPTY_REQUEST = {
 
 /* ── Helpers ── */
 
-const formatDate = (d: string | null | undefined) => {
-    if (!d) return "—";
-    return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-};
+// formatDate moved inside component
 
 const calcDays = (start: string, end: string, halfStart: boolean, halfEnd: boolean) => {
     if (!start || !end) return 0;
@@ -184,6 +182,8 @@ const calcDays = (start: string, end: string, halfStart: boolean, halfEnd: boole
 /* ── Screen ── */
 
 export function LeaveRequestScreen() {
+    const fmt = useCompanyFormatter();
+    const formatDate = (d: string | null | undefined) => d ? fmt.date(d) : "—";
     const [activeTab, setActiveTab] = useState<"pending" | "all">("pending");
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("All");

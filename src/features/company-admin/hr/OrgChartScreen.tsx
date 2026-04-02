@@ -24,9 +24,10 @@ import {
     Hash,
     Building2,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useOrgChart } from "@/features/company-admin/api/use-hr-queries";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useOrgChart } from "@/features/company-admin/api/use-hr-queries";
+import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
+import { cn } from "@/lib/utils";
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    Types
@@ -254,8 +255,9 @@ function DetailRow({ label, value, icon }: { label: string; value: string; icon?
 }
 
 function EmployeeDetailModal({ node, onClose }: { node: OrgNode; onClose: () => void }) {
+    const fmt = useCompanyFormatter();
     const joinDate = node.joiningDate
-        ? new Date(node.joiningDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+        ? fmt.date(node.joiningDate)
         : null;
     const statusLabel = node.status ? node.status.replace(/_/g, " ") : null;
 

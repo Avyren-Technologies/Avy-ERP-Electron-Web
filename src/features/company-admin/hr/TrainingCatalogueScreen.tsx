@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     GraduationCap,
     Plus,
@@ -66,10 +67,7 @@ const EMPTY_NOMINATION = {
     feedback: "",
 };
 
-const formatDate = (d: string | null | undefined) => {
-    if (!d) return "—";
-    return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-};
+// formatDate moved inside component
 
 /* ── Badges ── */
 
@@ -95,6 +93,8 @@ function NomStatusBadge({ status }: { status: string }) {
 /* ── Screen ── */
 
 export function TrainingCatalogueScreen() {
+    const fmt = useCompanyFormatter();
+    const formatDate = (d: string | null | undefined) => d ? fmt.date(d) : "—";
     const [activeTab, setActiveTab] = useState<"catalogue" | "nominations">("catalogue");
     const [search, setSearch] = useState("");
     const [nomStatusFilter, setNomStatusFilter] = useState("All");

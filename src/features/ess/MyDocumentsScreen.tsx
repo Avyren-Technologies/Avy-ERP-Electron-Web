@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { useMyDocuments, useUploadMyDocument } from '@/features/company-admin/api';
 import { Loader2, FileText, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -16,6 +17,7 @@ const DOC_TYPES = [
 ];
 
 export function MyDocumentsScreen() {
+    const fmt = useCompanyFormatter();
     const { data, isLoading } = useMyDocuments();
     const documents = data?.data ?? [];
     const [showForm, setShowForm] = useState(false);
@@ -117,7 +119,7 @@ export function MyDocumentsScreen() {
                                     <h3 className="font-semibold text-primary-950 dark:text-white">{d.documentType}</h3>
                                     <p className="text-xs text-neutral-500 mt-0.5">
                                         No: {d.documentNumber}
-                                        {d.expiryDate && <> &middot; Expires: {new Date(d.expiryDate).toLocaleDateString()}</>}
+                                        {d.expiryDate && <> &middot; Expires: {fmt.date(d.expiryDate)}</>}
                                     </p>
                                 </div>
                                 <span className={cn('px-2 py-0.5 text-[10px] font-bold uppercase rounded-full', 'bg-info-100 text-info-700')}>

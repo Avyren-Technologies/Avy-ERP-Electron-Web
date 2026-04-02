@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     Clock,
     MapPin,
@@ -56,17 +57,7 @@ interface StatusResponse {
 
 /* ── Helpers ── */
 
-const formatTime = (iso: string | null | undefined) => {
-    if (!iso) return "--:--";
-    const d = new Date(iso);
-    return d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true });
-};
-
-const formatTimeShort = (iso: string | null | undefined) => {
-    if (!iso) return "--:--";
-    const d = new Date(iso);
-    return d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
-};
+// formatTime and formatTimeShort now use fmt from useCompanyFormatter (passed inline)
 
 const formatDuration = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -75,10 +66,7 @@ const formatDuration = (seconds: number) => {
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 };
 
-const formatDateShort = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short" });
-};
+// formatDateShort now uses fmt from useCompanyFormatter (passed inline)
 
 /** Backend may serialize Decimal as string; coerce before `.toFixed`. */
 function parseWorkedHours(value: unknown): number | null {
@@ -160,6 +148,7 @@ function InfoCard({ icon: Icon, iconColor, title, children, className }: {
 /* ── Main Screen ── */
 
 export function ShiftCheckInScreen() {
+    const fmt = useCompanyFormatter();
     const queryClient = useQueryClient();
 
     // Live clock
@@ -320,7 +309,7 @@ export function ShiftCheckInScreen() {
             <div>
                 <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Attendance</h1>
                 <p className="text-neutral-500 dark:text-neutral-400 mt-1">
-                    {now.toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+                    {fmt.date(now.toISOString())}
                 </p>
             </div>
 
@@ -344,11 +333,11 @@ export function ShiftCheckInScreen() {
                             </div>
 
                             <p className="text-6xl font-mono font-bold tracking-wider tabular-nums mb-3">
-                                {now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}
+                                {fmt.timeWithSeconds(now.toISOString())}
                             </p>
 
                             <p className="text-primary-100 text-sm mb-4">
-                                {now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                                {fmt.date(now.toISOString())}
                             </p>
 
                             <div className="inline-flex items-center gap-4">
@@ -441,11 +430,11 @@ export function ShiftCheckInScreen() {
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
                                     <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium mb-0.5">Start</p>
-                                    <p className="font-semibold text-primary-950 dark:text-white text-sm">{shiftInfo.startTime}</p>
+                                    <p className="font-semibold text-primary-950 dark:text-white text-sm">{fmt.shiftTime(shiftInfo.startTime)}</p>
                                 </div>
                                 <div>
                                     <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium mb-0.5">End</p>
-                                    <p className="font-semibold text-primary-950 dark:text-white text-sm">{shiftInfo.endTime}</p>
+                                    <p className="font-semibold text-primary-950 dark:text-white text-sm">{fmt.shiftTime(shiftInfo.endTime)}</p>
                                 </div>
                             </div>
                             {shiftInfo.breaks && shiftInfo.breaks.length > 0 && (
@@ -455,7 +444,7 @@ export function ShiftCheckInScreen() {
                                         <div key={b.id} className="flex items-center gap-2 text-xs">
                                             <span className={cn("w-1.5 h-1.5 rounded-full", b.isPaid ? "bg-success-500" : "bg-warning-500")} />
                                             <span className="text-neutral-600 dark:text-neutral-300">
-                                                {b.name}{b.startTime ? ` at ${b.startTime}` : ""} — {b.duration}min{b.isPaid ? " (paid)" : ""}
+                                                {b.name}{b.startTime ? ` at ${fmt.shiftTime(b.startTime)}` : ""} — {b.duration}min{b.isPaid ? " (paid)" : ""}
                                             </span>
                                         </div>
                                     ))}
@@ -517,11 +506,11 @@ export function ShiftCheckInScreen() {
                         <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium mb-0.5">Check In</p>
-                                <p className="font-semibold text-primary-950 dark:text-white text-sm">{formatTime(record?.punchIn)}</p>
+                                <p className="font-semibold text-primary-950 dark:text-white text-sm">{record?.punchIn ? fmt.timeWithSeconds(record.punchIn) : "--:--"}</p>
                             </div>
                             <div>
                                 <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium mb-0.5">Check Out</p>
-                                <p className="font-semibold text-primary-950 dark:text-white text-sm">{formatTime(record?.punchOut)}</p>
+                                <p className="font-semibold text-primary-950 dark:text-white text-sm">{record?.punchOut ? fmt.timeWithSeconds(record.punchOut) : "--:--"}</p>
                             </div>
                         </div>
                         <div className="pt-2 border-t border-neutral-100 dark:border-neutral-800">
@@ -583,8 +572,8 @@ export function ShiftCheckInScreen() {
                                         <span className="font-semibold text-primary-950 dark:text-white">Today</span>
                                     </div>
                                 </td>
-                                <td className="py-4 px-6 text-neutral-600 dark:text-neutral-300 font-mono text-xs">{formatTimeShort(record?.punchIn)}</td>
-                                <td className="py-4 px-6 text-neutral-600 dark:text-neutral-300 font-mono text-xs">{formatTimeShort(record?.punchOut)}</td>
+                                <td className="py-4 px-6 text-neutral-600 dark:text-neutral-300 font-mono text-xs">{record?.punchIn ? fmt.time(record.punchIn) : "--:--"}</td>
+                                <td className="py-4 px-6 text-neutral-600 dark:text-neutral-300 font-mono text-xs">{record?.punchOut ? fmt.time(record.punchOut) : "--:--"}</td>
                                 <td className="py-4 px-6 text-right font-bold text-primary-950 dark:text-white font-mono text-xs">
                                     {isCheckedIn ? formatDuration(elapsed) : formatWorkedHoursLabel(record?.workedHours, "short")}
                                 </td>
@@ -603,7 +592,7 @@ export function ShiftCheckInScreen() {
                                 return (
                                     <tr key={daysAgo} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
                                         <td className="py-4 px-6">
-                                            <span className="font-medium text-neutral-700 dark:text-neutral-300">{formatDateShort(date.toISOString())}</span>
+                                            <span className="font-medium text-neutral-700 dark:text-neutral-300">{fmt.date(date.toISOString())}</span>
                                         </td>
                                         <td className="py-4 px-6 text-neutral-400 dark:text-neutral-500 font-mono text-xs">--:--</td>
                                         <td className="py-4 px-6 text-neutral-400 dark:text-neutral-500 font-mono text-xs">--:--</td>

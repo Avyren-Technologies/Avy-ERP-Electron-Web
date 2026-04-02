@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     FileText,
     Loader2,
@@ -70,6 +71,7 @@ const QUARTERS = [
 /* ── Screen ── */
 
 export function Form16Screen() {
+    const fmt = useCompanyFormatter();
     const [selectedFY, setSelectedFY] = useState("2025-26");
     const [selectedQuarter, setSelectedQuarter] = useState("1");
 
@@ -279,7 +281,7 @@ export function Form16Screen() {
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{f.financialYear ?? "—"}</td>
                                         <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{f.quarter ? `Q${f.quarter}` : "—"}</td>
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                            {f.createdAt ? new Date(f.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                                            {f.createdAt ? fmt.date(f.createdAt) : "—"}
                                         </td>
                                         <td className="py-4 px-6 text-center">
                                             <StatusBadge status={f.status ?? "Pending"} />

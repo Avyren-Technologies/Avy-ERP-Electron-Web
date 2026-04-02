@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { useNavigate } from 'react-router-dom';
 import {
     MessageSquare, Search, Filter, X, Zap,
@@ -78,7 +79,7 @@ function getPriorityStyle(priority: string): string {
     }
 }
 
-function formatRelativeTime(ts: string): string {
+function formatRelativeTime(ts: string, fmt: ReturnType<typeof useCompanyFormatter>): string {
     try {
         const now = Date.now();
         const diff = now - new Date(ts).getTime();
@@ -89,7 +90,7 @@ function formatRelativeTime(ts: string): string {
         if (hours < 24) return `${hours}h ago`;
         const days = Math.floor(hours / 24);
         if (days < 7) return `${days}d ago`;
-        return new Date(ts).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+        return fmt.date(ts);
     } catch {
         return ts;
     }
@@ -100,6 +101,7 @@ function formatRelativeTime(ts: string): string {
 /* ------------------------------------------------------------------ */
 
 export function SupportDashboardScreen() {
+    const fmt = useCompanyFormatter();
     const navigate = useNavigate();
 
     const [search, setSearch] = useState('');
@@ -317,7 +319,7 @@ export function SupportDashboardScreen() {
 
                                         <td className="py-4 px-6">
                                             <span className="text-neutral-500 dark:text-neutral-400 text-xs font-medium">
-                                                {formatRelativeTime(ticket.createdAt)}
+                                                {formatRelativeTime(ticket.createdAt, fmt)}
                                             </span>
                                         </td>
                                     </tr>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     HelpCircle,
     Building2,
@@ -278,7 +279,7 @@ const FAQ_ITEMS: FaqItem[] = [
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-function relativeTime(dateStr: string): string {
+function relativeTime(dateStr: string, fmt: ReturnType<typeof useCompanyFormatter>): string {
     const now = Date.now();
     const then = new Date(dateStr).getTime();
     const diffMs = now - then;
@@ -290,7 +291,7 @@ function relativeTime(dateStr: string): string {
     if (diffHr < 24) return `${diffHr}h ago`;
     const diffDay = Math.floor(diffHr / 24);
     if (diffDay < 30) return `${diffDay}d ago`;
-    return new Date(dateStr).toLocaleDateString();
+    return fmt.date(dateStr);
 }
 
 /* ------------------------------------------------------------------ */
@@ -400,6 +401,7 @@ function CategoryChip({ category }: { category: string }) {
 }
 
 function TicketCard({ ticket, onClick }: { ticket: SupportTicket; onClick: () => void }) {
+    const fmt = useCompanyFormatter();
     const lastMessage = ticket.messages?.length
         ? ticket.messages[ticket.messages.length - 1]
         : null;
@@ -414,7 +416,7 @@ function TicketCard({ ticket, onClick }: { ticket: SupportTicket; onClick: () =>
                     {ticket.subject}
                 </h3>
                 <span className="text-[11px] text-neutral-400 whitespace-nowrap flex-shrink-0">
-                    {relativeTime(ticket.updatedAt)}
+                    {relativeTime(ticket.updatedAt, fmt)}
                 </span>
             </div>
 
@@ -794,6 +796,7 @@ function HelpCenterTab() {
 /* ------------------------------------------------------------------ */
 
 export function HelpSupportScreen() {
+    const fmt = useCompanyFormatter();
     const [activeTab, setActiveTab] = useState<"tickets" | "help">("tickets");
 
     useTicketSocket(undefined, undefined, false);

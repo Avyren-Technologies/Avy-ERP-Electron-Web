@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     FileSignature,
     Loader2,
@@ -69,6 +70,7 @@ const STATUS_FILTERS = [
 /* ── Screen ── */
 
 export function ESignScreen() {
+    const fmt = useCompanyFormatter();
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
 
@@ -185,7 +187,7 @@ export function ESignScreen() {
                                         </td>
                                         {isHrAdmin && <td className="py-4 px-6 text-neutral-700 dark:text-neutral-300 font-medium">{r.employeeName ?? "—"}</td>}
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                            {r.dispatchedAt ? new Date(r.dispatchedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                                            {r.dispatchedAt ? fmt.date(r.dispatchedAt) : "—"}
                                         </td>
                                         <td className="py-4 px-6 text-center">
                                             <StatusBadge status={r.status ?? "PENDING"} />

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     Users,
     CheckCircle2,
@@ -27,10 +28,7 @@ import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Helpers ── */
 
-const formatDate = (d: string | null | undefined) => {
-    if (!d) return "—";
-    return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-};
+// formatDate moved inside component
 
 function StatusBadge({ status }: { status: string }) {
     const s = status?.toLowerCase();
@@ -63,6 +61,8 @@ function AttendanceDot({ status }: { status: string }) {
 /* ── Screen ── */
 
 export function TeamViewScreen() {
+    const fmt = useCompanyFormatter();
+    const formatDate = (d: string | null | undefined) => d ? fmt.date(d) : "—";
     const teamQuery = useTeamMembers();
     const pendingQuery = usePendingMssApprovals();
     const attendanceQuery = useTeamAttendance();
@@ -273,7 +273,7 @@ export function TeamViewScreen() {
                                 <div key={i} className="flex items-center gap-4 px-6 py-3 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
                                     <div className="w-10 h-10 rounded-xl bg-accent-50 dark:bg-accent-900/20 flex flex-col items-center justify-center shrink-0">
                                         <span className="text-[10px] font-bold text-accent-600 dark:text-accent-400 uppercase leading-none">
-                                            {entry.startDate ? new Date(entry.startDate).toLocaleDateString("en-IN", { month: "short" }) : ""}
+                                            {entry.startDate ? fmt.date(entry.startDate) : ""}
                                         </span>
                                         <span className="text-sm font-bold text-accent-700 dark:text-accent-400 leading-none">
                                             {entry.startDate ? new Date(entry.startDate).getDate() : ""}

@@ -3,6 +3,7 @@
 // Shows all 17 wizard sections in a rich, read-only detail page
 // ============================================================
 import { useState } from 'react';
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
@@ -208,14 +209,13 @@ function AuditActionBadge({ action }: { action: string }) {
 }
 
 function AuditHistorySection({ companyId, expanded, onToggle }: { companyId: string; expanded: boolean; onToggle: () => void }) {
+    const fmt = useCompanyFormatter();
     const { data, isLoading } = useEntityAuditLogs('COMPANY', companyId);
     const logs: any[] = data?.data ?? data ?? [];
 
     const formatTimestamp = (ts: string) => {
         if (!ts) return '';
-        const d = new Date(ts);
-        return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) +
-            ' ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+        return fmt.dateTime(ts);
     };
 
     return (
@@ -291,6 +291,7 @@ function AuditHistorySection({ companyId, expanded, onToggle }: { companyId: str
 // ============================================================
 
 export function CompanyDetailScreen() {
+    const fmt = useCompanyFormatter();
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { data, isLoading, isError } = useTenantDetail(id ?? '');
@@ -455,7 +456,7 @@ export function CompanyDetailScreen() {
 
     const formatDate = (d: string | null | undefined) => {
         if (!d) return '—';
-        return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        return fmt.date(d);
     };
 
     return (

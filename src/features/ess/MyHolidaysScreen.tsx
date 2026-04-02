@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { useMyHolidays } from '@/features/company-admin/api';
 import { Loader2, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -12,6 +13,7 @@ const TYPE_STYLES: Record<string, string> = {
 };
 
 export function MyHolidaysScreen() {
+    const fmt = useCompanyFormatter();
     const [year, setYear] = useState(new Date().getFullYear());
     const { data, isLoading } = useMyHolidays(year);
     const holidays = (data?.data ?? []).sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -50,7 +52,7 @@ export function MyHolidaysScreen() {
                                 <div>
                                     <h3 className="font-semibold text-primary-950 dark:text-white">{h.name}</h3>
                                     <p className="text-xs text-neutral-500 mt-0.5">
-                                        {new Date(h.date).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                                        {fmt.date(h.date)}
                                     </p>
                                 </div>
                                 <span className={cn('px-2 py-0.5 text-[10px] font-bold uppercase rounded-full', TYPE_STYLES[h.type] ?? 'bg-neutral-100 text-neutral-500')}>

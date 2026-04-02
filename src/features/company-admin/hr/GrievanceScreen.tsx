@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     AlertTriangle,
     Plus,
@@ -46,10 +47,7 @@ const EMPTY_CASE = {
     status: "Open", assignedTo: "", resolution: "", isAnonymous: false,
 };
 
-const formatDate = (d: string | null | undefined) => {
-    if (!d) return "—";
-    return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-};
+// formatDate moved inside component
 
 /* ── SLA Helper ── */
 
@@ -99,6 +97,8 @@ function PriorityBadge({ priority }: { priority: string }) {
 /* ── Screen ── */
 
 export function GrievanceScreen() {
+    const fmt = useCompanyFormatter();
+    const formatDate = (d: string | null | undefined) => d ? fmt.date(d) : "—";
     const [activeTab, setActiveTab] = useState<"categories" | "cases">("cases");
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("All");

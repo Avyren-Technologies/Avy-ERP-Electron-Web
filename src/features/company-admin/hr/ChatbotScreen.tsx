@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     MessageCircle,
     Send,
@@ -45,6 +46,7 @@ function extractChatMessageRows(historyPayload: unknown): unknown[] {
 /* ── Atoms ── */
 
 function MessageBubble({ message }: { message: ChatMessage }) {
+    const fmt = useCompanyFormatter();
     const isUser = message.role === "user";
     return (
         <div className={cn("flex gap-3 max-w-[80%] animate-in fade-in slide-in-from-bottom-2 duration-300", isUser ? "ml-auto flex-row-reverse" : "mr-auto")}>
@@ -70,7 +72,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
                     "text-[10px] mt-1.5 opacity-60",
                     isUser ? "text-right" : "text-left"
                 )}>
-                    {message.timestamp ? new Date(message.timestamp).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : ""}
+                    {message.timestamp ? fmt.time(message.timestamp) : ""}
                 </div>
             </div>
         </div>

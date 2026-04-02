@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { useMyAppraisals, useMyAppraisalEntry, useSubmitEssSelfReview } from '@/features/company-admin/api';
 import { showSuccess, showApiError } from '@/lib/toast';
 import { cn } from '@/lib/utils';
@@ -284,6 +285,7 @@ function AppraisalDetail({ entryId, onClose }: { entryId: string; onClose: () =>
 // ── Main Screen ──
 
 export function MyAppraisalScreen() {
+    const fmt = useCompanyFormatter();
     const { data, isLoading } = useMyAppraisals();
     const entries = data?.data ?? [];
     const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -328,7 +330,7 @@ export function MyAppraisalScreen() {
                                         </h3>
                                         {entry.cycle?.startDate && (
                                             <p className="text-xs text-neutral-500 mt-0.5">
-                                                {new Date(entry.cycle.startDate).toLocaleDateString()} - {new Date(entry.cycle.endDate).toLocaleDateString()}
+                                                {fmt.date(entry.cycle.startDate)} - {fmt.date(entry.cycle.endDate)}
                                             </p>
                                         )}
                                     </div>

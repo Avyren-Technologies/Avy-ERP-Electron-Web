@@ -106,6 +106,8 @@ export function useCompanySettings() {
     return useQuery({
         queryKey: companyAdminKeys.settings(),
         queryFn: () => companyAdminApi.getSettings(),
+        staleTime: Infinity,
+        gcTime: Infinity,
     });
 }
 

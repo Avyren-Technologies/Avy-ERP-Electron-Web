@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     UserCheck,
     UserX,
@@ -75,9 +76,9 @@ function KpiCard({ label, value, icon: Icon, color }: KpiProps) {
 
 /* ── Helpers ── */
 
-function formatPunchTime(iso: string | null | undefined): string {
+function formatPunchTime(iso: string | null | undefined, fmt: ReturnType<typeof useCompanyFormatter>): string {
     if (!iso) return "—";
-    return new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true });
+    return fmt.timeWithSeconds(iso);
 }
 
 function formatWorkedHrs(value: unknown): string {
@@ -131,7 +132,7 @@ function SourceBadge({ source }: { source: string }) {
 }
 
 /** Normalize a backend attendance record into a flat shape for the table. */
-function normalizeRecord(r: any) {
+function normalizeRecord(r: any, fmt: ReturnType<typeof useCompanyFormatter>) {
     const emp = r.employee ?? {};
     const fullName = [emp.firstName, emp.lastName].filter(Boolean).join(" ");
     return {
@@ -141,7 +142,7 @@ function normalizeRecord(r: any) {
         department: r.department ?? emp.department?.name ?? "",
         designation: r.designation ?? emp.designation?.name ?? "",
         shiftName: r.shift?.name ?? "",
-        shiftTime: r.shift ? `${r.shift.startTime} – ${r.shift.endTime}` : "",
+        shiftTime: r.shift ? `${fmt.shiftTime(r.shift.startTime)} – ${fmt.shiftTime(r.shift.endTime)}` : "",
     };
 }
 
@@ -183,6 +184,7 @@ function DepartmentBreakdown({ departments }: { departments: any[] }) {
 /* ── Screen ── */
 
 export function AttendanceDashboardScreen() {
+    const fmt = useCompanyFormatter();
     const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
     const [department, setDepartment] = useState("");
     const [search, setSearch] = useState("");
@@ -206,7 +208,7 @@ export function AttendanceDashboardScreen() {
     // Backend wraps counts in a `summary` sub-object
     const summary = summaryRaw.summary ?? summaryRaw;
     const rawRecords: any[] = (recordsQuery.data as any)?.data ?? [];
-    const records = rawRecords.map(normalizeRecord);
+    const records = rawRecords.map((r: any) => normalizeRecord(r, fmt));
     const departmentBreakdown: any[] = summaryRaw.departmentBreakdown ?? summaryRaw.departments ?? [];
     const pendingOverrides: any[] = (overridesQuery.data as any)?.data ?? [];
 
@@ -349,7 +351,7 @@ export function AttendanceDashboardScreen() {
                                             <span className="font-bold text-primary-950 dark:text-white">{ov.employeeName ?? ov.employee?.name ?? "—"}</span>
                                         </td>
                                         <td className="py-3 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                            {ov.date ? new Date(ov.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—"}
+                                            {ov.date ? fmt.date(ov.date) : "—"}
                                         </td>
                                         <td className="py-3 px-6 text-center">
                                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 border border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50">
@@ -358,8 +360,8 @@ export function AttendanceDashboardScreen() {
                                         </td>
                                         <td className="py-3 px-6 text-neutral-600 dark:text-neutral-400 max-w-[200px] truncate">{ov.reason ?? "—"}</td>
                                         <td className="py-3 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                            {ov.correctedPunchIn && <div>In: {new Date(ov.correctedPunchIn).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</div>}
-                                            {ov.correctedPunchOut && <div>Out: {new Date(ov.correctedPunchOut).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</div>}
+                                            {ov.correctedPunchIn && <div>In: {fmt.time(ov.correctedPunchIn)}</div>}
+                                            {ov.correctedPunchOut && <div>Out: {fmt.time(ov.correctedPunchOut)}</div>}
                                             {!ov.correctedPunchIn && !ov.correctedPunchOut && "—"}
                                         </td>
                                         <td className="py-3 px-6 text-center">
@@ -480,8 +482,8 @@ export function AttendanceDashboardScreen() {
                                                 <span className="text-xs text-neutral-400">—</span>
                                             )}
                                         </td>
-                                        <td className="py-3.5 px-5 font-mono text-xs text-neutral-600 dark:text-neutral-400">{formatPunchTime(rec.punchIn)}</td>
-                                        <td className="py-3.5 px-5 font-mono text-xs text-neutral-600 dark:text-neutral-400">{formatPunchTime(rec.punchOut)}</td>
+                                        <td className="py-3.5 px-5 font-mono text-xs text-neutral-600 dark:text-neutral-400">{formatPunchTime(rec.punchIn, fmt)}</td>
+                                        <td className="py-3.5 px-5 font-mono text-xs text-neutral-600 dark:text-neutral-400">{formatPunchTime(rec.punchOut, fmt)}</td>
                                         <td className="py-3.5 px-5 font-semibold text-neutral-700 dark:text-neutral-300 text-sm">{formatWorkedHrs(rec.workedHours)}</td>
                                         <td className="py-3.5 px-5 text-center">
                                             <div className="flex flex-col items-center gap-1">

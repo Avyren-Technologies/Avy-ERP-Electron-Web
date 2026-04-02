@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     Building2,
     Edit3,
@@ -203,6 +204,7 @@ function StatCard({ label, count, icon: Icon, to }: {
 // ── Main Screen ──
 
 export function CompanyProfileScreen() {
+    const fmt = useCompanyFormatter();
     const { data, isLoading, isError } = useCompanyProfile();
     const updateMutation = useUpdateProfileSection();
     const addModulesMutation = useAddLocationModules();
@@ -504,7 +506,7 @@ export function CompanyProfileScreen() {
                             <DetailField label="User Tier" value={sub?.userTier ?? "—"} />
                             <DetailField label="Billing Type" value={sub?.billingType ?? "—"} />
                             <DetailField label="Subscription Status" value={sub?.status ?? "—"} />
-                            <DetailField label="Trial Ends" value={sub?.trialEndsAt ? new Date(sub.trialEndsAt).toLocaleDateString() : "—"} />
+                            <DetailField label="Trial Ends" value={sub?.trialEndsAt ? fmt.date(sub.trialEndsAt) : "—"} />
                         </div>
                         {/* Interactive Module Management per Location */}
                         {profile.locations && profile.locations.length > 0 && (

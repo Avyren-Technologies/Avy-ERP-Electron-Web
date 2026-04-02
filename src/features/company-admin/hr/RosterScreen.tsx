@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     CalendarRange,
     Plus,
@@ -138,6 +139,7 @@ const EMPTY_ROSTER = {
 /* ── Screen ── */
 
 export function RosterScreen() {
+    const fmt = useCompanyFormatter();
     const { data, isLoading, isError } = useRosters();
     const createMutation = useCreateRoster();
     const updateMutation = useUpdateRoster();
@@ -288,7 +290,7 @@ export function RosterScreen() {
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{r.weekOff1 ?? "—"}</td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{r.weekOff2 || "—"}</td>
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                            {r.effectiveFrom ? new Date(r.effectiveFrom).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                                            {r.effectiveFrom ? fmt.date(r.effectiveFrom) : "—"}
                                         </td>
                                         <td className="py-4 px-6 text-center">
                                             {r.isDefault ? (

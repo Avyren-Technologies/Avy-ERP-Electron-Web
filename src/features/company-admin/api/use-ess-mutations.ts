@@ -208,6 +208,10 @@ export function useApplyLeave() {
         mutationFn: (data: any) => essApi.applyLeave(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: essKeys.myLeaveBalance() });
+            queryClient.invalidateQueries({ queryKey: leaveKeys.requests() });
+            queryClient.invalidateQueries({ queryKey: leaveKeys.balances() });
+            queryClient.invalidateQueries({ queryKey: leaveKeys.summary() });
+            queryClient.invalidateQueries({ queryKey: essKeys.dashboard() });
         },
     });
 }

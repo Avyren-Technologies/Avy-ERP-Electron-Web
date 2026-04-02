@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     Briefcase,
     Plus,
@@ -102,15 +103,7 @@ const EMPTY_INTERVIEW = {
 
 /* ── Helpers ── */
 
-const formatDate = (d: string | null | undefined) => {
-    if (!d) return "—";
-    return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-};
-
-const formatDateTime = (d: string | null | undefined) => {
-    if (!d) return "—";
-    return new Date(d).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-};
+// formatDate and formatDateTime moved inside component
 
 /* ── Badges ── */
 
@@ -179,6 +172,9 @@ function PriorityBadge({ priority }: { priority: string }) {
 /* ── Screen ── */
 
 export function RequisitionScreen() {
+    const fmt = useCompanyFormatter();
+    const formatDate = (d: string | null | undefined) => d ? fmt.date(d) : "—";
+    const formatDateTime = (d: string | null | undefined) => d ? fmt.dateTime(d) : "—";
     const [activeTab, setActiveTab] = useState<TabKey>("requisitions");
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("All");

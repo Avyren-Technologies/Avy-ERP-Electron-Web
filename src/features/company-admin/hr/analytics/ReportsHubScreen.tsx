@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Users,
@@ -273,14 +274,7 @@ function getLastDayOfMonth() {
   return `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, '0')}-${String(last.getDate()).padStart(2, '0')}`;
 }
 
-function formatDateTime(dateStr: string) {
-  const d = new Date(dateStr);
-  const day = d.getDate();
-  const month = d.toLocaleString('en-US', { month: 'short' });
-  const year = String(d.getFullYear()).slice(2);
-  const time = d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-  return { date: `${day} ${month} '${year}`, time };
-}
+// formatDateTime moved inside component
 
 function summarizeFilters(filters: Record<string, unknown>): string {
   const parts: string[] = [];
@@ -681,6 +675,7 @@ function HistoryTable({
   rateLimitExceeded: boolean;
   onRegenerate: (reportType: string, filters: Record<string, unknown>) => void;
 }) {
+  const fmt = useCompanyFormatter();
   const [page, setPage] = useState(1);
   const [filterCategory, setFilterCategory] = useState('');
   const limit = 10;
@@ -735,7 +730,8 @@ function HistoryTable({
                 {entries.map(entry => {
                   const def = REPORT_DEFINITIONS[entry.reportType];
                   const catConfig = def ? CATEGORY_CONFIG[def.category as Category] : null;
-                  const { date, time } = formatDateTime(entry.createdAt);
+                  const date = fmt.date(entry.createdAt);
+                  const time = fmt.time(entry.createdAt);
 
                   return (
                     <tr key={entry.id} className="bg-transparent hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors">
@@ -822,6 +818,7 @@ function HistoryTable({
 type Tab = 'catalog' | 'history';
 
 export function ReportsHubScreen() {
+    const fmt = useCompanyFormatter();
   const [activeTab, setActiveTab] = useState<Tab>('catalog');
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [downloading, setDownloading] = useState<Record<string, boolean>>({});

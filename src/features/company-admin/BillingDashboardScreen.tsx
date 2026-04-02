@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     CreditCard, TrendingUp, Calendar, CheckCircle, Clock, AlertCircle,
     ChevronRight, ArrowUpRight, IndianRupee, Loader2, Boxes, FileText,
@@ -14,10 +15,7 @@ function formatCurrency(amount: number): string {
     return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
 }
 
-function formatDate(dateStr?: string): string {
-    if (!dateStr) return "—";
-    return new Date(dateStr).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-}
+// formatDate moved inside component
 
 function getStatusConfig(status?: string) {
     switch (status?.toLowerCase()) {
@@ -39,6 +37,8 @@ function getStatusConfig(status?: string) {
 // ── Main Screen ──
 
 export function BillingDashboardScreen() {
+    const fmt = useCompanyFormatter();
+    const formatDate = (d: string | null | undefined) => d ? fmt.date(d) : "—";
     const navigate = useNavigate();
     const subQuery = useMySubscription();
     const costQuery = useMyCostBreakdown();

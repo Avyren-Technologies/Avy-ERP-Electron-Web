@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     CalendarOff,
     Plus,
@@ -24,10 +25,7 @@ import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Helpers ── */
 
-const formatDate = (d: string | null | undefined) => {
-    if (!d) return "—";
-    return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-};
+// formatDate moved inside component
 
 function normalizeLeaveTypeValue(value: unknown): string {
     if (typeof value === "string") return value;
@@ -84,6 +82,8 @@ const EMPTY_FORM = {
 /* ── Screen ── */
 
 export function MyLeaveScreen() {
+    const fmt = useCompanyFormatter();
+    const formatDate = (d: string | null | undefined) => d ? fmt.date(d) : "—";
     const [modalOpen, setModalOpen] = useState(false);
     const [form, setForm] = useState({ ...EMPTY_FORM });
 

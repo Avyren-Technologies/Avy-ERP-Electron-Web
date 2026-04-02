@@ -2,8 +2,10 @@ import React from 'react';
 import { useVisitorStore, type Visitor } from '../../store/visitorStore';
 import { DataTable, type Column } from '../../components/ui/DataTable';
 import { GlassButton } from '../../components/ui/GlassButton';
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 
 export const VisitorBoard: React.FC = () => {
+    const fmt = useCompanyFormatter();
     const { visitors, updateVisitor } = useVisitorStore();
 
     const handleStatusToggle = (vis: Visitor) => {
@@ -20,7 +22,7 @@ export const VisitorBoard: React.FC = () => {
         { key: 'name', header: 'Visitor Name', render: row => <div style={{ fontWeight: 500 }}>{row.name}</div> },
         { key: 'company', header: 'Company' },
         { key: 'host', header: 'Host' },
-        { key: 'expectedTime', header: 'Expected Time', render: row => new Date(row.expectedTime).toLocaleString() },
+        { key: 'expectedTime', header: 'Expected Time', render: row => fmt.dateTime(row.expectedTime) },
         {
             key: 'status',
             header: 'Status',

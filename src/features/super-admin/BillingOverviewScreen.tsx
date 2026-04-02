@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     IndianRupee,
     TrendingUp,
@@ -23,17 +24,7 @@ function formatCurrency(amount: number): string {
     return `₹${amount.toLocaleString('en-IN')}`;
 }
 
-function formatDate(dateStr: string): string {
-    if (!dateStr) return '—';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function getMonthLabel(yearMonth: string): string {
-    const [year, month] = yearMonth.split('-');
-    const date = new Date(parseInt(year), parseInt(month) - 1);
-    return date.toLocaleDateString('en-US', { month: 'short' });
-}
+// formatDate and getMonthLabel moved inside component
 
 function Spinner() {
     return (
@@ -44,6 +35,12 @@ function Spinner() {
 }
 
 export function BillingOverviewScreen() {
+    const fmt = useCompanyFormatter();
+    const formatDate = (d: string) => d ? fmt.date(d) : '—';
+    const getMonthLabel = (yearMonth: string) => {
+        const [year, month] = yearMonth.split('-');
+        return fmt.date(new Date(parseInt(year), parseInt(month) - 1, 1).toISOString());
+    };
     const navigate = useNavigate();
     const summaryQuery = useBillingSummary();
     const invoicesQuery = useInvoices({ page: 1, limit: 10 });

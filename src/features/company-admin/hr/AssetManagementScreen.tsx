@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     Package,
     Plus,
@@ -57,10 +58,7 @@ const EMPTY_ASSIGNMENT = {
     assetId: "", employeeId: "", assignedDate: "", returnDate: "", status: "Assigned", notes: "",
 };
 
-const formatDate = (d: string | null | undefined) => {
-    if (!d) return "—";
-    return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-};
+// formatDate moved inside component
 
 /* ── Badges ── */
 
@@ -79,6 +77,8 @@ function AssetStatusBadge({ status }: { status: string }) {
 /* ── Screen ── */
 
 export function AssetManagementScreen() {
+    const fmt = useCompanyFormatter();
+    const formatDate = (d: string | null | undefined) => d ? fmt.date(d) : "—";
     const [activeTab, setActiveTab] = useState<TabKey>("categories");
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("All");

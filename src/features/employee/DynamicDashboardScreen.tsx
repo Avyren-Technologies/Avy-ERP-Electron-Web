@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef, useId } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { useNavigate } from "react-router-dom";
 import {
     Calendar,
@@ -100,13 +101,8 @@ function getGreeting(): string {
     return "Good evening";
 }
 
-function formatTodayDate(): string {
-    return new Date().toLocaleDateString("en-IN", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-    });
+function formatTodayDate(fmt: ReturnType<typeof useCompanyFormatter>): string {
+    return fmt.date(new Date().toISOString());
 }
 
 function formatDuration(seconds: number): string {
@@ -132,10 +128,9 @@ function formatMaxOneDecimal(value: number): string {
     return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
 }
 
-function formatTimeShort(iso: string | null | undefined): string {
+function formatTimeShort(iso: string | null | undefined, fmt: ReturnType<typeof useCompanyFormatter>): string {
     if (!iso) return "--:--";
-    const d = new Date(iso);
-    return d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+    return fmt.time(iso);
 }
 
 const DEFAULT_DASHBOARD_STATS: DashboardData["stats"] = {
@@ -525,6 +520,7 @@ function AnnouncementTicker({ announcements }: { announcements: DashboardAnnounc
    ================================================================ */
 
 function ShiftCheckInHero({ shift }: { shift: DashboardShiftInfo | null }) {
+    const fmt = useCompanyFormatter();
     const queryClient = useQueryClient();
 
     const [now, setNow] = useState(new Date());
@@ -630,7 +626,7 @@ function ShiftCheckInHero({ shift }: { shift: DashboardShiftInfo | null }) {
                                 <div className="flex items-center gap-2 justify-center lg:justify-start">
                                     <Clock className="w-3.5 h-3.5 text-white/70" />
                                     <span className="text-xs sm:text-sm text-white/90 font-medium tracking-wide">
-                                        {shift.startTime} &mdash; {shift.endTime}
+                                        {fmt.shiftTime(shift.startTime)} &mdash; {fmt.shiftTime(shift.endTime)}
                                     </span>
                                 </div>
                                 {shift.locationName && (
@@ -677,10 +673,10 @@ function ShiftCheckInHero({ shift }: { shift: DashboardShiftInfo | null }) {
                             className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-wide tabular-nums"
                             style={{ fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace" }}
                         >
-                            {now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}
+                            {fmt.timeWithSeconds(now.toISOString())}
                         </p>
                         <p className="text-white/50 text-xs mt-1.5 font-medium">
-                            {now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })}
+                            {fmt.date(now.toISOString())}
                         </p>
                     </div>
 
@@ -909,6 +905,7 @@ function shiftTypeColor(shiftType: string | null): string {
 const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function ShiftCalendarMonth({ calendar }: { calendar: DashboardShiftCalendarDay[] | null }) {
+    const fmt = useCompanyFormatter();
     const today = new Date();
     const [viewMonth, setViewMonth] = useState(today.getMonth());
     const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -948,7 +945,7 @@ function ShiftCalendarMonth({ calendar }: { calendar: DashboardShiftCalendarDay[
     }, [viewYear, viewMonth, calendarMap]);
 
     const selectedDayData = selectedDate ? calendarMap.get(selectedDate) : null;
-    const monthName = new Date(viewYear, viewMonth).toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+    const monthName = fmt.parseToZoned(new Date(viewYear, viewMonth, 1).toISOString()).toFormat('MMMM yyyy');
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
     const goToPrevMonth = () => {
@@ -1030,7 +1027,7 @@ function ShiftCalendarMonth({ calendar }: { calendar: DashboardShiftCalendarDay[
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <span className="text-sm font-bold text-neutral-800 dark:text-white">
-                                    {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })}
+                                    {fmt.date(selectedDate + "T00:00:00")}
                                 </span>
                                 {selectedDayData.isHoliday && (
                                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400">Holiday</span>
@@ -1056,7 +1053,7 @@ function ShiftCalendarMonth({ calendar }: { calendar: DashboardShiftCalendarDay[
                         </div>
                     ) : (
                         <p className="text-xs text-neutral-400 dark:text-neutral-500">
-                            {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })} &mdash; No schedule data
+                            {fmt.date(selectedDate + "T00:00:00")} &mdash; No schedule data
                         </p>
                     )}
                 </div>
@@ -1325,6 +1322,7 @@ function attendanceStatusColor(status: string): string {
 }
 
 function RecentAttendanceList({ records }: { records: DashboardAttendanceDay[] }) {
+    const fmt = useCompanyFormatter();
     const last7 = records.slice(0, 7);
 
     if (last7.length === 0) {
@@ -1348,14 +1346,14 @@ function RecentAttendanceList({ records }: { records: DashboardAttendanceDay[] }
                             <div className="flex items-center gap-3 min-w-0">
                                 <div className="text-center flex-shrink-0 w-10">
                                     <p className="text-xs font-bold text-neutral-800 dark:text-white leading-none">{new Date(day.date).getDate()}</p>
-                                    <p className="text-[9px] text-neutral-400 dark:text-neutral-500 uppercase font-medium">{new Date(day.date).toLocaleDateString("en-IN", { weekday: "short" })}</p>
+                                    <p className="text-[9px] text-neutral-400 dark:text-neutral-500 uppercase font-medium">{fmt.date(day.date)}</p>
                                 </div>
                                 <span className={cn("inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border", attendanceStatusColor(day.status))}>{day.status}</span>
                                 {isLate && <span className="w-2 h-2 rounded-full bg-danger-500 flex-shrink-0" title="Late" />}
                             </div>
                             <div className="flex items-center gap-3 flex-shrink-0">
                                 <span className="text-xs text-neutral-500 dark:text-neutral-400 font-mono tabular-nums">
-                                    {formatTimeShort(day.punchIn)}{day.punchOut ? ` - ${formatTimeShort(day.punchOut)}` : ""}
+                                    {formatTimeShort(day.punchIn, fmt)}{day.punchOut ? ` - ${formatTimeShort(day.punchOut, fmt)}` : ""}
                                 </span>
                                 <span className="text-xs font-bold text-neutral-800 dark:text-white tabular-nums w-12 text-right bg-primary-50 dark:bg-primary-900/20 px-1.5 py-0.5 rounded-lg">
                                     {wh != null ? `${wh.toFixed(1)}h` : "--"}
@@ -1527,6 +1525,7 @@ function holidayTypeBadge(type: string): string {
 }
 
 function UpcomingHolidaysList({ holidays }: { holidays: DashboardHoliday[] }) {
+    const fmt = useCompanyFormatter();
     if (holidays.length === 0) {
         return (
             <PremiumCard>
@@ -1560,13 +1559,13 @@ function UpcomingHolidaysList({ holidays }: { holidays: DashboardHoliday[] }) {
                             )}>
                                 <span className={cn("text-base font-bold leading-none", !thisWeek && "text-primary-600 dark:text-primary-400")}>{d.getDate()}</span>
                                 <span className={cn("text-[8px] font-bold uppercase mt-0.5", thisWeek ? "text-white/80" : "text-primary-400 dark:text-primary-500")}>
-                                    {d.toLocaleDateString("en-IN", { month: "short" })}
+                                    {fmt.date(d.toISOString())}
                                 </span>
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-semibold text-neutral-800 dark:text-white truncate">{h.name}</p>
                                 <div className="flex items-center gap-2 mt-0.5">
-                                    <span className="text-xs text-neutral-500 dark:text-neutral-400">{d.toLocaleDateString("en-IN", { weekday: "long" })}</span>
+                                    <span className="text-xs text-neutral-500 dark:text-neutral-400">{fmt.date(d.toISOString())}</span>
                                     <span className="text-[10px] text-neutral-400 dark:text-neutral-500">{daysLabel}</span>
                                 </div>
                             </div>
@@ -1656,6 +1655,7 @@ function DashboardSkeleton() {
    ================================================================ */
 
 export function DynamicDashboardScreen() {
+    const fmt = useCompanyFormatter();
     const { data: dashboardResponse, isLoading } = useDashboard();
     const user = useAuthStore((s) => s.user);
     const permissions = useAuthStore((s) => s.permissions) || [];
@@ -1684,7 +1684,7 @@ export function DynamicDashboardScreen() {
                     <h1 className="text-2xl sm:text-3xl font-bold text-neutral-800 dark:text-white tracking-tight truncate">
                         {getGreeting()}, {firstName}
                     </h1>
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400">{formatTodayDate()}</p>
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400">{formatTodayDate(fmt)}</p>
                 </div>
                 <button
                     onClick={() => {

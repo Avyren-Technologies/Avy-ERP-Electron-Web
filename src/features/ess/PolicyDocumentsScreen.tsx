@@ -1,4 +1,5 @@
 import { usePolicyDocuments } from '@/features/company-admin/api';
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { Loader2, BookOpen, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -12,6 +13,7 @@ const CATEGORY_STYLES: Record<string, string> = {
 };
 
 export function PolicyDocumentsScreen() {
+    const fmt = useCompanyFormatter();
     const { data, isLoading } = usePolicyDocuments();
     const policies = data?.data ?? [];
 
@@ -46,7 +48,7 @@ export function PolicyDocumentsScreen() {
                                     </div>
                                     <p className="text-xs text-neutral-500 mt-0.5">
                                         {p.version && <>v{p.version} &middot; </>}
-                                        Published: {new Date(p.publishedAt ?? p.createdAt).toLocaleDateString()}
+                                        Published: {fmt.date(p.publishedAt ?? p.createdAt)}
                                     </p>
                                 </div>
                                 {p.fileUrl && (

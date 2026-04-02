@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     FileSignature,
     Plus,
@@ -55,14 +56,13 @@ const AVAILABLE_TOKENS = [
 const EMPTY_TEMPLATE = { name: "", type: "Offer Letter", subject: "", bodyTemplate: "", isActive: true };
 const EMPTY_LETTER = { templateId: "", employeeId: "", effectiveDate: "", customFields: "{}" };
 
-const formatDate = (d: string | null | undefined) => {
-    if (!d) return "—";
-    return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-};
+// formatDate moved inside component
 
 /* ── Screen ── */
 
 export function HRLetterScreen() {
+    const fmt = useCompanyFormatter();
+    const formatDate = (d: string | null | undefined) => d ? fmt.date(d) : "—";
     const [activeTab, setActiveTab] = useState<"templates" | "letters">("templates");
     const [search, setSearch] = useState("");
     const [showTokenRef, setShowTokenRef] = useState(false);

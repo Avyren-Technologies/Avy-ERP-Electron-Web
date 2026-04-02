@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
     ArrowLeft,
@@ -259,6 +260,7 @@ function clearDraft() {
 /* ── Main Screen ── */
 
 export function EmployeeProfileScreen() {
+    const fmt = useCompanyFormatter();
     const { id } = useParams<{ id: string }>();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -664,15 +666,12 @@ export function EmployeeProfileScreen() {
 
     const formatDate = (d: string | null | undefined) => {
         if (!d) return "—";
-        return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+        return fmt.date(d);
     };
 
     const formatDateTime = (d: string | null | undefined) => {
         if (!d) return "—";
-        return new Date(d).toLocaleDateString("en-IN", {
-            day: "numeric", month: "short", year: "numeric",
-            hour: "2-digit", minute: "2-digit",
-        });
+        return fmt.date(d);
     };
 
     const maskAadhaar = (val: string) => {

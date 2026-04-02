@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     FileCheck,
     Plus,
@@ -172,15 +173,52 @@ const formatCurrency = (amount: number | string | undefined) => {
 
 /* ── Screen ── */
 
+/** Compute total declared amount from all sections of a declaration */
+function computeTotalDeclared(d: any): number {
+    let total = 0;
+    const sumObj = (obj: any) => {
+        if (!obj || typeof obj !== "object") return 0;
+        return Object.values(obj).reduce((s: number, v) => s + (typeof v === "number" ? v : (Number(v) || 0)), 0);
+    };
+    // Section 80C (capped)
+    total += Math.min(sumObj(d.section80C), 150000);
+    // Section 80CCD
+    const ccd = d.section80CCD;
+    if (ccd) total += (Number(ccd.npsEmployee) || 0) + Math.min(Number(ccd.npsAdditional) || 0, 50000);
+    // Section 80D
+    total += sumObj(d.section80D);
+    // Other sections (no caps)
+    for (const key of ["section80E", "section80G", "section80GG", "section80TTA", "hraExemption", "ltaExemption", "homeLoanInterest"]) {
+        total += sumObj(d[key]);
+    }
+    return total;
+}
+
+/** Get employee display name from declaration's nested employee object */
+function getEmployeeName(d: any): string {
+    if (d.employeeName) return d.employeeName;
+    const emp = d.employee;
+    if (emp) return [emp.firstName, emp.lastName].filter(Boolean).join(" ") || emp.employeeId || "";
+    return d.employeeId ?? "—";
+}
+
+/** Get employee code from declaration */
+function getEmployeeCode(d: any): string {
+    return d.employee?.employeeId ?? "";
+}
+
 export function ITDeclarationScreen() {
-    const canVerify = useCanPerform('hr:approve') || useCanPerform('hr:update') || useCanPerform('company:configure');
-    const canLock = useCanPerform('hr:approve') || useCanPerform('hr:update') || useCanPerform('company:configure');
-    const isHrUser = useCanPerform('hr:read');
+    const fmt = useCompanyFormatter();
+    // HR admins can verify/lock and see all employees. Regular employees can only see their own.
+    const canVerify = useCanPerform('hr:approve') || useCanPerform('company:configure');
+    const canLock = useCanPerform('hr:approve') || useCanPerform('company:configure');
+    const isHrAdmin = useCanPerform('hr:approve') || useCanPerform('hr:configure') || useCanPerform('company:configure');
 
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("All");
     const [fyFilter, setFyFilter] = useState("");
 
+    // Backend now auto-filters by employeeId for non-HR users, so same hook works for both roles
     const { data, isLoading, isError } = useITDeclarations({
         status: statusFilter === "All" ? undefined : statusFilter.toLowerCase(),
         fy: fyFilter || undefined,
@@ -203,20 +241,20 @@ export function ITDeclarationScreen() {
         declarations: {} as Record<string, any>,
     });
 
-    const declarations: any[] = data?.data ?? [];
+    const rawDeclarations: any[] = data?.data ?? [];
     const employees: any[] = employeesQuery.data?.data ?? [];
 
-    const employeeName = (id: string) => {
-        const emp = employees.find((e: any) => e.id === id);
-        if (!emp) return id;
-        return [emp.firstName, emp.lastName].filter(Boolean).join(" ") || emp.fullName || emp.email || id;
-    };
+    const declarations = rawDeclarations.map((d: any) => ({
+        ...d,
+        _employeeName: getEmployeeName(d),
+        _employeeCode: getEmployeeCode(d),
+        _totalDeclared: d.totalDeclared ?? computeTotalDeclared(d),
+    }));
 
     const filtered = declarations.filter((d: any) => {
         if (!search) return true;
         const s = search.toLowerCase();
-        const eName = employeeName(d.employeeId)?.toLowerCase();
-        return eName?.includes(s);
+        return d._employeeName?.toLowerCase().includes(s) || d._employeeCode?.toLowerCase().includes(s);
     });
 
     const toggleSection = (key: string) => {
@@ -299,7 +337,7 @@ export function ITDeclarationScreen() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">IT Declarations</h1>
-                    <p className="text-neutral-500 dark:text-neutral-400 mt-1">{isHrUser ? "Manage employee income tax declarations (Form 12BB)" : "Your income tax declarations (Form 12BB)"}</p>
+                    <p className="text-neutral-500 dark:text-neutral-400 mt-1">{isHrAdmin ? "Manage employee income tax declarations (Form 12BB)" : "Your income tax declarations (Form 12BB)"}</p>
                 </div>
                 <button
                     onClick={openCreate}
@@ -312,7 +350,7 @@ export function ITDeclarationScreen() {
 
             {/* Toolbar */}
             <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                {isHrUser && (
+                {isHrAdmin && (
                     <div className="relative max-w-md w-full">
                         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400 dark:text-neutral-500" />
                         <input
@@ -369,14 +407,17 @@ export function ITDeclarationScreen() {
                                         <td className="py-4 px-6">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-lg bg-accent-100 dark:bg-accent-900/30 flex items-center justify-center shrink-0 text-xs font-bold text-accent-700 dark:text-accent-400">
-                                                    {employeeName(d.employeeId).charAt(0)}
+                                                    {(d._employeeName || "?").charAt(0)}
                                                 </div>
-                                                <span className="font-bold text-primary-950 dark:text-white">{employeeName(d.employeeId)}</span>
+                                                <div>
+                                                    <span className="font-bold text-primary-950 dark:text-white">{d._employeeName}</span>
+                                                    {d._employeeCode && <span className="block text-[10px] font-mono text-neutral-400 dark:text-neutral-500">{d._employeeCode}</span>}
+                                                </div>
                                             </div>
                                         </td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 font-mono text-xs">{d.financialYear ?? "—"}</td>
                                         <td className="py-4 px-6"><RegimeBadge regime={d.regime ?? "old"} /></td>
-                                        <td className="py-4 px-6 text-right font-mono font-semibold text-primary-950 dark:text-white">{formatCurrency(d.totalDeclared)}</td>
+                                        <td className="py-4 px-6 text-right font-mono font-semibold text-primary-950 dark:text-white">{formatCurrency(d._totalDeclared)}</td>
                                         <td className="py-4 px-6 text-center"><StatusBadge status={d.status ?? "Draft"} /></td>
                                         <td className="py-4 px-6 text-right">
                                             <div className="flex items-center justify-end gap-1">
@@ -420,8 +461,8 @@ export function ITDeclarationScreen() {
                         </div>
                         <div className="p-6 overflow-y-auto flex-1 space-y-5">
                             {/* Top fields */}
-                            <div className={`grid ${isHrUser ? 'grid-cols-3' : 'grid-cols-2'} gap-4`}>
-                                {isHrUser && (
+                            <div className={`grid ${isHrAdmin ? 'grid-cols-3' : 'grid-cols-2'} gap-4`}>
+                                {isHrAdmin && (
                                     <div>
                                         <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Employee</label>
                                         <select value={form.employeeId} onChange={(e) => setForm((p) => ({ ...p, employeeId: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
@@ -512,7 +553,7 @@ export function ITDeclarationScreen() {
             {/* ── Detail Modal ── */}
             {detailTarget && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-lg animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
                             <h2 className="text-lg font-bold text-primary-950 dark:text-white">Declaration Details</h2>
                             <button onClick={() => setDetailTarget(null)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
@@ -521,27 +562,65 @@ export function ITDeclarationScreen() {
                         </div>
                         <div className="p-6 overflow-y-auto flex-1 space-y-4">
                             <div className="flex items-center justify-between">
-                                <span className="text-xs text-neutral-400 uppercase font-semibold">Status</span>
-                                <StatusBadge status={detailTarget.status ?? "Draft"} />
+                                <div className="flex items-center gap-3">
+                                    <StatusBadge status={detailTarget.status ?? "Draft"} />
+                                    <RegimeBadge regime={detailTarget.regime ?? "old"} />
+                                </div>
+                                <span className="font-mono text-xs text-neutral-500">FY {detailTarget.financialYear}</span>
                             </div>
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div>
                                     <span className="text-xs text-neutral-400 block mb-0.5">Employee</span>
-                                    <p className="font-bold text-primary-950 dark:text-white">{employeeName(detailTarget.employeeId)}</p>
-                                </div>
-                                <div>
-                                    <span className="text-xs text-neutral-400 block mb-0.5">Financial Year</span>
-                                    <p className="font-bold text-primary-950 dark:text-white">{detailTarget.financialYear}</p>
-                                </div>
-                                <div>
-                                    <span className="text-xs text-neutral-400 block mb-0.5">Regime</span>
-                                    <RegimeBadge regime={detailTarget.regime ?? "old"} />
+                                    <p className="font-bold text-primary-950 dark:text-white">{detailTarget._employeeName}</p>
+                                    {detailTarget._employeeCode && <p className="text-[10px] font-mono text-neutral-400">{detailTarget._employeeCode}</p>}
                                 </div>
                                 <div>
                                     <span className="text-xs text-neutral-400 block mb-0.5">Total Declared</span>
-                                    <p className="font-bold text-primary-950 dark:text-white font-mono">{formatCurrency(detailTarget.totalDeclared)}</p>
+                                    <p className="font-bold text-xl text-primary-700 dark:text-primary-400 font-mono">{formatCurrency(detailTarget._totalDeclared)}</p>
                                 </div>
                             </div>
+
+                            {/* Section-wise breakdown */}
+                            <div className="space-y-2 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+                                <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Section Breakdown</p>
+                                {DECLARATION_SECTIONS.map((section) => {
+                                    const sectionData = detailTarget[section.key];
+                                    if (!sectionData || typeof sectionData !== "object") return null;
+                                    const entries = Object.entries(sectionData).filter(([, v]) => Number(v) > 0 || (typeof v === "string" && v.trim()));
+                                    if (entries.length === 0) return null;
+                                    const sectionTotal = entries.reduce((s, [, v]) => s + (Number(v) || 0), 0);
+                                    return (
+                                        <div key={section.key} className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-3">
+                                            <div className="flex justify-between items-center mb-1.5">
+                                                <span className="text-xs font-bold text-primary-950 dark:text-white">{section.title}</span>
+                                                {sectionTotal > 0 && <span className="text-xs font-bold text-primary-600 font-mono">{formatCurrency(sectionTotal)}</span>}
+                                            </div>
+                                            <div className="space-y-0.5">
+                                                {entries.map(([key, value]) => {
+                                                    const field = section.fields.find((f) => f.key === key);
+                                                    const label = field?.label ?? key;
+                                                    const numVal = Number(value);
+                                                    return (
+                                                        <div key={key} className="flex justify-between text-xs">
+                                                            <span className="text-neutral-500 dark:text-neutral-400">{label}</span>
+                                                            <span className="font-mono text-neutral-700 dark:text-neutral-300">
+                                                                {numVal > 0 ? formatCurrency(numVal) : String(value)}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {detailTarget.submittedAt && (
+                                <div className="text-xs text-neutral-400 pt-1">Submitted: {fmt.date(detailTarget.submittedAt)}</div>
+                            )}
+                            {detailTarget.verifiedAt && (
+                                <div className="text-xs text-neutral-400">Verified: {fmt.date(detailTarget.verifiedAt)}</div>
+                            )}
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
                             <button onClick={() => setDetailTarget(null)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Close</button>

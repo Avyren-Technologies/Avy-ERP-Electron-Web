@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { useMyGrievances, useFileGrievance } from '@/features/company-admin/api';
 import { useGrievanceCategories } from '@/features/company-admin/api';
 import { Loader2, AlertTriangle, Plus, X } from 'lucide-react';
@@ -14,6 +15,7 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 export function MyGrievancesScreen() {
+    const fmt = useCompanyFormatter();
     const { data, isLoading } = useMyGrievances();
     const cases = data?.data ?? [];
     const [showForm, setShowForm] = useState(false);
@@ -82,7 +84,7 @@ export function MyGrievancesScreen() {
                             <div className="flex items-start justify-between mb-2">
                                 <div>
                                     <h3 className="font-semibold text-primary-950 dark:text-white">{g.category?.name ?? 'General'}</h3>
-                                    <p className="text-xs text-neutral-500 mt-0.5">{new Date(g.createdAt).toLocaleDateString()}</p>
+                                    <p className="text-xs text-neutral-500 mt-0.5">{fmt.date(g.createdAt)}</p>
                                 </div>
                                 <span className={cn('px-2 py-0.5 text-[10px] font-bold uppercase rounded-full', STATUS_STYLES[g.status] ?? STATUS_STYLES.OPEN)}>{g.status}</span>
                             </div>

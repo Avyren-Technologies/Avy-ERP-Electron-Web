@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     useMyExpenseClaims,
     useMyExpenseSummary,
@@ -127,6 +128,7 @@ function SectionHeader({ title }: { title: string }) {
 }
 
 export function MyExpenseClaimsScreen() {
+    const fmt = useCompanyFormatter();
     const { data, isLoading } = useMyExpenseClaims();
     const { data: summaryData } = useMyExpenseSummary();
     const { data: categoriesData } = useEssExpenseCategories();
@@ -642,10 +644,10 @@ export function MyExpenseClaimsScreen() {
                                             )}
                                         </div>
                                         <p className="text-xs text-neutral-500 mt-0.5">
-                                            {new Date(c.createdAt).toLocaleDateString()}
+                                            {fmt.date(c.createdAt)}
                                             {c.fromDate && c.toDate && (
                                                 <span className="ml-2">
-                                                    {new Date(c.fromDate).toLocaleDateString()} - {new Date(c.toDate).toLocaleDateString()}
+                                                    {fmt.date(c.fromDate)} - {fmt.date(c.toDate)}
                                                 </span>
                                             )}
                                         </p>
@@ -706,7 +708,7 @@ export function MyExpenseClaimsScreen() {
                                                     <tr key={item.id}>
                                                         <td className="px-3 py-2 text-neutral-700 dark:text-neutral-300">{item.category?.name ?? item.categoryCode}</td>
                                                         <td className="px-3 py-2 text-neutral-600 dark:text-neutral-400">{item.description}</td>
-                                                        <td className="px-3 py-2 text-neutral-500">{item.expenseDate ? new Date(item.expenseDate).toLocaleDateString() : '-'}</td>
+                                                        <td className="px-3 py-2 text-neutral-500">{item.expenseDate ? fmt.date(item.expenseDate) : '-'}</td>
                                                         <td className="px-3 py-2 text-right font-medium text-primary-700 dark:text-primary-400">{INR.format(item.amount)}</td>
                                                     </tr>
                                                 ))}

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Megaphone, Search, Filter, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -52,6 +53,7 @@ const ALL_PRIORITIES: Priority[] = ["URGENT", "HIGH", "MEDIUM", "LOW"];
    ================================================================ */
 
 export function AnnouncementsScreen() {
+    const fmt = useCompanyFormatter();
     const navigate = useNavigate();
     const { data: dashboardResponse, isLoading } = useDashboard();
     const rawData = dashboardResponse?.data as DashboardData | undefined;
@@ -239,14 +241,7 @@ export function AnnouncementsScreen() {
                                     {a.body}
                                 </p>
                                 <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-3">
-                                    {new Date(a.createdAt).toLocaleDateString("en-IN", {
-                                        weekday: "short",
-                                        day: "numeric",
-                                        month: "short",
-                                        year: "numeric",
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                    })}
+                                    {fmt.date(a.createdAt)}
                                 </p>
                             </div>
                         </div>

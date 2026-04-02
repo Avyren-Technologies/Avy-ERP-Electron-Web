@@ -1,7 +1,9 @@
 import { useMyAssets } from '@/features/company-admin/api';
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { Loader2, Package } from 'lucide-react';
 
 export function MyAssetsScreen() {
+    const fmt = useCompanyFormatter();
     const { data, isLoading } = useMyAssets();
     const assignments = data?.data ?? [];
 
@@ -36,7 +38,7 @@ export function MyAssetsScreen() {
                             <div className="grid grid-cols-2 gap-2 text-xs text-neutral-500">
                                 {a.asset?.serialNumber && <span>S/N: {a.asset.serialNumber}</span>}
                                 {a.asset?.condition && <span>Condition: {a.asset.condition}</span>}
-                                {a.assignedDate && <span>Since: {new Date(a.assignedDate).toLocaleDateString()}</span>}
+                                {a.assignedDate && <span>Since: {fmt.date(a.assignedDate)}</span>}
                             </div>
                         </div>
                     ))}

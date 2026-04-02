@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { UserCircle, Mail, Phone, Briefcase, CreditCard, Shield, Pencil, X, Loader2, Lock, Eye, EyeOff, KeyRound } from "lucide-react";
 import { useMyProfile } from "@/features/company-admin/api/use-ess-queries";
 import { useUpdateMyProfile } from "@/features/company-admin/api/use-ess-mutations";
@@ -88,10 +89,7 @@ export interface EssMyProfileData {
 
 /* ── Helpers ── */
 
-const formatDate = (d: string | null | undefined) => {
-    if (!d) return "—";
-    return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-};
+// formatDate moved inside component
 
 /** Backend sends only last 4 digits in `bankAccountNumber`; format for display. */
 function formatBankAccountLastFour(last4: string | null | undefined): string | undefined {
@@ -240,6 +238,8 @@ const EMPTY_EDIT_FORM = {
 };
 
 export function MyProfileScreen() {
+    const fmt = useCompanyFormatter();
+    const formatDate = (d: string | null | undefined) => d ? fmt.date(d) : "—";
     const [editOpen, setEditOpen] = useState(false);
     const [editForm, setEditForm] = useState({ ...EMPTY_EDIT_FORM });
 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     Stamp,
     Plus,
@@ -28,10 +29,7 @@ import { showSuccess, showApiError } from "@/lib/toast";
 /* ── Helpers ── */
 
 const formatCurrency = (v: number) => `\u20B9${(v ?? 0).toLocaleString("en-IN")}`;
-const formatDate = (d: string | null | undefined) => {
-    if (!d) return "—";
-    return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-};
+// formatDate moved inside component
 
 const FILING_TYPES = [
     { value: "PF", label: "PF" },
@@ -137,6 +135,8 @@ const EMPTY_FILING = {
 /* ── Screen ── */
 
 export function StatutoryFilingScreen() {
+    const fmt = useCompanyFormatter();
+    const formatDate = (d: string | null | undefined) => d ? fmt.date(d) : "—";
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
     const [modalOpen, setModalOpen] = useState(false);

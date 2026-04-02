@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     Clock,
     Plus,
@@ -213,6 +214,7 @@ const EMPTY_BREAK: BreakFormState = {
 /* ── Screen ── */
 
 export function ShiftManagementScreen() {
+    const fmt = useCompanyFormatter();
     const [showHelp, setShowHelp] = useState(false);
     const { data, isLoading, isError } = useCompanyShifts();
     const createMutation = useCreateShift();
@@ -454,7 +456,7 @@ export function ShiftManagementScreen() {
                                                 </span>
                                             </td>
                                             <td className="py-4 px-6 font-mono text-sm text-neutral-700 dark:text-neutral-300">
-                                                {shift.startTime} — {shift.endTime}
+                                                {fmt.shiftTime(shift.startTime)} — {fmt.shiftTime(shift.endTime)}
                                             </td>
                                             <td className="py-4 px-6 text-center">
                                                 {shift.isCrossDay ? (
@@ -564,7 +566,7 @@ export function ShiftManagementScreen() {
                                                         <div>
                                                             <p className="text-xs font-bold text-primary-950 dark:text-white">{brk.name}</p>
                                                             <p className="text-[10px] text-neutral-400">
-                                                                {brk.type} {brk.startTime ? `at ${brk.startTime}` : ""} / {brk.duration}min / {brk.isPaid ? "Paid" : "Unpaid"}
+                                                                {brk.type} {brk.startTime ? `at ${fmt.shiftTime(brk.startTime)}` : ""} / {brk.duration}min / {brk.isPaid ? "Paid" : "Unpaid"}
                                                             </p>
                                                         </div>
                                                     </div>

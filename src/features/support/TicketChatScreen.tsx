@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { useParams, useNavigate } from "react-router-dom";
 import {
     ArrowLeft,
@@ -92,22 +93,22 @@ const CATEGORY_LABELS: Record<string, string> = {
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-function formatTime(dateStr: string): string {
+function formatTime(dateStr: string, fmt: ReturnType<typeof useCompanyFormatter>): string {
     const d = new Date(dateStr);
     const now = new Date();
     const isToday = d.toDateString() === now.toDateString();
 
-    const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const time = fmt.time(dateStr);
     if (isToday) return time;
 
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
     if (d.toDateString() === yesterday.toDateString()) return `Yesterday ${time}`;
 
-    return `${d.toLocaleDateString([], { day: "numeric", month: "short" })} ${time}`;
+    return `${fmt.date(dateStr)} ${time}`;
 }
 
-function formatDateSeparator(dateStr: string): string {
+function formatDateSeparator(dateStr: string, fmt: ReturnType<typeof useCompanyFormatter>): string {
     const d = new Date(dateStr);
     const now = new Date();
     if (d.toDateString() === now.toDateString()) return "Today";
@@ -116,7 +117,7 @@ function formatDateSeparator(dateStr: string): string {
     yesterday.setDate(yesterday.getDate() - 1);
     if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
 
-    return d.toLocaleDateString([], { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    return fmt.date(dateStr);
 }
 
 function shouldShowDateSeparator(messages: SupportMessage[], index: number): boolean {
@@ -202,6 +203,7 @@ function ModuleChangeSummary({ metadata }: { metadata: NonNullable<TicketData["m
 /* ------------------------------------------------------------------ */
 
 export function TicketChatScreen() {
+    const fmt = useCompanyFormatter();
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const user = useAuthStore((s) => s.user);
@@ -361,7 +363,7 @@ export function TicketChatScreen() {
                                 <div className="flex items-center justify-center py-3">
                                     <div className="flex-1 border-t border-neutral-200 dark:border-neutral-700" />
                                     <span className="px-3 text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
-                                        {formatDateSeparator(msg.createdAt)}
+                                        {formatDateSeparator(msg.createdAt, fmt)}
                                     </span>
                                     <div className="flex-1 border-t border-neutral-200 dark:border-neutral-700" />
                                 </div>
@@ -396,7 +398,7 @@ export function TicketChatScreen() {
                                                         <span className="text-[10px] text-neutral-300 dark:text-neutral-600">{"\u00B7"}</span>
                                                     </>
                                                 )}
-                                                <span className="text-[10px] text-neutral-400">{formatTime(msg.createdAt)}</span>
+                                                <span className="text-[10px] text-neutral-400">{formatTime(msg.createdAt, fmt)}</span>
                                                 {own && <Check className="w-3 h-3 text-neutral-400" />}
                                             </div>
                                         </div>

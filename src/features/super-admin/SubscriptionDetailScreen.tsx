@@ -2,6 +2,7 @@
 // Subscription Detail Screen — Per-location cost breakdown & actions
 // ============================================================
 import { useState } from 'react';
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     ArrowLeft, CreditCard, Users, Layers, Calendar, RefreshCw,
@@ -64,15 +65,6 @@ function formatCurrency(amount?: number): string {
     return `\u20B9${amount.toLocaleString('en-IN')}`;
 }
 
-function formatDate(dateStr?: string): string {
-    if (!dateStr) return '--';
-    try {
-        return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-    } catch {
-        return dateStr;
-    }
-}
-
 const isReactivatable = (status: SubscriptionStatus) =>
     status === 'SUSPENDED' || status === 'CANCELLED' || status === 'EXPIRED';
 
@@ -114,7 +106,13 @@ function AmcBadge({ status }: { status: AmcStatus }) {
     );
 }
 
-function LocationCardWeb({ location }: { location: LocationCostBreakdown }) {
+function LocationCardWeb({
+    location,
+    formatDate,
+}: {
+    location: LocationCostBreakdown;
+    formatDate: (d: string | null | undefined) => string;
+}) {
     const showAmc = location.billingType === 'ONE_TIME_AMC' && location.endpointType === 'default';
 
     return (
@@ -244,6 +242,8 @@ function RadioOption({
 // ============ MAIN SCREEN ============
 
 export function SubscriptionDetailScreen() {
+    const fmt = useCompanyFormatter();
+    const formatDate = (d: string | null | undefined) => d ? fmt.date(d) : "—";
     const { companyId } = useParams<{ companyId: string }>();
     const navigate = useNavigate();
 
@@ -478,7 +478,7 @@ export function SubscriptionDetailScreen() {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                         {locations.map((loc) => (
-                            <LocationCardWeb key={loc.locationId} location={loc} />
+                            <LocationCardWeb key={loc.locationId} location={loc} formatDate={formatDate} />
                         ))}
                     </div>
                 )}

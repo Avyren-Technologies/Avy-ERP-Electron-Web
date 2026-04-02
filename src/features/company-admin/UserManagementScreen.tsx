@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     Users,
     Plus,
@@ -163,6 +164,7 @@ const EMPTY_USER = {
 };
 
 export function UserManagementScreen() {
+    const fmt = useCompanyFormatter();
     const [search, setSearch] = useState("");
     const [roleFilter, setRoleFilter] = useState("All");
     const [statusFilter, setStatusFilter] = useState("All");
@@ -266,14 +268,7 @@ export function UserManagementScreen() {
 
     const formatDate = (d: string | null | undefined) => {
         if (!d) return "—";
-        return new Date(d).toLocaleString("en-IN", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-        });
+        return fmt.dateTime(d);
     };
 
     return (

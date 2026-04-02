@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     ArrowLeft, MessageSquare, Send, Zap, CheckCircle2, XCircle,
@@ -88,25 +89,22 @@ function getPriorityStyle(priority: string): string {
     }
 }
 
-function formatTimestamp(ts: string): string {
+function formatTimestamp(ts: string, fmt: ReturnType<typeof useCompanyFormatter>): string {
     try {
-        return new Date(ts).toLocaleString('en-IN', {
-            day: '2-digit', month: 'short', year: 'numeric',
-            hour: '2-digit', minute: '2-digit', hour12: true,
-        });
+        return fmt.dateTime(ts);
     } catch {
         return ts;
     }
 }
 
-function formatDateSeparator(dateStr: string): string {
+function formatDateSeparator(dateStr: string, fmt: ReturnType<typeof useCompanyFormatter>): string {
     const d = new Date(dateStr);
     const now = new Date();
     if (d.toDateString() === now.toDateString()) return 'Today';
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
     if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
-    return d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    return fmt.date(dateStr);
 }
 
 function shouldShowDateSeparator(messages: any[], index: number): boolean {
@@ -130,6 +128,7 @@ function isSameSenderGroup(messages: any[], index: number): boolean {
 /* ------------------------------------------------------------------ */
 
 export function SupportTicketDetailScreen() {
+    const fmt = useCompanyFormatter();
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
 
@@ -243,7 +242,7 @@ export function SupportTicketDetailScreen() {
                         </h1>
                     </div>
                     <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-0.5">
-                        Ticket #{ticket.id?.slice(0, 8)} &middot; Created {formatTimestamp(ticket.createdAt)}
+                        Ticket #{ticket.id?.slice(0, 8)} &middot; Created {formatTimestamp(ticket.createdAt, fmt)}
                     </p>
                 </div>
             </div>
@@ -397,7 +396,7 @@ export function SupportTicketDetailScreen() {
                                             <div className="flex items-center justify-center py-3">
                                                 <div className="flex-1 border-t border-neutral-200 dark:border-neutral-700" />
                                                 <span className="px-3 text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
-                                                    {formatDateSeparator(msg.createdAt)}
+                                                    {formatDateSeparator(msg.createdAt, fmt)}
                                                 </span>
                                                 <div className="flex-1 border-t border-neutral-200 dark:border-neutral-700" />
                                             </div>
@@ -406,7 +405,7 @@ export function SupportTicketDetailScreen() {
                                         {isSystem ? (
                                             <div className="text-center">
                                                 <p className="text-xs text-neutral-400 dark:text-neutral-500 italic font-medium">{msg.body}</p>
-                                                <p className="text-[10px] text-neutral-300 dark:text-neutral-600 mt-0.5">{formatTimestamp(msg.createdAt)}</p>
+                                                <p className="text-[10px] text-neutral-300 dark:text-neutral-600 mt-0.5">{formatTimestamp(msg.createdAt, fmt)}</p>
                                             </div>
                                         ) : (
                                             <div className={cn('flex', isSuperAdmin ? 'justify-end' : 'justify-start', sameGroup ? 'mt-1' : 'mt-3')}>
@@ -427,7 +426,7 @@ export function SupportTicketDetailScreen() {
                                                     <p className="text-sm whitespace-pre-wrap">{msg.body}</p>
                                                     <div className={cn('flex items-center gap-1 mt-1.5', isSuperAdmin ? 'justify-end' : '')}>
                                                         <p className={cn('text-[10px]', isSuperAdmin ? 'text-primary-200' : 'text-neutral-400 dark:text-neutral-500')}>
-                                                            {formatTimestamp(msg.createdAt)}
+                                                            {formatTimestamp(msg.createdAt, fmt)}
                                                         </p>
                                                         {isSuperAdmin && <Check className="w-3 h-3 text-primary-200" />}
                                                     </div>

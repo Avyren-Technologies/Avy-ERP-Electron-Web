@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     Gift,
     Plus,
@@ -144,6 +145,7 @@ interface PreviewItem {
 /* ── Screen ── */
 
 export function BonusBatchScreen() {
+    const fmt = useCompanyFormatter();
     const [search, setSearch] = useState("");
     const [modalOpen, setModalOpen] = useState(false);
     const [detailId, setDetailId] = useState<string | null>(null);
@@ -383,7 +385,7 @@ export function BonusBatchScreen() {
                                         </td>
                                         <td className="py-4 px-6 text-center"><StatusBadge status={b.status ?? "DRAFT"} /></td>
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                            {b.createdAt ? new Date(b.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                                            {b.createdAt ? fmt.date(b.createdAt) : "—"}
                                         </td>
                                         <td className="py-4 px-6 text-right">
                                             <div className="flex items-center justify-end gap-1">

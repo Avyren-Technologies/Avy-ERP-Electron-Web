@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     UserCheck,
     Loader2,
@@ -83,6 +84,7 @@ const DECISIONS = [
 /* ── Screen ── */
 
 export function ProbationReviewScreen() {
+    const fmt = useCompanyFormatter();
     const [search, setSearch] = useState("");
     const [reviewModalOpen, setReviewModalOpen] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
@@ -257,7 +259,7 @@ export function ProbationReviewScreen() {
                                             <td className="py-4 px-6 text-neutral-700 dark:text-neutral-300 text-xs">{e.department ?? "—"}</td>
                                             <td className="py-4 px-6 text-neutral-700 dark:text-neutral-300 text-xs">{e.designation ?? "—"}</td>
                                             <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                                {(e.probationEndDate ?? e.probationEnd) ? new Date(e.probationEndDate ?? e.probationEnd).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                                                {(e.probationEndDate ?? e.probationEnd) ? fmt.date(e.probationEndDate ?? e.probationEnd) : "—"}
                                             </td>
                                             <td className="py-4 px-6 text-center">
                                                 <UrgencyBadge daysRemaining={days} />
