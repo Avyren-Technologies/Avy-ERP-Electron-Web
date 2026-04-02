@@ -396,13 +396,30 @@ export function LoginScreen() {
                         </div>
                     )}
 
-                    {/* Terms Disclaimer */}
-                    <p className="mt-5 text-center text-[11px] text-neutral-400 dark:text-neutral-500 leading-relaxed px-2">
-                        By signing in, you agree to our{" "}
-                        <a href="#" className="font-semibold text-primary-600 dark:text-primary-400 hover:underline">Terms of Service</a>{" "}
-                        and{" "}
-                        <a href="#" className="font-semibold text-primary-600 dark:text-primary-400 hover:underline">Privacy Policy</a>.
-                    </p>
+                    {/* Terms Disclaimer — main/admin domains only */}
+                    {!isTenantMode && (
+                        <p className="mt-5 text-center text-[11px] text-neutral-400 dark:text-neutral-500 leading-relaxed px-2">
+                            By signing in, you agree to our{" "}
+                            <a href="#" className="font-semibold text-primary-600 dark:text-primary-400 hover:underline">Terms of Service</a>{" "}
+                            and{" "}
+                            <a href="#" className="font-semibold text-primary-600 dark:text-primary-400 hover:underline">Privacy Policy</a>.
+                        </p>
+                    )}
+
+                    {/* Powered by — tenant domains only */}
+                    {isTenantMode && (
+                        <p className="text-center text-xs text-neutral-400 dark:text-neutral-500 mt-6">
+                            Powered by{' '}
+                            <a
+                                href="https://avyrentechnologies.com"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary-500 hover:text-primary-600 font-medium transition-colors"
+                            >
+                                Avyren Technologies
+                            </a>
+                        </p>
+                    )}
 
                     {/* ── Register CTA — Highlighted ── */}
                     {isMainMode && (
