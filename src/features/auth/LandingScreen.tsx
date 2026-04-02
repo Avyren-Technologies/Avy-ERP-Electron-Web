@@ -182,7 +182,7 @@ export function LandingScreen() {
                                     <ArrowRight className="relative w-4 h-4 group-hover:translate-x-1 group-hover:text-white transition-all" />
                                 </button>
                                 <button
-                                    onClick={() => navigate("/login")}
+                                    onClick={() => navigate("/register")}
                                     className="group inline-flex items-center gap-2 px-8 py-4 rounded-xl font-bold text-base border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:border-primary-400 dark:hover:border-primary-600 hover:text-primary-600 dark:hover:text-primary-400 transition-all"
                                 >
                                     <span>Register Company</span>
