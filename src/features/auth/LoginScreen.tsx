@@ -7,6 +7,8 @@ import * as z from "zod";
 import { useLoginMutation } from "@/lib/api/use-auth-mutations";
 import { CustomLoader } from "@/components/ui/CustomLoader";
 import { cn } from "@/lib/utils";
+import { getTenantContext } from "@/lib/tenant";
+import { useTenantBranding } from "@/lib/api/auth";
 import companyLogo from "@/assets/logo/Company-Logo.png";
 
 const loginSchema = z.object({
@@ -109,6 +111,10 @@ function MetricCounter({ icon: Icon, value, suffix, label, color, delay }: {
 export function LoginScreen() {
     const navigate = useNavigate();
     const loginMutation = useLoginMutation();
+    const tenantContext = getTenantContext();
+    const { data: branding } = useTenantBranding(tenantContext.slug);
+    const isTenantMode = tenantContext.mode === 'tenant';
+    const isMainMode = tenantContext.mode === 'main';
 
     const [focusedInput, setFocusedInput] = useState<"email" | "password" | null>(null);
     const [showPassword, setShowPassword] = useState(false);
@@ -236,6 +242,17 @@ export function LoginScreen() {
                         </div>
                     )}
 
+                    {isTenantMode && branding?.exists && (
+                        <div className="text-center mb-6">
+                            {branding.logoUrl ? (
+                                <img src={branding.logoUrl} alt={branding.companyName} className="h-14 mx-auto mb-3 object-contain" />
+                            ) : null}
+                            <h3 className="text-lg font-semibold text-neutral-800 dark:text-white">
+                                {branding.companyName}
+                            </h3>
+                        </div>
+                    )}
+
                     <div className="mb-8">
                         <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">Sign In</h2>
                         <p className="text-neutral-500 dark:text-neutral-400 text-sm">Enter your credentials to continue</p>
@@ -355,6 +372,18 @@ export function LoginScreen() {
                                 </>
                             )}
                         </button>
+                        {isMainMode && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setValue("email", "demo-admin@avyerp.com");
+                                    setValue("password", "demo123");
+                                }}
+                                className="w-full h-14 border-2 border-primary-200 dark:border-primary-800 text-primary-600 dark:text-primary-400 rounded-xl font-semibold hover:bg-primary-50 dark:hover:bg-primary-950 transition-colors"
+                            >
+                                Try Demo
+                            </button>
+                        )}
                     </form>
 
                     {loginMutation.isError && (
@@ -376,14 +405,19 @@ export function LoginScreen() {
                     </p>
 
                     {/* ── Register CTA — Highlighted ── */}
-                    <div className="mt-8 pt-6 border-t border-neutral-100 dark:border-neutral-800 flex flex-col items-center gap-4">
-                        <p className="text-sm text-neutral-500 dark:text-neutral-400 font-medium">New to Avy ERP?</p>
-                        <button className="relative flex items-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-primary-50 to-accent-50 dark:from-primary-950/50 dark:to-accent-950/50 border-2 border-primary-200 dark:border-primary-800 text-primary-700 dark:text-primary-300 font-bold hover:border-primary-400 dark:hover:border-primary-600 hover:shadow-md hover:shadow-primary-500/10 transition-all w-full justify-center group">
-                            <Building className="w-4 h-4 text-primary-500 group-hover:text-primary-600 dark:group-hover:text-primary-300 transition-colors" />
-                            <span>Register Your Company</span>
-                            <ArrowUpRight className="w-4 h-4 ml-1 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all text-primary-400 group-hover:text-primary-600 dark:group-hover:text-primary-300" />
-                        </button>
-                    </div>
+                    {isMainMode && (
+                        <div className="mt-8 pt-6 border-t border-neutral-100 dark:border-neutral-800 flex flex-col items-center gap-4">
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400 font-medium">New to Avy ERP?</p>
+                            <button
+                                onClick={() => navigate("/register")}
+                                className="relative flex items-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-primary-50 to-accent-50 dark:from-primary-950/50 dark:to-accent-950/50 border-2 border-primary-200 dark:border-primary-800 text-primary-700 dark:text-primary-300 font-bold hover:border-primary-400 dark:hover:border-primary-600 hover:shadow-md hover:shadow-primary-500/10 transition-all w-full justify-center group"
+                            >
+                                <Building className="w-4 h-4 text-primary-500 group-hover:text-primary-600 dark:group-hover:text-primary-300 transition-colors" />
+                                <span>Register Your Company</span>
+                                <ArrowUpRight className="w-4 h-4 ml-1 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all text-primary-400 group-hover:text-primary-600 dark:group-hover:text-primary-300" />
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
