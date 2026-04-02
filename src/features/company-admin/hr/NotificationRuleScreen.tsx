@@ -63,7 +63,7 @@ const EMPTY_FORM = {
     templateId: "",
     recipientRole: "",
     channel: "email",
-    active: true,
+    isActive: true,
 };
 
 /* ── Helpers ── */
@@ -126,7 +126,7 @@ export function NotificationRuleScreen() {
             templateId: r.templateId ?? "",
             recipientRole: r.recipientRole ?? "",
             channel: r.channel ?? "email",
-            active: r.active ?? true,
+            isActive: r.isActive ?? r.active ?? true,
         });
         setModalOpen(true);
     };
@@ -226,7 +226,7 @@ export function NotificationRuleScreen() {
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 capitalize">{roleLabel(r.recipientRole)}</td>
                                         <td className="py-4 px-6"><ChannelBadge channel={r.channel} /></td>
                                         <td className="py-4 px-6 text-center">
-                                            {r.active ? (
+                                            {(r.isActive ?? r.active ?? true) ? (
                                                 <CheckCircle2 size={16} className="text-success-500 inline-block" />
                                             ) : (
                                                 <XCircle size={16} className="text-neutral-300 dark:text-neutral-600 inline-block" />
@@ -289,7 +289,7 @@ export function NotificationRuleScreen() {
                                 </select>
                             </div>
                             <label className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400 cursor-pointer pt-1">
-                                <input type="checkbox" checked={form.active} onChange={(e) => setForm((p) => ({ ...p, active: e.target.checked }))} className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500" />
+                                <input type="checkbox" checked={form.isActive} onChange={(e) => setForm((p) => ({ ...p, isActive: e.target.checked }))} className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500" />
                                 Active
                             </label>
                         </div>

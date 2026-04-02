@@ -22,12 +22,19 @@ import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Constants ── */
 
-const EMPTY_STEP = { approverRole: "", slaHours: 24, autoEscalate: false, autoApprove: false };
+const EMPTY_STEP = {
+    stepOrder: 1,
+    approverRole: "",
+    slaHours: 24,
+    autoEscalate: false,
+    autoApprove: false,
+    autoReject: false,
+};
 
 const EMPTY_FORM = {
     name: "",
     triggerEvent: "",
-    active: true,
+    isActive: true,
     steps: [{ ...EMPTY_STEP }],
 };
 
@@ -77,19 +84,31 @@ export function ApprovalWorkflowScreen() {
         setForm({
             name: w.name ?? "",
             triggerEvent: w.triggerEvent ?? "",
-            active: w.active ?? true,
+            isActive: w.isActive ?? w.active ?? true,
             steps: (w.steps ?? []).length > 0 ? w.steps.map((s: any) => ({ ...EMPTY_STEP, ...s })) : [{ ...EMPTY_STEP }],
         });
         setModalOpen(true);
     };
 
     const handleSave = async () => {
+        const payload = {
+            ...form,
+            steps: form.steps.map((s: any, i: number) => ({
+                approverRole: s.approverRole,
+                slaHours: Math.max(1, Number(s.slaHours) || 24),
+                autoEscalate: s.autoEscalate ?? false,
+                autoApprove: s.autoApprove ?? false,
+                autoReject: s.autoReject ?? false,
+                ...(s.approverId ? { approverId: s.approverId } : {}),
+                stepOrder: s.stepOrder ?? i + 1,
+            })),
+        };
         try {
             if (editId) {
-                await updateMutation.mutateAsync({ id: editId, data: form });
+                await updateMutation.mutateAsync({ id: editId, data: payload });
                 showSuccess("Workflow Updated", `"${form.name}" has been updated.`);
             } else {
-                await createMutation.mutateAsync(form);
+                await createMutation.mutateAsync(payload);
                 showSuccess("Workflow Created", `"${form.name}" has been created.`);
             }
             setModalOpen(false);
@@ -110,9 +129,10 @@ export function ApprovalWorkflowScreen() {
     };
 
     const toggleActive = async (w: any) => {
+        const currentIsActive = w.isActive ?? w.active ?? true;
         try {
-            await updateMutation.mutateAsync({ id: w.id, data: { ...w, active: !w.active } });
-            showSuccess(w.active ? "Workflow Deactivated" : "Workflow Activated", `"${w.name}" is now ${w.active ? "inactive" : "active"}.`);
+            await updateMutation.mutateAsync({ id: w.id, data: { isActive: !currentIsActive } });
+            showSuccess(currentIsActive ? "Workflow Deactivated" : "Workflow Activated", `"${w.name}" is now ${currentIsActive ? "inactive" : "active"}.`);
         } catch (err) {
             showApiError(err);
         }
@@ -183,6 +203,9 @@ export function ApprovalWorkflowScreen() {
                             </thead>
                             <tbody className="text-sm">
                                 {filtered.map((w: any) => (
+                                    (() => {
+                                        const isWorkflowActive = w.isActive ?? w.active ?? true;
+                                        return (
                                     <tr key={w.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
                                         <td className="py-4 px-6">
                                             <div className="flex items-center gap-3">
@@ -199,10 +222,10 @@ export function ApprovalWorkflowScreen() {
                                                 onClick={() => toggleActive(w)}
                                                 className={cn(
                                                     "w-10 h-6 rounded-full transition-colors relative inline-block",
-                                                    w.active ? "bg-success-500" : "bg-neutral-300 dark:bg-neutral-700"
+                                                    isWorkflowActive ? "bg-success-500" : "bg-neutral-300 dark:bg-neutral-700"
                                                 )}
                                             >
-                                                <div className={cn("w-4 h-4 rounded-full bg-white absolute top-1 transition-all", w.active ? "left-5" : "left-1")} />
+                                                <div className={cn("w-4 h-4 rounded-full bg-white absolute top-1 transition-all", isWorkflowActive ? "left-5" : "left-1")} />
                                             </button>
                                         </td>
                                         <td className="py-4 px-6 text-right">
@@ -216,6 +239,8 @@ export function ApprovalWorkflowScreen() {
                                             </div>
                                         </td>
                                     </tr>
+                                        );
+                                    })()
                                 ))}
                             </tbody>
                         </table>

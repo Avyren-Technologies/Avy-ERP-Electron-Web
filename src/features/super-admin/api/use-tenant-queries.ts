@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tenantApi } from '@/lib/api/tenant';
+import { showApiError } from '@/lib/toast';
 
 export const tenantKeys = {
     all: ['tenants'] as const,
@@ -36,6 +37,7 @@ export function useOnboardTenant() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: tenantKeys.all });
         },
+        onError: (err) => showApiError(err),
     });
 }
 

@@ -54,7 +54,7 @@ const EMPTY_FORM = {
     channel: "email",
     subject: "",
     body: "",
-    active: true,
+    isActive: true,
 };
 
 /* ── Helpers ── */
@@ -111,7 +111,7 @@ export function NotificationTemplateScreen() {
             channel: t.channel ?? "email",
             subject: t.subject ?? "",
             body: t.body ?? "",
-            active: t.active ?? true,
+            isActive: t.isActive ?? t.active ?? true,
         });
         setModalOpen(true);
     };
@@ -213,7 +213,7 @@ export function NotificationTemplateScreen() {
                                         <td className="py-4 px-6"><ChannelBadge channel={t.channel} /></td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-sm truncate max-w-[250px]">{t.subject || "—"}</td>
                                         <td className="py-4 px-6 text-center">
-                                            {t.active ? (
+                                            {(t.isActive ?? t.active ?? true) ? (
                                                 <CheckCircle2 size={16} className="text-success-500 inline-block" />
                                             ) : (
                                                 <XCircle size={16} className="text-neutral-300 dark:text-neutral-600 inline-block" />
@@ -278,8 +278,8 @@ export function NotificationTemplateScreen() {
                                             <label className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400 cursor-pointer">
                                                 <input
                                                     type="checkbox"
-                                                    checked={form.active}
-                                                    onChange={(e) => setForm((p) => ({ ...p, active: e.target.checked }))}
+                                                    checked={form.isActive}
+                                                    onChange={(e) => setForm((p) => ({ ...p, isActive: e.target.checked }))}
                                                     className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
                                                 />
                                                 Active

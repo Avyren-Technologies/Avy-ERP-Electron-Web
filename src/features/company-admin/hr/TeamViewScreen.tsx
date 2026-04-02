@@ -28,7 +28,16 @@ import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Helpers ── */
 
-// formatDate moved inside component
+/** API may return a string or a nested `{ id, name }` relation — React cannot render plain objects as text. */
+function displayField(value: unknown, fallback = "—"): string {
+    if (value == null || value === "") return fallback;
+    if (typeof value === "string") return value;
+    if (typeof value === "object" && value !== null && "name" in value) {
+        const n = (value as { name?: unknown }).name;
+        if (typeof n === "string" && n.length > 0) return n;
+    }
+    return fallback;
+}
 
 function StatusBadge({ status }: { status: string }) {
     const s = status?.toLowerCase();
@@ -72,7 +81,39 @@ export function TeamViewScreen() {
     const rejectMutation = useRejectRequest();
 
     const teamMembers: any[] = (teamQuery.data?.data as any) ?? [];
-    const pendingApprovals: any[] = (pendingQuery.data?.data as any) ?? [];
+    const pendingApprovalsRaw = pendingQuery.data?.data as any;
+    const pendingApprovals: any[] = (() => {
+        if (Array.isArray(pendingApprovalsRaw)) return pendingApprovalsRaw;
+        if (!pendingApprovalsRaw) return [];
+        // Backend returns { leaveRequests: [], overrides: [] } — flatten into a single list
+        const items: any[] = [];
+        if (Array.isArray(pendingApprovalsRaw.leaveRequests)) {
+            for (const lr of pendingApprovalsRaw.leaveRequests) {
+                items.push({
+                    id: lr.id,
+                    employeeName: [lr.employee?.firstName, lr.employee?.lastName].filter(Boolean).join(" ") || "Employee",
+                    requestType: "Leave Request",
+                    description: `${lr.leaveType?.name ?? "Leave"}: ${lr.days ?? 1} day(s) — ${lr.reason ?? ""}`,
+                    status: lr.status,
+                    createdAt: lr.createdAt,
+                });
+            }
+        }
+        if (Array.isArray(pendingApprovalsRaw.overrides)) {
+            for (const ov of pendingApprovalsRaw.overrides) {
+                const emp = ov.attendanceRecord?.employee;
+                items.push({
+                    id: ov.id,
+                    employeeName: [emp?.firstName, emp?.lastName].filter(Boolean).join(" ") || "Employee",
+                    requestType: "Attendance Regularization",
+                    description: `${ov.issueType ?? "Correction"} — ${ov.reason ?? ""}`,
+                    status: ov.status,
+                    createdAt: ov.createdAt,
+                });
+            }
+        }
+        return items;
+    })();
     const teamAttendance: any[] = (attendanceQuery.data?.data as any) ?? [];
     const leaveCalendar: any[] = (leaveCalendarQuery.data?.data as any) ?? [];
 
@@ -134,8 +175,8 @@ export function TeamViewScreen() {
                                         <div className="flex-1 min-w-0">
                                             <p className="font-bold text-primary-950 dark:text-white text-sm truncate">{name}</p>
                                             <div className="flex items-center gap-3 mt-0.5">
-                                                <span className="text-[10px] text-neutral-400 flex items-center gap-1"><Briefcase size={9} />{m.designation ?? m.jobTitle ?? "—"}</span>
-                                                <span className="text-[10px] text-neutral-400">{m.department ?? ""}</span>
+                                                <span className="text-[10px] text-neutral-400 flex items-center gap-1"><Briefcase size={9} />{displayField(m.designation ?? m.jobTitle)}</span>
+                                                <span className="text-[10px] text-neutral-400">{displayField(m.department, "")}</span>
                                             </div>
                                         </div>
                                         {m.email && (
@@ -282,7 +323,7 @@ export function TeamViewScreen() {
                                     <div className="flex-1 min-w-0">
                                         <p className="font-bold text-primary-950 dark:text-white text-sm truncate">{entry.employeeName ?? "Employee"}</p>
                                         <p className="text-[10px] text-neutral-400">
-                                            {formatDate(entry.startDate)} - {formatDate(entry.endDate)} &bull; {entry.leaveType ?? "Leave"} &bull; {entry.days ?? 1} day(s)
+                                            {formatDate(entry.startDate)} - {formatDate(entry.endDate)} &bull; {displayField(entry.leaveType, "Leave")} &bull; {entry.days ?? 1} day(s)
                                         </p>
                                     </div>
                                     <StatusBadge status={entry.status ?? "Approved"} />

@@ -325,7 +325,13 @@ export function EmployeeProfileScreen() {
     const costCentreOptions = useMemo(() => (costCentresQuery.data?.data ?? []).map((c: any) => ({ value: c.id, label: `${c.code ?? ""} - ${c.name}` })), [costCentresQuery.data]);
     const locationOptions = useMemo(() => (locationsQuery.data?.data ?? []).map((l: any) => ({ value: l.id, label: l.name })), [locationsQuery.data]);
     const shiftOptions = useMemo(() => (shiftsQuery.data?.data ?? []).map((s: any) => ({ value: s.id, label: s.name })), [shiftsQuery.data]);
-    const managerOptions = useMemo(() => (employeesQuery.data?.data ?? []).filter((e: any) => e.id !== id).map((e: any) => ({ value: e.id, label: [e.firstName, e.lastName].filter(Boolean).join(" ") || e.officialEmail || e.id })), [employeesQuery.data, id]);
+    const managerOptions = useMemo(() => (employeesQuery.data?.data ?? []).filter((e: any) => e.id !== id).map((e: any) => {
+        const name = [e.firstName, e.lastName].filter(Boolean).join(" ") || e.officialEmail || e.id;
+        const empId = e.employeeId ?? "";
+        const role = e.designation?.name ?? e.designationName ?? "";
+        const parts = [name, empId && `(${empId})`, role && `— ${role}`].filter(Boolean);
+        return { value: e.id, label: parts.join(" ") };
+    }), [employeesQuery.data, id]);
 
     // Populate from API
     useEffect(() => {

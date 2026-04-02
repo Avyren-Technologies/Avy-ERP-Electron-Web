@@ -445,7 +445,7 @@ export function TenantOnboardingWizard({ onClose, onSuccess }: TenantOnboardingW
             reset();
         } catch (e: any) {
             console.error('Failed to create company', e);
-            const msg = e?.response?.data?.message ?? e?.message ?? 'Failed to create company. Please try again.';
+            const msg = e?.response?.data?.message ?? e?.response?.data?.error ?? e?.message ?? 'Failed to create company. Please try again.';
             setSubmitError(msg);
         } finally {
             setIsSubmitting(false);
