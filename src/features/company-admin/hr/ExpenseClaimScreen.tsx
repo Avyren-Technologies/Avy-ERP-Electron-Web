@@ -37,6 +37,7 @@ import {
 } from "@/features/company-admin/api/use-recruitment-mutations";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ImageViewer } from "@/components/ui/ImageViewer";
 import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Constants ── */
@@ -171,6 +172,17 @@ export function ExpenseClaimScreen() {
     const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
     const [categoryForm, setCategoryForm] = useState({ ...EMPTY_CATEGORY });
     const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
+
+    // Image viewer state
+    const [viewerImages, setViewerImages] = useState<Array<{ fileName: string; fileUrl: string }>>([]);
+    const [viewerIndex, setViewerIndex] = useState(0);
+    const [viewerOpen, setViewerOpen] = useState(false);
+
+    const openImageViewer = (images: Array<{ fileName: string; fileUrl: string }>, index: number) => {
+        setViewerImages(images);
+        setViewerIndex(index);
+        setViewerOpen(true);
+    };
 
     const claimsQuery = useExpenseClaims(
         activeTab === "pending" ? { status: "submitted" } : statusFilter !== "All" ? { status: statusFilter.toLowerCase() } : undefined
@@ -818,10 +830,23 @@ export function ExpenseClaimScreen() {
                                     <div className="mt-3 space-y-2">
                                         {receiptFiles.map((receipt, index) => {
                                             const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(receipt.fileName) || receipt.fileUrl?.startsWith("data:image/");
+                                            const imageReceipts = receiptFiles.filter((rf) => /\.(jpg|jpeg|png|gif|webp)$/i.test(rf.fileName) || rf.fileUrl?.startsWith("data:image/"));
                                             return (
                                                 <div key={index} className="flex items-center gap-3 p-2.5 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700">
                                                     {isImage && receipt.previewUrl ? (
-                                                        <img src={receipt.previewUrl} alt={receipt.fileName} className="w-10 h-10 rounded-lg object-cover border border-neutral-200 dark:border-neutral-700" />
+                                                        <img
+                                                            src={receipt.previewUrl}
+                                                            alt={receipt.fileName}
+                                                            className="w-10 h-10 rounded-lg object-cover border border-neutral-200 dark:border-neutral-700 cursor-pointer hover:ring-2 hover:ring-primary-400 transition-all"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const viewIdx = imageReceipts.findIndex((ir) => ir.fileName === receipt.fileName && ir.fileUrl === receipt.fileUrl);
+                                                                openImageViewer(
+                                                                    imageReceipts.map((ir) => ({ fileName: ir.fileName, fileUrl: ir.previewUrl || ir.fileUrl })),
+                                                                    viewIdx >= 0 ? viewIdx : 0,
+                                                                );
+                                                            }}
+                                                        />
                                                     ) : (
                                                         <div className="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
                                                             <FileText size={16} className="text-primary-600 dark:text-primary-400" />
@@ -899,35 +924,67 @@ export function ExpenseClaimScreen() {
                             )}
 
                             {/* Receipts */}
-                            {detailReceipts.length > 0 && (
-                                <div>
-                                    <span className="text-xs text-neutral-400 uppercase font-semibold block mb-2">Receipts / Attachments</span>
-                                    <div className="space-y-2">
-                                        {detailReceipts.map((r: any, i: number) => {
-                                            const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(r.fileUrl || r.fileName || "");
-                                            return (
-                                                <div key={i} className="flex items-center gap-3 p-2.5 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700">
-                                                    {isImage ? (
-                                                        <img src={r.fileUrl} alt={r.fileName} className="w-10 h-10 rounded-lg object-cover border border-neutral-200 dark:border-neutral-700" />
-                                                    ) : (
-                                                        <div className="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-                                                            <FileText size={16} className="text-primary-600 dark:text-primary-400" />
+                            {detailReceipts.length > 0 && (() => {
+                                const imageDetailReceipts = detailReceipts.filter((r: any) => {
+                                    const url = r.fileUrl || r.fileName || "";
+                                    return /\.(jpg|jpeg|png|gif|webp)$/i.test(url) || url.startsWith("data:image/");
+                                });
+                                return (
+                                    <div>
+                                        <span className="text-xs text-neutral-400 uppercase font-semibold block mb-2">Receipts / Attachments</span>
+                                        <div className="space-y-2">
+                                            {detailReceipts.map((r: any, i: number) => {
+                                                const url = r.fileUrl || r.fileName || "";
+                                                const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url) || url.startsWith("data:image/");
+                                                return (
+                                                    <div key={i} className="flex items-center gap-3 p-2.5 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700">
+                                                        {isImage ? (
+                                                            <img
+                                                                src={r.fileUrl}
+                                                                alt={r.fileName}
+                                                                className="w-10 h-10 rounded-lg object-cover border border-neutral-200 dark:border-neutral-700 cursor-pointer hover:ring-2 hover:ring-primary-400 transition-all"
+                                                                onClick={() => {
+                                                                    const viewIdx = imageDetailReceipts.findIndex((ir: any) => ir.fileUrl === r.fileUrl);
+                                                                    openImageViewer(
+                                                                        imageDetailReceipts.map((ir: any) => ({ fileName: ir.fileName || "Receipt", fileUrl: ir.fileUrl })),
+                                                                        viewIdx >= 0 ? viewIdx : 0,
+                                                                    );
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            <div className="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
+                                                                <FileText size={16} className="text-primary-600 dark:text-primary-400" />
+                                                            </div>
+                                                        )}
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-semibold text-primary-950 dark:text-white truncate">{r.fileName || "Receipt"}</p>
                                                         </div>
-                                                    )}
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-sm font-semibold text-primary-950 dark:text-white truncate">{r.fileName || "Receipt"}</p>
+                                                        {r.fileUrl && isImage ? (
+                                                            <button
+                                                                onClick={() => {
+                                                                    const viewIdx = imageDetailReceipts.findIndex((ir: any) => ir.fileUrl === r.fileUrl);
+                                                                    openImageViewer(
+                                                                        imageDetailReceipts.map((ir: any) => ({ fileName: ir.fileName || "Receipt", fileUrl: ir.fileUrl })),
+                                                                        viewIdx >= 0 ? viewIdx : 0,
+                                                                    );
+                                                                }}
+                                                                className="p-1.5 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors"
+                                                                title="View image"
+                                                            >
+                                                                <Eye size={14} />
+                                                            </button>
+                                                        ) : r.fileUrl ? (
+                                                            <a href={r.fileUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors">
+                                                                <ExternalLink size={14} />
+                                                            </a>
+                                                        ) : null}
                                                     </div>
-                                                    {r.fileUrl && (
-                                                        <a href={r.fileUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors">
-                                                            <ExternalLink size={14} />
-                                                        </a>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                );
+                            })()}
 
                             {/* Line Items */}
                             {detailItems.length > 0 && (
@@ -1147,6 +1204,13 @@ export function ExpenseClaimScreen() {
                     </div>
                 </div>
             )}
+            {/* Image Viewer */}
+            <ImageViewer
+                images={viewerImages}
+                initialIndex={viewerIndex}
+                isOpen={viewerOpen}
+                onClose={() => setViewerOpen(false)}
+            />
         </div>
     );
 }

@@ -291,6 +291,8 @@ export {
     useEssExpenseCategories,
     useMyLoans,
     useEssLoanPolicies,
+    useMyAppraisals,
+    useMyAppraisalEntry,
 } from './use-ess-queries';
 
 export {
@@ -323,6 +325,7 @@ export {
     useUpdateMyExpenseClaim,
     useCancelMyExpenseClaim,
     useApplyForLoan,
+    useSubmitEssSelfReview,
 } from './use-ess-mutations';
 
 // Performance Management

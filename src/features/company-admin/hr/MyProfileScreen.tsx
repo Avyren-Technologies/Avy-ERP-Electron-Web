@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { UserCircle, Mail, Phone, Briefcase, CreditCard, Shield, Pencil, X, Loader2 } from "lucide-react";
+import { UserCircle, Mail, Phone, Briefcase, CreditCard, Shield, Pencil, X, Loader2, Lock, Eye, EyeOff, KeyRound } from "lucide-react";
 import { useMyProfile } from "@/features/company-admin/api/use-ess-queries";
 import { useUpdateMyProfile } from "@/features/company-admin/api/use-ess-mutations";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { showSuccess, showApiError } from "@/lib/toast";
+import { authApi } from "@/lib/api/auth";
+import { MfaSetupDialog } from "@/features/company-admin/MfaSetupDialog";
 
 /* ── Types (align with GET /hr/ess/my-profile `data`) ── */
 
@@ -241,6 +243,17 @@ export function MyProfileScreen() {
     const [editOpen, setEditOpen] = useState(false);
     const [editForm, setEditForm] = useState({ ...EMPTY_EDIT_FORM });
 
+    // Security section state
+    const [mfaDialogOpen, setMfaDialogOpen] = useState(false);
+    const [mfaResetPasswordPrompt, setMfaResetPasswordPrompt] = useState(false);
+    const [mfaResetPassword, setMfaResetPassword] = useState("");
+    const [mfaResetLoading, setMfaResetLoading] = useState(false);
+    const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+    const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    const [passwordLoading, setPasswordLoading] = useState(false);
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+
     const { data, isLoading, isError } = useMyProfile();
     const updateProfile = useUpdateMyProfile();
     const profile = (data?.data ?? null) as EssMyProfileData | null;
@@ -268,6 +281,41 @@ export function MyProfileScreen() {
             setEditOpen(false);
         } catch (err) {
             showApiError(err);
+        }
+    };
+
+    const handleMfaResetConfirm = async () => {
+        if (!mfaResetPassword.trim()) return;
+        setMfaResetLoading(true);
+        try {
+            await authApi.disableMfa(mfaResetPassword);
+            showSuccess("MFA Disabled", "MFA has been disabled. Setting up new MFA...");
+            setMfaResetPasswordPrompt(false);
+            setMfaResetPassword("");
+            setMfaDialogOpen(true);
+        } catch (err) {
+            showApiError(err);
+        } finally {
+            setMfaResetLoading(false);
+        }
+    };
+
+    const handleChangePassword = async () => {
+        if (!passwordForm.currentPassword || !passwordForm.newPassword) return;
+        if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+            showApiError({ response: { data: { message: "New password and confirmation do not match" } } });
+            return;
+        }
+        setPasswordLoading(true);
+        try {
+            await authApi.changePassword(passwordForm.currentPassword, passwordForm.newPassword);
+            showSuccess("Password Changed", "Your password has been updated successfully.");
+            setChangePasswordOpen(false);
+            setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+        } catch (err) {
+            showApiError(err);
+        } finally {
+            setPasswordLoading(false);
         }
     };
 
@@ -466,6 +514,158 @@ export function MyProfileScreen() {
                     <InfoRow label="ESI IP Number" value={esi ?? undefined} />
                 </ProfileSection>
             </div>
+
+            {/* Security Section */}
+            <ProfileSection title="Security" icon={Lock}>
+                <div className="space-y-1">
+                    {/* Two-Factor Authentication */}
+                    <div className="flex items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-800/50">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <Shield size={16} className="text-primary-600 flex-shrink-0" />
+                            <div>
+                                <p className="text-sm font-semibold text-primary-950 dark:text-white">Two-Factor Authentication</p>
+                                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">Add an extra layer of security to your account</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3 ml-4">
+                            <button
+                                onClick={() => setMfaResetPasswordPrompt(true)}
+                                className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                            >
+                                Reset MFA
+                            </button>
+                            <button
+                                onClick={() => setMfaDialogOpen(true)}
+                                className="px-4 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors shadow-md shadow-primary-500/20 dark:shadow-none"
+                            >
+                                Enable MFA
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Change Password */}
+                    <div className="flex items-center justify-between py-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <KeyRound size={16} className="text-primary-600 flex-shrink-0" />
+                            <div>
+                                <p className="text-sm font-semibold text-primary-950 dark:text-white">Change Password</p>
+                                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">Update your account password</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setChangePasswordOpen(true)}
+                            className="ml-4 px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                        >
+                            Change Password
+                        </button>
+                    </div>
+                </div>
+            </ProfileSection>
+
+            {/* MFA Setup Dialog */}
+            <MfaSetupDialog
+                open={mfaDialogOpen}
+                onClose={() => setMfaDialogOpen(false)}
+                onSuccess={() => showSuccess("MFA Enabled", "Two-factor authentication has been set up successfully.")}
+            />
+
+            {/* MFA Reset Password Confirmation Modal */}
+            {mfaResetPasswordPrompt && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm animate-in fade-in zoom-in-95 duration-200 flex flex-col">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
+                            <h2 className="text-lg font-bold text-primary-950 dark:text-white">Confirm Password</h2>
+                            <button onClick={() => { setMfaResetPasswordPrompt(false); setMfaResetPassword(""); }} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <p className="text-sm text-neutral-600 dark:text-neutral-400">Enter your password to disable current MFA and set up a new one.</p>
+                            <div className="relative">
+                                <input
+                                    type={showCurrentPassword ? "text" : "password"}
+                                    value={mfaResetPassword}
+                                    onChange={(e) => setMfaResetPassword(e.target.value)}
+                                    placeholder="Enter your password"
+                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all pr-10"
+                                    onKeyDown={(e) => { if (e.key === "Enter") handleMfaResetConfirm(); }}
+                                />
+                                <button type="button" onClick={() => setShowCurrentPassword(!showCurrentPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300">
+                                    {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
+                            </div>
+                        </div>
+                        <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
+                            <button onClick={() => { setMfaResetPasswordPrompt(false); setMfaResetPassword(""); }} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
+                            <button onClick={handleMfaResetConfirm} disabled={mfaResetLoading || !mfaResetPassword.trim()} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                                {mfaResetLoading && <Loader2 size={14} className="animate-spin" />}
+                                {mfaResetLoading ? "Disabling..." : "Confirm & Reset"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Change Password Modal */}
+            {changePasswordOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm animate-in fade-in zoom-in-95 duration-200 flex flex-col">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
+                            <h2 className="text-lg font-bold text-primary-950 dark:text-white">Change Password</h2>
+                            <button onClick={() => { setChangePasswordOpen(false); setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" }); }} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Current Password</label>
+                                <div className="relative">
+                                    <input
+                                        type={showCurrentPassword ? "text" : "password"}
+                                        value={passwordForm.currentPassword}
+                                        onChange={(e) => setPasswordForm((p) => ({ ...p, currentPassword: e.target.value }))}
+                                        className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all pr-10"
+                                    />
+                                    <button type="button" onClick={() => setShowCurrentPassword(!showCurrentPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300">
+                                        {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">New Password</label>
+                                <div className="relative">
+                                    <input
+                                        type={showNewPassword ? "text" : "password"}
+                                        value={passwordForm.newPassword}
+                                        onChange={(e) => setPasswordForm((p) => ({ ...p, newPassword: e.target.value }))}
+                                        className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all pr-10"
+                                    />
+                                    <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300">
+                                        {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Confirm New Password</label>
+                                <input
+                                    type="password"
+                                    value={passwordForm.confirmPassword}
+                                    onChange={(e) => setPasswordForm((p) => ({ ...p, confirmPassword: e.target.value }))}
+                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                                    onKeyDown={(e) => { if (e.key === "Enter") handleChangePassword(); }}
+                                />
+                            </div>
+                        </div>
+                        <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
+                            <button onClick={() => { setChangePasswordOpen(false); setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" }); }} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
+                            <button onClick={handleChangePassword} disabled={passwordLoading || !passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                                {passwordLoading && <Loader2 size={14} className="animate-spin" />}
+                                {passwordLoading ? "Updating..." : "Update Password"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ── Edit Profile Modal ── */}
             {editOpen && (

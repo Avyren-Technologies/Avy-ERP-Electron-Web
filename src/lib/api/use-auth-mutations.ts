@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { authApi, decodeJwtPayload } from '@/lib/api/auth';
+import type { LoginResponse } from '@/lib/api/auth';
 import { useAuthStore, mapBackendRole } from '@/store/useAuthStore';
 
 export function useLoginMutation() {
@@ -12,8 +13,23 @@ export function useLoginMutation() {
             authApi.login(email, password),
         onSuccess: (response) => {
             if (response.success && response.data) {
-                const { user, tokens } = response.data;
-                // Decode JWT to extract permissions (embedded in token payload by backend)
+                // Check if MFA challenge is returned
+                if ('mfaRequired' in response.data && (response.data as any).mfaRequired) {
+                    const mfaData = response.data as any;
+                    sessionStorage.setItem('mfa_token', mfaData.mfaToken);
+
+                    if (mfaData.mfaSetupRequired) {
+                        // Company enforces MFA but user hasn't set it up — redirect to setup
+                        navigate('/mfa-setup');
+                    } else {
+                        // User has MFA set up — redirect to verification
+                        navigate('/mfa-verify');
+                    }
+                    return;
+                }
+
+                // Normal login — extract tokens and sign in
+                const { user, tokens } = response.data as LoginResponse;
                 const payload = decodeJwtPayload(tokens.accessToken);
                 const permissions: string[] = Array.isArray(payload?.permissions)
                     ? (payload.permissions as string[])

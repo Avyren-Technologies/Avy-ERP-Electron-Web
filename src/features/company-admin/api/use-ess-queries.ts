@@ -12,6 +12,10 @@ export const essKeys = {
     essConfig: () =>
         [...essKeys.all, 'config'] as const,
 
+    // Approval Workflow Config
+    workflowConfig: () =>
+        [...essKeys.all, 'workflow-config'] as const,
+
     // Approval Workflows
     workflows: (params?: Record<string, unknown>) =>
         params ? [...essKeys.all, 'workflows', params] as const : [...essKeys.all, 'workflows'] as const,
@@ -66,6 +70,10 @@ export const essKeys = {
     myDocuments: () => [...essKeys.all, 'my-documents'] as const,
     policyDocuments: () => [...essKeys.all, 'policy-documents'] as const,
 
+    // My Appraisal (ESS)
+    myAppraisals: () => [...essKeys.all, 'my-appraisals'] as const,
+    myAppraisalEntry: (id: string) => [...essKeys.all, 'my-appraisal-entry', id] as const,
+
     // MSS Manager Self-Service
     teamMembers: (params?: Record<string, unknown>) =>
         params ? [...essKeys.all, 'team-members', params] as const : [...essKeys.all, 'team-members'] as const,
@@ -93,6 +101,16 @@ export function useEssConfig() {
     return useQuery({
         queryKey: essKeys.essConfig(),
         queryFn: () => essApi.getEssConfig(),
+    });
+}
+
+// ── Approval Workflow Config ──
+
+export function useApprovalWorkflowConfig() {
+    return useQuery({
+        queryKey: essKeys.workflowConfig(),
+        queryFn: () => essApi.getApprovalWorkflowConfig(),
+        staleTime: 5 * 60 * 1000, // 5 min — rarely changes
     });
 }
 
@@ -310,5 +328,22 @@ export function useEssLoanPolicies() {
     return useQuery({
         queryKey: essKeys.loanPolicies(),
         queryFn: () => essApi.getAvailableLoanPolicies(),
+    });
+}
+
+// ── My Appraisal (ESS) ──
+
+export function useMyAppraisals() {
+    return useQuery({
+        queryKey: essKeys.myAppraisals(),
+        queryFn: () => essApi.getMyAppraisals(),
+    });
+}
+
+export function useMyAppraisalEntry(id: string) {
+    return useQuery({
+        queryKey: essKeys.myAppraisalEntry(id),
+        queryFn: () => essApi.getMyAppraisalEntry(id),
+        enabled: !!id,
     });
 }

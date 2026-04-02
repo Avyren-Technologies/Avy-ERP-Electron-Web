@@ -7,6 +7,7 @@ import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { useNavigationManifest } from '@/features/company-admin/api';
 import { usePermissionRefresh } from '@/hooks/usePermissionRefresh';
+import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 
 export function DashboardLayout() {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -14,6 +15,9 @@ export function DashboardLayout() {
 
     // Auto-refresh permissions on dashboard load (picks up role changes without re-login)
     usePermissionRefresh();
+
+    // Auto-logout after inactivity (respects company's sessionTimeoutMinutes from SystemControls)
+    useSessionTimeout();
 
     // Extract manifest sections from API response envelope
     const manifestSections = manifestData?.data ?? (Array.isArray(manifestData) ? manifestData : undefined);

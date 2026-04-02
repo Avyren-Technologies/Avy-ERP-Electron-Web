@@ -145,6 +145,7 @@ const DEFAULTS: SystemControls = {
     passwordComplexity: true,
     accountLockThreshold: 5,
     accountLockDurationMinutes: 30,
+    biometricLoginEnabled: true,
     // Audit
     auditLogRetentionDays: 365,
 };
@@ -236,6 +237,7 @@ const SECTIONS: ControlSection[] = [
             { key: "passwordComplexity", label: "Password Complexity", description: "Require uppercase, lowercase, number, and special character", type: "toggle" },
             { key: "accountLockThreshold", label: "Account Lock Threshold", description: "Failed attempts before account lock", type: "number", suffix: "attempts", min: 1, max: 20, tooltip: "Number of consecutive failed login attempts before the account is temporarily locked." },
             { key: "accountLockDurationMinutes", label: "Account Lock Duration", description: "Auto-unlock after (minutes)", type: "number", suffix: "min", min: 1, max: 1440 },
+            { key: "biometricLoginEnabled", label: "Biometric Login", description: "Allow users to enable fingerprint/Face ID login on mobile devices", type: "toggle" },
         ],
     },
     {

@@ -107,8 +107,14 @@ async function proactiveRefreshIfNeeded(): Promise<string | null> {
 
 // ── Request interceptor: attach Bearer token (with proactive refresh) ──
 
+refreshClient.interceptors.request.use((config) => {
+    config.headers['X-Device-Info'] = 'web';
+    return config;
+});
+
 client.interceptors.request.use(
     async (config) => {
+        config.headers['X-Device-Info'] = 'web';
         const token = await proactiveRefreshIfNeeded();
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;

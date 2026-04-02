@@ -249,6 +249,7 @@ export interface SystemControls {
     passwordComplexity: boolean;
     accountLockThreshold: number;
     accountLockDurationMinutes: number;
+    biometricLoginEnabled: boolean;
     // Audit
     auditLogRetentionDays: number;
 }

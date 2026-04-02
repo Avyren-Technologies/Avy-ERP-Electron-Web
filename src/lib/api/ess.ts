@@ -197,6 +197,13 @@ async function updateEssConfig(data: Partial<ESSConfig>): Promise<ApiResponse<ES
     return response.data;
 }
 
+// ── Approval Workflow Config ──
+
+async function getApprovalWorkflowConfig(): Promise<ApiResponse<any>> {
+    const response = await client.get('/hr/approval-workflow-config');
+    return response.data;
+}
+
 // ── Approval Workflows ──
 
 async function listApprovalWorkflows(params?: {
@@ -432,6 +439,8 @@ export const essApi = {
     // ESS Config
     getEssConfig,
     updateEssConfig,
+    // Approval Workflow Config
+    getApprovalWorkflowConfig,
     // Approval Workflows
     listApprovalWorkflows,
     createApprovalWorkflow,
@@ -500,6 +509,10 @@ export const essApi = {
     getMyLoans: async () => { const r = await client.get('/hr/ess/my-loans'); return r.data; },
     getAvailableLoanPolicies: async () => { const r = await client.get('/hr/ess/loan-policies'); return r.data; },
     applyForLoan: async (data: any) => { const r = await client.post('/hr/ess/apply-loan', data); return r.data; },
+    // My Appraisal (ESS)
+    getMyAppraisals: async () => { const r = await client.get('/hr/appraisal-entries'); return r.data; },
+    getMyAppraisalEntry: async (id: string) => { const r = await client.get(`/hr/appraisal-entries/${id}`); return r.data; },
+    submitSelfReview: async (id: string, data: any) => { const r = await client.patch(`/hr/appraisal-entries/${id}/self-review`, data); return r.data; },
     // MSS Manager Self-Service
     getTeamMembers,
     getPendingMssApprovals,

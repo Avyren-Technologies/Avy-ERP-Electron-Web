@@ -114,6 +114,10 @@ export function LoginScreen() {
     const [showPassword, setShowPassword] = useState(false);
     const [highlightIndex, setHighlightIndex] = useState(0);
 
+    // Show session timeout banner if redirected from inactivity logout
+    const searchParams = new URLSearchParams(window.location.search);
+    const sessionTimedOut = searchParams.get('reason') === 'session_timeout';
+
     const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<LoginFormValues>({
         resolver: zodResolver(loginSchema),
         defaultValues: { email: "", password: "", rememberMe: false },
@@ -226,6 +230,12 @@ export function LoginScreen() {
             {/* ── Right Column: Login Form ── */}
             <div className="w-full md:w-[440px] flex-shrink-0">
                 <div className="bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border border-white/40 dark:border-neutral-800 shadow-2xl shadow-primary-900/5 dark:shadow-black/20 rounded-[2rem] p-8 md:p-10 w-full animate-in fade-in slide-in-from-right-4 duration-500">
+                    {sessionTimedOut && (
+                        <div className="mb-4 px-4 py-3 rounded-xl bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800/50 text-warning-700 dark:text-warning-400 text-sm font-medium">
+                            Your session expired due to inactivity. Please sign in again.
+                        </div>
+                    )}
+
                     <div className="mb-8">
                         <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">Sign In</h2>
                         <p className="text-neutral-500 dark:text-neutral-400 text-sm">Enter your credentials to continue</p>

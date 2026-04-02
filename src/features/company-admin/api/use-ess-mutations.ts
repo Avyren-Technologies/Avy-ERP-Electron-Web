@@ -364,3 +364,17 @@ export function useUploadMyDocument() {
         },
     });
 }
+
+// ── My Appraisal (Self-Review) ──
+
+export function useSubmitEssSelfReview() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, data }: { id: string; data: any }) =>
+            essApi.submitSelfReview(id, data),
+        onSuccess: (_, { id }) => {
+            qc.invalidateQueries({ queryKey: essKeys.myAppraisals() });
+            qc.invalidateQueries({ queryKey: essKeys.myAppraisalEntry(id) });
+        },
+    });
+}

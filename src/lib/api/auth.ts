@@ -70,7 +70,14 @@ async function refreshToken(token: string): Promise<ApiResponse<{ tokens: AuthTo
 }
 
 async function logout(): Promise<ApiResponse> {
-    const response = await client.post('/auth/logout');
+    // Send refreshToken so the backend can remove the ActiveSession record
+    const storedRefreshToken = (() => {
+        try {
+            const raw = localStorage.getItem('auth_tokens');
+            return raw ? JSON.parse(raw).refreshToken : undefined;
+        } catch { return undefined; }
+    })();
+    const response = await client.post('/auth/logout', { refreshToken: storedRefreshToken });
     return response.data;
 }
 
@@ -99,6 +106,26 @@ async function changePassword(currentPassword: string, newPassword: string): Pro
     return response.data;
 }
 
+async function verifyMfa(mfaToken: string, code: string): Promise<ApiResponse<LoginResponse>> {
+    const response = await client.post('/auth/mfa/verify', { mfaToken, code });
+    return response.data;
+}
+
+async function setupMfa(): Promise<ApiResponse<{ secret: string; otpauthUrl: string; qrCodeDataUrl: string }>> {
+    const response = await client.post('/auth/mfa/setup');
+    return response.data;
+}
+
+async function confirmMfa(code: string): Promise<ApiResponse> {
+    const response = await client.post('/auth/mfa/confirm', { code });
+    return response.data;
+}
+
+async function disableMfa(password: string): Promise<ApiResponse> {
+    const response = await client.post('/auth/mfa/disable', { password });
+    return response.data;
+}
+
 export const authApi = {
     login,
     refreshToken,
@@ -108,4 +135,8 @@ export const authApi = {
     resetPassword,
     getProfile,
     changePassword,
+    verifyMfa,
+    setupMfa,
+    confirmMfa,
+    disableMfa,
 };

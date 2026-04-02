@@ -11,6 +11,7 @@ import {
 import { Loader2, Receipt, Plus, X, Send, Ban, Pencil, Trash2, ChevronDown, ChevronUp, Upload, FileText, Image } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { showSuccess, showApiError } from '@/lib/toast';
+import { ImageViewer } from '@/components/ui/ImageViewer';
 
 const STATUS_STYLES: Record<string, string> = {
     DRAFT: 'bg-info-100 text-info-700',
@@ -155,6 +156,17 @@ export function MyExpenseClaimsScreen() {
     const [isDragging, setIsDragging] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Image viewer state
+    const [viewerImages, setViewerImages] = useState<Array<{ fileName: string; fileUrl: string }>>([]);
+    const [viewerIndex, setViewerIndex] = useState(0);
+    const [viewerOpen, setViewerOpen] = useState(false);
+
+    const openImageViewer = (images: Array<{ fileName: string; fileUrl: string }>, index: number) => {
+        setViewerImages(images);
+        setViewerIndex(index);
+        setViewerOpen(true);
+    };
 
     function resetForm() {
         setTitle('');
@@ -519,42 +531,58 @@ export function MyExpenseClaimsScreen() {
                                     <p className="text-xs text-neutral-400 mt-1">PDF, Images, Documents (max 10MB each)</p>
                                 </div>
 
-                                {receipts.length > 0 && (
-                                    <div className="mt-4 space-y-2">
-                                        {receipts.map((r, idx) => (
-                                            <div key={idx} className="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-100 dark:border-neutral-700/50">
-                                                {r.previewUrl || (r.fileUrl && isImageFile(r.fileName)) ? (
-                                                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-neutral-200 dark:bg-neutral-700 flex-shrink-0">
-                                                        <img
-                                                            src={r.previewUrl || r.fileUrl}
-                                                            alt={r.fileName}
-                                                            className="w-full h-full object-cover"
-                                                        />
-                                                    </div>
-                                                ) : (
-                                                    <div className="w-10 h-10 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center flex-shrink-0">
-                                                        {r.fileName.toLowerCase().endsWith('.pdf') ? (
-                                                            <FileText className="w-5 h-5 text-primary-500" />
-                                                        ) : isImageFile(r.fileName) ? (
-                                                            <Image className="w-5 h-5 text-primary-500" />
+                                {receipts.length > 0 && (() => {
+                                    const imageReceipts = receipts.filter((r) => isImageFile(r.fileName) || r.fileUrl?.startsWith("data:image/"));
+                                    return (
+                                        <div className="mt-4 space-y-2">
+                                            {receipts.map((r, idx) => {
+                                                const isImage = isImageFile(r.fileName) || r.fileUrl?.startsWith("data:image/");
+                                                return (
+                                                    <div key={idx} className="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-100 dark:border-neutral-700/50">
+                                                        {r.previewUrl || (r.fileUrl && isImage) ? (
+                                                            <div
+                                                                className="w-10 h-10 rounded-lg overflow-hidden bg-neutral-200 dark:bg-neutral-700 flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary-400 transition-all"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    const viewIdx = imageReceipts.findIndex((ir) => ir.fileName === r.fileName && ir.fileUrl === r.fileUrl);
+                                                                    openImageViewer(
+                                                                        imageReceipts.map((ir) => ({ fileName: ir.fileName, fileUrl: ir.previewUrl || ir.fileUrl })),
+                                                                        viewIdx >= 0 ? viewIdx : 0,
+                                                                    );
+                                                                }}
+                                                            >
+                                                                <img
+                                                                    src={r.previewUrl || r.fileUrl}
+                                                                    alt={r.fileName}
+                                                                    className="w-full h-full object-cover"
+                                                                />
+                                                            </div>
                                                         ) : (
-                                                            <FileText className="w-5 h-5 text-primary-500" />
+                                                            <div className="w-10 h-10 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center flex-shrink-0">
+                                                                {r.fileName.toLowerCase().endsWith('.pdf') ? (
+                                                                    <FileText className="w-5 h-5 text-primary-500" />
+                                                                ) : isImage ? (
+                                                                    <Image className="w-5 h-5 text-primary-500" />
+                                                                ) : (
+                                                                    <FileText className="w-5 h-5 text-primary-500" />
+                                                                )}
+                                                            </div>
                                                         )}
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300 truncate">{r.fileName}</p>
+                                                            {r.fileSize && (
+                                                                <p className="text-xs text-neutral-400">{formatFileSize(r.fileSize)}</p>
+                                                            )}
+                                                        </div>
+                                                        <button onClick={(e) => { e.stopPropagation(); removeReceipt(idx); }} className="p-1.5 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors flex-shrink-0">
+                                                            <X className="w-4 h-4" />
+                                                        </button>
                                                     </div>
-                                                )}
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300 truncate">{r.fileName}</p>
-                                                    {r.fileSize && (
-                                                        <p className="text-xs text-neutral-400">{formatFileSize(r.fileSize)}</p>
-                                                    )}
-                                                </div>
-                                                <button onClick={(e) => { e.stopPropagation(); removeReceipt(idx); }} className="p-1.5 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors flex-shrink-0">
-                                                    <X className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                                                );
+                                            })}
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         </div>
 
@@ -723,6 +751,14 @@ export function MyExpenseClaimsScreen() {
                     })}
                 </div>
             )}
+
+            {/* Image Viewer */}
+            <ImageViewer
+                images={viewerImages}
+                initialIndex={viewerIndex}
+                isOpen={viewerOpen}
+                onClose={() => setViewerOpen(false)}
+            />
         </div>
     );
 }

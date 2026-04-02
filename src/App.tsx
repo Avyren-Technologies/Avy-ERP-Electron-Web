@@ -14,6 +14,8 @@ import { LoginScreen } from "./features/auth/LoginScreen";
 import { ForgotPasswordScreen } from "./features/auth/ForgotPasswordScreen";
 import { VerifyResetCodeScreen } from "./features/auth/VerifyResetCodeScreen";
 import { ResetPasswordScreen } from "./features/auth/ResetPasswordScreen";
+import { MfaVerifyScreen } from "./features/auth/MfaVerifyScreen";
+import { MfaSetupScreen } from "./features/auth/MfaSetupScreen";
 import { DashboardScreen } from "./features/super-admin/DashboardScreen";
 import { DynamicDashboardScreen } from "./features/employee/DynamicDashboardScreen";
 import { AnnouncementsScreen } from "./features/employee/AnnouncementsScreen";
@@ -181,6 +183,7 @@ import { PolicyDocumentsScreen } from './features/ess/PolicyDocumentsScreen';
 import { MyHolidaysScreen } from './features/ess/MyHolidaysScreen';
 import { MyExpenseClaimsScreen } from './features/ess/MyExpenseClaimsScreen';
 import { MyLoanScreen } from './features/ess/MyLoanScreen';
+import { MyAppraisalScreen } from './features/ess/MyAppraisalScreen';
 
 // Operations Module Screens
 import { InventoryScreen } from "./features/inventory/InventoryScreen";
@@ -264,6 +267,8 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPasswordScreen />} />
         <Route path="/reset-password/verify" element={<VerifyResetCodeScreen />} />
         <Route path="/reset-password/new" element={<ResetPasswordScreen />} />
+        <Route path="/mfa-verify" element={<MfaVerifyScreen />} />
+        <Route path="/mfa-setup" element={<MfaSetupScreen />} />
       </Route>
 
       {/* Protected App Routes */}
@@ -356,6 +361,7 @@ function App() {
         <Route path="company/hr/shift-check-in" element={<RequirePermission permission="ess:view-attendance"><ShiftCheckInScreen /></RequirePermission>} />
         <Route path="company/hr/team-view" element={<RequirePermission permission="hr:read"><TeamViewScreen /></RequirePermission>} />
         <Route path="company/hr/my-goals" element={<RequirePermission permission="ess:view-goals"><MyGoalsScreen /></RequirePermission>} />
+        <Route path="company/hr/my-appraisal" element={<RequirePermission permission={['hr:read', 'ess:submit-appraisal']}><MyAppraisalScreen /></RequirePermission>} />
         <Route path="company/hr/my-form16" element={<RequirePermission permission="ess:download-form16"><MyForm16Screen /></RequirePermission>} />
         <Route path="company/hr/my-grievances" element={<RequirePermission permission={['hr:read', 'ess:raise-grievance']}><MyGrievancesScreen /></RequirePermission>} />
         <Route path="company/hr/my-training" element={<RequirePermission permission={['hr:read', 'ess:enroll-training']}><MyTrainingScreen /></RequirePermission>} />

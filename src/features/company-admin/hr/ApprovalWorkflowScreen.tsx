@@ -10,7 +10,7 @@ import {
     ArrowDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useApprovalWorkflows } from "@/features/company-admin/api/use-ess-queries";
+import { useApprovalWorkflows, useApprovalWorkflowConfig } from "@/features/company-admin/api/use-ess-queries";
 import {
     useCreateApprovalWorkflow,
     useUpdateApprovalWorkflow,
@@ -22,28 +22,6 @@ import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Constants ── */
 
-const TRIGGER_EVENTS = [
-    { value: "leave_request", label: "Leave Request" },
-    { value: "attendance_regularization", label: "Attendance Regularization" },
-    { value: "expense_claim", label: "Expense Claim" },
-    { value: "salary_revision", label: "Salary Revision" },
-    { value: "loan_request", label: "Loan Request" },
-    { value: "it_declaration", label: "IT Declaration" },
-    { value: "profile_update", label: "Profile Update" },
-    { value: "overtime_request", label: "Overtime Request" },
-    { value: "resignation", label: "Resignation" },
-    { value: "travel_request", label: "Travel Request" },
-];
-
-const APPROVER_ROLES = [
-    { value: "reporting_manager", label: "Reporting Manager" },
-    { value: "department_head", label: "Department Head" },
-    { value: "hr_manager", label: "HR Manager" },
-    { value: "finance_manager", label: "Finance Manager" },
-    { value: "ceo", label: "CEO / Director" },
-    { value: "custom", label: "Custom Role" },
-];
-
 const EMPTY_STEP = { approverRole: "", slaHours: 24, autoEscalate: false, autoApprove: false };
 
 const EMPTY_FORM = {
@@ -52,17 +30,6 @@ const EMPTY_FORM = {
     active: true,
     steps: [{ ...EMPTY_STEP }],
 };
-
-/* ── Helpers ── */
-
-function TriggerBadge({ event }: { event: string }) {
-    const label = TRIGGER_EVENTS.find((t) => t.value === event)?.label ?? event;
-    return (
-        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border bg-accent-50 text-accent-700 border-accent-200 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50 capitalize">
-            {label}
-        </span>
-    );
-}
 
 /* ── Screen ── */
 
@@ -74,9 +41,22 @@ export function ApprovalWorkflowScreen() {
     const [deleteTarget, setDeleteTarget] = useState<any>(null);
 
     const { data, isLoading, isError } = useApprovalWorkflows();
+    const { data: configData } = useApprovalWorkflowConfig();
     const createMutation = useCreateApprovalWorkflow();
     const updateMutation = useUpdateApprovalWorkflow();
     const deleteMutation = useDeleteApprovalWorkflow();
+
+    const TRIGGER_EVENTS: Array<{ value: string; label: string }> = configData?.data?.triggerEvents ?? [];
+    const APPROVER_ROLES: Array<{ value: string; label: string }> = configData?.data?.approverRoles ?? [];
+
+    function TriggerBadge({ event }: { event: string }) {
+        const label = TRIGGER_EVENTS.find((t: any) => t.value === event)?.label ?? event;
+        return (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border bg-accent-50 text-accent-700 border-accent-200 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50 capitalize">
+                {label}
+            </span>
+        );
+    }
 
     const workflows: any[] = data?.data ?? [];
 
