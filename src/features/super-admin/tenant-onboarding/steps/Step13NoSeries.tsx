@@ -261,14 +261,14 @@ export function Step13NoSeries() {
             <SectionCard title="Common Series Reference" subtitle="Suggested series configurations for typical manufacturing companies" accent="info">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {[
-                        { doc: 'Sales Invoice', example: 'INV-000001' },
-                        { doc: 'Purchase Order', example: 'PO-000001' },
-                        { doc: 'Employee Onboarding', example: 'EMP-000001' },
-                        { doc: 'Work Order', example: 'WO-000001' },
-                        { doc: 'GRN', example: 'GRN-000001' },
-                        { doc: 'Gate Pass', example: 'GP-000001' },
-                        { doc: 'Maintenance Ticket', example: 'MT-000001' },
-                        { doc: 'Leave Management', example: 'LV-000001' },
+                        { doc: 'Employee Onboarding', example: 'EMP00001' },
+                        { doc: 'Leave Management', example: 'LV-00001' },
+                        { doc: 'Payroll Run', example: 'PR-00001' },
+                        { doc: 'Expense Claims', example: 'EXP-00001' },
+                        { doc: 'Purchase Order', example: 'PUR-00001' },
+                        { doc: 'Goods Receipt Note', example: 'GRN-00001' },
+                        { doc: 'Gate Pass', example: 'GP-00001' },
+                        { doc: 'Production Order', example: 'PO-00001' },
                     ].map((s) => (
                         <div key={s.doc} className="flex items-center justify-between bg-neutral-50 rounded-lg px-4 py-2.5 dark:bg-neutral-800">
                             <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">{s.doc}</span>

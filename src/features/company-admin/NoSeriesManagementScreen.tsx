@@ -10,7 +10,7 @@ import {
     Eye,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useCompanyNoSeries } from "@/features/company-admin/api/use-company-admin-queries";
+import { useCompanyNoSeries, useLinkedScreens } from "@/features/company-admin/api/use-company-admin-queries";
 import { useCreateNoSeries, useUpdateNoSeries, useDeleteNoSeries } from "@/features/company-admin/api/use-company-admin-mutations";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -39,16 +39,8 @@ function FormField({ label, value, onChange, placeholder, mono = false, type = "
 function buildPreview(prefix: string, suffix: string, numberCount: number, startNumber: number): string {
     const digits = numberCount || 5;
     const start = startNumber || 1;
-    return `${prefix}${suffix}${String(start).padStart(digits, "0")}`;
+    return `${prefix}${String(start).padStart(digits, "0")}${suffix}`;
 }
-
-const LINKED_SCREENS = [
-    'Employee Onboarding', 'Attendance', 'Leave Management', 'Payroll',
-    'Work Order', 'Production Order', 'Andon Ticket', 'Quality Check',
-    'Non-Conformance', 'Maintenance Ticket', 'Preventive Maintenance',
-    'GRN', 'Material Request', 'Gate Pass', 'Stock Transfer',
-    'Sales Invoice', 'Purchase Order', 'Delivery Challan', 'Goods Return',
-];
 
 const EMPTY_SERIES = {
     code: "",
@@ -62,9 +54,15 @@ const EMPTY_SERIES = {
 
 export function NoSeriesManagementScreen() {
     const { data, isLoading, isError } = useCompanyNoSeries();
+    const { data: linkedScreensData } = useLinkedScreens();
     const createMutation = useCreateNoSeries();
     const updateMutation = useUpdateNoSeries();
     const deleteMutation = useDeleteNoSeries();
+
+    const linkedScreenOptions: { value: string; label: string }[] = useMemo(() => {
+        const raw: any[] = linkedScreensData?.data ?? [];
+        return raw.map((s: any) => ({ value: s.value, label: s.label }));
+    }, [linkedScreensData]);
 
     const [search, setSearch] = useState("");
     const [modalOpen, setModalOpen] = useState(false);
@@ -204,7 +202,7 @@ export function NoSeriesManagementScreen() {
                                                 <span className="font-mono text-xs font-bold text-primary-700 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-2 py-1 rounded">{ns.code}</span>
                                             </td>
                                             <td className="py-4 px-6 text-neutral-700 dark:text-neutral-300">{ns.description || "—"}</td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{ns.linkedScreen || "—"}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{linkedScreenOptions.find(s => s.value === ns.linkedScreen)?.label ?? ns.linkedScreen ?? "—"}</td>
                                             <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{ns.prefix || "—"}</td>
                                             <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{ns.suffix || "—"}</td>
                                             <td className="py-4 px-6">
@@ -247,7 +245,7 @@ export function NoSeriesManagementScreen() {
                                         className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
                                     >
                                         <option value="">Select screen...</option>
-                                        {LINKED_SCREENS.map(s => <option key={s} value={s}>{s}</option>)}
+                                        {linkedScreenOptions.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                                     </select>
                                 </div>
                             </div>

@@ -9,6 +9,7 @@ export const companyAdminKeys = {
     shifts: () => [...companyAdminKeys.all, 'shifts'] as const,
     contacts: () => [...companyAdminKeys.all, 'contacts'] as const,
     noSeries: () => [...companyAdminKeys.all, 'no-series'] as const,
+    linkedScreens: () => [...companyAdminKeys.all, 'linked-screens'] as const,
     iotReasons: () => [...companyAdminKeys.all, 'iot-reasons'] as const,
     controls: () => [...companyAdminKeys.all, 'controls'] as const,
     settings: () => [...companyAdminKeys.all, 'settings'] as const,
@@ -76,6 +77,14 @@ export function useCompanyNoSeries() {
     return useQuery({
         queryKey: companyAdminKeys.noSeries(),
         queryFn: () => companyAdminApi.listNoSeries(),
+    });
+}
+
+export function useLinkedScreens() {
+    return useQuery({
+        queryKey: companyAdminKeys.linkedScreens(),
+        queryFn: () => companyAdminApi.getLinkedScreens(),
+        staleTime: 10 * 60 * 1000,
     });
 }
 

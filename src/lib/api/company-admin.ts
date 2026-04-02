@@ -413,6 +413,11 @@ async function deleteContact(id: string): Promise<ApiResponse<void>> {
 
 // ── No Series ──
 
+async function getLinkedScreens(): Promise<ApiResponse<any[]>> {
+    const response = await client.get('/company/no-series/linked-screens');
+    return response.data;
+}
+
 async function listNoSeries(): Promise<ApiResponse<NoSeriesConfig[]>> {
     const response = await client.get('/company/no-series');
     return response.data;
@@ -816,6 +821,7 @@ export const companyAdminApi = {
     createContact,
     updateContact,
     deleteContact,
+    getLinkedScreens,
     listNoSeries,
     createNoSeries,
     updateNoSeries,
