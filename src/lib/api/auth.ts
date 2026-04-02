@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query';
 import { client } from './client';
 
 // ── Types ──
@@ -140,3 +141,26 @@ export const authApi = {
     confirmMfa,
     disableMfa,
 };
+
+// ── Tenant Branding ──
+
+export interface TenantBranding {
+    exists: boolean;
+    companyName?: string;
+    logoUrl?: string;
+}
+
+export async function fetchTenantBranding(slug: string): Promise<TenantBranding> {
+    const response = await client.get('/auth/tenant-branding', { params: { slug } });
+    return response.data?.data;
+}
+
+export function useTenantBranding(slug: string | null) {
+    return useQuery({
+        queryKey: ['tenant-branding', slug],
+        queryFn: () => fetchTenantBranding(slug!),
+        enabled: !!slug,
+        staleTime: 5 * 60 * 1000,
+        retry: 1,
+    });
+}
