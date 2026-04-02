@@ -278,9 +278,32 @@ export function ShiftManagementScreen() {
     };
 
     const handleSave = async () => {
+        // Client-side validation
+        if (!form.name.trim()) {
+            showApiError({ message: 'Shift name is required' });
+            return;
+        }
+        if (!form.startTime || !form.endTime) {
+            showApiError({ message: 'Start time and end time are required' });
+            return;
+        }
+        if (form.startTime === form.endTime) {
+            showApiError({ message: 'Start time and end time cannot be the same. A shift must have a duration.' });
+            return;
+        }
+        // Check name uniqueness against loaded shifts
+        const existingShifts = data?.data ?? [];
+        const isDuplicateName = existingShifts.some(
+            (s: any) => s.name.toLowerCase() === form.name.trim().toLowerCase() && s.id !== editingId
+        );
+        if (isDuplicateName) {
+            showApiError({ message: `A shift named "${form.name}" already exists. Please choose a different name.` });
+            return;
+        }
+
         try {
             const payload: CreateShiftPayload = {
-                name: form.name,
+                name: form.name.trim(),
                 shiftType: form.shiftType,
                 startTime: form.startTime,
                 endTime: form.endTime,
