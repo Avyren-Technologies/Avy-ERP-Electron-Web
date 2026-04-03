@@ -151,6 +151,7 @@ export function CompanyListScreen() {
                                                             {company.displayName || company.name}
                                                         </Link>
                                                         <p className="text-[11px] text-neutral-400 dark:text-neutral-500 mt-0.5 leading-tight">{company.legalName || ''}</p>
+                                                        {company.slug && <span className="text-xs text-neutral-400 font-mono">{company.slug}.avyren.in</span>}
                                                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                                                             <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">{company.industry}</span>
                                                             {selfHosted && (

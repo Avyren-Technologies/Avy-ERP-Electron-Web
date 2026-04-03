@@ -115,9 +115,17 @@ export function RegistrationListScreen() {
         setPage(1);
     };
 
-    const handleApprove = (e: React.MouseEvent, id: string) => {
+    const handleApprove = (e: React.MouseEvent, regId: string) => {
         e.stopPropagation();
-        updateMutation.mutate({ id, data: { status: 'APPROVED' } });
+        updateMutation.mutate(
+            { id: regId, data: { status: 'APPROVED' } },
+            {
+                onSuccess: (result) => {
+                    const prefill = result?.data?.wizardPrefill;
+                    navigate('/app/companies/add', { state: { prefill } });
+                },
+            },
+        );
     };
 
     const handleOpenRejectModal = (e: React.MouseEvent, id: string) => {

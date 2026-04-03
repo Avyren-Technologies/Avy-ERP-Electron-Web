@@ -58,7 +58,15 @@ export function RegistrationDetailScreen() {
 
     const handleApprove = () => {
         if (!id) return;
-        updateMutation.mutate({ id, data: { status: 'APPROVED' } });
+        updateMutation.mutate(
+            { id, data: { status: 'APPROVED' } },
+            {
+                onSuccess: (result) => {
+                    const prefill = result?.data?.wizardPrefill;
+                    navigate('/app/companies/add', { state: { prefill } });
+                },
+            },
+        );
     };
 
     const handleReject = () => {

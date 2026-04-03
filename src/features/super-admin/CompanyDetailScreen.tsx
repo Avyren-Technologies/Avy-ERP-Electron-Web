@@ -587,6 +587,15 @@ export function CompanyDetailScreen() {
                                 <DetailField label="Legal Name" value={TENANT.legalName} />
                                 <DetailField label="Short Name" value={TENANT.shortName} />
                                 <DetailField label="Company Code" value={TENANT.companyCode} mono />
+                                <div>
+                                    <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1 dark:text-neutral-500">Subdomain</p>
+                                    {TENANT.slug ? (
+                                        <a href={`https://${TENANT.slug}.avyren.in`} target="_blank" rel="noopener noreferrer"
+                                            className="text-sm font-semibold text-primary-600 hover:text-primary-700 flex items-center gap-1 dark:text-primary-400">
+                                            {TENANT.slug}.avyren.in <ExternalLink size={11} />
+                                        </a>
+                                    ) : <p className="text-neutral-300 text-sm italic dark:text-neutral-500">—</p>}
+                                </div>
                                 <DetailField label="CIN" value={TENANT.cin} mono />
                                 <DetailField label="Incorporation Date" value={TENANT.incorporationDate} />
                                 <DetailField label="Employee Count" value={TENANT.employeeCount} />
