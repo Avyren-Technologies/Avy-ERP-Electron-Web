@@ -145,6 +145,7 @@ export interface Step1Form {
     logoFile: File | null;
     logoPreviewUrl: string;
     displayName: string;
+    slug: string;
     legalName: string;
     businessType: string;
     industry: string;

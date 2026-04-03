@@ -241,6 +241,7 @@ export function TenantOnboardingWizard({ onClose, onSuccess }: TenantOnboardingW
             const payload = {
                 identity: {
                     displayName: s.step1.displayName,
+                    slug: s.step1.slug,
                     legalName: s.step1.legalName,
                     businessType: s.step1.businessType,
                     industry: s.step1.industry,

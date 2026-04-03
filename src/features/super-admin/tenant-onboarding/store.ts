@@ -30,7 +30,7 @@ import type {
 const defaultStep1: Step1Form = {
     logoFile: null,
     logoPreviewUrl: '',
-    displayName: '', legalName: '', businessType: '', industry: '',
+    displayName: '', slug: '', legalName: '', businessType: '', industry: '',
     companyCode: '', shortName: '', incorporationDate: '', employees: '',
     cin: '', website: '', emailDomain: '', status: 'Draft',
 };

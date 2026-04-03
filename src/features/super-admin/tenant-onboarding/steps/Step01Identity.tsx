@@ -3,13 +3,27 @@ import React, { useRef, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Building2, Upload, X, Camera } from 'lucide-react';
+import { Building2, Upload, X, Camera, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
     SectionCard, FormInput, FormSelect, FormDatePicker, RadioOption, TwoCol, ThreeCol
 } from '../atoms';
 import { BUSINESS_TYPES, INDUSTRIES, COMPANY_STATUSES } from '../constants';
 import { useTenantOnboardingStore } from '../store';
+
+const RESERVED_SLUGS = new Set([
+    'admin', 'www', 'api', 'app', 'staging', 'dev', 'test', 'demo',
+    'mail', 'ftp', 'cdn', 'static', 'assets', 'docs', 'help',
+    'support', 'status', 'blog', 'avy-erp-api', 'pg', 'ssh',
+]);
+
+function generateSlug(name: string): string {
+    return name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+        .slice(0, 50);
+}
 
 function generateCompanyCode(displayName: string): string {
     const normalized = displayName.toUpperCase().replace(/[^A-Z0-9\s]/g, ' ').trim();
@@ -33,6 +47,11 @@ function generateCompanyCode(displayName: string): string {
 
 const schema = z.object({
     displayName: z.string().min(1, 'Display Name is required'),
+    slug: z.string()
+        .min(3, 'Slug must be at least 3 characters')
+        .max(50, 'Slug must be at most 50 characters')
+        .regex(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/, 'Lowercase letters, numbers, and hyphens only. Cannot start or end with hyphen.')
+        .refine((val) => !RESERVED_SLUGS.has(val), 'This subdomain is reserved'),
     legalName: z.string().min(1, 'Legal / Registered Name is required'),
     businessType: z.string().min(1, 'Business Type is required'),
     industry: z.string().min(1, 'Industry is required'),
@@ -57,11 +76,14 @@ export function Step01Identity({ onConfirmSubmit }: { onConfirmSubmit?: () => vo
     const { step1, setStep1, goNext } = useTenantOnboardingStore();
     const fileRef = useRef<HTMLInputElement>(null);
     const lastAutoCodeRef = useRef('');
+    const lastAutoSlugRef = useRef('');
+    const slugManuallyEdited = useRef(false);
 
     const { control, handleSubmit, setValue, watch } = useForm<FormData>({
         resolver: zodResolver(schema),
         defaultValues: {
             displayName: step1.displayName,
+            slug: step1.slug,
             legalName: step1.legalName,
             businessType: step1.businessType || 'Private Limited (Pvt. Ltd.)',
             industry: step1.industry || 'IT',
@@ -96,6 +118,23 @@ export function Step01Identity({ onConfirmSubmit }: { onConfirmSubmit?: () => vo
             lastAutoCodeRef.current = generatedCode;
         }
     }, [watchedDisplayName, setValue, watch]);
+
+    // Auto-generate slug from display name until user overrides manually.
+    useEffect(() => {
+        if (slugManuallyEdited.current) return;
+        const generatedSlug = generateSlug(watchedDisplayName ?? '');
+        if (!generatedSlug) return;
+
+        const currentSlug = watch('slug') ?? '';
+        const shouldAutofill = currentSlug.length === 0 || currentSlug === lastAutoSlugRef.current;
+
+        if (shouldAutofill && currentSlug !== generatedSlug) {
+            setValue('slug', generatedSlug, { shouldValidate: true });
+            lastAutoSlugRef.current = generatedSlug;
+        }
+    }, [watchedDisplayName, setValue, watch]);
+
+    const watchedSlug = watch('slug');
 
     const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -210,6 +249,36 @@ export function Step01Identity({ onConfirmSubmit }: { onConfirmSubmit?: () => vo
                         <FormInput label="Legal / Registered Name" placeholder="Full name as per incorporation documents" {...field} value={field.value || ''} required hint="Used in GST invoices, P&L statement, statutory forms" error={fieldState.error?.message} />
                     )} />
                 </TwoCol>
+
+                <Controller name="slug" control={control} render={({ field, fieldState }) => (
+                    <div>
+                        <FormInput
+                            label="Subdomain Slug"
+                            placeholder="e.g. apex-manufacturing"
+                            {...field}
+                            value={field.value || ''}
+                            onChange={(v) => {
+                                const lowered = v.toLowerCase().replace(/[^a-z0-9-]/g, '');
+                                slugManuallyEdited.current = true;
+                                field.onChange(lowered);
+                            }}
+                            required
+                            hint="Auto-generated from display name. Override if needed."
+                            error={fieldState.error?.message}
+                        />
+                        {watchedSlug && (
+                            <div className="flex items-center gap-1.5 mt-1.5 ml-0.5">
+                                <Globe size={12} className="text-primary-500 flex-shrink-0" />
+                                <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                                    Your ERP will be accessible at{' '}
+                                    <span className="font-semibold text-primary-700 dark:text-primary-400">
+                                        {watchedSlug}.avyren.in
+                                    </span>
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                )} />
 
                 <TwoCol>
                     <Controller name="businessType" control={control} render={({ field, fieldState }) => (
