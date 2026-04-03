@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { client } from '@/lib/api/client';
 import { useAuthStore } from '@/store/useAuthStore';
+import { getLoginPath } from '@/lib/tenant';
 
 const ACTIVITY_EVENTS = ['mousedown', 'keydown', 'scroll', 'touchstart', 'mousemove', 'click'] as const;
 const CHECK_INTERVAL_MS = 30_000; // check every 30 seconds
@@ -52,7 +53,7 @@ export function useSessionTimeout() {
 
             if (idleMs >= timeoutMs) {
                 signOut();
-                window.location.href = '/login?reason=session_timeout';
+                window.location.href = getLoginPath('reason=session_timeout');
             }
         }, CHECK_INTERVAL_MS);
 
