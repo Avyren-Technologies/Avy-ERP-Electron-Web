@@ -112,7 +112,7 @@ export function LoginScreen() {
     const navigate = useNavigate();
     const loginMutation = useLoginMutation();
     const tenantContext = getTenantContext();
-    const { data: branding } = useTenantBranding(tenantContext.slug);
+    const { data: branding, isLoading: brandingLoading } = useTenantBranding(tenantContext.slug);
     const isTenantMode = tenantContext.mode === 'tenant';
     const isMainMode = tenantContext.mode === 'main';
 
@@ -144,6 +144,167 @@ export function LoginScreen() {
             { email: data.email, password: data.password },
         );
     };
+
+    // ── Tenant-specific branded login — clean, no Avyren promotion ──
+    if (isTenantMode) {
+        const errorMsg = loginMutation.isError
+            ? ((loginMutation.error as any)?.response?.data?.message
+                || (loginMutation.error as any)?.response?.data?.error
+                || '')
+            : '';
+        const isTenantMismatchError = errorMsg.includes('tenant mismatch') || errorMsg.includes('Access denied');
+
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-neutral-50 via-white to-neutral-100 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 p-4">
+                <div className="w-full max-w-md">
+                    {/* Branded card */}
+                    <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-800 p-8 space-y-6">
+
+                        {/* Company branding */}
+                        <div className="text-center space-y-3">
+                            {brandingLoading ? (
+                                <div className="h-16 flex items-center justify-center">
+                                    <CustomLoader size="md" />
+                                </div>
+                            ) : branding?.logoUrl ? (
+                                <img src={branding.logoUrl} alt={branding.companyName} className="h-16 mx-auto object-contain" />
+                            ) : (
+                                <div className="h-16 w-16 mx-auto bg-primary-100 dark:bg-primary-900/30 rounded-xl flex items-center justify-center">
+                                    <Building className="w-8 h-8 text-primary-600" />
+                                </div>
+                            )}
+                            <h1 className="text-xl font-bold text-neutral-900 dark:text-white">
+                                {branding?.companyName || 'Sign In'}
+                            </h1>
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                                Enter your credentials to continue
+                            </p>
+                        </div>
+
+                        {/* Session timeout banner */}
+                        {sessionTimedOut && (
+                            <div className="bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800 rounded-lg p-3 text-sm text-warning-700 dark:text-warning-300">
+                                Your session expired due to inactivity. Please sign in again.
+                            </div>
+                        )}
+
+                        {/* Error display */}
+                        {loginMutation.isError && (
+                            <div className="bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800 rounded-lg p-3 text-sm text-danger-600 dark:text-danger-400">
+                                {isTenantMismatchError
+                                    ? "Your account doesn't belong to this company. Please check your URL."
+                                    : (errorMsg || 'Login failed. Please check your credentials and try again.')}
+                            </div>
+                        )}
+
+                        {/* Login form */}
+                        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                            {/* Email */}
+                            <div>
+                                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
+                                    Work Email
+                                </label>
+                                <div className={cn(
+                                    "relative flex items-center h-12 bg-neutral-50 dark:bg-neutral-800 rounded-xl border-2 transition-colors px-4 gap-3",
+                                    focusedInput === 'email' ? "border-primary-500 bg-white dark:bg-neutral-900"
+                                        : errors.email ? "border-danger-500"
+                                        : "border-transparent"
+                                )}>
+                                    <Mail className={cn("w-5 h-5 shrink-0", focusedInput === 'email' ? "text-primary-600" : "text-neutral-400")} />
+                                    <input
+                                        {...register("email")}
+                                        type="email"
+                                        placeholder="name@company.com"
+                                        autoComplete="email"
+                                        className="flex-1 bg-transparent border-none outline-none text-neutral-900 dark:text-white placeholder:text-neutral-400 text-sm"
+                                        onFocus={() => setFocusedInput("email")}
+                                        onBlur={() => setFocusedInput(null)}
+                                        disabled={isLoading}
+                                    />
+                                </div>
+                                {errors.email && <p className="text-xs text-danger-500 mt-1">{errors.email.message}</p>}
+                            </div>
+
+                            {/* Password */}
+                            <div>
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Password</label>
+                                    <button type="button" onClick={() => navigate("/forgot-password")} className="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                                        Forgot password?
+                                    </button>
+                                </div>
+                                <div className={cn(
+                                    "relative flex items-center h-12 bg-neutral-50 dark:bg-neutral-800 rounded-xl border-2 transition-colors px-4 gap-3",
+                                    focusedInput === 'password' ? "border-primary-500 bg-white dark:bg-neutral-900"
+                                        : errors.password ? "border-danger-500"
+                                        : "border-transparent"
+                                )}>
+                                    <Lock className={cn("w-5 h-5 shrink-0", focusedInput === 'password' ? "text-primary-600" : "text-neutral-400")} />
+                                    <input
+                                        {...register("password")}
+                                        type={showPassword ? "text" : "password"}
+                                        placeholder="Enter your password"
+                                        autoComplete="current-password"
+                                        className="flex-1 bg-transparent border-none outline-none text-neutral-900 dark:text-white placeholder:text-neutral-400 text-sm"
+                                        onFocus={() => setFocusedInput("password")}
+                                        onBlur={() => setFocusedInput(null)}
+                                        disabled={isLoading}
+                                    />
+                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-neutral-400 hover:text-neutral-600" tabIndex={-1}>
+                                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    </button>
+                                </div>
+                                {errors.password && <p className="text-xs text-danger-500 mt-1">{errors.password.message}</p>}
+                            </div>
+
+                            {/* Remember me */}
+                            <div className="flex items-center">
+                                <button
+                                    type="button"
+                                    onClick={() => setValue("rememberMe", !rememberMe)}
+                                    disabled={isLoading}
+                                    className="flex items-center gap-2.5 cursor-pointer group"
+                                >
+                                    <div className={cn(
+                                        "w-4.5 h-4.5 rounded border-2 flex items-center justify-center transition-all duration-200",
+                                        rememberMe
+                                            ? "bg-primary-600 border-primary-600"
+                                            : "bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-600 group-hover:border-primary-400"
+                                    )}>
+                                        {rememberMe && (
+                                            <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                                        )}
+                                    </div>
+                                    <span className="text-sm text-neutral-600 dark:text-neutral-400 select-none">Remember me</span>
+                                </button>
+                            </div>
+
+                            {/* Submit */}
+                            <button
+                                type="submit"
+                                disabled={isLoading}
+                                className="w-full h-12 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                            >
+                                {isLoading ? (
+                                    <CustomLoader size="sm" className="text-white brightness-200" />
+                                ) : (
+                                    <>Sign In <ArrowRight className="w-4 h-4" /></>
+                                )}
+                            </button>
+                        </form>
+                    </div>
+
+                    {/* Powered by footer */}
+                    <p className="text-center text-xs text-neutral-400 dark:text-neutral-500 mt-6">
+                        Powered by{' '}
+                        <a href="https://avyrentechnologies.com" target="_blank" rel="noopener noreferrer" className="text-primary-500 hover:text-primary-600 font-medium transition-colors">
+                            Avyren Technologies
+                        </a>
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="w-full max-w-6xl mx-auto flex flex-col md:flex-row gap-8 items-center justify-center p-6 pt-8 min-h-screen">
