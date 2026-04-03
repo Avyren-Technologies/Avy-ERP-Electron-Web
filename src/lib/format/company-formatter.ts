@@ -12,6 +12,15 @@ export const DEFAULT_FORMAT_SETTINGS: CompanyFormatSettings = {
   timezone: 'Asia/Kolkata',
 };
 
+export function coerceCompanyDateFormat(
+  value: string | undefined | null,
+): CompanyFormatSettings['dateFormat'] {
+  if (value === 'DD/MM/YYYY' || value === 'MM/DD/YYYY' || value === 'YYYY-MM-DD') {
+    return value;
+  }
+  return DEFAULT_FORMAT_SETTINGS.dateFormat;
+}
+
 const DATE_FORMAT_MAP: Record<string, string> = {
   'DD/MM/YYYY': 'dd/MM/yyyy',
   'MM/DD/YYYY': 'MM/dd/yyyy',

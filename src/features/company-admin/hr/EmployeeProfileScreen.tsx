@@ -26,6 +26,8 @@ import {
     KeyRound,
     Plus,
     RotateCcw,
+    AlertTriangle,
+    UserX,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -44,6 +46,7 @@ import {
     useCreateEmployee,
     useUpdateEmployee,
     useUpdateEmployeeStatus,
+    useDeleteEmployee,
     useDeleteDocument,
 } from "@/features/company-admin/api/use-hr-mutations";
 import { SkeletonCard } from "@/components/ui/Skeleton";
@@ -315,7 +318,16 @@ export function EmployeeProfileScreen() {
     const createMutation = useCreateEmployee();
     const updateMutation = useUpdateEmployee();
     const statusMutation = useUpdateEmployeeStatus();
+    const deleteEmployeeMutation = useDeleteEmployee();
     const deleteDocMutation = useDeleteDocument();
+
+    // Deactivation modal state
+    const [showDeactivateModal, setShowDeactivateModal] = useState(false);
+    const [exitReason, setExitReason] = useState("");
+    const [lastWorkingDate, setLastWorkingDate] = useState(new Date().toISOString().split("T")[0]);
+
+    // Initial status for new employees
+    const [initialStatus, setInitialStatus] = useState<string>("PROBATION");
 
     // Select option mappers
     const deptOptions = useMemo(() => (departmentsQuery.data?.data ?? []).map((d: any) => ({ value: d.id, label: d.name })), [departmentsQuery.data]);
@@ -328,8 +340,9 @@ export function EmployeeProfileScreen() {
     const managerOptions = useMemo(() => (employeesQuery.data?.data ?? []).filter((e: any) => e.id !== id).map((e: any) => {
         const name = [e.firstName, e.lastName].filter(Boolean).join(" ") || e.officialEmail || e.id;
         const empId = e.employeeId ?? "";
-        const role = e.designation?.name ?? e.designationName ?? "";
-        const parts = [name, empId && `(${empId})`, role && `— ${role}`].filter(Boolean);
+        // Tenant RBAC role name (same as auth profile roleName); fallback to job title if no user/role.
+        const roleLabel = e.rbacRoleName ?? e.designation?.name ?? e.designationName ?? "";
+        const parts = [name, empId && `(${empId})`, roleLabel && `— ${roleLabel}`].filter(Boolean);
         return { value: e.id, label: parts.join(" ") };
     }), [employeesQuery.data, id]);
 
@@ -604,6 +617,9 @@ export function EmployeeProfileScreen() {
         // Probation end date
         if (professional.probationEndDate) payload.probationEndDate = professional.probationEndDate;
 
+        // Initial status (for new employees)
+        if (isNew && initialStatus) payload.status = initialStatus;
+
         // Document proof uploads (base64)
         if (Object.keys(docUploads).length > 0) {
             payload.documentUploads = docUploads;
@@ -650,11 +666,32 @@ export function EmployeeProfileScreen() {
         }
     };
 
-    const handleStatusAction = async (status: EmployeeStatus) => {
+    const handleStatusAction = async (status: EmployeeStatus, extra?: { lastWorkingDate?: string; exitReason?: string }) => {
         if (!id || isNew) return;
         try {
-            await statusMutation.mutateAsync({ id, status });
+            await statusMutation.mutateAsync({ id, status, ...extra });
             showSuccess("Status Updated", `Employee status changed to ${status}.`);
+        } catch (err) {
+            showApiError(err);
+        }
+    };
+
+    const handleDeactivate = async () => {
+        if (!id || isNew) return;
+        if (!exitReason.trim()) {
+            showApiError({ message: "Exit reason is required." });
+            return;
+        }
+        try {
+            await statusMutation.mutateAsync({
+                id,
+                status: "EXITED" as EmployeeStatus,
+                exitReason: exitReason.trim(),
+                lastWorkingDate: lastWorkingDate || undefined,
+            });
+            showSuccess("Employee Deactivated", `${personal.firstName} ${personal.lastName} has been set to Exited.`);
+            setShowDeactivateModal(false);
+            setExitReason("");
         } catch (err) {
             showApiError(err);
         }
@@ -755,6 +792,15 @@ export function EmployeeProfileScreen() {
                         >
                             <RotateCcw size={14} />
                             Reset Form
+                        </button>
+                    )}
+                    {!isNew && !editing && emp.status?.toUpperCase() !== "EXITED" && (
+                        <button
+                            onClick={() => setShowDeactivateModal(true)}
+                            className="inline-flex items-center gap-2 border border-danger-200 dark:border-danger-800 text-danger-600 dark:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-900/20 px-5 py-2.5 rounded-xl font-bold text-sm transition-all"
+                        >
+                            <UserX className="w-4 h-4" />
+                            Deactivate
                         </button>
                     )}
                     {!isNew && !editing && (
@@ -1040,6 +1086,20 @@ export function EmployeeProfileScreen() {
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FormField label="Joining Date" value={professional.joiningDate} onChange={(v) => updateProfessional("joiningDate", v)} type="date" disabled={!editing} />
+                                {isNew && (
+                                    <SelectField
+                                        label="Initial Status"
+                                        value={initialStatus}
+                                        onChange={(v) => setInitialStatus(v)}
+                                        options={[
+                                            { value: "PROBATION", label: "Probation" },
+                                            { value: "ACTIVE", label: "Active" },
+                                            { value: "CONFIRMED", label: "Confirmed" },
+                                        ]}
+                                        disabled={!editing}
+                                        placeholder="Select status..."
+                                    />
+                                )}
                                 <SelectField label="Employee Type" value={professional.employeeTypeId} onChange={(v) => updateProfessional("employeeTypeId", v)} options={empTypeOptions} disabled={!editing} placeholder="Select type..." createLink={{ href: "/app/company/hr/employee-types", label: "Create Employee Type" }} />
                                 <SelectField label="Department" value={professional.departmentId} onChange={(v) => updateProfessional("departmentId", v)} options={deptOptions} disabled={!editing} placeholder="Select department..." createLink={{ href: "/app/company/hr/departments", label: "Create Department" }} />
                                 <SelectField label="Designation" value={professional.designationId} onChange={(v) => updateProfessional("designationId", v)} options={desigOptions} disabled={!editing} placeholder="Select designation..." createLink={{ href: "/app/company/hr/designations", label: "Create Designation" }} />
@@ -1470,16 +1530,21 @@ export function EmployeeProfileScreen() {
                                         Status Action
                                         <ChevronDown size={14} />
                                     </button>
-                                    <div className="absolute right-0 bottom-full mb-2 w-48 bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-xl hidden group-hover:block z-10">
+                                    <div className="absolute right-0 bottom-full mb-2 w-52 bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-xl hidden group-hover:block z-10">
                                         <button onClick={() => handleStatusAction("CONFIRMED" as EmployeeStatus)} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-t-xl transition-colors">
                                             Confirm Employee
                                         </button>
                                         <button onClick={() => handleStatusAction("SUSPENDED" as EmployeeStatus)} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-warning-600 dark:text-warning-400 hover:bg-warning-50 dark:hover:bg-warning-900/20 transition-colors">
                                             Suspend
                                         </button>
-                                        <button onClick={() => handleStatusAction("ON_NOTICE" as EmployeeStatus)} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-danger-600 dark:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-b-xl transition-colors">
-                                            Initiate Exit
+                                        <button onClick={() => handleStatusAction("ON_NOTICE" as EmployeeStatus)} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-accent-600 dark:text-accent-400 hover:bg-accent-50 dark:hover:bg-accent-900/20 transition-colors">
+                                            Initiate Exit (On Notice)
                                         </button>
+                                        {emp.status?.toUpperCase() !== "EXITED" && (
+                                            <button onClick={() => setShowDeactivateModal(true)} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-danger-600 dark:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-b-xl transition-colors">
+                                                Deactivate (Exit)
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -1504,6 +1569,62 @@ export function EmployeeProfileScreen() {
                     </div>
                 );
             })()}
+
+            {/* Deactivate Employee Modal */}
+            {showDeactivateModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-2xl max-w-md w-full mx-4 p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-danger-50 dark:bg-danger-900/30 flex items-center justify-center">
+                                <AlertTriangle size={20} className="text-danger-600 dark:text-danger-400" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-primary-950 dark:text-white">Deactivate Employee</h3>
+                                <p className="text-sm text-neutral-500 dark:text-neutral-400">Set status to Exited</p>
+                            </div>
+                        </div>
+                        <p className="text-sm text-neutral-600 dark:text-neutral-300">
+                            This will deactivate <span className="font-bold">{personal.firstName} {personal.lastName}</span> and set their status to Exited.
+                        </p>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Exit Reason <span className="text-danger-500">*</span></label>
+                                <input
+                                    type="text"
+                                    value={exitReason}
+                                    onChange={(e) => setExitReason(e.target.value)}
+                                    placeholder="e.g. Resignation, Termination, Contract End..."
+                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Last Working Date</label>
+                                <input
+                                    type="date"
+                                    value={lastWorkingDate}
+                                    onChange={(e) => setLastWorkingDate(e.target.value)}
+                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-3 pt-2">
+                            <button
+                                onClick={() => { setShowDeactivateModal(false); setExitReason(""); }}
+                                className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleDeactivate}
+                                disabled={statusMutation.isPending || !exitReason.trim()}
+                                className="px-4 py-2.5 rounded-xl bg-danger-600 hover:bg-danger-700 text-white text-sm font-bold shadow-md shadow-danger-500/20 transition-all disabled:opacity-50"
+                            >
+                                {statusMutation.isPending ? "Deactivating..." : "Deactivate Employee"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

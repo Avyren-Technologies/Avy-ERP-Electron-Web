@@ -7,6 +7,10 @@ import { useAuthStore } from "./store/useAuthStore";
 import type { UserRole } from "./store/useAuthStore";
 import { checkPermission } from "./lib/api/auth";
 import { NoPermissionScreen } from "./features/shared/NoPermissionScreen";
+import { getTenantContext } from "@/lib/tenant";
+import { useTenantBranding } from "@/lib/api/auth";
+import { RegisterCompanyScreen } from "@/features/auth/RegisterCompanyScreen";
+import { TenantNotFoundScreen } from "@/features/auth/TenantNotFoundScreen";
 
 // Screens (Implemented)
 import { LandingScreen } from "./features/auth/LandingScreen";
@@ -256,19 +260,32 @@ function RoleBasedDashboard() {
 }
 
 function App() {
+  const tenantContext = getTenantContext();
+  const { data: branding, isLoading: brandingLoading } = useTenantBranding(tenantContext.slug);
+
+  // Show 404 for invalid tenant subdomains
+  if (tenantContext.mode === 'tenant' && !brandingLoading && branding && !branding.exists) {
+    return <TenantNotFoundScreen />;
+  }
+
   return (
     <>
     <Toaster position="top-right" richColors closeButton toastOptions={{ style: { fontFamily: 'Inter, system-ui, sans-serif' } }} />
     <Routes>
       {/* Public Auth Routes */}
       <Route element={<AuthLayout />}>
-        <Route path="/" element={<LandingScreen />} />
+        <Route path="/" element={
+          tenantContext.mode === 'main' ? <LandingScreen /> : <Navigate to="/login" replace />
+        } />
         <Route path="/login" element={<LoginScreen />} />
         <Route path="/forgot-password" element={<ForgotPasswordScreen />} />
         <Route path="/reset-password/verify" element={<VerifyResetCodeScreen />} />
         <Route path="/reset-password/new" element={<ResetPasswordScreen />} />
         <Route path="/mfa-verify" element={<MfaVerifyScreen />} />
         <Route path="/mfa-setup" element={<MfaSetupScreen />} />
+        {tenantContext.mode === 'main' && (
+          <Route path="/register" element={<RegisterCompanyScreen />} />
+        )}
       </Route>
 
       {/* Protected App Routes */}

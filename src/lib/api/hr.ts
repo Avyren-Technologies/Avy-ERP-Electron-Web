@@ -123,6 +123,8 @@ export interface Employee {
     departmentName?: string;
     designationId?: string;
     designationName?: string;
+    /** Tenant RBAC role display name (from User → TenantUser → Role); list API only. */
+    rbacRoleName?: string | null;
     gradeId?: string;
     gradeName?: string;
     employeeTypeId?: string;
@@ -428,8 +430,8 @@ async function deleteEmployee(id: string): Promise<ApiResponse<void>> {
     return response.data;
 }
 
-async function updateEmployeeStatus(id: string, status: EmployeeStatus): Promise<ApiResponse<Employee>> {
-    const response = await client.patch(`/hr/employees/${id}/status`, { status });
+async function updateEmployeeStatus(id: string, data: { status: EmployeeStatus; lastWorkingDate?: string; exitReason?: string }): Promise<ApiResponse<Employee>> {
+    const response = await client.patch(`/hr/employees/${id}/status`, data);
     return response.data;
 }
 

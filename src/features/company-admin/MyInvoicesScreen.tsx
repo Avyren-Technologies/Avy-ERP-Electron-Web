@@ -43,6 +43,8 @@ function StatusBadge({ status }: { status: string }) {
 // ── Invoice Detail Modal ──
 
 function InvoiceDetailModal({ invoiceId, onClose }: { invoiceId: string; onClose: () => void }) {
+    const fmt = useCompanyFormatter();
+    const formatDate = (d: string | null | undefined) => (d ? fmt.date(d) : "—");
     const { data, isLoading } = useMyInvoiceDetail(invoiceId);
     const invoice = data?.data;
 

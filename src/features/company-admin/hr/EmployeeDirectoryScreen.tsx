@@ -10,9 +10,12 @@ import {
     Edit3,
     MapPin,
     Calendar,
+    Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEmployees, useDepartments } from "@/features/company-admin/api/use-hr-queries";
+import { useDeleteEmployee } from "@/features/company-admin/api/use-hr-mutations";
+import { showSuccess, showApiError } from "@/lib/toast";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 
@@ -66,6 +69,21 @@ export function EmployeeDirectoryScreen() {
     const [departmentFilter, setDepartmentFilter] = useState("All");
     const [page, setPage] = useState(1);
     const limit = 25;
+
+    // Delete (deactivate) employee
+    const deleteEmployee = useDeleteEmployee();
+    const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+
+    const handleDeleteConfirm = async () => {
+        if (!deleteTarget) return;
+        try {
+            await deleteEmployee.mutateAsync(deleteTarget.id);
+            showSuccess("Employee Deactivated", `${deleteTarget.name} has been set to Exited.`);
+            setDeleteTarget(null);
+        } catch (err) {
+            showApiError(err);
+        }
+    };
 
     const { data, isLoading, isError } = useEmployees({
         search: search || undefined,
@@ -242,6 +260,18 @@ export function EmployeeDirectoryScreen() {
                                                     >
                                                         <Edit3 size={15} />
                                                     </button>
+                                                    {(emp.status?.toLowerCase() ?? "active") !== "exited" && (
+                                                        <button
+                                                            onClick={() => {
+                                                                const name = [emp.firstName, emp.middleName, emp.lastName].filter(Boolean).join(" ") || emp.fullName || "Employee";
+                                                                setDeleteTarget({ id: emp.id, name });
+                                                            }}
+                                                            className="p-2 text-danger-600 dark:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-900/30 rounded-lg transition-colors"
+                                                            title="Deactivate"
+                                                        >
+                                                            <Trash2 size={15} />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -287,6 +317,41 @@ export function EmployeeDirectoryScreen() {
                     </div>
                 </div>
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            {deleteTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-2xl max-w-md w-full mx-4 p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-danger-50 dark:bg-danger-900/30 flex items-center justify-center">
+                                <Trash2 size={20} className="text-danger-600 dark:text-danger-400" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-primary-950 dark:text-white">Deactivate Employee</h3>
+                                <p className="text-sm text-neutral-500 dark:text-neutral-400">This action can be reversed later.</p>
+                            </div>
+                        </div>
+                        <p className="text-sm text-neutral-600 dark:text-neutral-300">
+                            Are you sure you want to deactivate <span className="font-bold">{deleteTarget.name}</span>? This will set their status to Exited.
+                        </p>
+                        <div className="flex justify-end gap-3 pt-2">
+                            <button
+                                onClick={() => setDeleteTarget(null)}
+                                className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleDeleteConfirm}
+                                disabled={deleteEmployee.isPending}
+                                className="px-4 py-2.5 rounded-xl bg-danger-600 hover:bg-danger-700 text-white text-sm font-bold shadow-md shadow-danger-500/20 transition-all disabled:opacity-50"
+                            >
+                                {deleteEmployee.isPending ? "Deactivating..." : "Deactivate"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
