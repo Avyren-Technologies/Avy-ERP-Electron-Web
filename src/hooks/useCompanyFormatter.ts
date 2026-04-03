@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useCompanySettings } from '@/features/company-admin/api/use-company-admin-queries';
 import {
+  coerceCompanyDateFormat,
   createCompanyFormatter,
   DEFAULT_FORMAT_SETTINGS,
   type CompanyFormatter,
@@ -12,7 +13,7 @@ export function useCompanyFormatter(): CompanyFormatter {
   const raw = data?.data;
 
   const settings: CompanyFormatSettings = useMemo(() => ({
-    dateFormat: raw?.dateFormat ?? DEFAULT_FORMAT_SETTINGS.dateFormat,
+    dateFormat: coerceCompanyDateFormat(raw?.dateFormat),
     timeFormat: raw?.timeFormat ?? DEFAULT_FORMAT_SETTINGS.timeFormat,
     timezone: raw?.timezone ?? DEFAULT_FORMAT_SETTINGS.timezone,
   }), [raw?.dateFormat, raw?.timeFormat, raw?.timezone]);
