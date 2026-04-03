@@ -26,6 +26,8 @@ import { AnnouncementsScreen } from "./features/employee/AnnouncementsScreen";
 import { CompanyListScreen } from "./features/super-admin/CompanyListScreen";
 import { CompanyDetailScreen } from "./features/super-admin/CompanyDetailScreen";
 import { AddCompanyWizard } from "./features/super-admin/AddCompanyWizard";
+import { RegistrationListScreen } from "./features/super-admin/RegistrationListScreen";
+import { RegistrationDetailScreen } from "./features/super-admin/RegistrationDetailScreen";
 import { BillingOverviewScreen } from "./features/super-admin/BillingOverviewScreen";
 import { PlatformMonitorScreen } from "./features/super-admin/PlatformMonitorScreen";
 import { ModuleCatalogueScreen } from "./features/super-admin/ModuleCatalogueScreen";
@@ -310,6 +312,8 @@ function App() {
         <Route path="billing/payments" element={<RequireRole roles={['super-admin']}><PaymentHistoryScreen /></RequireRole>} />
         <Route path="billing/subscriptions/:companyId" element={<RequireRole roles={['super-admin']}><SubscriptionDetailScreen /></RequireRole>} />
         <Route path="reports/audit" element={<RequireRole roles={['super-admin', 'company-admin']}><AuditLogScreen /></RequireRole>} />
+        <Route path="registrations" element={<RequireRole roles={['super-admin']}><RegistrationListScreen /></RequireRole>} />
+        <Route path="registrations/:id" element={<RequireRole roles={['super-admin']}><RegistrationDetailScreen /></RequireRole>} />
         <Route path="support" element={<RequireRole roles={['super-admin']}><SupportDashboardScreen /></RequireRole>} />
         <Route path="support/ticket/:id" element={<RequireRole roles={['super-admin']}><SupportTicketDetailScreen /></RequireRole>} />
         {/* Company-admin-only routes */}
