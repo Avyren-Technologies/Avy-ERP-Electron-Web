@@ -9,6 +9,7 @@ import { CustomLoader } from "@/components/ui/CustomLoader";
 import { cn } from "@/lib/utils";
 import { getTenantContext } from "@/lib/tenant";
 import { useTenantBranding } from "@/lib/api/auth";
+import { TenantNotFoundScreen } from "@/features/auth/TenantNotFoundScreen";
 import companyLogo from "@/assets/logo/Company-Logo.png";
 
 const loginSchema = z.object({
@@ -144,6 +145,11 @@ export function LoginScreen() {
             { email: data.email, password: data.password },
         );
     };
+
+    // ── Tenant not found — show 404 for invalid subdomains ──
+    if (isTenantMode && !brandingLoading && branding && !branding.exists) {
+        return <TenantNotFoundScreen />;
+    }
 
     // ── Tenant-specific branded login — Elegant Two-Column Layout ──
     if (isTenantMode) {
