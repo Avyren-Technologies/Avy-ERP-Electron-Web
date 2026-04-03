@@ -145,7 +145,7 @@ export function LoginScreen() {
         );
     };
 
-    // ── Tenant-specific branded login — immersive, white-label ──
+    // ── Tenant-specific branded login — Elegant Two-Column Layout ──
     if (isTenantMode) {
         const errorMsg = loginMutation.isError
             ? ((loginMutation.error as any)?.response?.data?.message
@@ -155,165 +155,181 @@ export function LoginScreen() {
         const isTenantMismatchError = errorMsg.includes('tenant mismatch') || errorMsg.includes('Access denied');
 
         return (
-            <div className="min-h-screen relative flex items-center justify-center overflow-hidden">
-                {/* Rich gradient background */}
-                <div className="absolute inset-0 bg-gradient-to-br from-primary-600 via-accent-600 to-primary-800 dark:from-primary-950 dark:via-accent-950 dark:to-neutral-950" />
-                {/* Animated mesh overlay */}
-                <div className="absolute inset-0 opacity-30 dark:opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(255,255,255,0.15) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.1) 0%, transparent 40%), radial-gradient(circle at 50% 80%, rgba(255,255,255,0.08) 0%, transparent 50%)' }} />
-                {/* Subtle noise texture */}
-                <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\'/%3E%3C/svg%3E")' }} />
-
-                {/* Login card */}
-                <div className="relative z-10 w-full max-w-[420px] mx-4">
-                    <div className="backdrop-blur-2xl bg-white/95 dark:bg-neutral-900/90 rounded-3xl shadow-2xl shadow-black/20 border border-white/20 dark:border-white/10 p-10">
-
-                        {/* Company branding — large and prominent */}
-                        <div className="text-center mb-8">
-                            {brandingLoading ? (
-                                <div className="h-24 flex items-center justify-center">
-                                    <CustomLoader size="md" />
-                                </div>
-                            ) : branding?.logoUrl ? (
-                                <img
-                                    src={branding.logoUrl}
-                                    alt={branding.companyName}
-                                    className="h-24 max-w-[280px] mx-auto object-contain drop-shadow-sm"
-                                />
-                            ) : (
-                                <div className="h-24 w-24 mx-auto bg-gradient-to-br from-primary-100 to-accent-100 dark:from-primary-900/40 dark:to-accent-900/40 rounded-2xl flex items-center justify-center shadow-inner">
-                                    <Building className="w-12 h-12 text-primary-600 dark:text-primary-400" />
-                                </div>
-                            )}
-                            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mt-5 tracking-tight">
-                                {branding?.companyName || 'Sign In'}
-                            </h1>
-                            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5">
-                                Sign in to your workspace
-                            </p>
+            <div className="w-full max-w-6xl mx-auto flex flex-col md:flex-row gap-8 lg:gap-16 items-center justify-center p-6 pt-8 min-h-screen">
+                {/* ── Left Column: Tenant Branding ── */}
+                <div className="w-full md:w-1/2 flex flex-col items-center md:items-start justify-center order-first pl-0 md:pl-2 pr-4 text-center md:text-left">
+                    {brandingLoading ? (
+                        <div className="h-32 md:h-48 w-full flex items-center justify-center md:justify-start">
+                            <CustomLoader size="lg" className="text-primary-600 dark:text-primary-400" />
                         </div>
+                    ) : branding?.logoUrl ? (
+                        <img
+                            src={branding.logoUrl}
+                            alt={branding.companyName}
+                            className="w-full max-w-[320px] md:max-w-[480px] h-auto object-contain mb-8 md:mb-10 drop-shadow-xl animate-in fade-in zoom-in-95 duration-700"
+                        />
+                    ) : (
+                        <div className="w-40 h-40 md:w-56 md:h-56 bg-gradient-to-br from-primary-100 to-accent-100 dark:from-primary-900/30 dark:to-accent-900/30 rounded-[2.5rem] flex items-center justify-center shadow-2xl mb-8 md:mb-10 border border-white dark:border-neutral-800 animate-in fade-in zoom-in-95 duration-700">
+                            <Building className="w-20 h-20 md:w-28 md:h-28 text-primary-600 dark:text-primary-400" />
+                        </div>
+                    )}
+                    
+                    <div className="-mt-16 md:-mt-32 mb-16 md:mb-32 space-y-4 max-w-lg mx-auto md:mx-0 animate-in fade-in slide-in-from-bottom-6 duration-700 delay-150">
+                        <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-neutral-900 dark:text-white tracking-tight leading-tight">
+                            Welcome to <br className="hidden md:block mb-1" />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-accent-600 dark:from-primary-400 dark:to-accent-400">
+                                {branding?.companyName || 'Your Workspace'}
+                            </span>
+                        </h1>
+                        <p className="text-[17px] text-neutral-500 dark:text-neutral-400 leading-relaxed font-medium">
+                            Sign in to access your customized enterprise dashboard, manage operations, and collaborate with your team securely.
+                        </p>
+                    </div>
+                </div>
 
-                        {/* Session timeout */}
+                {/* ── Right Column: Login Form ── */}
+                <div className="w-full md:w-[440px] flex-shrink-0 relative">
+                    {/* Decorative blurred blob behind the form */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-br from-primary-500/10 to-accent-500/10 dark:from-primary-500/5 dark:to-accent-500/5 blur-3xl -z-10 rounded-full" />
+                    
+                    <div className="bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border border-white/40 dark:border-neutral-800 shadow-2xl shadow-primary-900/5 dark:shadow-black/20 rounded-[2rem] p-8 md:p-10 w-full animate-in fade-in slide-in-from-right-8 duration-700">
                         {sessionTimedOut && (
-                            <div className="bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800 rounded-xl p-3 text-sm text-warning-700 dark:text-warning-300 mb-5">
+                            <div className="mb-6 px-4 py-3 rounded-xl bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800/50 text-warning-700 dark:text-warning-400 text-sm font-medium">
                                 Your session expired due to inactivity. Please sign in again.
                             </div>
                         )}
 
-                        {/* Error display */}
-                        {loginMutation.isError && (
-                            <div className="bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800 rounded-xl p-3 text-sm text-danger-600 dark:text-danger-400 mb-5">
-                                {isTenantMismatchError
-                                    ? "Your account doesn't belong to this company. Please check your URL."
-                                    : (errorMsg || 'Login failed. Please check your credentials and try again.')}
-                            </div>
-                        )}
+                        <div className="mb-8">
+                            <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">Sign In</h2>
+                            <p className="text-neutral-500 dark:text-neutral-400 text-sm">Enter your credentials to continue</p>
+                        </div>
 
-                        {/* Form */}
                         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                             {/* Email */}
-                            <div>
-                                <label className="block text-[13px] font-semibold text-neutral-600 dark:text-neutral-300 mb-2 uppercase tracking-wider">
-                                    Email
-                                </label>
-                                <div className={cn(
-                                    "relative flex items-center h-[52px] rounded-xl border-2 transition-all duration-200 px-4 gap-3",
-                                    focusedInput === 'email'
-                                        ? "border-primary-500 bg-white dark:bg-neutral-800 shadow-sm shadow-primary-500/10"
-                                        : errors.email
-                                            ? "border-danger-400 bg-danger-50/50 dark:bg-danger-900/10"
-                                            : "border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/60"
-                                )}>
-                                    <Mail className={cn("w-[18px] h-[18px] shrink-0 transition-colors", focusedInput === 'email' ? "text-primary-500" : "text-neutral-400")} />
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-semibold text-neutral-900 dark:text-neutral-200 ml-1">Work Email</label>
+                                <div
+                                    className={cn(
+                                        "relative flex items-center h-14 bg-white dark:bg-neutral-950 rounded-xl border-2 transition-colors overflow-hidden",
+                                        focusedInput === "email"
+                                            ? "border-primary-500 shadow-sm shadow-primary-500/10"
+                                            : errors.email
+                                                ? "border-danger-500"
+                                                : "border-neutral-200 dark:border-neutral-800"
+                                    )}
+                                >
+                                    <div className="pl-4 pr-3 flex items-center justify-center">
+                                        <Mail className={cn("w-5 h-5", focusedInput === "email" ? "text-primary-600 dark:text-primary-400" : (errors.email ? "text-danger-500" : "text-neutral-400 dark:text-neutral-500"))} />
+                                    </div>
                                     <input
-                                        {...register("email")}
                                         type="email"
-                                        placeholder="name@company.com"
-                                        autoComplete="email"
-                                        className="flex-1 bg-transparent border-none outline-none text-neutral-900 dark:text-white placeholder:text-neutral-400 text-[15px]"
+                                        {...register("email")}
                                         onFocus={() => setFocusedInput("email")}
                                         onBlur={() => setFocusedInput(null)}
+                                        placeholder="name@company.com"
+                                        className="flex-1 h-full bg-transparent border-none outline-none text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-600 font-medium disabled:opacity-50"
                                         disabled={isLoading}
                                     />
                                 </div>
-                                {errors.email && <p className="text-xs text-danger-500 mt-1.5 ml-1">{errors.email.message}</p>}
+                                {errors.email && <p className="text-xs font-bold text-danger-500 ml-1">{errors.email.message}</p>}
                             </div>
 
                             {/* Password */}
-                            <div>
-                                <div className="flex items-center justify-between mb-2">
-                                    <label className="text-[13px] font-semibold text-neutral-600 dark:text-neutral-300 uppercase tracking-wider">Password</label>
-                                    <button type="button" onClick={() => navigate("/forgot-password")} className="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 font-semibold transition-colors">
+                            <div className="space-y-1.5">
+                                <div className="flex justify-between items-baseline mb-1 ml-1 pr-1">
+                                    <label className="text-sm font-semibold text-neutral-900 dark:text-neutral-200">Password</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate("/forgot-password")}
+                                        className="text-xs font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
+                                    >
                                         Forgot password?
                                     </button>
                                 </div>
-                                <div className={cn(
-                                    "relative flex items-center h-[52px] rounded-xl border-2 transition-all duration-200 px-4 gap-3",
-                                    focusedInput === 'password'
-                                        ? "border-primary-500 bg-white dark:bg-neutral-800 shadow-sm shadow-primary-500/10"
-                                        : errors.password
-                                            ? "border-danger-400 bg-danger-50/50 dark:bg-danger-900/10"
-                                            : "border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/60"
-                                )}>
-                                    <Lock className={cn("w-[18px] h-[18px] shrink-0 transition-colors", focusedInput === 'password' ? "text-primary-500" : "text-neutral-400")} />
+                                <div
+                                    className={cn(
+                                        "relative flex items-center h-14 bg-white dark:bg-neutral-950 rounded-xl border-2 transition-colors overflow-hidden",
+                                        focusedInput === "password"
+                                            ? "border-primary-500 shadow-sm shadow-primary-500/10"
+                                            : errors.password
+                                                ? "border-danger-500"
+                                                : "border-neutral-200 dark:border-neutral-800"
+                                    )}
+                                >
+                                    <div className="pl-4 pr-3 flex items-center justify-center">
+                                        <Lock className={cn("w-5 h-5", focusedInput === "password" ? "text-primary-600 dark:text-primary-400" : (errors.password ? "text-danger-500" : "text-neutral-400 dark:text-neutral-500"))} />
+                                    </div>
                                     <input
-                                        {...register("password")}
                                         type={showPassword ? "text" : "password"}
-                                        placeholder="Enter your password"
-                                        autoComplete="current-password"
-                                        className="flex-1 bg-transparent border-none outline-none text-neutral-900 dark:text-white placeholder:text-neutral-400 text-[15px]"
+                                        {...register("password")}
                                         onFocus={() => setFocusedInput("password")}
                                         onBlur={() => setFocusedInput(null)}
+                                        placeholder="••••••••"
+                                        className="flex-1 h-full bg-transparent border-none outline-none text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-600 font-medium disabled:opacity-50 tracking-widest text-lg"
                                         disabled={isLoading}
                                     />
-                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors" tabIndex={-1}>
-                                        {showPassword ? <EyeOff className="w-[18px] h-[18px]" /> : <Eye className="w-[18px] h-[18px]" />}
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword((v) => !v)}
+                                        className="pr-4 pl-2 flex items-center justify-center text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+                                        tabIndex={-1}
+                                    >
+                                        {showPassword
+                                            ? <EyeOff className="w-5 h-5" />
+                                            : <Eye className="w-5 h-5" />}
                                     </button>
                                 </div>
-                                {errors.password && <p className="text-xs text-danger-500 mt-1.5 ml-1">{errors.password.message}</p>}
+                                {errors.password && <p className="text-xs font-bold text-danger-500 ml-1">{errors.password.message}</p>}
                             </div>
 
-                            {/* Remember me */}
-                            <div className="flex items-center">
+                            {/* Remember Me */}
+                            <div className="flex items-center ml-1 pb-1">
                                 <button
                                     type="button"
                                     onClick={() => setValue("rememberMe", !rememberMe)}
                                     disabled={isLoading}
-                                    className="flex items-center gap-2.5 cursor-pointer group"
+                                    className="flex items-center gap-3 cursor-pointer group"
                                 >
                                     <div className={cn(
-                                        "w-[18px] h-[18px] rounded-[5px] border-2 flex items-center justify-center transition-all duration-200",
+                                        "w-5 h-5 rounded border-2 flex items-center justify-center transition-all duration-200",
                                         rememberMe
-                                            ? "bg-primary-600 border-primary-600 shadow-sm shadow-primary-600/30"
-                                            : "bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 group-hover:border-primary-400"
+                                            ? "bg-primary-600 border-primary-600"
+                                            : "bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-600 group-hover:border-primary-400"
                                     )}>
-                                        {rememberMe && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                                        {rememberMe && (
+                                            <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+                                        )}
                                     </div>
-                                    <span className="text-sm text-neutral-500 dark:text-neutral-400 select-none">Remember me</span>
+                                    <span className="text-sm font-medium text-neutral-600 dark:text-neutral-400 select-none">Remember me</span>
                                 </button>
                             </div>
 
-                            {/* Submit */}
                             <button
                                 type="submit"
                                 disabled={isLoading}
-                                className="w-full h-[52px] bg-gradient-to-r from-primary-600 to-accent-600 hover:from-primary-700 hover:to-accent-700 text-white rounded-xl font-semibold disabled:opacity-50 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-primary-600/25 hover:shadow-primary-600/40 active:scale-[0.98]"
+                                className="group relative w-full h-14 flex items-center justify-center gap-2 bg-gradient-to-r from-primary-600 to-accent-600 hover:from-primary-700 hover:to-accent-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-primary-500/25 overflow-hidden transition-all disabled:opacity-70 disabled:hover:from-primary-600 disabled:hover:to-accent-600 mt-2"
                             >
                                 {isLoading ? (
                                     <CustomLoader size="sm" className="text-white brightness-200" />
                                 ) : (
-                                    <>Sign In <ArrowRight className="w-4 h-4" /></>
+                                    <>
+                                        <span>Sign In</span>
+                                        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                    </>
                                 )}
                             </button>
                         </form>
-                    </div>
 
-                    {/* Powered by — blends with gradient background */}
-                    <p className="text-center text-xs text-white/50 mt-6">
-                        Powered by{' '}
-                        <a href="https://avyrentechnologies.com" target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-white font-medium transition-colors">
-                            Avyren Technologies
-                        </a>
-                    </p>
+                        {loginMutation.isError && (
+                            <div className="mt-5 p-4 rounded-xl bg-danger-50 dark:bg-danger-950/30 border border-danger-200 dark:border-danger-800 animate-in fade-in slide-in-from-top-2">
+                                <p className="text-sm font-medium text-danger-700 dark:text-danger-400 text-center">
+                                    {isTenantMismatchError
+                                        ? "Your account doesn't belong to this company. Please check your URL."
+                                        : (errorMsg || 'Login failed. Please check your credentials and try again.')}
+                                </p>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         );

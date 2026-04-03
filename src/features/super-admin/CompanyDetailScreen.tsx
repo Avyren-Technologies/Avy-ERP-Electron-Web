@@ -351,7 +351,11 @@ export function CompanyDetailScreen() {
         );
     }
 
-    const TENANT = data.data;
+    const TENANT = {
+        ...data.data,
+        slug: data.data?.tenant?.slug ?? data.data?.slug ?? '',
+        customDomain: data.data?.tenant?.customDomain ?? data.data?.customDomain ?? null,
+    };
 
     // Parse JSON fields
     const regAddress = (TENANT.registeredAddress as any) ?? {};
@@ -596,6 +600,8 @@ export function CompanyDetailScreen() {
                                         </a>
                                     ) : <p className="text-neutral-300 text-sm italic dark:text-neutral-500">—</p>}
                                 </div>
+                                <DetailField label="Custom Domain" value={TENANT.customDomain} mono />
+                                <DetailField label="Slug" value={TENANT.slug} mono />
                                 <DetailField label="CIN" value={TENANT.cin} mono />
                                 <DetailField label="Incorporation Date" value={TENANT.incorporationDate} />
                                 <DetailField label="Employee Count" value={TENANT.employeeCount} />
