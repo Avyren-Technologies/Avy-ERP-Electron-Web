@@ -102,6 +102,9 @@ app/dist/
 build/
 packages/
 
+# Cloudflare Wrangler local state
+.wrangler/
+
 # TypeScript
 *.tsbuildinfo
 
