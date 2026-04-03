@@ -30,6 +30,7 @@ import {
     UserX,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { addCalendarDaysToIsoDate, getProbationDaysFromDesignation } from "@/lib/probation-end-date";
 import {
     useEmployee,
     useEmployees,
@@ -498,23 +499,21 @@ export function EmployeeProfileScreen() {
         }
     }, []);
 
-    // Probation end date auto-calculation when designation changes
+    // Probation end date = joining date + designation.probationDays (from Designation master)
     useEffect(() => {
         if (!editing || !professional.designationId || !professional.joiningDate) return;
         const designations: any[] = designationsQuery.data?.data ?? [];
         const desig = designations.find((d: any) => d.id === professional.designationId);
-        if (desig?.probationPeriod && desig.probationPeriod > 0) {
-            const joining = new Date(professional.joiningDate);
-            if (!isNaN(joining.getTime())) {
-                const endDate = new Date(joining);
-                endDate.setDate(endDate.getDate() + desig.probationPeriod);
-                const formatted = endDate.toISOString().split("T")[0];
+        const days = getProbationDaysFromDesignation(desig);
+        if (days != null) {
+            const formatted = addCalendarDaysToIsoDate(professional.joiningDate, days);
+            if (formatted) {
                 setProfessional((p) => ({ ...p, probationEndDate: formatted }));
                 setProbationAutoCalculated(true);
+                return;
             }
-        } else {
-            setProbationAutoCalculated(false);
         }
+        setProbationAutoCalculated(false);
     }, [professional.designationId, professional.joiningDate, designationsQuery.data, editing]);
 
     // Document file upload handler
@@ -1139,7 +1138,7 @@ export function EmployeeProfileScreen() {
                                     />
                                     {probationAutoCalculated && professional.probationEndDate && (
                                         <p className="text-[10px] text-info-600 dark:text-info-400 mt-1 font-semibold">
-                                            Auto-calculated from designation probation period. You can override this date.
+                                            Auto-calculated from joining date + probation days on the designation. You can override this date.
                                         </p>
                                     )}
                                 </div>

@@ -172,7 +172,7 @@ export function ModuleCatalogueScreen() {
                     <p className="text-neutral-500 dark:text-neutral-400 mt-1">
                         {isCompanyAdmin
                             ? "Your subscribed modules and available add-ons."
-                            : "Avyren ERP ecosystem features available to tenants."}
+                            : "Avy ERP ecosystem features available to tenants."}
                     </p>
                 </div>
                 <div className="flex items-center gap-3">

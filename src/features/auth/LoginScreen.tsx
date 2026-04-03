@@ -169,11 +169,19 @@ export function LoginScreen() {
                             <CustomLoader size="lg" className="text-primary-600 dark:text-primary-400" />
                         </div>
                     ) : branding?.logoUrl ? (
-                        <img
-                            src={branding.logoUrl}
-                            alt={branding.companyName}
-                            className="w-full max-w-[320px] md:max-w-[480px] h-auto object-contain mb-8 md:mb-10 drop-shadow-xl animate-in fade-in zoom-in-95 duration-700"
-                        />
+                        <div
+                            className={cn(
+                                'mb-8 md:mb-10 w-full max-w-[320px] md:max-w-[360px] mx-auto md:mx-0',
+                                'h-32 sm:h-36 md:h-44 flex items-center justify-center',
+                                'animate-in fade-in zoom-in-95 duration-700'
+                            )}
+                        >
+                            <img
+                                src={branding.logoUrl}
+                                alt={branding.companyName}
+                                className="max-h-full max-w-full w-auto h-auto object-contain object-center drop-shadow-xl"
+                            />
+                        </div>
                     ) : (
                         <div className="w-40 h-40 md:w-56 md:h-56 bg-gradient-to-br from-primary-100 to-accent-100 dark:from-primary-900/30 dark:to-accent-900/30 rounded-[2.5rem] flex items-center justify-center shadow-2xl mb-8 md:mb-10 border border-white dark:border-neutral-800 animate-in fade-in zoom-in-95 duration-700">
                             <Building className="w-20 h-20 md:w-28 md:h-28 text-primary-600 dark:text-primary-400" />
@@ -441,7 +449,13 @@ export function LoginScreen() {
                     {isTenantMode && branding?.exists && (
                         <div className="text-center mb-6">
                             {branding.logoUrl ? (
-                                <img src={branding.logoUrl} alt={branding.companyName} className="h-14 mx-auto mb-3 object-contain" />
+                                <div className="mx-auto mb-3 flex h-16 max-w-[220px] items-center justify-center">
+                                    <img
+                                        src={branding.logoUrl}
+                                        alt={branding.companyName}
+                                        className="max-h-full max-w-full w-auto object-contain object-center"
+                                    />
+                                </div>
                             ) : null}
                             <h3 className="text-lg font-semibold text-neutral-800 dark:text-white">
                                 {branding.companyName}

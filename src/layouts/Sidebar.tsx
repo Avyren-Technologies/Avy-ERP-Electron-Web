@@ -184,15 +184,19 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
             {/* ---- Brand ---- */}
             <div className={cn(
                 'h-16 flex items-center border-b border-neutral-100 dark:border-neutral-800 flex-shrink-0',
-                collapsed ? 'px-4 justify-center' : 'px-5 justify-between'
+                collapsed ? 'px-3 justify-center' : 'px-4 justify-between'
             )}>
-                <div className="flex items-center gap-3 overflow-hidden">
-                    <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-primary-600 to-accent-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary-500/30">
-                        <span className="text-white font-black text-sm">A</span>
-                    </div>
+                <div className="flex min-w-0 items-center gap-2">
+                    <img
+                        src="/logo.png"
+                        alt="Avy ERP"
+                        className="h-[60px] w-[60px] shrink-0 object-contain"
+                    />
                     {!collapsed && (
-                        <span className="font-bold text-base text-primary-950 dark:text-white tracking-tight whitespace-nowrap">
-                            Avyren ERP
+                        <span
+                            className="truncate bg-gradient-to-br from-[#9333EA] via-[#4F46E5] to-[#22D3EE] bg-clip-text text-xl font-bold leading-none tracking-tight text-transparent"
+                        >
+                            Avy ERP
                         </span>
                     )}
                 </div>

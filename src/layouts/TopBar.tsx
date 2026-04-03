@@ -138,7 +138,7 @@ function getPageTitle(path: string) {
     const match = Object.keys(PAGE_TITLES)
         .filter((k) => path.startsWith(k))
         .sort((a, b) => b.length - a.length)[0];
-    return match ? PAGE_TITLES[match] : { title: 'Avyren ERP', subtitle: '' };
+    return match ? PAGE_TITLES[match] : { title: 'Avy ERP', subtitle: '' };
 }
 
 // ============================================================
@@ -215,21 +215,22 @@ function ThemeSwitch() {
 }
 
 // ============================================================
-// Notifications Panel
+// Notifications Panel (list populated from API when available)
 // ============================================================
-const MOCK_NOTIFICATIONS = [
-    { id: 1, title: 'New company registered', body: 'Apex Manufacturing just completed onboarding', time: '2m ago', unread: true, type: 'info' },
-    { id: 2, title: 'Module assignment updated', body: 'Production module enabled for TechCorp', time: '15m ago', unread: true, type: 'success' },
-    { id: 3, title: 'Trial period ending', body: 'Vertex Pvt. Ltd. has 3 days left on trial', time: '1h ago', unread: true, type: 'warning' },
-    { id: 4, title: 'Payment received', body: '₹18,500 subscription renewal — Apex Mfg.', time: '3h ago', unread: false, type: 'success' },
-    { id: 5, title: 'Server health alert', body: 'Custom endpoint for BRT Corp showing latency', time: '5h ago', unread: false, type: 'danger' },
-];
+type TopBarNotification = {
+    id: number;
+    title: string;
+    body: string;
+    time: string;
+    unread: boolean;
+    type: 'info' | 'success' | 'warning' | 'danger';
+};
 
 function NotificationsPanel() {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
-    const unreadCount = MOCK_NOTIFICATIONS.filter((n) => n.unread).length;
-    const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+    const [notifications, setNotifications] = useState<TopBarNotification[]>([]);
+    const unreadCount = notifications.filter((n) => n.unread).length;
 
     useEffect(() => {
         const handler = (e: MouseEvent) => {
@@ -276,47 +277,62 @@ function NotificationsPanel() {
                                 </span>
                             )}
                         </div>
-                        <button
-                            onClick={() => setNotifications((n) => n.map((i) => ({ ...i, unread: false })))}
-                            className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline"
-                        >
-                            Mark all read
-                        </button>
+                        {unreadCount > 0 && (
+                            <button
+                                type="button"
+                                onClick={() => setNotifications((n) => n.map((i) => ({ ...i, unread: false })))}
+                                className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline"
+                            >
+                                Mark all read
+                            </button>
+                        )}
                     </div>
 
                     {/* List */}
                     <div className="max-h-[400px] overflow-y-auto divide-y divide-neutral-50 dark:divide-neutral-800">
-                        {notifications.map((n) => (
-                            <div
-                                key={n.id}
-                                className={cn(
-                                    'flex items-start gap-3 px-5 py-4 hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer transition-colors',
-                                    n.unread && 'bg-primary-50/60 dark:bg-primary-900/10'
-                                )}
-                            >
-                                <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-sm', typeColors[n.type as keyof typeof typeColors])}>
-                                    {n.type === 'info' && '💬'}
-                                    {n.type === 'success' && '✓'}
-                                    {n.type === 'warning' && '⚠'}
-                                    {n.type === 'danger' && '🔴'}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className={cn('text-sm font-semibold text-primary-950 dark:text-white', !n.unread && 'font-medium text-neutral-700 dark:text-neutral-300')}>
-                                        {n.title}
-                                    </p>
-                                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 leading-4">{n.body}</p>
-                                    <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-1 font-medium">{n.time}</p>
-                                </div>
-                                {n.unread && <span className="w-2 h-2 rounded-full bg-primary-500 flex-shrink-0 mt-1.5" />}
+                        {notifications.length === 0 ? (
+                            <div className="px-5 py-12 text-center">
+                                <Bell className="mx-auto mb-3 h-10 w-10 text-neutral-300 dark:text-neutral-600" strokeWidth={1.5} />
+                                <p className="text-sm font-medium text-neutral-600 dark:text-neutral-300">No notifications</p>
+                                <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">
+                                    You&apos;re all caught up. New alerts will show here.
+                                </p>
                             </div>
-                        ))}
+                        ) : (
+                            notifications.map((n) => (
+                                <div
+                                    key={n.id}
+                                    className={cn(
+                                        'flex items-start gap-3 px-5 py-4 hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer transition-colors',
+                                        n.unread && 'bg-primary-50/60 dark:bg-primary-900/10'
+                                    )}
+                                >
+                                    <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-sm', typeColors[n.type])}>
+                                        {n.type === 'info' && '💬'}
+                                        {n.type === 'success' && '✓'}
+                                        {n.type === 'warning' && '⚠'}
+                                        {n.type === 'danger' && '🔴'}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className={cn('text-sm font-semibold text-primary-950 dark:text-white', !n.unread && 'font-medium text-neutral-700 dark:text-neutral-300')}>
+                                            {n.title}
+                                        </p>
+                                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 leading-4">{n.body}</p>
+                                        <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-1 font-medium">{n.time}</p>
+                                    </div>
+                                    {n.unread && <span className="w-2 h-2 rounded-full bg-primary-500 flex-shrink-0 mt-1.5" />}
+                                </div>
+                            ))
+                        )}
                     </div>
 
-                    <div className="px-5 py-3 border-t border-neutral-100 dark:border-neutral-800">
-                        <button className="w-full text-center text-xs font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 py-1">
-                            View all notifications
-                        </button>
-                    </div>
+                    {notifications.length > 0 && (
+                        <div className="px-5 py-3 border-t border-neutral-100 dark:border-neutral-800">
+                            <button type="button" className="w-full text-center text-xs font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 py-1">
+                                View all notifications
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
