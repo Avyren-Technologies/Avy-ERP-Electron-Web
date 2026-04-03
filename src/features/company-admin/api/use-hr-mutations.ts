@@ -209,8 +209,8 @@ export function useDeleteEmployee() {
 export function useUpdateEmployeeStatus() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, status }: { id: string; status: EmployeeStatus }) =>
-            hrApi.updateEmployeeStatus(id, status),
+        mutationFn: ({ id, ...data }: { id: string; status: EmployeeStatus; lastWorkingDate?: string; exitReason?: string }) =>
+            hrApi.updateEmployeeStatus(id, data),
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: hrKeys.employee(variables.id) });
             queryClient.invalidateQueries({ queryKey: hrKeys.employees() });
