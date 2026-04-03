@@ -1,7 +1,7 @@
 import { AlertTriangle } from "lucide-react";
 import companyLogo from "@/assets/logo/Company-Logo.png";
 
-const MAIN_DOMAIN = import.meta.env.VITE_MAIN_DOMAIN || 'avyerp.avyren.in';
+const MAIN_DOMAIN = import.meta.env.VITE_MAIN_DOMAIN || 'avyren.in';
 
 export function TenantNotFoundScreen() {
   return (

@@ -5,12 +5,12 @@ export interface TenantContext {
   slug: string | null;
 }
 
-const MAIN_DOMAIN = import.meta.env.VITE_MAIN_DOMAIN || 'avyerp.avyren.in';
+const MAIN_DOMAIN = import.meta.env.VITE_MAIN_DOMAIN || 'avyren.in';
 
 const RESERVED_SLUGS = new Set([
   'admin', 'www', 'api', 'app', 'staging', 'dev', 'test', 'demo',
   'mail', 'ftp', 'cdn', 'static', 'assets', 'docs', 'help',
-  'support', 'status', 'blog',
+  'support', 'status', 'blog', 'avy-erp-api', 'pg', 'ssh',
 ]);
 
 export function detectTenant(): TenantContext {
