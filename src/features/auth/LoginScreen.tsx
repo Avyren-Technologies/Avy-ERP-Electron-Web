@@ -386,15 +386,22 @@ export function LoginScreen() {
                         )}
                     </form>
 
-                    {loginMutation.isError && (
-                        <div className="mt-4 p-3 rounded-xl bg-danger-50 dark:bg-danger-950/30 border border-danger-200 dark:border-danger-800">
-                            <p className="text-sm font-semibold text-danger-700 dark:text-danger-400 text-center">
-                                {(loginMutation.error as any)?.response?.data?.message
-                                    || (loginMutation.error as any)?.response?.data?.error
-                                    || 'Login failed. Please check your credentials and try again.'}
-                            </p>
-                        </div>
-                    )}
+                    {loginMutation.isError && (() => {
+                        const errorMsg = (loginMutation.error as any)?.response?.data?.message
+                            || (loginMutation.error as any)?.response?.data?.error
+                            || '';
+                        const isTenantMismatch = errorMsg.includes('tenant mismatch') || errorMsg.includes('Access denied');
+
+                        return (
+                            <div className="mt-4 p-3 rounded-xl bg-danger-50 dark:bg-danger-950/30 border border-danger-200 dark:border-danger-800">
+                                <p className="text-sm font-semibold text-danger-700 dark:text-danger-400 text-center">
+                                    {isTenantMismatch
+                                        ? "Your account doesn't belong to this company. Please check your URL."
+                                        : (errorMsg || 'Login failed. Please check your credentials and try again.')}
+                                </p>
+                            </div>
+                        );
+                    })()}
 
                     {/* Terms Disclaimer — main/admin domains only */}
                     {!isTenantMode && (
