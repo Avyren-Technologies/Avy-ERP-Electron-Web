@@ -59,3 +59,23 @@ export function getTenantContext(): TenantContext {
   }
   return cachedContext;
 }
+
+/**
+ * Build a login path that preserves tenant context.
+ * On real subdomains (slug.avyren.in), /login is enough.
+ * On localhost dev with ?tenant=slug, we need to preserve the query param.
+ */
+export function getLoginPath(extra?: string): string {
+  const hostname = window.location.hostname;
+  const suffix = extra ? `${extra}` : '';
+
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    const params = new URLSearchParams(window.location.search);
+    const devSlug = params.get('tenant');
+    if (devSlug) {
+      return `/login?tenant=${devSlug}${suffix ? `&${suffix}` : ''}`;
+    }
+  }
+
+  return `/login${suffix ? `?${suffix}` : ''}`;
+}

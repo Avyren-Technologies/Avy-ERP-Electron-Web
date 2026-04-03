@@ -229,8 +229,18 @@ function clearAuthAndRedirect() {
     localStorage.removeItem('auth_tokens');
     localStorage.removeItem('auth_user');
     localStorage.removeItem('user_role');
-    // Redirect to login if not already there
+    // Redirect to login preserving tenant context
     if (window.location.pathname !== '/login') {
+        // On localhost dev, preserve ?tenant=slug param
+        const hostname = window.location.hostname;
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            const params = new URLSearchParams(window.location.search);
+            const devSlug = params.get('tenant');
+            if (devSlug) {
+                window.location.href = `/login?tenant=${devSlug}`;
+                return;
+            }
+        }
         window.location.href = '/login';
     }
 }

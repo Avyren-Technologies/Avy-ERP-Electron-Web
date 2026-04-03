@@ -7,7 +7,7 @@ import { useAuthStore } from "./store/useAuthStore";
 import type { UserRole } from "./store/useAuthStore";
 import { checkPermission } from "./lib/api/auth";
 import { NoPermissionScreen } from "./features/shared/NoPermissionScreen";
-import { getTenantContext } from "@/lib/tenant";
+import { getTenantContext, getLoginPath } from "@/lib/tenant";
 import { useTenantBranding } from "@/lib/api/auth";
 import { RegisterCompanyScreen } from "@/features/auth/RegisterCompanyScreen";
 import { TenantNotFoundScreen } from "@/features/auth/TenantNotFoundScreen";
@@ -222,7 +222,7 @@ const RequireAuth = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (status === 'signOut') {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={getLoginPath()} replace />;
   }
 
   return children;

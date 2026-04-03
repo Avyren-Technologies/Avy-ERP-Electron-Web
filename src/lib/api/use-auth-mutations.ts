@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { authApi, decodeJwtPayload } from '@/lib/api/auth';
 import type { LoginResponse } from '@/lib/api/auth';
 import { useAuthStore, mapBackendRole } from '@/store/useAuthStore';
+import { getLoginPath } from '@/lib/tenant';
 
 export function useLoginMutation() {
     const navigate = useNavigate();
@@ -50,12 +51,12 @@ export function useLogoutMutation() {
         mutationFn: () => authApi.logout(),
         onSuccess: () => {
             signOut();
-            navigate('/login');
+            navigate(getLoginPath());
         },
         onError: () => {
             // Even if the API call fails, sign out locally
             signOut();
-            navigate('/login');
+            navigate(getLoginPath());
         },
     });
 }
