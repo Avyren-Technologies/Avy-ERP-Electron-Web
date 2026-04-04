@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -30,7 +30,8 @@ import {
     UserX,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { addCalendarDaysToIsoDate, getProbationDaysFromDesignation } from "@/lib/probation-end-date";
+import { computeProbationEndIsoFromMasters } from "@/lib/probation-end-date";
+import { resolveCostCentreIdForDepartment } from "@/lib/employee-org-defaults";
 import {
     useEmployee,
     useEmployees,
@@ -300,6 +301,9 @@ export function EmployeeProfileScreen() {
 
     // Probation auto-calculation state
     const [probationAutoCalculated, setProbationAutoCalculated] = useState(false);
+    const prevDeptIdRef = useRef<string | null>(null);
+    const prevGradeIdRef = useRef<string | null>(null);
+    const lastProbationKeyRef = useRef<string | null>(null);
 
     // Queries
     const employeeQuery = useEmployee(isNew ? "" : id!);
@@ -331,11 +335,16 @@ export function EmployeeProfileScreen() {
     const [initialStatus, setInitialStatus] = useState<string>("PROBATION");
 
     // Select option mappers
-    const deptOptions = useMemo(() => (departmentsQuery.data?.data ?? []).map((d: any) => ({ value: d.id, label: d.name })), [departmentsQuery.data]);
-    const desigOptions = useMemo(() => (designationsQuery.data?.data ?? []).map((d: any) => ({ value: d.id, label: d.name })), [designationsQuery.data]);
-    const gradeOptions = useMemo(() => (gradesQuery.data?.data ?? []).map((g: any) => ({ value: g.id, label: g.name })), [gradesQuery.data]);
+    const departmentsFull = useMemo(() => (departmentsQuery.data?.data ?? []) as any[], [departmentsQuery.data]);
+    const designationsFull = useMemo(() => (designationsQuery.data?.data ?? []) as any[], [designationsQuery.data]);
+    const gradesFull = useMemo(() => (gradesQuery.data?.data ?? []) as any[], [gradesQuery.data]);
+    const costCentresFull = useMemo(() => (costCentresQuery.data?.data ?? []) as any[], [costCentresQuery.data]);
+
+    const deptOptions = useMemo(() => departmentsFull.map((d: any) => ({ value: d.id, label: d.name })), [departmentsFull]);
+    const desigOptions = useMemo(() => designationsFull.map((d: any) => ({ value: d.id, label: d.name })), [designationsFull]);
+    const gradeOptions = useMemo(() => gradesFull.map((g: any) => ({ value: g.id, label: g.name })), [gradesFull]);
     const empTypeOptions = useMemo(() => (employeeTypesQuery.data?.data ?? []).map((t: any) => ({ value: t.id, label: t.name })), [employeeTypesQuery.data]);
-    const costCentreOptions = useMemo(() => (costCentresQuery.data?.data ?? []).map((c: any) => ({ value: c.id, label: `${c.code ?? ""} - ${c.name}` })), [costCentresQuery.data]);
+    const costCentreOptions = useMemo(() => costCentresFull.map((c: any) => ({ value: c.id, label: `${c.code ?? ""} - ${c.name}` })), [costCentresFull]);
     const locationOptions = useMemo(() => (locationsQuery.data?.data ?? []).map((l: any) => ({ value: l.id, label: l.name })), [locationsQuery.data]);
     const shiftOptions = useMemo(() => (shiftsQuery.data?.data ?? []).map((s: any) => ({ value: s.id, label: s.name })), [shiftsQuery.data]);
     const managerOptions = useMemo(() => (employeesQuery.data?.data ?? []).filter((e: any) => e.id !== id).map((e: any) => {
@@ -435,6 +444,22 @@ export function EmployeeProfileScreen() {
         });
     }, [employeeQuery.data, isNew]);
 
+    useEffect(() => {
+        if (isNew) {
+            prevDeptIdRef.current = null;
+            prevGradeIdRef.current = null;
+            return;
+        }
+        const emp: any = employeeQuery.data?.data;
+        if (!emp) return;
+        prevDeptIdRef.current = emp.departmentId ?? null;
+        prevGradeIdRef.current = emp.gradeId ?? null;
+    }, [isNew, employeeQuery.data]);
+
+    useEffect(() => {
+        lastProbationKeyRef.current = null;
+    }, [isNew, id]);
+
     // Load draft from localStorage on mount (create mode only)
     useEffect(() => {
         if (!isNew) return;
@@ -499,22 +524,81 @@ export function EmployeeProfileScreen() {
         }
     }, []);
 
-    // Probation end date = joining date + designation.probationDays (from Designation master)
+    // Apply department + grade from Designation master when designation changes
     useEffect(() => {
-        if (!editing || !professional.designationId || !professional.joiningDate) return;
-        const designations: any[] = designationsQuery.data?.data ?? [];
-        const desig = designations.find((d: any) => d.id === professional.designationId);
-        const days = getProbationDaysFromDesignation(desig);
-        if (days != null) {
-            const formatted = addCalendarDaysToIsoDate(professional.joiningDate, days);
-            if (formatted) {
-                setProfessional((p) => ({ ...p, probationEndDate: formatted }));
-                setProbationAutoCalculated(true);
-                return;
+        if (!editing || !professional.designationId) return;
+        const desig = designationsFull.find((d: any) => d.id === professional.designationId);
+        if (!desig) return;
+        setProfessional((p) => {
+            let next = { ...p };
+            let changed = false;
+            if (desig.departmentId && desig.departmentId !== p.departmentId) {
+                next.departmentId = desig.departmentId;
+                changed = true;
+            }
+            if (desig.gradeId && desig.gradeId !== p.gradeId) {
+                next.gradeId = desig.gradeId;
+                changed = true;
+            }
+            return changed ? next : p;
+        });
+    }, [professional.designationId, designationsFull, editing]);
+
+    // Default cost centre from Department master when department changes (overridable)
+    useEffect(() => {
+        if (!editing) return;
+        const cur = professional.departmentId || null;
+        const prev = prevDeptIdRef.current;
+        const dept = departmentsFull.find((d: any) => d.id === cur);
+        const should =
+            (prev !== null && cur !== prev) ||
+            (isNew && !!cur && prev === null);
+        if (should && dept) {
+            const cc = resolveCostCentreIdForDepartment(dept, costCentresFull);
+            if (cc) {
+                setProfessional((p) => (p.costCentreId === cc ? p : { ...p, costCentreId: cc }));
             }
         }
-        setProbationAutoCalculated(false);
-    }, [professional.designationId, professional.joiningDate, designationsQuery.data, editing]);
+        if (cur !== prev) prevDeptIdRef.current = cur;
+    }, [professional.departmentId, departmentsFull, costCentresFull, editing, isNew]);
+
+    // Default notice period from Grade master when grade changes (overridable)
+    useEffect(() => {
+        if (!editing) return;
+        const cur = professional.gradeId || null;
+        const prev = prevGradeIdRef.current;
+        const g = gradesFull.find((x: any) => x.id === cur);
+        const should =
+            (prev !== null && cur !== prev) ||
+            (isNew && !!cur && prev === null);
+        if (should && g?.noticeDays != null) {
+            setProfessional((p) => ({ ...p, noticePeriod: String(g.noticeDays) }));
+        }
+        if (cur !== prev) prevGradeIdRef.current = cur;
+    }, [professional.gradeId, gradesFull, editing, isNew]);
+
+    // Probation end: designation probation days, else grade probation months (aligned with API)
+    useEffect(() => {
+        if (!editing || !professional.joiningDate) return;
+        const key = `${professional.designationId}|${professional.gradeId}|${professional.joiningDate}`;
+        if (lastProbationKeyRef.current === null) {
+            lastProbationKeyRef.current = key;
+            if (!isNew) return;
+        } else if (key === lastProbationKeyRef.current) {
+            return;
+        } else {
+            lastProbationKeyRef.current = key;
+        }
+        const desig = designationsFull.find((d: any) => d.id === professional.designationId);
+        const grade = gradesFull.find((g: any) => g.id === professional.gradeId);
+        const formatted = computeProbationEndIsoFromMasters(professional.joiningDate, desig, grade);
+        if (formatted) {
+            setProfessional((p) => ({ ...p, probationEndDate: formatted }));
+            setProbationAutoCalculated(true);
+        } else {
+            setProbationAutoCalculated(false);
+        }
+    }, [professional.designationId, professional.gradeId, professional.joiningDate, designationsFull, gradesFull, editing, isNew]);
 
     // Document file upload handler
     const handleDocUpload = (docType: string, file: File) => {
@@ -1100,8 +1184,8 @@ export function EmployeeProfileScreen() {
                                     />
                                 )}
                                 <SelectField label="Employee Type" value={professional.employeeTypeId} onChange={(v) => updateProfessional("employeeTypeId", v)} options={empTypeOptions} disabled={!editing} placeholder="Select type..." createLink={{ href: "/app/company/hr/employee-types", label: "Create Employee Type" }} />
-                                <SelectField label="Department" value={professional.departmentId} onChange={(v) => updateProfessional("departmentId", v)} options={deptOptions} disabled={!editing} placeholder="Select department..." createLink={{ href: "/app/company/hr/departments", label: "Create Department" }} />
                                 <SelectField label="Designation" value={professional.designationId} onChange={(v) => updateProfessional("designationId", v)} options={desigOptions} disabled={!editing} placeholder="Select designation..." createLink={{ href: "/app/company/hr/designations", label: "Create Designation" }} />
+                                <SelectField label="Department" value={professional.departmentId} onChange={(v) => updateProfessional("departmentId", v)} options={deptOptions} disabled={!editing} placeholder="Select department..." createLink={{ href: "/app/company/hr/departments", label: "Create Department" }} />
                                 <SelectField label="Grade" value={professional.gradeId} onChange={(v) => updateProfessional("gradeId", v)} options={gradeOptions} disabled={!editing} placeholder="Select grade..." createLink={{ href: "/app/company/hr/grades", label: "Create Grade" }} />
                                 <SelectField label="Reporting Manager" value={professional.reportingManagerId} onChange={(v) => updateProfessional("reportingManagerId", v)} options={managerOptions} disabled={!editing} placeholder="Search manager..." />
                                 <SelectField label="Functional Manager" value={professional.functionalManagerId} onChange={(v) => updateProfessional("functionalManagerId", v)} options={managerOptions} disabled={!editing} placeholder="Search manager..." />
@@ -1123,7 +1207,12 @@ export function EmployeeProfileScreen() {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <SelectField label="Cost Centre" value={professional.costCentreId} onChange={(v) => updateProfessional("costCentreId", v)} options={costCentreOptions} disabled={!editing} placeholder="Select cost centre..." createLink={{ href: "/app/company/hr/cost-centres", label: "Create Cost Centre" }} />
-                                <FormField label="Notice Period (days)" value={professional.noticePeriod} onChange={(v) => updateProfessional("noticePeriod", v)} type="number" placeholder="e.g. 90" disabled={!editing} />
+                                <div>
+                                    <FormField label="Notice Period (days)" value={professional.noticePeriod} onChange={(v) => updateProfessional("noticePeriod", v)} type="number" placeholder="e.g. 90" disabled={!editing} />
+                                    <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-1">
+                                        Defaults from the grade (Notice Period in Grade master). You can override per employee.
+                                    </p>
+                                </div>
                                 <div>
                                     <FormField
                                         label="Probation End Date"
@@ -1138,7 +1227,7 @@ export function EmployeeProfileScreen() {
                                     />
                                     {probationAutoCalculated && professional.probationEndDate && (
                                         <p className="text-[10px] text-info-600 dark:text-info-400 mt-1 font-semibold">
-                                            Auto-calculated from joining date + probation days on the designation. You can override this date.
+                                            Auto-calculated: designation probation days if set, otherwise grade probation months. You can override this date.
                                         </p>
                                     )}
                                 </div>

@@ -7,6 +7,8 @@ export interface Department {
     id: string;
     name: string;
     code?: string;
+    /** Default cost centre code from master (links to Cost Centre.code) */
+    costCentreCode?: string | null;
     parentId?: string;
     parent?: Department;
     children?: Department[];
@@ -29,6 +31,9 @@ export interface Designation {
     id: string;
     name: string;
     code?: string;
+    departmentId?: string | null;
+    gradeId?: string | null;
+    probationDays?: number | null;
     level?: string;
     description?: string;
     isActive?: boolean;
@@ -48,6 +53,8 @@ export interface Grade {
     id: string;
     name: string;
     code?: string;
+    probationMonths?: number | null;
+    noticeDays?: number | null;
     rank?: number;
     minSalary?: number;
     maxSalary?: number;
@@ -88,6 +95,7 @@ export interface CostCentre {
     id: string;
     name: string;
     code?: string;
+    departmentId?: string | null;
     description?: string;
     budget?: number;
     isActive?: boolean;
@@ -264,7 +272,7 @@ export interface TimelineEntry {
 // ── Departments ──
 
 async function listDepartments(): Promise<ApiResponse<Department[]>> {
-    const response = await client.get('/hr/departments');
+    const response = await client.get('/hr/departments', { params: { limit: 500, page: 1 } });
     return response.data;
 }
 
@@ -291,7 +299,7 @@ async function deleteDepartment(id: string): Promise<ApiResponse<void>> {
 // ── Designations ──
 
 async function listDesignations(): Promise<ApiResponse<Designation[]>> {
-    const response = await client.get('/hr/designations');
+    const response = await client.get('/hr/designations', { params: { limit: 500, page: 1 } });
     return response.data;
 }
 
@@ -318,7 +326,7 @@ async function deleteDesignation(id: string): Promise<ApiResponse<void>> {
 // ── Grades ──
 
 async function listGrades(): Promise<ApiResponse<Grade[]>> {
-    const response = await client.get('/hr/grades');
+    const response = await client.get('/hr/grades', { params: { limit: 500, page: 1 } });
     return response.data;
 }
 
@@ -372,7 +380,7 @@ async function deleteEmployeeType(id: string): Promise<ApiResponse<void>> {
 // ── Cost Centres ──
 
 async function listCostCentres(): Promise<ApiResponse<CostCentre[]>> {
-    const response = await client.get('/hr/cost-centres');
+    const response = await client.get('/hr/cost-centres', { params: { limit: 500, page: 1 } });
     return response.data;
 }
 

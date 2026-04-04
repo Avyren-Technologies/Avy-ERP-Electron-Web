@@ -188,7 +188,7 @@ export function LoginScreen() {
                         </div>
                     )}
                     
-                    <div className="-mt-16 md:-mt-32 mb-16 md:mb-32 space-y-4 max-w-lg mx-auto md:mx-0 animate-in fade-in slide-in-from-bottom-6 duration-700 delay-150">
+                    <div className="mt-2 space-y-4 max-w-lg mx-auto md:mx-0 animate-in fade-in slide-in-from-bottom-6 duration-700 delay-150">
                         <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-neutral-900 dark:text-white tracking-tight leading-tight">
                             Welcome to <br className="hidden md:block mb-1" />
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-accent-600 dark:from-primary-400 dark:to-accent-400">

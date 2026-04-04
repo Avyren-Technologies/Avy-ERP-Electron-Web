@@ -90,7 +90,11 @@ export function SearchableSelect({
         : selected?.label ?? placeholder;
 
     return (
-        <div ref={containerRef} className="relative z-20" title={tooltip}>
+        <div
+            ref={containerRef}
+            className={cn("relative", isOpen ? "z-[110]" : "z-20")}
+            title={tooltip}
+        >
             {label && (
                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
                     {label}
@@ -116,7 +120,7 @@ export function SearchableSelect({
             </button>
 
             {isOpen && (
-                <div className="absolute left-0 right-0 z-[200] mt-1 w-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                <div className="absolute left-0 right-0 z-[1] mt-1 w-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
                     {/* Search */}
                     <div className="p-2 border-b border-neutral-100 dark:border-neutral-700">
                         <div className="relative">
