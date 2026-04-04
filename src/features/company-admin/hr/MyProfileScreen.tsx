@@ -1,12 +1,15 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { UserCircle, Mail, Phone, Briefcase, CreditCard, Shield, Pencil, X, Loader2, Lock, Eye, EyeOff, KeyRound } from "lucide-react";
 import { useMyProfile } from "@/features/company-admin/api/use-ess-queries";
 import { useUpdateMyProfile } from "@/features/company-admin/api/use-ess-mutations";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { showSuccess, showApiError } from "@/lib/toast";
-import { authApi } from "@/lib/api/auth";
+import { authApi, getAuthUserFromProfileResponse } from "@/lib/api/auth";
+import type { AuthUser } from "@/lib/api/auth";
 import { MfaSetupDialog } from "@/features/company-admin/MfaSetupDialog";
+import { useAuthStore } from "@/store/useAuthStore";
 
 /* ── Types (align with GET /hr/ess/my-profile `data`) ── */
 
@@ -258,6 +261,29 @@ export function MyProfileScreen() {
     const updateProfile = useUpdateMyProfile();
     const profile = (data?.data ?? null) as EssMyProfileData | null;
 
+    const authUser = useAuthStore((s) => s.user);
+    const { isPending: mfaStatusLoading } = useQuery({
+        queryKey: ["auth-profile", "mfa"],
+        queryFn: async () => {
+            const res = await authApi.getProfile();
+            const fresh = getAuthUserFromProfileResponse(res);
+            if (fresh) {
+                const current = useAuthStore.getState().user;
+                const merged: AuthUser = { ...(current ?? {} as AuthUser), ...fresh };
+                useAuthStore.setState({ user: merged });
+                try {
+                    localStorage.setItem("auth_user", JSON.stringify(merged));
+                } catch {
+                    /* ignore */
+                }
+            }
+            return fresh;
+        },
+        staleTime: 60_000,
+    });
+
+    const mfaEnabled = authUser?.mfaEnabled === true;
+
     const openEdit = () => {
         if (profile) {
             setEditForm({
@@ -289,6 +315,16 @@ export function MyProfileScreen() {
         setMfaResetLoading(true);
         try {
             await authApi.disableMfa(mfaResetPassword);
+            const u = useAuthStore.getState().user;
+            if (u) {
+                const next: AuthUser = { ...u, mfaEnabled: false };
+                useAuthStore.setState({ user: next });
+                try {
+                    localStorage.setItem("auth_user", JSON.stringify(next));
+                } catch {
+                    /* ignore */
+                }
+            }
             showSuccess("MFA Disabled", "MFA has been disabled. Setting up new MFA...");
             setMfaResetPasswordPrompt(false);
             setMfaResetPassword("");
@@ -519,27 +555,40 @@ export function MyProfileScreen() {
             <ProfileSection title="Security" icon={Lock}>
                 <div className="space-y-1">
                     {/* Two-Factor Authentication */}
-                    <div className="flex items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-800/50">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-3 border-b border-neutral-100 dark:border-neutral-800/50">
                         <div className="flex items-center gap-3 min-w-0">
                             <Shield size={16} className="text-primary-600 flex-shrink-0" />
                             <div>
                                 <p className="text-sm font-semibold text-primary-950 dark:text-white">Two-Factor Authentication</p>
-                                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">Add an extra layer of security to your account</p>
+                                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                                    {mfaStatusLoading
+                                        ? "Loading security status…"
+                                        : mfaEnabled
+                                            ? "Authenticator app is active on this account."
+                                            : "Add an extra layer of security to your account"}
+                                </p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-3 ml-4">
-                            <button
-                                onClick={() => setMfaResetPasswordPrompt(true)}
-                                className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
-                            >
-                                Reset MFA
-                            </button>
-                            <button
-                                onClick={() => setMfaDialogOpen(true)}
-                                className="px-4 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors shadow-md shadow-primary-500/20 dark:shadow-none"
-                            >
-                                Enable MFA
-                            </button>
+                        <div className="flex items-center gap-3 sm:ml-4 flex-shrink-0">
+                            {mfaStatusLoading ? (
+                                <Loader2 size={20} className="animate-spin text-primary-600" aria-hidden />
+                            ) : mfaEnabled ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setMfaResetPasswordPrompt(true)}
+                                    className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                                >
+                                    Reset MFA
+                                </button>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => setMfaDialogOpen(true)}
+                                    className="px-4 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors shadow-md shadow-primary-500/20 dark:shadow-none"
+                                >
+                                    Enable MFA
+                                </button>
+                            )}
                         </div>
                     </div>
 

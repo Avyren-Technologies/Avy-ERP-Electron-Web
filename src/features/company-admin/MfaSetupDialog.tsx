@@ -2,7 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Shield, Copy, Check, X, Loader2 } from 'lucide-react';
 import { authApi } from '@/lib/api/auth';
-import { showApiError, showSuccess } from '@/lib/toast';
+import type { AuthUser } from '@/lib/api/auth';
+import { showApiError, showInfo, showSuccess } from '@/lib/toast';
+import { useAuthStore } from '@/store/useAuthStore';
 
 interface MfaSetupDialogProps {
     open: boolean;
@@ -30,7 +32,32 @@ export function MfaSetupDialog({ open, onClose, onSuccess }: MfaSetupDialogProps
                 setStep('confirm');
             }
         },
-        onError: (err) => showApiError(err),
+        onError: (err) => {
+            const code =
+                err &&
+                typeof err === 'object' &&
+                'response' in err &&
+                (err as { response?: { data?: { code?: string } } }).response?.data?.code;
+            if (code === 'MFA_ALREADY_ENABLED') {
+                const u = useAuthStore.getState().user;
+                if (u) {
+                    const next: AuthUser = { ...u, mfaEnabled: true };
+                    useAuthStore.setState({ user: next });
+                    try {
+                        localStorage.setItem('auth_user', JSON.stringify(next));
+                    } catch {
+                        /* ignore */
+                    }
+                }
+                showInfo(
+                    'MFA already enabled',
+                    'Two-factor authentication is already active on this account.',
+                );
+                onClose();
+                return;
+            }
+            showApiError(err);
+        },
     });
 
     const confirmMutation = useMutation({
@@ -38,6 +65,16 @@ export function MfaSetupDialog({ open, onClose, onSuccess }: MfaSetupDialogProps
         onSuccess: () => {
             setStep('done');
             showSuccess('MFA enabled successfully');
+            const u = useAuthStore.getState().user;
+            if (u) {
+                const next: AuthUser = { ...u, mfaEnabled: true };
+                useAuthStore.setState({ user: next });
+                try {
+                    localStorage.setItem('auth_user', JSON.stringify(next));
+                } catch {
+                    /* ignore */
+                }
+            }
             onSuccess?.();
         },
         onError: (err) => {

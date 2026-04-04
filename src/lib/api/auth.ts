@@ -22,6 +22,15 @@ export interface AuthUser {
     companyId?: string;
     tenantId?: string;
     permissions?: string[];
+    /** Present when returned from GET /auth/profile (and merged into session). */
+    mfaEnabled?: boolean;
+}
+
+/** Unwrap GET /auth/profile envelope: `{ data: { user: AuthUser } }`. */
+export function getAuthUserFromProfileResponse(res: ApiResponse<unknown>): AuthUser | null {
+    const data = res?.data as { user?: AuthUser } | undefined;
+    if (data?.user && typeof data.user === 'object') return data.user;
+    return null;
 }
 
 /** Decode a JWT payload without verifying the signature (client-side read only). */
