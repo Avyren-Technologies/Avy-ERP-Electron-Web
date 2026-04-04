@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore, getUserInitials, getDisplayName } from '@/store/useAuthStore';
 import { useNavigate } from 'react-router-dom';
+import appLogo from '@/assets/logo/app-logo.png';
 
 // ============================================================
 // Manifest Types — for dynamic sidebar from API
@@ -188,7 +189,7 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
             )}>
                 <div className="flex min-w-0 items-center gap-2">
                     <img
-                        src="/logo.png"
+                        src={appLogo}
                         alt="Avy ERP"
                         className="h-[60px] w-[60px] shrink-0 object-contain"
                     />
