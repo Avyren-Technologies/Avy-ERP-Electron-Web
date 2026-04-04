@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { AuthTokens, AuthUser } from '@/lib/api/auth';
-import { checkPermission } from '@/lib/api/auth';
+import { checkPermission, parsePermissionsFromAccessToken } from '@/lib/api/auth';
 import { queryClient } from '@/lib/api/provider';
 
 export type UserRole = 'super-admin' | 'company-admin' | 'user';
@@ -57,11 +57,14 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     signIn: (tokens, user, role) => {
         const mappedRole = role ?? mapBackendRole(user.role);
-        const permissions = user.permissions ?? [];
+        const fromJwt = parsePermissionsFromAccessToken(tokens.accessToken);
+        const permissions =
+            fromJwt !== undefined && fromJwt.length > 0 ? fromJwt : (user.permissions ?? []);
+        const userToStore = { ...user, permissions };
         localStorage.setItem('auth_tokens', JSON.stringify(tokens));
-        localStorage.setItem('auth_user', JSON.stringify(user));
+        localStorage.setItem('auth_user', JSON.stringify(userToStore));
         localStorage.setItem('user_role', mappedRole);
-        set({ status: 'signIn', token: tokens.accessToken, user, userRole: mappedRole, permissions });
+        set({ status: 'signIn', token: tokens.accessToken, user: userToStore, userRole: mappedRole, permissions });
     },
 
     signOut: () => {
@@ -75,6 +78,23 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     updateTokens: (tokens) => {
         localStorage.setItem('auth_tokens', JSON.stringify(tokens));
+        const fromJwt = parsePermissionsFromAccessToken(tokens.accessToken);
+        if (fromJwt !== undefined) {
+            try {
+                const raw = localStorage.getItem('auth_user');
+                if (raw) {
+                    const u = JSON.parse(raw) as AuthUser;
+                    u.permissions = fromJwt;
+                    localStorage.setItem('auth_user', JSON.stringify(u));
+                    set({ token: tokens.accessToken, permissions: fromJwt, user: u });
+                    return;
+                }
+            } catch {
+                // fall through
+            }
+            set({ token: tokens.accessToken, permissions: fromJwt });
+            return;
+        }
         set({ token: tokens.accessToken });
     },
 }));
@@ -115,15 +135,30 @@ export const hydrateAuth = () => {
             // If nothing about the user role is stored, default to super-admin
             // to match expected app/test behavior.
             const mappedRole = role ?? (user ? mapBackendRole(user.role) : 'super-admin');
-            const permissions = user?.permissions ?? [];
+            const fromJwt = parsePermissionsFromAccessToken(tokens.accessToken);
+            const permissions =
+                fromJwt !== undefined && fromJwt.length > 0
+                    ? fromJwt
+                    : (user?.permissions ?? []);
+            const userMerged =
+                user && fromJwt !== undefined && fromJwt.length > 0
+                    ? { ...user, permissions: fromJwt }
+                    : user;
 
             useAuthStore.setState({
                 status: 'signIn',
                 token: tokens.accessToken,
-                user,
+                user: userMerged,
                 userRole: mappedRole,
                 permissions,
             });
+            if (userMerged && fromJwt !== undefined && fromJwt.length > 0) {
+                try {
+                    localStorage.setItem('auth_user', JSON.stringify(userMerged));
+                } catch {
+                    // ignore
+                }
+            }
         } else {
             useAuthStore.setState({ status: 'signOut' });
         }
@@ -172,14 +207,21 @@ export function initCrossTabSync() {
                 const userRaw = localStorage.getItem('auth_user');
                 const role = localStorage.getItem('user_role') as UserRole | null;
                 const user = userRaw ? JSON.parse(userRaw) : null;
-                // For cross-tab sync, keep the existing fallback behavior.
                 const mappedRole = role ?? (user ? mapBackendRole(user.role) : 'user');
-                const permissions = user?.permissions ?? [];
+                const fromJwt = parsePermissionsFromAccessToken(tokens.accessToken);
+                const permissions =
+                    fromJwt !== undefined && fromJwt.length > 0
+                        ? fromJwt
+                        : (user?.permissions ?? []);
+                const userMerged =
+                    user && fromJwt !== undefined && fromJwt.length > 0
+                        ? { ...user, permissions: fromJwt }
+                        : user;
 
                 useAuthStore.setState({
                     status: 'signIn',
                     token: tokens.accessToken,
-                    user,
+                    user: userMerged,
                     userRole: mappedRole,
                     permissions,
                 });

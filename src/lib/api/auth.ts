@@ -36,6 +36,13 @@ export function decodeJwtPayload(token: string): Record<string, unknown> | null 
     }
 }
 
+/** Permissions embedded in the access token (source of truth after refresh). */
+export function parsePermissionsFromAccessToken(accessToken: string): string[] | undefined {
+    const p = decodeJwtPayload(accessToken);
+    if (!p || !Array.isArray(p.permissions)) return undefined;
+    return p.permissions as string[];
+}
+
 /** Utility: check if a permission string is satisfied by the user's permissions array.
  *  Supports exact match, wildcard '*', and module wildcard 'module:*'.
  */
