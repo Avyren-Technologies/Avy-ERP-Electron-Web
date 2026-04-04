@@ -51,6 +51,7 @@ import {
     useDeleteEmployee,
     useDeleteDocument,
 } from "@/features/company-admin/api/use-hr-mutations";
+import { useSalaryStructures } from "@/features/company-admin/api/use-payroll-queries";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
@@ -230,6 +231,7 @@ const EMPTY_PROFESSIONAL = {
 const EMPTY_SALARY = {
     annualCTC: "", paymentMode: "NEFT",
     salaryStructure: null as any,
+    structureId: "",
 };
 
 const EMPTY_BANK = {
@@ -318,6 +320,8 @@ export function EmployeeProfileScreen() {
     const rolesQuery = useRbacRoles();
     const docsQuery = useEmployeeDocuments(isNew ? "" : id!);
     const timelineQuery = useEmployeeTimeline(isNew ? "" : id!);
+    const { data: structuresData } = useSalaryStructures();
+    const structures = (structuresData as any)?.data ?? [];
 
     // Mutations
     const createMutation = useCreateEmployee();
@@ -422,6 +426,7 @@ export function EmployeeProfileScreen() {
             annualCTC: emp.annualCtc?.toString() ?? "",
             paymentMode: emp.paymentMode ?? "NEFT",
             salaryStructure: emp.salaryStructure ?? null,
+            structureId: emp.salaryStructureId ?? "",
         });
 
         setBank({
@@ -497,6 +502,41 @@ export function EmployeeProfileScreen() {
     };
     const updateProfessional = (key: string, value: any) => setProfessional((p) => ({ ...p, [key]: value }));
     const updateSalary = (key: string, value: any) => setSalary((p) => ({ ...p, [key]: value }));
+
+    const computeSalaryBreakdown = useCallback((structure: any, annualCtc: number) => {
+        const comps = structure.components as any[] ?? [];
+        const breakdown: Record<string, number> = {};
+        let basicAmount = 0;
+
+        // Pass 1: PERCENT_OF_GROSS
+        for (const c of comps) {
+            if (c.calculationMethod === "PERCENT_OF_GROSS") {
+                const annual = (c.value / 100) * annualCtc;
+                const label = c.component?.name ?? c.componentId;
+                breakdown[label] = Math.round(annual);
+                if ((c.component?.code ?? c.component?.name ?? "").toUpperCase().includes("BASIC")) {
+                    basicAmount = annual;
+                }
+            }
+        }
+        // Pass 2: PERCENT_OF_BASIC
+        for (const c of comps) {
+            if (c.calculationMethod === "PERCENT_OF_BASIC") {
+                const label = c.component?.name ?? c.componentId;
+                breakdown[label] = Math.round((c.value / 100) * basicAmount);
+            }
+        }
+        // Pass 3: FIXED (monthly value × 12)
+        for (const c of comps) {
+            if (c.calculationMethod === "FIXED") {
+                const label = c.component?.name ?? c.componentId;
+                breakdown[label] = Math.round(c.value * 12);
+            }
+        }
+
+        setSalary((p) => ({ ...p, salaryStructure: breakdown }));
+    }, []);
+
     const updateBank = (key: string, value: any) => setBank((p) => ({ ...p, [key]: value }));
     const updateDocuments = (key: string, value: any) => setDocuments((p) => ({ ...p, [key]: value }));
 
@@ -1239,7 +1279,13 @@ export function EmployeeProfileScreen() {
                     {activeTab === "salary" && (
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <FormField label="Annual CTC" value={salary.annualCTC} onChange={(v) => updateSalary("annualCTC", v)} type="number" placeholder="e.g. 1200000" disabled={!editing} />
+                                <FormField label="Annual CTC" value={salary.annualCTC} onChange={(v) => {
+                                    updateSalary("annualCTC", v);
+                                    if (salary.structureId && v) {
+                                        const structure = structures.find((s: any) => s.id === salary.structureId);
+                                        if (structure) computeSalaryBreakdown(structure, parseFloat(v));
+                                    }
+                                }} type="number" placeholder="e.g. 1200000" disabled={!editing} />
                             </div>
                             <RadioGroup
                                 label="Payment Mode"
@@ -1252,6 +1298,34 @@ export function EmployeeProfileScreen() {
                                 ]}
                                 disabled={!editing}
                             />
+
+                            {/* Salary Structure Selector */}
+                            {editing && (
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                                        Select Salary Structure
+                                    </label>
+                                    <select
+                                        value={salary.structureId}
+                                        onChange={(e) => {
+                                            const sid = e.target.value;
+                                            updateSalary("structureId", sid);
+                                            if (sid && salary.annualCTC) {
+                                                const structure = structures.find((s: any) => s.id === sid);
+                                                if (structure) computeSalaryBreakdown(structure, parseFloat(salary.annualCTC));
+                                            } else {
+                                                updateSalary("salaryStructure", null);
+                                            }
+                                        }}
+                                        className="w-full h-11 px-3 rounded-xl border-2 border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:border-primary-500 outline-none"
+                                    >
+                                        <option value="">-- Select Structure --</option>
+                                        {structures.map((s: any) => (
+                                            <option key={s.id} value={s.id}>{s.name} ({s.code})</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
 
                             {/* Salary Structure Preview */}
                             <div>
