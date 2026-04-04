@@ -43,13 +43,170 @@ function extractChatMessageRows(historyPayload: unknown): unknown[] {
     return [];
 }
 
+/* ── Markdown Renderer ── */
+
+/**
+ * Lightweight markdown renderer for chatbot messages.
+ * Handles: **bold**, *italic*, _italic_, tables, bullet lists (- item), and line breaks.
+ */
+function ChatMarkdown({ content, isUser }: { content: string; isUser: boolean }) {
+    // Parse the content into blocks (paragraphs, tables, lists)
+    const blocks = content.split('\n\n');
+
+    return (
+        <div className="space-y-2.5">
+            {blocks.map((block, blockIdx) => {
+                const trimmed = block.trim();
+                if (!trimmed) return null;
+
+                // ── Table block: starts with | and has |---|
+                const lines = trimmed.split('\n').map(l => l.trim()).filter(Boolean);
+                const isTable = lines.length >= 2 && lines[0].startsWith('|') && lines.some(l => /^\|[\s\-|:]+\|$/.test(l));
+                if (isTable) {
+                    const dataRows = lines.filter(l => !/^\|[\s\-|:]+\|$/.test(l));
+                    const headerRow = dataRows[0];
+                    const bodyRows = dataRows.slice(1);
+                    const parseRow = (row: string) => row.split('|').map(c => c.trim()).filter(Boolean);
+
+                    return (
+                        <div key={blockIdx} className="overflow-x-auto rounded-lg border border-neutral-200/60 dark:border-neutral-700/60 my-1">
+                            <table className="w-full text-xs">
+                                {headerRow && (
+                                    <thead>
+                                        <tr className={cn(
+                                            "border-b",
+                                            isUser
+                                                ? "border-white/20"
+                                                : "border-neutral-200 dark:border-neutral-700 bg-neutral-50/80 dark:bg-neutral-800/50"
+                                        )}>
+                                            {parseRow(headerRow).map((cell, ci) => (
+                                                <th key={ci} className={cn(
+                                                    "px-2.5 py-1.5 text-left font-bold whitespace-nowrap",
+                                                    isUser ? "text-white/90" : "text-neutral-700 dark:text-neutral-300"
+                                                )}>
+                                                    <InlineMarkdown text={cell} isUser={isUser} />
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                )}
+                                <tbody>
+                                    {bodyRows.map((row, ri) => (
+                                        <tr key={ri} className={cn(
+                                            "border-b last:border-0",
+                                            isUser
+                                                ? "border-white/10"
+                                                : ri % 2 === 0
+                                                    ? "border-neutral-100 dark:border-neutral-700/50"
+                                                    : "border-neutral-100 dark:border-neutral-700/50 bg-neutral-50/40 dark:bg-neutral-800/20"
+                                        )}>
+                                            {parseRow(row).map((cell, ci) => (
+                                                <td key={ci} className={cn(
+                                                    "px-2.5 py-1.5 whitespace-nowrap",
+                                                    isUser ? "text-white/80" : "text-neutral-600 dark:text-neutral-300"
+                                                )}>
+                                                    <InlineMarkdown text={cell} isUser={isUser} />
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    );
+                }
+
+                // ── Bullet list block: all lines start with -
+                const isList = lines.every(l => l.startsWith('- '));
+                if (isList) {
+                    return (
+                        <ul key={blockIdx} className="space-y-1 pl-0.5">
+                            {lines.map((line, li) => (
+                                <li key={li} className="flex items-start gap-1.5 text-[13px]">
+                                    <span className={cn(
+                                        "mt-[3px] shrink-0",
+                                        isUser ? "text-white/60" : "text-primary-400"
+                                    )}>•</span>
+                                    <span><InlineMarkdown text={line.replace(/^- /, '')} isUser={isUser} /></span>
+                                </li>
+                            ))}
+                        </ul>
+                    );
+                }
+
+                // ── Regular paragraph
+                return (
+                    <div key={blockIdx}>
+                        {lines.map((line, li) => (
+                            <p key={li} className="text-[13px] leading-relaxed">
+                                <InlineMarkdown text={line} isUser={isUser} />
+                            </p>
+                        ))}
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+/** Renders inline markdown: **bold**, *italic* / _italic_, and emoji */
+function InlineMarkdown({ text, isUser }: { text: string; isUser: boolean }) {
+    // Split by bold (**text**), italic (*text* or _text_)
+    const parts: React.ReactNode[] = [];
+    // Regex: **bold** | *italic* | _italic_
+    const regex = /(\*\*(.+?)\*\*)|(\*(.+?)\*)|(_(.+?)_)/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    let key = 0;
+
+    while ((match = regex.exec(text)) !== null) {
+        // Push text before match
+        if (match.index > lastIndex) {
+            parts.push(<span key={key++}>{text.slice(lastIndex, match.index)}</span>);
+        }
+        if (match[1]) {
+            // Bold **text**
+            parts.push(
+                <span key={key++} className={cn(
+                    "font-bold",
+                    isUser ? "text-white" : "text-neutral-900 dark:text-white"
+                )}>{match[2]}</span>
+            );
+        } else if (match[3]) {
+            // Italic *text*
+            parts.push(
+                <span key={key++} className={cn(
+                    "italic",
+                    isUser ? "text-white/70" : "text-neutral-500 dark:text-neutral-400"
+                )}>{match[4]}</span>
+            );
+        } else if (match[5]) {
+            // Italic _text_
+            parts.push(
+                <span key={key++} className={cn(
+                    "italic",
+                    isUser ? "text-white/70" : "text-neutral-500 dark:text-neutral-400"
+                )}>{match[6]}</span>
+            );
+        }
+        lastIndex = match.index + match[0].length;
+    }
+
+    // Remaining text
+    if (lastIndex < text.length) {
+        parts.push(<span key={key++}>{text.slice(lastIndex)}</span>);
+    }
+
+    return <>{parts}</>;
+}
+
 /* ── Atoms ── */
 
 function MessageBubble({ message }: { message: ChatMessage }) {
     const fmt = useCompanyFormatter();
     const isUser = message.role === "user";
     return (
-        <div className={cn("flex gap-3 max-w-[80%] animate-in fade-in slide-in-from-bottom-2 duration-300", isUser ? "ml-auto flex-row-reverse" : "mr-auto")}>
+        <div className={cn("flex gap-3 max-w-[85%] animate-in fade-in slide-in-from-bottom-2 duration-300", isUser ? "ml-auto flex-row-reverse" : "mr-auto")}>
             <div className={cn(
                 "w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1",
                 isUser
@@ -62,12 +219,16 @@ function MessageBubble({ message }: { message: ChatMessage }) {
                 }
             </div>
             <div className={cn(
-                "rounded-2xl px-4 py-3 text-sm leading-relaxed",
+                "rounded-2xl px-4 py-3 text-sm leading-relaxed min-w-0",
                 isUser
                     ? "bg-primary-600 text-white rounded-tr-md"
                     : "bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 rounded-tl-md"
             )}>
-                {message.content}
+                {isUser ? (
+                    <span>{message.content}</span>
+                ) : (
+                    <ChatMarkdown content={message.content} isUser={false} />
+                )}
                 <div className={cn(
                     "text-[10px] mt-1.5 opacity-60",
                     isUser ? "text-right" : "text-left"
