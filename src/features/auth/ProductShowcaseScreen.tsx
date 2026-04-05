@@ -1139,12 +1139,14 @@ export function ProductShowcaseScreen() {
                   {/* CRM Exclusive callout */}
                   {mod.exclusive && (
                     <div className="mb-6 px-5 py-4 rounded-xl bg-gradient-to-r from-accent-50/80 to-primary-50/60 dark:from-accent-950/40 dark:to-primary-950/30 border border-accent-300/50 dark:border-accent-700/30 shadow-sm">
-                      <div className="flex items-start gap-3">
+                      <div className="flex flex-col sm:flex-row sm:items-start gap-3">
                         <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-accent-500 to-primary-500 flex items-center justify-center flex-shrink-0 shadow-md">
-                          <Star className="w-4.5 h-4.5 text-white" />
+                          <Star className="w-5 h-5 text-white" />
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-accent-700 dark:text-accent-300 font-inter mb-0.5">Production-Aware CRM (Avy ERP Exclusive)</p>
+                          <p className="text-xs font-bold text-accent-700 dark:text-accent-300 font-inter mb-1 sm:mb-0.5 leading-tight">
+                            Production-Aware CRM <span className="block sm:inline">(Avy ERP Exclusive)</span>
+                          </p>
                           <p className="text-xs text-accent-600/80 dark:text-accent-400/80 leading-relaxed">{mod.exclusive}</p>
                         </div>
                       </div>
@@ -1252,10 +1254,10 @@ export function ProductShowcaseScreen() {
                   {usp.number}
                 </span>
                 <div>
-                  <h3 className="text-base font-bold text-neutral-900 dark:text-white mb-1 font-inter flex items-center gap-2">
+                  <h3 className="text-base font-bold text-neutral-900 dark:text-white mb-1 font-inter flex flex-wrap items-center gap-2">
                     {usp.title}
                     {usp.highlight && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-accent-100 dark:bg-accent-900/40 text-accent-700 dark:text-accent-300">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-accent-100 dark:bg-accent-900/40 text-accent-700 dark:text-accent-300 whitespace-nowrap flex-shrink-0">
                         Avy ERP Exclusive
                       </span>
                     )}
@@ -1277,7 +1279,7 @@ export function ProductShowcaseScreen() {
         <p className="text-neutral-500 dark:text-neutral-400 text-center mb-8 max-w-xl mx-auto">
           See how Avy ERP compares to the alternatives on features that matter to manufacturers.
         </p>
-        <div className="overflow-x-auto -mx-6 px-6 pb-4">
+        <div className="w-full max-w-full overflow-x-auto pb-4">
           <table className="w-full min-w-[800px] text-sm">
             <thead>
               <tr className="border-b border-neutral-200/50 dark:border-neutral-700/50">
