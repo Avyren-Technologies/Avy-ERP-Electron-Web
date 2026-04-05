@@ -1145,7 +1145,7 @@ export function ProductShowcaseScreen() {
               </div>
 
               {/* Content area — strictly fixed height */}
-              <div className="relative bg-white dark:bg-neutral-900 h-[520px] md:h-[580px] overflow-y-auto">
+              <div className="relative bg-white dark:bg-neutral-900 h-[640px] md:h-[720px] overflow-y-auto">
                 <div
                   key={mod.id}
                   className="p-6 md:p-8"
