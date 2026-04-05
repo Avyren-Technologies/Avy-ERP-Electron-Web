@@ -1,12 +1,40 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     ArrowRight, ShieldCheck, Factory, Users, BarChart3,
     Wrench, Package, Receipt, Eye, ClipboardList, Smartphone, Globe, Monitor,
-    ChevronRight, Cpu, Layers, WifiOff, Lock,
+    ChevronRight, Cpu, Layers, WifiOff, Lock, Menu, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import companyLogo from "@/assets/logo/Company-Logo.png";
+
+/* ─── Nav links ─── */
+const NAV_LINKS = [
+    { label: "Architecture", href: "#architecture" },
+    { label: "Modules", href: "#modules" },
+    { label: "Platforms", href: "#platforms" },
+    { label: "Product", href: "/product", isRoute: true },
+];
+
+function useScrollState() {
+    const [scrolled, setScrolled] = useState(false);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            const y = window.scrollY;
+            setScrolled(y > 40);
+        };
+        window.addEventListener("scroll", handleScroll, { passive: true });
+        return () => window.removeEventListener("scroll", handleScroll);
+    }, []);
+
+    return { scrolled };
+}
+
+function scrollToSection(href: string) {
+    const el = document.querySelector(href);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
 
 function useCountUp(target: number, duration = 1800, startDelay = 300) {
     const [count, setCount] = useState(0);
@@ -102,6 +130,8 @@ const CAPABILITIES = [
 export function LandingScreen() {
     const navigate = useNavigate();
     const [activeModule, setActiveModule] = useState(0);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const { scrolled } = useScrollState();
 
     useEffect(() => {
         const interval = setInterval(() => setActiveModule((p) => (p + 1) % MODULES.length), 3000);
@@ -110,6 +140,158 @@ export function LandingScreen() {
 
     return (
         <div className="w-full flex flex-col items-center">
+
+            {/* ═══════════════ LIQUID GLASS NAVBAR ═══════════════ */}
+            <nav
+                className={cn(
+                    "fixed top-0 left-0 right-0 z-50 flex justify-center",
+                    "nav-outer transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                    scrolled ? "pt-3 px-4 md:px-8 pb-2" : "pt-5 px-5 md:px-10 pb-3",
+                )}
+            >
+                <div
+                    className={cn(
+                        "liquid-glass-nav group/nav relative flex items-center justify-between w-full",
+                        "transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                        scrolled
+                            ? "max-w-3xl h-14 rounded-full px-1.5 md:px-2"
+                            : "max-w-4xl h-[68px] rounded-full px-3 md:px-4",
+                    )}
+                >
+                    {/* ── Liquid glass layers ── */}
+                    <div className="pointer-events-none absolute inset-0 rounded-[inherit] overflow-hidden">
+                        {/* Base tint */}
+                        <div className="absolute inset-0 bg-white/[0.45] dark:bg-neutral-950/[0.55]" />
+                        {/* Specular highlight — top edge glow */}
+                        <div className="absolute inset-x-0 top-0 h-[55%] bg-gradient-to-b from-white/70 via-white/20 to-transparent dark:from-white/[0.12] dark:via-white/[0.03] dark:to-transparent" />
+                        {/* Chromatic color bleed */}
+                        <div className="absolute -top-4 -left-8 w-40 h-20 rounded-full bg-primary-400/[0.12] dark:bg-primary-500/[0.08] blur-2xl" />
+                        <div className="absolute -bottom-4 -right-8 w-36 h-16 rounded-full bg-accent-400/[0.10] dark:bg-accent-500/[0.06] blur-2xl" />
+                        {/* Slow shimmer sweep */}
+                        <div className="absolute inset-0 nav-shimmer opacity-60" />
+                    </div>
+
+                    {/* ── Glass border — gradient stroke ── */}
+                    <div
+                        className="pointer-events-none absolute inset-0 rounded-[inherit]"
+                        style={{
+                            padding: "1px",
+                            background: "linear-gradient(160deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.15) 40%, rgba(139,92,246,0.12) 70%, rgba(255,255,255,0.3) 100%)",
+                            WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                            WebkitMaskComposite: "xor",
+                            maskComposite: "exclude",
+                        }}
+                    />
+
+                    {/* ── Logo ── */}
+                    <button
+                        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                        className={cn(
+                            "relative z-20 flex items-center flex-shrink-0 transition-all duration-500 mt-1",
+                            scrolled ? "pl-3 translate-y-0" : "pl-4 -translate-y-1",
+                        )}
+                    >
+                        <img
+                            src={companyLogo}
+                            alt="Avyren Technologies"
+                            className={cn(
+                                "object-contain drop-shadow-md transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                                scrolled ? "h-20 md:h-24" : "h-28 md:h-32",
+                            )}
+                        />
+                    </button>
+
+                    {/* ── Desktop nav links ── */}
+                    <div className="relative z-10 hidden md:flex items-center gap-0.5">
+                        {NAV_LINKS.map((link) => (
+                            <button
+                                key={link.href}
+                                onClick={() => ('isRoute' in link && link.isRoute) ? navigate(link.href) : scrollToSection(link.href)}
+                                className={cn(
+                                    "relative px-4 py-1.5 rounded-full text-[13px] font-semibold tracking-[-0.01em] transition-all duration-300",
+                                    "text-neutral-500 dark:text-neutral-400",
+                                    "hover:text-neutral-900 dark:hover:text-white",
+                                    "hover:bg-white/50 dark:hover:bg-white/[0.07]",
+                                )}
+                            >
+                                {link.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* ── Right: Sign In + mobile toggle ── */}
+                    <div className="relative z-10 flex items-center gap-2">
+                        <button
+                            onClick={() => navigate("/login")}
+                            className={cn(
+                                "nav-cta group relative inline-flex items-center gap-1.5 rounded-full font-semibold transition-all duration-500 overflow-hidden",
+                                scrolled ? "px-3.5 py-[5px] text-[11px]" : "px-4 py-[7px] text-[13px]",
+                            )}
+                        >
+                            {/* CTA glass fill */}
+                            <div className="absolute inset-0 rounded-full bg-neutral-900/90 dark:bg-white/90 transition-opacity duration-500" />
+                            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-primary-600 to-accent-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                            {/* Top specular on CTA */}
+                            <div className="absolute inset-x-0 top-0 h-1/2 rounded-t-full bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
+                            <span className="relative text-white dark:text-neutral-900 group-hover:text-white dark:group-hover:text-white tracking-[-0.01em]">Sign In</span>
+                            <ArrowRight className={cn(
+                                "relative text-white dark:text-neutral-900 group-hover:text-white dark:group-hover:text-white group-hover:translate-x-0.5 transition-all",
+                                scrolled ? "w-3 h-3" : "w-3.5 h-3.5",
+                            )} />
+                        </button>
+
+                        {/* Mobile hamburger */}
+                        <button
+                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                            className="md:hidden p-1.5 rounded-full text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/[0.07] transition-all"
+                        >
+                            {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+                        </button>
+                    </div>
+
+                    {/* ── Mobile dropdown ── */}
+                    <div
+                        className={cn(
+                            "absolute top-[calc(100%+8px)] left-2 right-2 md:hidden overflow-hidden",
+                            "transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                            mobileMenuOpen ? "max-h-52 opacity-100 scale-100" : "max-h-0 opacity-0 scale-[0.97]",
+                        )}
+                    >
+                        <div className="liquid-glass-dropdown p-2 rounded-2xl">
+                            <div className="pointer-events-none absolute inset-0 rounded-[inherit] overflow-hidden">
+                                <div className="absolute inset-0 bg-white/50 dark:bg-neutral-950/60" />
+                                <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/60 to-transparent dark:from-white/10 dark:to-transparent" />
+                            </div>
+                            <div
+                                className="pointer-events-none absolute inset-0 rounded-[inherit]"
+                                style={{
+                                    padding: "1px",
+                                    background: "linear-gradient(160deg, rgba(255,255,255,0.6), rgba(255,255,255,0.1) 50%, rgba(139,92,246,0.08) 100%)",
+                                    WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                                    WebkitMaskComposite: "xor",
+                                    maskComposite: "exclude",
+                                }}
+                            />
+                            {NAV_LINKS.map((link) => (
+                                <button
+                                    key={link.href}
+                                    onClick={() => {
+                                        if ('isRoute' in link && link.isRoute) {
+                                            navigate(link.href);
+                                        } else {
+                                            scrollToSection(link.href);
+                                        }
+                                        setMobileMenuOpen(false);
+                                    }}
+                                    className="relative z-10 w-full text-left px-4 py-2.5 rounded-xl text-[13px] font-semibold text-neutral-600 dark:text-neutral-300 hover:bg-white/40 dark:hover:bg-white/[0.06] hover:text-neutral-900 dark:hover:text-white transition-colors"
+                                >
+                                    {link.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </nav>
 
             {/* ═══════════════ HERO ═══════════════ */}
             <section className="relative w-full overflow-hidden">
@@ -120,23 +302,7 @@ export function LandingScreen() {
                 <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-primary-400/15 dark:bg-primary-600/10 blur-[120px] pointer-events-none" />
                 <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] rounded-full bg-accent-400/15 dark:bg-accent-600/10 blur-[120px] pointer-events-none" />
 
-                <div className="relative z-10 max-w-7xl mx-auto px-6 -mt-6 md:-mt-8 pt-0 pb-16 md:pb-24">
-
-                    {/* ── Top bar: Logo + Sign In ── */}
-                    <div className="flex items-center justify-between mb-2 md:mb-4 hero-stagger-1">
-                        <img
-                            src={companyLogo}
-                            alt="Avyren Technologies"
-                            className="w-52 md:w-64 h-auto object-contain -ml-5"
-                        />
-                        <button
-                            onClick={() => navigate("/login")}
-                            className="group inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 dark:bg-neutral-900/75 border border-primary-200/80 dark:border-primary-700/60 text-primary-700 dark:text-primary-300 shadow-sm shadow-primary-500/10 hover:bg-primary-600 hover:text-white hover:border-primary-600 dark:hover:bg-primary-500 dark:hover:border-primary-500 transition-all"
-                        >
-                            <span className="text-sm font-bold">Sign In</span>
-                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                        </button>
-                    </div>
+                <div className="relative z-10 max-w-7xl mx-auto px-6 pt-32 md:pt-36 pb-16 md:pb-24">
 
                     {/* ── Main hero grid ── */}
                     <div className="flex flex-col lg:flex-row items-center gap-8 md:gap-10 lg:gap-16">
@@ -263,7 +429,7 @@ export function LandingScreen() {
             <div className="w-full max-w-6xl mx-auto flex flex-col items-center px-6 gap-28 pb-16">
 
                 {/* ════════════ CAPABILITIES ════════════ */}
-                <section className="w-full max-w-5xl">
+                <section id="architecture" className="w-full max-w-5xl scroll-mt-28">
                     <div className="text-center mb-12">
                         <div className="flex items-center justify-center gap-3 mb-4">
                             <div className="h-px w-6 bg-primary-400" />
@@ -306,7 +472,7 @@ export function LandingScreen() {
                 </section>
 
                 {/* ════════════ MODULES ════════════ */}
-                <section className="w-full max-w-5xl">
+                <section id="modules" className="w-full max-w-5xl scroll-mt-28">
                     <div className="text-center mb-12">
                         <div className="flex items-center justify-center gap-3 mb-4">
                             <div className="h-px w-6 bg-accent-400" />
@@ -366,7 +532,7 @@ export function LandingScreen() {
                 </section>
 
                 {/* ════════════ PLATFORMS ════════════ */}
-                <section className="w-full max-w-5xl">
+                <section id="platforms" className="w-full max-w-5xl scroll-mt-28">
                     <div className="text-center mb-12">
                         <div className="flex items-center justify-center gap-3 mb-4">
                             <div className="h-px w-6 bg-success-500" />

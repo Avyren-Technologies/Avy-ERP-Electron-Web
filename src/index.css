@@ -63,6 +63,84 @@
   }
 }
 
+/* ─── Landing Navbar: Liquid Glass ─── */
+.liquid-glass-nav {
+  -webkit-backdrop-filter: blur(28px) saturate(1.8) brightness(1.05);
+  backdrop-filter: blur(28px) saturate(1.8) brightness(1.05);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 4px 16px rgba(99, 102, 241, 0.06),
+    0 12px 40px rgba(99, 102, 241, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  animation: nav-materialize 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+}
+
+.dark .liquid-glass-nav {
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    0 4px 16px rgba(0, 0, 0, 0.15),
+    0 12px 40px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.liquid-glass-dropdown {
+  position: relative;
+  -webkit-backdrop-filter: blur(28px) saturate(1.8) brightness(1.05);
+  backdrop-filter: blur(28px) saturate(1.8) brightness(1.05);
+  box-shadow:
+    0 8px 32px rgba(99, 102, 241, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+@keyframes nav-materialize {
+  0%   { opacity: 0; transform: translateY(-16px) scale(0.97); filter: blur(8px); }
+  60%  { opacity: 1; filter: blur(0px); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0px); }
+}
+
+/* Slow specular shimmer across the glass surface */
+@keyframes nav-shimmer-sweep {
+  0%   { transform: translateX(-140%) skewX(-14deg); }
+  100% { transform: translateX(140%) skewX(-14deg); }
+}
+
+.nav-shimmer {
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.5) 44%,
+    rgba(255, 255, 255, 0.18) 50%,
+    rgba(255, 255, 255, 0.5) 56%,
+    transparent 70%
+  );
+  animation: nav-shimmer-sweep 8s ease-in-out 2s infinite;
+}
+
+.dark .nav-shimmer {
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.08) 44%,
+    rgba(255, 255, 255, 0.03) 50%,
+    rgba(255, 255, 255, 0.08) 56%,
+    transparent 70%
+  );
+}
+
+/* CTA button inner glow */
+.nav-cta {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transition: box-shadow 0.4s ease, transform 0.3s ease;
+}
+.nav-cta:hover {
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transform: scale(1.04);
+}
+.nav-cta:active {
+  transform: scale(0.97);
+}
+
 /* ─── Landing Page Hero Animations ─── */
 @keyframes hero-fade-up {
   from { opacity: 0; transform: translateY(24px); }

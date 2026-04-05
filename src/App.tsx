@@ -13,6 +13,7 @@ import { RegisterCompanyScreen } from "@/features/auth/RegisterCompanyScreen";
 import { TenantNotFoundScreen } from "@/features/auth/TenantNotFoundScreen";
 
 // Screens (Implemented)
+import { ProductShowcaseScreen } from "./features/auth/ProductShowcaseScreen";
 import { LandingScreen } from "./features/auth/LandingScreen";
 import { LoginScreen } from "./features/auth/LoginScreen";
 import { ForgotPasswordScreen } from "./features/auth/ForgotPasswordScreen";
@@ -278,6 +279,9 @@ function App() {
       <Route element={<AuthLayout />}>
         <Route path="/" element={
           tenantContext.mode === 'main' ? <LandingScreen /> : <Navigate to="/login" replace />
+        } />
+        <Route path="/product" element={
+          tenantContext.mode === 'main' ? <ProductShowcaseScreen /> : <Navigate to="/login" replace />
         } />
         <Route path="/login" element={<LoginScreen />} />
         <Route path="/forgot-password" element={<ForgotPasswordScreen />} />
