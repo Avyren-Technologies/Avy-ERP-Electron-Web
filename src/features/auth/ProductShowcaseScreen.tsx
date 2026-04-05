@@ -7,6 +7,7 @@ import {
   FolderKanban, PieChart, Smartphone, ChevronRight, ChevronDown,
   Zap, Globe, Clock, Star, Mail, BookOpen, Headphones,
   RefreshCw, Settings, Layers, Target, TrendingUp, Award,
+  Menu, X,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -77,6 +78,25 @@ function useInView(threshold = 0.15) {
 
   return { ref, inView };
 }
+
+function useScrollState() {
+  const [scrolled, setScrolled] = React.useState(false);
+  React.useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 40);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+  return { scrolled };
+}
+
+const PRODUCT_NAV_LINKS = [
+  { label: "Architecture", href: "/#architecture" },
+  { label: "Modules", href: "/#modules" },
+  { label: "Platforms", href: "/#platforms" },
+  { label: "Product", href: "/product", isActive: true },
+];
 
 /* ═══════════════════════════════════════════════════════
    SHARED COMPONENTS
@@ -674,6 +694,8 @@ const DEPLOYMENT_STEPS = [
 export function ProductShowcaseScreen() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { scrolled } = useScrollState();
 
   function scrollToModules() {
     const el = document.getElementById("platform-overview");
@@ -683,14 +705,33 @@ export function ProductShowcaseScreen() {
   return (
     <div className="w-full flex flex-col items-center font-inter bg-[var(--background)] text-[var(--foreground)]">
 
-      {/* ═══════════════ NAVIGATION ═══════════════ */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-3 px-4 md:px-8 pb-2">
-        <div className="liquid-glass-nav relative flex items-center justify-between w-full max-w-5xl h-14 rounded-full px-2 md:px-4">
+      {/* ═══════════════ LIQUID GLASS NAVBAR ═══════════════ */}
+      <nav
+        className={cn(
+          "fixed top-0 left-0 right-0 z-50 flex justify-center",
+          "nav-outer transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          scrolled ? "pt-3 px-4 md:px-8 pb-2" : "pt-5 px-5 md:px-10 pb-3",
+        )}
+      >
+        <div
+          className={cn(
+            "liquid-glass-nav group/nav relative flex items-center justify-between w-full",
+            "transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]",
+            scrolled
+              ? "max-w-4xl h-11 rounded-full px-1.5 md:px-2"
+              : "max-w-5xl h-14 rounded-[26px] px-2 md:px-4",
+          )}
+        >
+          {/* Liquid glass layers */}
           <div className="pointer-events-none absolute inset-0 rounded-[inherit] overflow-hidden">
             <div className="absolute inset-0 bg-white/[0.45] dark:bg-neutral-950/[0.55]" />
             <div className="absolute inset-x-0 top-0 h-[55%] bg-gradient-to-b from-white/70 via-white/20 to-transparent dark:from-white/[0.12] dark:via-white/[0.03] dark:to-transparent" />
+            <div className="absolute -top-4 -left-8 w-40 h-20 rounded-full bg-primary-400/[0.12] dark:bg-primary-500/[0.08] blur-2xl" />
+            <div className="absolute -bottom-4 -right-8 w-36 h-16 rounded-full bg-accent-400/[0.10] dark:bg-accent-500/[0.06] blur-2xl" />
             <div className="absolute inset-0 nav-shimmer opacity-60" />
           </div>
+
+          {/* Glass border */}
           <div
             className="pointer-events-none absolute inset-0 rounded-[inherit]"
             style={{
@@ -702,29 +743,129 @@ export function ProductShowcaseScreen() {
             }}
           />
 
-          <button onClick={() => navigate("/")} className="relative z-20 flex items-center gap-2 pl-3 flex-shrink-0">
-            <img src={companyLogo} alt="Avyren Technologies" className="h-20 md:h-24 object-contain drop-shadow-md" />
+          {/* Logo */}
+          <button
+            onClick={() => navigate("/")}
+            className={cn(
+              "relative z-20 flex items-center flex-shrink-0 transition-all duration-500 mt-1",
+              scrolled ? "pl-3 translate-y-0" : "pl-4 -translate-y-1",
+            )}
+          >
+            <img
+              src={companyLogo}
+              alt="Avyren Technologies"
+              className={cn(
+                "object-contain drop-shadow-md transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                scrolled ? "h-16 md:h-20" : "h-20 md:h-24",
+              )}
+            />
           </button>
 
+          {/* Desktop nav links */}
+          <div className="relative z-10 hidden md:flex items-center gap-0.5">
+            {PRODUCT_NAV_LINKS.map((link) => (
+              <button
+                key={link.href}
+                onClick={() => link.isActive ? undefined : navigate(link.href)}
+                className={cn(
+                  "relative px-4 py-1.5 rounded-full text-[13px] font-semibold tracking-[-0.01em] transition-all duration-300",
+                  link.isActive
+                    ? "text-primary-600 dark:text-primary-400 bg-primary-50/60 dark:bg-primary-950/30"
+                    : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/[0.07]",
+                )}
+              >
+                {link.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Right: Back + Sign In + mobile toggle */}
           <div className="relative z-10 flex items-center gap-2">
             <button
               onClick={() => navigate("/")}
-              className="hidden sm:flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[13px] font-semibold text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/[0.07] transition-all duration-300"
+              className={cn(
+                "hidden sm:flex items-center gap-1.5 rounded-full font-semibold text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/[0.07] transition-all duration-300",
+                scrolled ? "px-3 py-1 text-[11px]" : "px-4 py-1.5 text-[13px]",
+              )}
             >
-              <ArrowLeft className="w-3.5 h-3.5" />
+              <ArrowLeft className={cn(scrolled ? "w-3 h-3" : "w-3.5 h-3.5")} />
               Back to Home
             </button>
 
             <button
               onClick={() => navigate("/login")}
-              className="nav-cta group relative inline-flex items-center gap-1.5 rounded-full font-semibold px-4 py-[7px] text-[13px] overflow-hidden transition-all duration-500"
+              className={cn(
+                "nav-cta group relative inline-flex items-center gap-1.5 rounded-full font-semibold overflow-hidden transition-all duration-500",
+                scrolled ? "px-3.5 py-[5px] text-[11px]" : "px-4 py-[7px] text-[13px]",
+              )}
             >
               <div className="absolute inset-0 rounded-full bg-neutral-900/90 dark:bg-white/90 transition-opacity duration-500" />
               <div className="absolute inset-0 rounded-full bg-gradient-to-r from-primary-600 to-accent-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <div className="absolute inset-x-0 top-0 h-1/2 rounded-t-full bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
               <span className="relative text-white dark:text-neutral-900 group-hover:text-white dark:group-hover:text-white tracking-[-0.01em]">Sign In</span>
-              <ArrowRight className="relative w-3.5 h-3.5 text-white dark:text-neutral-900 group-hover:text-white dark:group-hover:text-white group-hover:translate-x-0.5 transition-all" />
+              <ArrowRight className={cn(
+                "relative text-white dark:text-neutral-900 group-hover:text-white dark:group-hover:text-white group-hover:translate-x-0.5 transition-all",
+                scrolled ? "w-3 h-3" : "w-3.5 h-3.5",
+              )} />
             </button>
+
+            {/* Mobile hamburger */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-1.5 rounded-full text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/[0.07] transition-all"
+            >
+              {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+            </button>
+          </div>
+
+          {/* Mobile dropdown */}
+          <div
+            className={cn(
+              "absolute top-[calc(100%+8px)] left-2 right-2 md:hidden overflow-hidden",
+              "transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)]",
+              mobileMenuOpen ? "max-h-64 opacity-100 scale-100" : "max-h-0 opacity-0 scale-[0.97]",
+            )}
+          >
+            <div className="liquid-glass-dropdown p-2 rounded-2xl">
+              <div className="pointer-events-none absolute inset-0 rounded-[inherit] overflow-hidden">
+                <div className="absolute inset-0 bg-white/50 dark:bg-neutral-950/60" />
+                <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/60 to-transparent dark:from-white/10 dark:to-transparent" />
+              </div>
+              <div
+                className="pointer-events-none absolute inset-0 rounded-[inherit]"
+                style={{
+                  padding: "1px",
+                  background: "linear-gradient(160deg, rgba(255,255,255,0.6), rgba(255,255,255,0.1) 50%, rgba(139,92,246,0.08) 100%)",
+                  WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                  WebkitMaskComposite: "xor",
+                  maskComposite: "exclude",
+                }}
+              />
+              {PRODUCT_NAV_LINKS.map((link) => (
+                <button
+                  key={link.href}
+                  onClick={() => {
+                    if (!link.isActive) navigate(link.href);
+                    setMobileMenuOpen(false);
+                  }}
+                  className={cn(
+                    "relative z-10 w-full text-left px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-colors",
+                    link.isActive
+                      ? "text-primary-600 dark:text-primary-400 bg-primary-50/40 dark:bg-primary-950/20"
+                      : "text-neutral-600 dark:text-neutral-300 hover:bg-white/40 dark:hover:bg-white/[0.06] hover:text-neutral-900 dark:hover:text-white",
+                  )}
+                >
+                  {link.label}
+                </button>
+              ))}
+              <button
+                onClick={() => { navigate("/"); setMobileMenuOpen(false); }}
+                className="relative z-10 w-full text-left px-4 py-2.5 rounded-xl text-[13px] font-semibold text-neutral-600 dark:text-neutral-300 hover:bg-white/40 dark:hover:bg-white/[0.06] hover:text-neutral-900 dark:hover:text-white transition-colors flex items-center gap-1.5"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Back to Home
+              </button>
+            </div>
           </div>
         </div>
       </nav>
@@ -740,7 +881,7 @@ export function ProductShowcaseScreen() {
           <div className="hero-stagger-2 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary-50/80 dark:bg-primary-950/40 border border-primary-200/50 dark:border-primary-800/30 mb-6">
             <span className="w-2 h-2 rounded-full bg-success-500 animate-pulse" />
             <span className="text-xs font-semibold text-primary-700 dark:text-primary-300 font-inter">
-              Manufacturing ERP \u2014 Built for Industrial Enterprises
+              Manufacturing ERP — Built for Industrial Enterprises
             </span>
           </div>
 
@@ -754,7 +895,7 @@ export function ProductShowcaseScreen() {
           {/* Subheadline */}
           <p className="hero-stagger-4 text-lg md:text-xl text-neutral-500 dark:text-neutral-400 leading-relaxed mb-8 max-w-2xl mx-auto">
             Real-time visibility across every department. End-to-end traceability from raw material to dispatch.
-            Modular growth that matches your pace \u2014 not ours.
+            Modular growth that matches your pace — not ours.
           </p>
 
           {/* Stats */}
@@ -777,7 +918,7 @@ export function ProductShowcaseScreen() {
           {/* CTAs */}
           <div className="hero-stagger-6 flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
-              onClick={() => window.open("mailto:hello@avyren.com?subject=Live%20Demo%20Request", "_blank")}
+              onClick={() => window.open("mailto:support@avyrentechnologies.com?subject=Live%20Demo%20Request", "_blank")}
               className="group relative inline-flex items-center gap-3 px-8 py-4 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-bold text-base shadow-2xl shadow-neutral-900/20 dark:shadow-black/30 overflow-hidden transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-primary-600 to-accent-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -819,7 +960,7 @@ export function ProductShowcaseScreen() {
         <blockquote className="text-center max-w-2xl mx-auto">
           <p className="text-lg italic text-neutral-600 dark:text-neutral-300 leading-relaxed">
             &ldquo;If your finance team and production team cannot agree on what was manufactured yesterday,
-            you do not have an information problem \u2014 you have a systems problem.&rdquo;
+            you do not have an information problem — you have a systems problem.&rdquo;
           </p>
         </blockquote>
       </Section>
@@ -835,8 +976,8 @@ export function ProductShowcaseScreen() {
         </p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
           {PLATFORM_MODULES.map((m) => (
-            <GlassCard key={m.name} className="p-4 text-center group">
-              <div className="w-10 h-10 mx-auto rounded-xl bg-gradient-to-br from-primary-500/10 to-accent-500/10 dark:from-primary-500/20 dark:to-accent-500/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+            <GlassCard key={m.name} className="p-4 text-center group hover:shadow-lg hover:shadow-primary-500/10 dark:hover:shadow-primary-500/5">
+              <div className="w-10 h-10 mx-auto rounded-xl bg-gradient-to-br from-primary-500/10 to-accent-500/10 dark:from-primary-500/20 dark:to-accent-500/20 flex items-center justify-center mb-3 group-hover:scale-110 group-hover:shadow-md group-hover:shadow-primary-400/20 transition-all duration-300">
                 <m.icon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
               </div>
               <h3 className="text-sm font-bold text-neutral-900 dark:text-white mb-1 font-inter">{m.name}</h3>
@@ -847,23 +988,52 @@ export function ProductShowcaseScreen() {
             </GlassCard>
           ))}
         </div>
-        {/* Data flow diagram */}
-        <GlassCard className="p-6 md:p-8" hover={false}>
-          <h3 className="text-sm font-bold text-neutral-900 dark:text-white mb-4 text-center uppercase tracking-wider font-inter">Master Data Flow</h3>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            {["Employee Master", "Item Master", "Vendor Master", "Customer Master", "Machine Master", "Chart of Accounts"].map((m, i, arr) => (
-              <React.Fragment key={m}>
-                <div className="px-4 py-2 rounded-lg bg-primary-50 dark:bg-primary-950/40 border border-primary-200/50 dark:border-primary-800/30">
-                  <span className="text-xs font-semibold text-primary-700 dark:text-primary-300 font-inter">{m}</span>
+        {/* Master Data Flow — radial hub design */}
+        <div className="relative w-full max-w-4xl mx-auto">
+          {/* Central hub */}
+          <div className="flex flex-col items-center mb-10 relative z-10">
+            <div className="relative">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-500 to-accent-600 flex items-center justify-center shadow-xl shadow-primary-500/25 data-node z-20">
+                <Layers className="w-10 h-10 text-white" />
+              </div>
+              <div className="absolute -inset-4 rounded-[2rem] border-2 border-primary-300/30 dark:border-primary-700/20 animate-pulse z-10" />
+            </div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary-600 dark:text-primary-400 mt-5 font-inter bg-[var(--background)] px-2 z-20">Single Data Backbone</p>
+          </div>
+
+          {/* Connectors container */}
+          <div className="absolute top-[40px] left-0 right-0 h-1/2 flex justify-center z-0 pointer-events-none">
+             {/* Horizontal main bus (hidden on mobile, visible on md) */}
+             <div className="hidden md:block absolute top-[60px] left-[15%] right-[15%] h-[2px] bg-gradient-to-r from-transparent via-primary-300 dark:via-primary-700 to-transparent opacity-50" />
+          </div>
+
+          {/* Master nodes fanning out */}
+          <div className="relative z-10 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 px-4 md:px-0">
+            {[
+              { name: "Employee", icon: Users },
+              { name: "Item", icon: Package },
+              { name: "Vendor", icon: ClipboardList },
+              { name: "Customer", icon: Heart },
+              { name: "Machine", icon: Factory },
+              { name: "Accounts", icon: BarChart3 },
+            ].map((node) => (
+              <div key={node.name} className="flex flex-col items-center relative group pt-6 md:pt-0">
+                {/* Vertical drop line to node */}
+                <div className="absolute top-0 md:-top-[26px] left-1/2 -mt-4 md:mt-0 w-[2px] h-10 md:h-[26px] bg-gradient-to-b from-primary-300 dark:from-primary-700 to-primary-100 dark:to-primary-900 opacity-50" />
+                
+                <div className="data-node flex flex-col items-center gap-2 px-4 py-4 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-700/80 shadow-md hover:shadow-xl hover:border-primary-400 dark:hover:border-primary-500 transition-all duration-300 w-full relative z-20 hover:-translate-y-1">
+                  <div className="w-8 h-8 rounded-full bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center mb-1 group-hover:bg-primary-100 dark:group-hover:bg-primary-800/50 transition-colors">
+                     <node.icon className="w-4 h-4 text-primary-600 dark:text-primary-400 group-hover:scale-110 transition-transform" />
+                  </div>
+                  <span className="text-[13px] font-bold text-neutral-800 dark:text-neutral-200 font-inter text-center leading-tight">{node.name}</span>
                 </div>
-                {i < arr.length - 1 && <div className="w-6 h-px bg-primary-300 dark:bg-primary-700 hidden md:block" />}
-              </React.Fragment>
+              </div>
             ))}
           </div>
-          <p className="text-center text-xs text-neutral-400 dark:text-neutral-500 mt-4">
-            All masters are shared across modules \u2014 create once, use everywhere.
+          <p className="text-center text-sm font-medium text-neutral-500 dark:text-neutral-400 mt-10">
+            All masters are shared across modules — create once, use everywhere.
           </p>
-        </GlassCard>
+        </div>
       </Section>
 
       {/* ═══════════════ SECTION 4: PHASED ADOPTION ═══════════════ */}
@@ -875,10 +1045,14 @@ export function ProductShowcaseScreen() {
         <p className="text-neutral-500 dark:text-neutral-400 text-center mb-12 max-w-xl mx-auto">
           No big-bang go-live. Each phase is implemented, tested, and operational before the next one begins.
         </p>
-        <div className="grid md:grid-cols-4 gap-6 mb-10">
+        <div className="relative grid md:grid-cols-4 gap-6 mb-16 mt-8">
+          {/* Colorful animated connector line — aligned to center of the phase number circles */}
+          <div className="hidden md:block absolute z-0" style={{ top: "48px", transform: "translateY(-50%)", left: "12.5%", right: "12.5%" }}>
+            <div className="w-full animated-dash-x opacity-60 dark:opacity-40 text-primary-500" style={{ height: '3px' }} />
+          </div>
           {PHASES.map((phase) => (
-            <GlassCard key={phase.number} className={cn("p-6 border-t-4", phase.borderColor)}>
-              <div className={cn("inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br text-white font-black text-lg mb-4", phase.color)}>
+            <GlassCard key={phase.number} className="relative z-10 p-6 border-t-0">
+              <div className={cn("inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br text-white font-black text-lg mb-4 shadow-lg", phase.color)}>
                 {phase.number}
               </div>
               <h3 className="text-base font-bold text-neutral-900 dark:text-white mb-1 font-inter">{phase.title}</h3>
@@ -903,11 +1077,21 @@ export function ProductShowcaseScreen() {
             </GlassCard>
           ))}
         </div>
-        <div className="text-center">
-          <GlassCard className="inline-flex items-center gap-3 px-6 py-3" hover={false}>
-            <Clock className="w-5 h-5 text-primary-500" />
-            <span className="text-sm font-bold text-neutral-900 dark:text-white font-inter">8 Months to Full Enterprise ERP</span>
-          </GlassCard>
+        <div className="flex justify-center mt-6">
+          <div className="relative group cursor-default">
+            {/* Ambient glow behind the badge */}
+            <div className="absolute -inset-1 bg-gradient-to-r from-primary-600 via-accent-500 to-primary-600 rounded-2xl blur-lg opacity-40 group-hover:opacity-70 transition duration-500" />
+            
+            <div className="relative flex items-center gap-4 px-8 py-5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-xl">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary-50 dark:bg-primary-950/50 flex-shrink-0">
+                <Clock className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="text-xs font-bold uppercase tracking-widest text-neutral-500 dark:text-neutral-400 mb-0.5">Deployment Timeline</span>
+                <span className="text-xl md:text-2xl font-black text-neutral-900 dark:text-white tracking-tight">8 Months <span className="font-medium text-neutral-400 dark:text-neutral-500 text-lg">to Full Enterprise ERP</span></span>
+              </div>
+            </div>
+          </div>
         </div>
       </Section>
 
@@ -917,97 +1101,153 @@ export function ProductShowcaseScreen() {
         <h2 className="text-3xl md:text-4xl font-black tracking-tight text-neutral-900 dark:text-white mb-4 text-center">
           Every module. <GradientHeadline>Every detail.</GradientHeadline>
         </h2>
-        <p className="text-neutral-500 dark:text-neutral-400 text-center mb-8 max-w-xl mx-auto">
+        <p className="text-neutral-500 dark:text-neutral-400 text-center mb-10 max-w-xl mx-auto">
           Explore each module's workflow, capabilities, and integrations.
         </p>
 
-        {/* Tab bar */}
-        <div className="flex flex-wrap justify-center gap-2 mb-8">
-          {MODULE_DEEP_DIVES.map((mod, i) => (
-            <button
-              key={mod.id}
-              onClick={() => setActiveTab(i)}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 font-inter",
-                activeTab === i
-                  ? "bg-primary-600 text-white shadow-lg shadow-primary-500/20"
-                  : "bg-white/60 dark:bg-neutral-800/60 text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-white/80 dark:hover:bg-neutral-700/60 border border-neutral-200/50 dark:border-neutral-700/50",
-              )}
-            >
-              <mod.icon className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{mod.name}</span>
-            </button>
-          ))}
+        {/* ── Module selector tabs (OUTSIDE the container) ── */}
+        <div className="w-full max-w-5xl mx-auto mb-6">
+          <div className="flex flex-wrap justify-center gap-2">
+            {MODULE_DEEP_DIVES.map((mod, i) => (
+              <button
+                key={mod.id}
+                onClick={() => setActiveTab(i)}
+                className={cn(
+                  "group flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold transition-all duration-300 font-inter border",
+                  activeTab === i
+                    ? "bg-primary-600 text-white border-primary-600 shadow-lg shadow-primary-500/25 scale-[1.02]"
+                    : "bg-white/70 dark:bg-neutral-800/60 text-neutral-600 dark:text-neutral-400 border-neutral-200/60 dark:border-neutral-700/40 hover:border-primary-300 dark:hover:border-primary-600 hover:text-primary-600 dark:hover:text-primary-400 hover:shadow-md",
+                )}
+              >
+                <mod.icon className={cn("w-4 h-4", activeTab === i ? "text-white" : "text-neutral-400 dark:text-neutral-500 group-hover:text-primary-500")} />
+                {mod.name}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Active module content */}
+        {/* ── macOS App Container (fixed size) ── */}
         {(() => {
           const mod = MODULE_DEEP_DIVES[activeTab];
           return (
-            <GlassCard className="p-6 md:p-8" hover={false} key={mod.id}>
-              <div className="flex flex-wrap items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
-                  <mod.icon className="w-5 h-5 text-white" />
+            <div className="w-full max-w-5xl mx-auto rounded-2xl shadow-2xl shadow-neutral-900/10 dark:shadow-black/40 border border-neutral-200/60 dark:border-neutral-700/40 overflow-hidden">
+              {/* macOS Title Bar */}
+              <div className="bg-gradient-to-b from-neutral-100 to-neutral-50 dark:from-neutral-800 dark:to-neutral-850 backdrop-blur-sm px-5 py-2.5 flex items-center gap-4 border-b border-neutral-200/50 dark:border-neutral-700/50">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#FF5F57" }} />
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#FFBD2E" }} />
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#27C93F" }} />
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold text-neutral-900 dark:text-white font-inter">{mod.name}</h3>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400">{mod.category}</span>
+                <div className="flex-1 flex justify-center">
+                  <span className="text-[12px] font-semibold text-neutral-500 dark:text-neutral-400 font-inter">{mod.name} — Avy ERP</span>
                 </div>
+                <div className="w-[52px]" />
               </div>
 
-              <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed mb-4">{mod.description}</p>
+              {/* Content area — strictly fixed height */}
+              <div className="relative bg-white dark:bg-neutral-900 h-[520px] md:h-[580px] overflow-y-auto">
+                <div
+                  key={mod.id}
+                  className="p-6 md:p-8"
+                  style={{ animation: "hero-fade-in 0.35s ease-out" }}
+                >
+                  {/* Module header */}
+                  <div className="flex items-center gap-4 mb-5">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center shadow-lg shadow-primary-500/20">
+                      <mod.icon className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-neutral-900 dark:text-white font-inter leading-tight">{mod.name}</h3>
+                      <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-primary-600 dark:text-primary-400">{mod.category}</span>
+                    </div>
+                  </div>
 
-              {mod.exclusive && (
-                <div className="mb-4 px-4 py-2.5 rounded-xl bg-accent-50/80 dark:bg-accent-950/30 border border-accent-200/50 dark:border-accent-800/30">
-                  <div className="flex items-center gap-2">
-                    <Star className="w-4 h-4 text-accent-500 flex-shrink-0" />
-                    <span className="text-xs font-bold text-accent-700 dark:text-accent-300 font-inter">{mod.exclusive}</span>
+                  <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed mb-6 max-w-3xl">{mod.description}</p>
+
+                  {/* CRM Exclusive callout */}
+                  {mod.exclusive && (
+                    <div className="mb-6 px-5 py-4 rounded-xl bg-gradient-to-r from-accent-50/80 to-primary-50/60 dark:from-accent-950/40 dark:to-primary-950/30 border border-accent-300/50 dark:border-accent-700/30 shadow-sm">
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-accent-500 to-primary-500 flex items-center justify-center flex-shrink-0 shadow-md">
+                          <Star className="w-4.5 h-4.5 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-accent-700 dark:text-accent-300 font-inter mb-0.5">Production-Aware CRM (Avy ERP Exclusive)</p>
+                          <p className="text-xs text-accent-600/80 dark:text-accent-400/80 leading-relaxed">{mod.exclusive}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Workflow pipeline with flowing connectors ── */}
+                  <div className="mb-7">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-neutral-200 dark:via-neutral-700 to-transparent" />
+                      <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-neutral-400 dark:text-neutral-500 font-inter px-2">Workflow</span>
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-neutral-200 dark:via-neutral-700 to-transparent" />
+                    </div>
+                    {/* Row 1 of workflow — first 4 steps */}
+                    <div className="flex flex-wrap items-center gap-y-3 py-2">
+                      {mod.workflow.map((step, i) => (
+                        <React.Fragment key={step}>
+                          <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-gradient-to-br from-white to-neutral-50/80 dark:from-neutral-800 dark:to-neutral-800/60 border border-neutral-200/70 dark:border-neutral-700/50 shadow-sm hover:shadow-md hover:border-primary-300/60 dark:hover:border-primary-700/50 transition-all duration-300">
+                            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-primary-500/10 dark:bg-primary-500/20 text-[9px] font-black text-primary-600 dark:text-primary-400">{String(i + 1).padStart(2, "0")}</span>
+                            <span className="text-[12px] font-semibold text-neutral-800 dark:text-neutral-200 font-inter whitespace-nowrap">{step}</span>
+                          </div>
+                          {i < mod.workflow.length - 1 && (
+                            <div className="w-8 h-0 flex items-center flex-shrink-0 mx-0.5">
+                              <div className="workflow-connector w-full rounded-full" />
+                            </div>
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Capabilities grid */}
+                  <div className="grid md:grid-cols-2 gap-5 mb-6">
+                    <div className="rounded-xl border border-neutral-200/60 dark:border-neutral-700/40 p-5 bg-white/60 dark:bg-neutral-800/30">
+                      <p className="text-xs font-bold text-neutral-900 dark:text-white mb-3 font-inter flex items-center gap-2">
+                        <CheckCircle className="w-3.5 h-3.5 text-success-500" />
+                        Core Capabilities
+                      </p>
+                      <ul className="space-y-2.5">
+                        {mod.core.map((c) => (
+                          <li key={c} className="flex items-start gap-2.5 text-[13px] text-neutral-600 dark:text-neutral-300 leading-snug">
+                            <div className="w-1.5 h-1.5 rounded-full bg-success-500 mt-1.5 flex-shrink-0" />
+                            {c}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="rounded-xl border border-neutral-200/60 dark:border-neutral-700/40 p-5 bg-white/60 dark:bg-neutral-800/30">
+                      <p className="text-xs font-bold text-neutral-900 dark:text-white mb-3 font-inter flex items-center gap-2">
+                        <Star className="w-3.5 h-3.5 text-accent-500" />
+                        Advanced Features
+                      </p>
+                      <ul className="space-y-2.5">
+                        {mod.advanced.map((a) => (
+                          <li key={a} className="flex items-start gap-2.5 text-[13px] text-neutral-600 dark:text-neutral-300 leading-snug">
+                            <div className="w-1.5 h-1.5 rounded-full bg-accent-500 mt-1.5 flex-shrink-0" />
+                            {a}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Integrations */}
+                  <div className="flex flex-wrap items-center gap-2.5 pt-5 border-t border-neutral-200/50 dark:border-neutral-700/50">
+                    <span className="text-xs font-bold text-neutral-400 dark:text-neutral-500 font-inter">Connects to:</span>
+                    {mod.connects.map((c) => (
+                      <span key={c} className="text-xs px-3 py-1.5 rounded-lg bg-primary-50 dark:bg-primary-950/40 text-primary-700 dark:text-primary-300 border border-primary-200/50 dark:border-primary-800/30 font-semibold">
+                        {c}
+                      </span>
+                    ))}
                   </div>
                 </div>
-              )}
-
-              {/* Workflow */}
-              <div className="mb-6">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-2">Workflow</p>
-                <WorkflowPipeline steps={mod.workflow} />
               </div>
-
-              {/* Capabilities grid */}
-              <div className="grid md:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <p className="text-xs font-bold text-neutral-900 dark:text-white mb-3 font-inter">Core Capabilities</p>
-                  <ul className="space-y-2">
-                    {mod.core.map((c) => (
-                      <li key={c} className="flex items-start gap-2 text-sm text-neutral-600 dark:text-neutral-300">
-                        <CheckCircle className="w-4 h-4 text-success-500 flex-shrink-0 mt-0.5" />
-                        {c}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-neutral-900 dark:text-white mb-3 font-inter">Advanced Features</p>
-                  <ul className="space-y-2">
-                    {mod.advanced.map((a) => (
-                      <li key={a} className="flex items-start gap-2 text-sm text-neutral-600 dark:text-neutral-300">
-                        <Star className="w-4 h-4 text-accent-500 flex-shrink-0 mt-0.5" />
-                        {a}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              {/* Integrations */}
-              <div className="flex flex-wrap items-center gap-2 pt-4 border-t border-neutral-200/50 dark:border-neutral-700/50">
-                <span className="text-xs font-bold text-neutral-400 dark:text-neutral-500 font-inter">Connects to:</span>
-                {mod.connects.map((c) => (
-                  <span key={c} className="text-xs px-2.5 py-1 rounded-full bg-primary-50 dark:bg-primary-950/40 text-primary-700 dark:text-primary-300 border border-primary-200/50 dark:border-primary-800/30 font-semibold">
-                    {c}
-                  </span>
-                ))}
-              </div>
-            </GlassCard>
+            </div>
           );
         })()}
       </Section>
@@ -1030,12 +1270,12 @@ export function ProductShowcaseScreen() {
                 usp.highlight && "border-accent-300/60 dark:border-accent-700/60 bg-gradient-to-r from-accent-50/40 to-primary-50/40 dark:from-accent-950/30 dark:to-primary-950/30",
               )}
             >
-              <div className="flex items-start gap-4">
+              <div className="flex items-start gap-5">
                 <span className={cn(
-                  "text-2xl font-black tracking-tight flex-shrink-0",
+                  "text-4xl md:text-5xl font-black tracking-tighter flex-shrink-0 leading-none",
                   usp.highlight
                     ? "text-transparent bg-clip-text bg-gradient-to-br from-accent-500 to-primary-500"
-                    : "text-neutral-200 dark:text-neutral-800",
+                    : "text-transparent bg-clip-text bg-gradient-to-b from-neutral-300 to-neutral-200 dark:from-neutral-700 dark:to-neutral-800",
                 )}>
                   {usp.number}
                 </span>
@@ -1070,7 +1310,7 @@ export function ProductShowcaseScreen() {
             <thead>
               <tr className="border-b border-neutral-200/50 dark:border-neutral-700/50">
                 <th className="text-left py-3 px-3 text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider font-inter">Feature</th>
-                <th className="py-3 px-3 text-xs font-bold text-primary-600 dark:text-primary-400 uppercase tracking-wider font-inter bg-primary-50/50 dark:bg-primary-950/20 rounded-t-lg">Avy ERP</th>
+                <th className="py-3 px-3 text-xs font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-accent-500 dark:from-primary-400 dark:to-accent-400 uppercase tracking-wider font-inter bg-gradient-to-b from-primary-50/80 to-accent-50/40 dark:from-primary-950/30 dark:to-accent-950/20 rounded-t-lg">Avy ERP</th>
                 <th className="py-3 px-3 text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider font-inter">SAP S/4HANA</th>
                 <th className="py-3 px-3 text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider font-inter">Oracle NetSuite</th>
                 <th className="py-3 px-3 text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider font-inter">Salesforce MFG</th>
@@ -1085,7 +1325,7 @@ export function ProductShowcaseScreen() {
                   i % 2 === 0 ? "bg-white/30 dark:bg-neutral-900/30" : "",
                 )}>
                   <td className="py-2.5 px-3 text-xs font-medium text-neutral-700 dark:text-neutral-300 font-inter">{row.feature}</td>
-                  <td className="py-2.5 px-3 text-center bg-primary-50/30 dark:bg-primary-950/10 text-base">{row.avy}</td>
+                  <td className="py-2.5 px-3 text-center bg-gradient-to-b from-primary-50/40 to-accent-50/20 dark:from-primary-950/15 dark:to-accent-950/10 text-base">{row.avy}</td>
                   <td className="py-2.5 px-3 text-center text-base">{row.sap}</td>
                   <td className="py-2.5 px-3 text-center text-base">{row.oracle}</td>
                   <td className="py-2.5 px-3 text-center text-base">{row.salesforce}</td>
@@ -1132,7 +1372,7 @@ export function ProductShowcaseScreen() {
             </div>
             <h3 className="text-base font-bold text-neutral-900 dark:text-white mb-2 font-inter">Customised Module Configuration</h3>
             <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">
-              Every module is configured to your processes \u2014 your approval chains, your document templates, your numbering series. No two deployments are the same.
+              Every module is configured to your processes — your approval chains, your document templates, your numbering series. No two deployments are the same.
             </p>
           </GlassCard>
           <GlassCard className="p-6">
@@ -1279,7 +1519,7 @@ export function ProductShowcaseScreen() {
           <div className="flex items-center justify-center gap-3">
             <Smartphone className="w-5 h-5 text-primary-500" />
             <p className="text-sm font-semibold text-neutral-900 dark:text-white font-inter">
-              Full mobile app support \u2014 your team stays productive from the shop floor to the field.
+              Full mobile app support — your team stays productive from the shop floor to the field.
             </p>
           </div>
         </GlassCard>
@@ -1313,8 +1553,8 @@ export function ProductShowcaseScreen() {
           </div>
 
           <button
-            onClick={() => window.open("mailto:hello@avyren.com?subject=Live%20Demo%20Request", "_blank")}
-            className="group relative inline-flex items-center gap-3 px-10 py-4 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-bold text-base shadow-2xl shadow-neutral-900/20 dark:shadow-black/30 overflow-hidden transition-all hover:scale-[1.02] active:scale-[0.98] mb-10"
+            onClick={() => window.open("mailto:support@avyrentechnologies.com?subject=Live%20Demo%20Request", "_blank")}
+            className="group relative inline-flex items-center gap-3 px-8 py-4 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-bold text-base shadow-2xl shadow-neutral-900/20 dark:shadow-black/30 overflow-hidden transition-all hover:scale-[1.02] active:scale-[0.98] mb-10"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-primary-600 to-accent-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <span className="relative group-hover:text-white">Request a Live Demo</span>
@@ -1324,19 +1564,22 @@ export function ProductShowcaseScreen() {
           <div className="space-y-2 mb-8">
             <p className="text-sm font-bold text-neutral-900 dark:text-white font-inter">Avyren Technologies</p>
             <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-neutral-500 dark:text-neutral-400">
-              <a href="https://www.avyren.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
+              <a href="https://www.avyrentechnologies.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
                 <Globe className="w-3.5 h-3.5" />
-                www.avyren.com
+                www.avyrentechnologies.com
               </a>
-              <a href="mailto:hello@avyren.com" className="flex items-center gap-1.5 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
+              <a href="mailto:support@avyrentechnologies.com" className="flex items-center gap-1.5 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
                 <Mail className="w-3.5 h-3.5" />
-                hello@avyren.com
+                support@avyrentechnologies.com
               </a>
             </div>
           </div>
 
-          <div className="border-t border-neutral-200/50 dark:border-neutral-700/50 pt-6">
-            <p className="text-xs text-neutral-400 dark:text-neutral-600">
+          <div className="border-t border-neutral-200/50 dark:border-neutral-700/50 pt-6 space-y-3">
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 flex items-center justify-center gap-1.5 font-inter">
+              Made with <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500" /> for the makers of the world
+            </p>
+            <p className="text-xs text-neutral-400 dark:text-neutral-600 font-inter">
               &copy; {new Date().getFullYear()} Avyren Technologies. All rights reserved.
             </p>
           </div>
