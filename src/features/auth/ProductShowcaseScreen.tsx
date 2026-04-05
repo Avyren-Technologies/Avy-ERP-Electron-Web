@@ -104,7 +104,7 @@ const PRODUCT_NAV_LINKS = [
 
 function SectionEyebrow({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-3 mb-4">
+    <div className="inline-flex items-center justify-center gap-3 mb-4">
       <div className="h-px w-8 bg-primary-500" />
       <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary-600 dark:text-primary-400 font-inter">
         {label}
@@ -165,7 +165,7 @@ function WorkflowPipeline({ steps }: { steps: string[] }) {
    ═══════════════════════════════════════════════════════ */
 
 const HERO_STATS = [
-  { value: 16, suffix: "+", label: "Integrated Modules" },
+  { value: 14, suffix: "+", label: "Integrated Modules" },
   { value: 14, suffix: "", label: "Industry Templates" },
   { value: 4, suffix: "", label: "Deployment Phases" },
   { value: 2, suffix: "", label: "Months Per Phase" },
@@ -969,7 +969,7 @@ export function ProductShowcaseScreen() {
       <Section id="platform-overview" dark>
         <SectionEyebrow label="Platform Overview" />
         <h2 className="text-3xl md:text-4xl font-black tracking-tight text-neutral-900 dark:text-white mb-4 text-center">
-          One backbone. 16 modules. <GradientHeadline>Fully integrated.</GradientHeadline>
+          One backbone. 14 modules. <GradientHeadline>Fully integrated.</GradientHeadline>
         </h2>
         <p className="text-neutral-500 dark:text-neutral-400 text-center mb-12 max-w-xl mx-auto">
           Every module shares a single data layer. An entry in one module is instantly visible across the platform.
@@ -981,10 +981,7 @@ export function ProductShowcaseScreen() {
                 <m.icon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
               </div>
               <h3 className="text-sm font-bold text-neutral-900 dark:text-white mb-1 font-inter">{m.name}</h3>
-              <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mb-2">{m.desc}</p>
-              <span className={cn("inline-block text-[10px] font-bold px-2 py-0.5 rounded-full", m.phaseColor)}>
-                {m.phase}
-              </span>
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mb-0">{m.desc}</p>
             </GlassCard>
           ))}
         </div>
@@ -1003,8 +1000,8 @@ export function ProductShowcaseScreen() {
 
           {/* Connectors container */}
           <div className="absolute top-[40px] left-0 right-0 h-1/2 flex justify-center z-0 pointer-events-none">
-             {/* Horizontal main bus (hidden on mobile, visible on md) */}
-             <div className="hidden md:block absolute top-[60px] left-[15%] right-[15%] h-[2px] bg-gradient-to-r from-transparent via-primary-300 dark:via-primary-700 to-transparent opacity-50" />
+            {/* Horizontal main bus (hidden on mobile, visible on md) */}
+            <div className="hidden md:block absolute top-[60px] left-[15%] right-[15%] h-[2px] bg-gradient-to-r from-transparent via-primary-300 dark:via-primary-700 to-transparent opacity-50" />
           </div>
 
           {/* Master nodes fanning out */}
@@ -1020,10 +1017,10 @@ export function ProductShowcaseScreen() {
               <div key={node.name} className="flex flex-col items-center relative group pt-6 md:pt-0">
                 {/* Vertical drop line to node */}
                 <div className="absolute top-0 md:-top-[26px] left-1/2 -mt-4 md:mt-0 w-[2px] h-10 md:h-[26px] bg-gradient-to-b from-primary-300 dark:from-primary-700 to-primary-100 dark:to-primary-900 opacity-50" />
-                
+
                 <div className="data-node flex flex-col items-center gap-2 px-4 py-4 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-700/80 shadow-md hover:shadow-xl hover:border-primary-400 dark:hover:border-primary-500 transition-all duration-300 w-full relative z-20 hover:-translate-y-1">
                   <div className="w-8 h-8 rounded-full bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center mb-1 group-hover:bg-primary-100 dark:group-hover:bg-primary-800/50 transition-colors">
-                     <node.icon className="w-4 h-4 text-primary-600 dark:text-primary-400 group-hover:scale-110 transition-transform" />
+                    <node.icon className="w-4 h-4 text-primary-600 dark:text-primary-400 group-hover:scale-110 transition-transform" />
                   </div>
                   <span className="text-[13px] font-bold text-neutral-800 dark:text-neutral-200 font-inter text-center leading-tight">{node.name}</span>
                 </div>
@@ -1036,62 +1033,37 @@ export function ProductShowcaseScreen() {
         </div>
       </Section>
 
-      {/* ═══════════════ SECTION 4: PHASED ADOPTION ═══════════════ */}
+      {/* ═══════════════ SECTION 4: IMPLEMENTATION ═══════════════ */}
       <Section id="phased-adoption">
         <SectionEyebrow label="Implementation" />
         <h2 className="text-3xl md:text-4xl font-black tracking-tight text-neutral-900 dark:text-white mb-4 text-center">
-          4 Phases. 2 Months Each. <GradientHeadline>Live and trained before the next starts.</GradientHeadline>
+          <GradientHeadline>Live and trained before the next starts.</GradientHeadline>
         </h2>
         <p className="text-neutral-500 dark:text-neutral-400 text-center mb-12 max-w-xl mx-auto">
-          No big-bang go-live. Each phase is implemented, tested, and operational before the next one begins.
+          No big-bang go-live. Every module is implemented, tested, and operational before moving forward. We stay with you on the factory floor until your team is confident.
         </p>
-        <div className="relative grid md:grid-cols-4 gap-6 mb-16 mt-8">
-          {/* Colorful animated connector line — aligned to center of the phase number circles */}
-          <div className="hidden md:block absolute z-0" style={{ top: "48px", transform: "translateY(-50%)", left: "12.5%", right: "12.5%" }}>
-            <div className="w-full animated-dash-x opacity-60 dark:opacity-40 text-primary-500" style={{ height: '3px' }} />
-          </div>
-          {PHASES.map((phase) => (
-            <GlassCard key={phase.number} className="relative z-10 p-6 border-t-0">
-              <div className={cn("inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br text-white font-black text-lg mb-4 shadow-lg", phase.color)}>
-                {phase.number}
+
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-5 max-w-5xl mx-auto w-full">
+          {DEPLOYMENT_STEPS.map((step, idx) => (
+            <GlassCard key={step.step} className="p-6 md:p-8 relative group overflow-hidden">
+              {/* Large background number */}
+              <div className="absolute -right-2 -bottom-6 text-[120px] font-black text-neutral-900/[0.03] dark:text-white/[0.02] z-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:text-primary-600/[0.05] dark:group-hover:text-primary-400/[0.05]">
+                {step.step}
               </div>
-              <h3 className="text-base font-bold text-neutral-900 dark:text-white mb-1 font-inter">{phase.title}</h3>
-              <p className="text-xs font-semibold text-primary-600 dark:text-primary-400 mb-3">{phase.timeline}</p>
-              <div className="space-y-1.5 mb-4">
-                {phase.modules.map((m) => (
-                  <div key={m} className="text-xs text-neutral-600 dark:text-neutral-300 flex items-center gap-1.5">
-                    <div className="w-1 h-1 rounded-full bg-primary-500 flex-shrink-0" />
-                    {m}
+
+              <div className="relative z-10 flex flex-col h-full">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center flex-shrink-0 text-primary-700 dark:text-primary-300 font-black text-sm">
+                    {idx + 1}
                   </div>
-                ))}
-              </div>
-              <div className="border-t border-neutral-200/50 dark:border-neutral-700/50 pt-3">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-1.5">Outcomes</p>
-                {phase.outcomes.map((o) => (
-                  <div key={o} className="text-[11px] text-success-600 dark:text-success-400 flex items-center gap-1.5">
-                    <CheckCircle className="w-3 h-3 flex-shrink-0" />
-                    {o}
-                  </div>
-                ))}
+                  <h3 className="text-lg font-bold text-neutral-900 dark:text-white font-inter">{step.title}</h3>
+                </div>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed font-medium">
+                  {step.desc}
+                </p>
               </div>
             </GlassCard>
           ))}
-        </div>
-        <div className="flex justify-center mt-6">
-          <div className="relative group cursor-default">
-            {/* Ambient glow behind the badge */}
-            <div className="absolute -inset-1 bg-gradient-to-r from-primary-600 via-accent-500 to-primary-600 rounded-2xl blur-lg opacity-40 group-hover:opacity-70 transition duration-500" />
-            
-            <div className="relative flex items-center gap-4 px-8 py-5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-xl">
-              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary-50 dark:bg-primary-950/50 flex-shrink-0">
-                <Clock className="w-6 h-6 text-primary-600 dark:text-primary-400" />
-              </div>
-              <div className="flex flex-col text-left">
-                <span className="text-xs font-bold uppercase tracking-widest text-neutral-500 dark:text-neutral-400 mb-0.5">Deployment Timeline</span>
-                <span className="text-xl md:text-2xl font-black text-neutral-900 dark:text-white tracking-tight">8 Months <span className="font-medium text-neutral-400 dark:text-neutral-500 text-lg">to Full Enterprise ERP</span></span>
-              </div>
-            </div>
-          </div>
         </div>
       </Section>
 
@@ -1448,7 +1420,7 @@ export function ProductShowcaseScreen() {
           Built for the complexity of manufacturing. <GradientHeadline>Ready for your industry.</GradientHeadline>
         </h2>
         <p className="text-neutral-500 dark:text-neutral-400 text-center mb-12 max-w-xl mx-auto">
-          Pre-configured templates for 14 manufacturing verticals, with industry-specific workflows and compliance requirements.
+          Pre-configured templates for 12 manufacturing verticals, with industry-specific workflows and compliance requirements.
         </p>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-10">
           {INDUSTRIES.map((ind) => (
@@ -1530,7 +1502,7 @@ export function ProductShowcaseScreen() {
         <div className="absolute inset-0 dot-grid text-neutral-300/50 dark:text-neutral-700/30 pointer-events-none" />
         <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-primary-400/15 dark:bg-primary-600/10 blur-[120px] pointer-events-none" />
 
-        <div className="relative z-10 max-w-3xl mx-auto px-6 py-20 md:py-28 text-center">
+        <div className="relative z-10 max-w-3xl mx-auto px-6 py-16 md:py-20 text-center">
           <SectionEyebrow label="Get Started" />
           <h2 className="text-3xl md:text-4xl font-black tracking-tight text-neutral-900 dark:text-white mb-6">
             Ready to see Avy ERP <GradientHeadline>in action?</GradientHeadline>
@@ -1605,7 +1577,7 @@ function Section({ children, id, dark }: { children: React.ReactNode; id: string
         inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8",
       )}
     >
-      <div className="max-w-6xl mx-auto px-6 py-16 md:py-24 flex flex-col items-center">
+      <div className="max-w-6xl mx-auto px-6 py-12 md:py-16 flex flex-col items-center">
         {children}
       </div>
     </section>
