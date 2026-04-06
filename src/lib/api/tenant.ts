@@ -45,6 +45,25 @@ async function deleteCompany(companyId: string): Promise<ApiResponse<any>> {
     return response.data;
 }
 
+async function downloadBulkTemplate(): Promise<Blob> {
+    const response = await client.get('/platform/tenants/bulk/template', { responseType: 'blob' });
+    return response.data;
+}
+
+async function bulkValidate(file: File): Promise<ApiResponse<any>> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await client.post('/platform/tenants/bulk/validate', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+}
+
+async function bulkImport(companies: { name: string; payload: any }[]): Promise<ApiResponse<any>> {
+    const response = await client.post('/platform/tenants/bulk/import', { companies });
+    return response.data;
+}
+
 export const tenantApi = {
     onboard,
     listCompanies,
@@ -52,4 +71,7 @@ export const tenantApi = {
     updateSection,
     updateStatus,
     deleteCompany,
+    downloadBulkTemplate,
+    bulkValidate,
+    bulkImport,
 };

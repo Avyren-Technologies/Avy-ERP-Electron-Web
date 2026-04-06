@@ -81,3 +81,34 @@ export function useDeleteCompany() {
         },
     });
 }
+
+// ── Bulk Onboarding ──
+
+export async function downloadCompanyTemplate() {
+    const blob = await tenantApi.downloadBulkTemplate();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Company_Onboarding_Template.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+}
+
+export function useBulkValidateCompanies() {
+    return useMutation({
+        mutationFn: (file: File) => tenantApi.bulkValidate(file),
+    });
+}
+
+export function useBulkImportCompanies() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (companies: { name: string; payload: any }[]) =>
+            tenantApi.bulkImport(companies),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: tenantKeys.all });
+        },
+    });
+}
