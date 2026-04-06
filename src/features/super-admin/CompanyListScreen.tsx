@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
     Building2,
@@ -12,11 +12,14 @@ import {
     Loader2,
     Upload,
 } from "lucide-react";
-import { BulkUploadModal } from "./bulk-upload/BulkUploadModal";
 import { cn } from "@/lib/utils";
 import { useTenantList } from "@/features/super-admin/api/use-tenant-queries";
 import { SkeletonTable } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
+
+const BulkUploadModal = lazy(() =>
+    import("./bulk-upload/BulkUploadModal").then((m) => ({ default: m.BulkUploadModal }))
+);
 
 const FILTERS = ["All", "Active", "Draft", "Pilot", "Inactive"];
 
@@ -50,10 +53,12 @@ export function CompanyListScreen() {
     return (
         <>
         {showBulkUpload && (
-            <BulkUploadModal
-                onClose={() => setShowBulkUpload(false)}
-                onSuccess={() => setShowBulkUpload(false)}
-            />
+            <Suspense fallback={<Spinner />}>
+                <BulkUploadModal
+                    onClose={() => setShowBulkUpload(false)}
+                    onSuccess={() => setShowBulkUpload(false)}
+                />
+            </Suspense>
         )}
         <div className="space-y-6 animate-in fade-in duration-500">
 
