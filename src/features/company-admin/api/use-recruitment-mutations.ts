@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { recruitmentApi } from '@/lib/api/recruitment';
+import { showApiError } from '@/lib/toast';
 import { recruitmentKeys } from './use-recruitment-queries';
 
 // ── Requisition Mutations ──
@@ -9,6 +10,7 @@ export function useCreateRequisition() {
     return useMutation({
         mutationFn: (data: any) => recruitmentApi.createRequisition(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -17,6 +19,7 @@ export function useUpdateRequisition() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateRequisition(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -25,6 +28,7 @@ export function useDeleteRequisition() {
     return useMutation({
         mutationFn: (id: string) => recruitmentApi.deleteRequisition(id),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -35,6 +39,7 @@ export function useCreateCandidate() {
     return useMutation({
         mutationFn: (data: any) => recruitmentApi.createCandidate(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -43,6 +48,7 @@ export function useUpdateCandidate() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateCandidate(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -53,6 +59,7 @@ export function useCreateInterview() {
     return useMutation({
         mutationFn: (data: any) => recruitmentApi.createInterview(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -61,6 +68,7 @@ export function useUpdateInterview() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateInterview(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -70,6 +78,7 @@ export function useCompleteInterview() {
         mutationFn: ({ id, data }: { id: string; data: { feedbackRating: number; feedbackNotes?: string } }) =>
             recruitmentApi.completeInterview(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -78,6 +87,7 @@ export function useCancelInterview() {
     return useMutation({
         mutationFn: (id: string) => recruitmentApi.cancelInterview(id),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -86,6 +96,7 @@ export function useDeleteCandidate() {
     return useMutation({
         mutationFn: (id: string) => recruitmentApi.deleteCandidate(id),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -95,6 +106,7 @@ export function useAdvanceCandidateStage() {
         mutationFn: ({ id, data }: { id: string; data: { stage: string; reason?: string; notes?: string } }) =>
             recruitmentApi.advanceCandidateStage(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -105,6 +117,7 @@ export function useCreateTrainingCatalogue() {
     return useMutation({
         mutationFn: (data: any) => recruitmentApi.createTrainingCatalogue(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -113,6 +126,7 @@ export function useUpdateTrainingCatalogue() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateTrainingCatalogue(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -121,6 +135,7 @@ export function useDeleteTrainingCatalogue() {
     return useMutation({
         mutationFn: (id: string) => recruitmentApi.deleteTrainingCatalogue(id),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -131,6 +146,7 @@ export function useCreateTrainingNomination() {
     return useMutation({
         mutationFn: (data: any) => recruitmentApi.createTrainingNomination(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -139,6 +155,7 @@ export function useUpdateTrainingNomination() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateTrainingNomination(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -149,6 +166,7 @@ export function useCreateAssetCategory() {
     return useMutation({
         mutationFn: (data: any) => recruitmentApi.createAssetCategory(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -157,6 +175,7 @@ export function useUpdateAssetCategory() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateAssetCategory(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -165,6 +184,7 @@ export function useDeleteAssetCategory() {
     return useMutation({
         mutationFn: (id: string) => recruitmentApi.deleteAssetCategory(id),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -175,6 +195,7 @@ export function useCreateAsset() {
     return useMutation({
         mutationFn: (data: any) => recruitmentApi.createAsset(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -183,6 +204,7 @@ export function useUpdateAsset() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateAsset(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -193,6 +215,7 @@ export function useCreateAssetAssignment() {
     return useMutation({
         mutationFn: (data: any) => recruitmentApi.createAssetAssignment(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -201,6 +224,7 @@ export function useUpdateAssetAssignment() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateAssetAssignment(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -211,6 +235,7 @@ export function useCreateExpenseClaim() {
     return useMutation({
         mutationFn: (data: any) => recruitmentApi.createExpenseClaim(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -219,6 +244,7 @@ export function useUpdateExpenseClaim() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateExpenseClaim(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -227,6 +253,7 @@ export function useApproveExpenseClaim() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data?: { approvedAmount?: number; itemApprovals?: any[] } }) => recruitmentApi.approveExpenseClaim(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -235,6 +262,7 @@ export function useRejectExpenseClaim() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data?: { rejectionReason?: string } }) => recruitmentApi.rejectExpenseClaim(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -245,6 +273,7 @@ export function useCreateExpenseCategory() {
     return useMutation({
         mutationFn: (data: any) => recruitmentApi.createExpenseCategory(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -253,6 +282,7 @@ export function useUpdateExpenseCategory() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateExpenseCategory(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -261,6 +291,7 @@ export function useDeleteExpenseCategory() {
     return useMutation({
         mutationFn: (id: string) => recruitmentApi.deleteExpenseCategory(id),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -271,6 +302,7 @@ export function useCreateLetterTemplate() {
     return useMutation({
         mutationFn: (data: any) => recruitmentApi.createLetterTemplate(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -279,6 +311,7 @@ export function useUpdateLetterTemplate() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateLetterTemplate(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -287,6 +320,7 @@ export function useDeleteLetterTemplate() {
     return useMutation({
         mutationFn: (id: string) => recruitmentApi.deleteLetterTemplate(id),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -297,6 +331,7 @@ export function useCreateLetter() {
     return useMutation({
         mutationFn: (data: any) => recruitmentApi.createLetter(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -305,6 +340,7 @@ export function useGenerateLetterPdf() {
     return useMutation({
         mutationFn: (id: string) => recruitmentApi.generateLetterPdf(id),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -315,6 +351,7 @@ export function useCreateGrievanceCategory() {
     return useMutation({
         mutationFn: (data: any) => recruitmentApi.createGrievanceCategory(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -323,6 +360,7 @@ export function useUpdateGrievanceCategory() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateGrievanceCategory(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -331,6 +369,7 @@ export function useDeleteGrievanceCategory() {
     return useMutation({
         mutationFn: (id: string) => recruitmentApi.deleteGrievanceCategory(id),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -341,6 +380,7 @@ export function useCreateGrievanceCase() {
     return useMutation({
         mutationFn: (data: any) => recruitmentApi.createGrievanceCase(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -349,6 +389,7 @@ export function useUpdateGrievanceCase() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateGrievanceCase(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -359,6 +400,7 @@ export function useCreateDisciplinaryAction() {
     return useMutation({
         mutationFn: (data: any) => recruitmentApi.createDisciplinaryAction(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -367,6 +409,7 @@ export function useUpdateDisciplinaryAction() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateDisciplinaryAction(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -377,6 +420,7 @@ export function useDispatchESign() {
     return useMutation({
         mutationFn: (letterId: string) => recruitmentApi.dispatchESign(letterId),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -387,6 +431,7 @@ export function useCreateOffer() {
     return useMutation({
         mutationFn: (data: Record<string, unknown>) => recruitmentApi.createOffer(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -395,6 +440,7 @@ export function useUpdateOffer() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => recruitmentApi.updateOffer(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -403,6 +449,7 @@ export function useUpdateOfferStatus() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: { status: string; rejectionReason?: string } }) => recruitmentApi.updateOfferStatus(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -411,6 +458,7 @@ export function useDeleteOffer() {
     return useMutation({
         mutationFn: (id: string) => recruitmentApi.deleteOffer(id),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -421,6 +469,7 @@ export function useCreateCandidateEducation() {
     return useMutation({
         mutationFn: ({ candidateId, data }: { candidateId: string; data: Record<string, unknown> }) => recruitmentApi.createCandidateEducation(candidateId, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -429,6 +478,7 @@ export function useUpdateCandidateEducation() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => recruitmentApi.updateCandidateEducation(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -437,6 +487,7 @@ export function useDeleteCandidateEducation() {
     return useMutation({
         mutationFn: (id: string) => recruitmentApi.deleteCandidateEducation(id),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -445,6 +496,7 @@ export function useCreateCandidateExperience() {
     return useMutation({
         mutationFn: ({ candidateId, data }: { candidateId: string; data: Record<string, unknown> }) => recruitmentApi.createCandidateExperience(candidateId, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -453,6 +505,7 @@ export function useUpdateCandidateExperience() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => recruitmentApi.updateCandidateExperience(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -461,6 +514,7 @@ export function useDeleteCandidateExperience() {
     return useMutation({
         mutationFn: (id: string) => recruitmentApi.deleteCandidateExperience(id),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -469,6 +523,7 @@ export function useCreateCandidateDocument() {
     return useMutation({
         mutationFn: ({ candidateId, data }: { candidateId: string; data: Record<string, unknown> }) => recruitmentApi.createCandidateDocument(candidateId, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -477,6 +532,7 @@ export function useDeleteCandidateDocument() {
     return useMutation({
         mutationFn: (id: string) => recruitmentApi.deleteCandidateDocument(id),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -487,6 +543,7 @@ export function useSubmitInterviewEvaluations() {
     return useMutation({
         mutationFn: ({ interviewId, data }: { interviewId: string; data: Record<string, unknown> }) => recruitmentApi.submitInterviewEvaluations(interviewId, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -497,6 +554,7 @@ export function useConvertCandidateToEmployee() {
     return useMutation({
         mutationFn: (candidateId: string) => recruitmentApi.convertCandidateToEmployee(candidateId),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -507,6 +565,7 @@ export function useCreateTrainingSession() {
     return useMutation({
         mutationFn: (data: Record<string, unknown>) => recruitmentApi.createTrainingSession(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -515,6 +574,7 @@ export function useUpdateTrainingSession() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => recruitmentApi.updateTrainingSession(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -523,6 +583,7 @@ export function useUpdateTrainingSessionStatus() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: { status: string; cancelledReason?: string } }) => recruitmentApi.updateTrainingSessionStatus(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -531,6 +592,7 @@ export function useDeleteTrainingSession() {
     return useMutation({
         mutationFn: (id: string) => recruitmentApi.deleteTrainingSession(id),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -541,6 +603,7 @@ export function useRegisterSessionAttendees() {
     return useMutation({
         mutationFn: ({ sessionId, data }: { sessionId: string; data: Record<string, unknown> }) => recruitmentApi.registerSessionAttendees(sessionId, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -549,6 +612,7 @@ export function useMarkAttendance() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => recruitmentApi.markAttendance(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -557,6 +621,7 @@ export function useBulkMarkAttendance() {
     return useMutation({
         mutationFn: ({ sessionId, data }: { sessionId: string; data: Record<string, unknown> }) => recruitmentApi.bulkMarkAttendance(sessionId, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -567,6 +632,7 @@ export function useSubmitTrainingEvaluation() {
     return useMutation({
         mutationFn: ({ nominationId, data }: { nominationId: string; data: Record<string, unknown> }) => recruitmentApi.submitTrainingEvaluation(nominationId, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -575,6 +641,7 @@ export function useSubmitEssFeedback() {
     return useMutation({
         mutationFn: ({ nominationId, data }: { nominationId: string; data: Record<string, unknown> }) => recruitmentApi.submitEssFeedback(nominationId, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -585,6 +652,7 @@ export function useCreateTrainer() {
     return useMutation({
         mutationFn: (data: Record<string, unknown>) => recruitmentApi.createTrainer(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -593,6 +661,7 @@ export function useUpdateTrainer() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => recruitmentApi.updateTrainer(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -601,6 +670,7 @@ export function useDeleteTrainer() {
     return useMutation({
         mutationFn: (id: string) => recruitmentApi.deleteTrainer(id),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -611,6 +681,7 @@ export function useCreateTrainingProgram() {
     return useMutation({
         mutationFn: (data: Record<string, unknown>) => recruitmentApi.createTrainingProgram(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -619,6 +690,7 @@ export function useUpdateTrainingProgram() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => recruitmentApi.updateTrainingProgram(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -627,6 +699,7 @@ export function useDeleteTrainingProgram() {
     return useMutation({
         mutationFn: (id: string) => recruitmentApi.deleteTrainingProgram(id),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -635,6 +708,7 @@ export function useAddProgramCourse() {
     return useMutation({
         mutationFn: ({ programId, data }: { programId: string; data: Record<string, unknown> }) => recruitmentApi.addProgramCourse(programId, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -643,6 +717,7 @@ export function useRemoveProgramCourse() {
     return useMutation({
         mutationFn: ({ programId, courseId }: { programId: string; courseId: string }) => recruitmentApi.removeProgramCourse(programId, courseId),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -651,6 +726,7 @@ export function useEnrollInProgram() {
     return useMutation({
         mutationFn: ({ programId, data }: { programId: string; data: Record<string, unknown> }) => recruitmentApi.enrollInProgram(programId, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -661,6 +737,7 @@ export function useCreateTrainingBudget() {
     return useMutation({
         mutationFn: (data: Record<string, unknown>) => recruitmentApi.createTrainingBudget(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -669,6 +746,7 @@ export function useUpdateTrainingBudget() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => recruitmentApi.updateTrainingBudget(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -679,6 +757,7 @@ export function useCreateTrainingMaterial() {
     return useMutation({
         mutationFn: ({ trainingId, data }: { trainingId: string; data: Record<string, unknown> }) => recruitmentApi.createTrainingMaterial(trainingId, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -687,6 +766,7 @@ export function useUpdateTrainingMaterial() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => recruitmentApi.updateTrainingMaterial(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
 
@@ -695,5 +775,6 @@ export function useDeleteTrainingMaterial() {
     return useMutation({
         mutationFn: (id: string) => recruitmentApi.deleteTrainingMaterial(id),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
     });
 }
