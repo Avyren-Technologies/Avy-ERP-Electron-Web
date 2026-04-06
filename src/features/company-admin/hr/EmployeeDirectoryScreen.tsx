@@ -11,7 +11,9 @@ import {
     MapPin,
     Calendar,
     Trash2,
+    Upload,
 } from "lucide-react";
+import BulkEmployeeImportModal from './BulkEmployeeImportModal';
 import { cn } from "@/lib/utils";
 import { useEmployees, useDepartments } from "@/features/company-admin/api/use-hr-queries";
 import { useDeleteEmployee } from "@/features/company-admin/api/use-hr-mutations";
@@ -73,6 +75,7 @@ export function EmployeeDirectoryScreen() {
     // Delete (deactivate) employee
     const deleteEmployee = useDeleteEmployee();
     const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+    const [bulkImportOpen, setBulkImportOpen] = useState(false);
 
     const handleDeleteConfirm = async () => {
         if (!deleteTarget) return;
@@ -110,13 +113,22 @@ export function EmployeeDirectoryScreen() {
                         {total > 0 ? `${total} employee${total !== 1 ? "s" : ""}` : "Manage your workforce"}
                     </p>
                 </div>
-                <button
-                    onClick={() => navigate("/app/company/hr/employees/new")}
-                    className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none"
-                >
-                    <Plus className="w-5 h-5" />
-                    Add Employee
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setBulkImportOpen(true)}
+                        className="flex items-center gap-2 rounded-lg border border-primary-200 bg-white px-4 py-2 text-sm font-medium text-primary-700 hover:bg-primary-50 transition-colors dark:bg-neutral-800 dark:border-neutral-700 dark:text-primary-300 dark:hover:bg-neutral-700"
+                    >
+                        <Upload className="h-4 w-4" />
+                        Bulk Import
+                    </button>
+                    <button
+                        onClick={() => navigate("/app/company/hr/employees/new")}
+                        className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none"
+                    >
+                        <Plus className="w-5 h-5" />
+                        Add Employee
+                    </button>
+                </div>
             </div>
 
             {/* Toolbar */}
@@ -317,6 +329,8 @@ export function EmployeeDirectoryScreen() {
                     </div>
                 </div>
             </div>
+
+            <BulkEmployeeImportModal isOpen={bulkImportOpen} onClose={() => setBulkImportOpen(false)} />
 
             {/* Delete Confirmation Dialog */}
             {deleteTarget && (
