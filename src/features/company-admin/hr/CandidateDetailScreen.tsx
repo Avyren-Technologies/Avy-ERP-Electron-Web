@@ -328,6 +328,8 @@ export function CandidateDetailScreen() {
     /* Expanded interviews (for showing evaluations inline) */
     const [expandedInterviews, setExpandedInterviews] = useState<Set<string>>(new Set());
 
+    if (!id) return <div>Invalid candidate ID</div>;
+
     /* Handlers */
     const toggleInterview = (interviewId: string) => {
         setExpandedInterviews((prev) => {
@@ -376,7 +378,7 @@ export function CandidateDetailScreen() {
             );
         } else {
             createEducation.mutate(
-                { candidateId: id!, data: payload },
+                { candidateId: id, data: payload },
                 {
                     onSuccess: () => { showSuccess("Education added"); setEduModalOpen(false); },
                     onError: (e) => showApiError(e),
@@ -429,7 +431,7 @@ export function CandidateDetailScreen() {
             );
         } else {
             createExperience.mutate(
-                { candidateId: id!, data: payload },
+                { candidateId: id, data: payload },
                 {
                     onSuccess: () => { showSuccess("Experience added"); setExpModalOpen(false); },
                     onError: (e) => showApiError(e),
@@ -450,7 +452,7 @@ export function CandidateDetailScreen() {
     };
     const handleSaveDocument = () => {
         createDocument.mutate(
-            { candidateId: id!, data: { documentType: docForm.documentType, fileName: docForm.fileName, fileUrl: docForm.fileUrl } },
+            { candidateId: id, data: { documentType: docForm.documentType, fileName: docForm.fileName, fileUrl: docForm.fileUrl } },
             {
                 onSuccess: () => { showSuccess("Document added"); setDocModalOpen(false); },
                 onError: (e) => showApiError(e),

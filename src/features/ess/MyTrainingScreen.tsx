@@ -87,7 +87,7 @@ export function MyTrainingScreen() {
                     improvementSuggestions: feedbackForm.improvementSuggestions || undefined,
                 },
             });
-            showSuccess('Feedback Submitted', 'Thank you for your training feedback.');
+            showSuccess('Feedback submitted successfully');
             setFeedbackModalOpen(false);
         } catch (err) {
             showApiError(err);

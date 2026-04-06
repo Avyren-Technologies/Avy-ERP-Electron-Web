@@ -393,7 +393,6 @@ export {
     useTrainingCatalogue,
     useTrainingCatalogueItem,
     useTrainingNominations,
-    useTrainingDashboard,
     useAssetCategories,
     useAssetCategory,
     useAssets,

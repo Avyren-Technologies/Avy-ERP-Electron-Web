@@ -297,14 +297,7 @@ export function useTrainingNominations(params?: Record<string, unknown>) {
     });
 }
 
-// ── Training Dashboard ──
-
-export function useTrainingDashboard() {
-    return useQuery({
-        queryKey: recruitmentKeys.trainingDashboard(),
-        queryFn: () => recruitmentApi.getTrainingDashboard(),
-    });
-}
+// NOTE: Training dashboard uses useAnalyticsDashboard('training', filters) from use-analytics-queries.ts
 
 // ── Asset Categories ──
 
