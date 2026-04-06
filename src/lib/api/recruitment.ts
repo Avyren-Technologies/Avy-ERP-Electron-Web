@@ -84,6 +84,26 @@ async function updateInterview(id: string, data: any): Promise<ApiResponse<any>>
     return response.data;
 }
 
+async function completeInterview(id: string, data: { feedbackRating: number; feedbackNotes?: string }): Promise<ApiResponse<any>> {
+    const response = await client.patch(`/hr/interviews/${id}/complete`, data);
+    return response.data;
+}
+
+async function cancelInterview(id: string): Promise<ApiResponse<any>> {
+    const response = await client.patch(`/hr/interviews/${id}/cancel`);
+    return response.data;
+}
+
+async function deleteCandidate(id: string): Promise<ApiResponse<any>> {
+    const response = await client.delete(`/hr/candidates/${id}`);
+    return response.data;
+}
+
+async function advanceCandidateStage(id: string, data: { stage: string; reason?: string; notes?: string }): Promise<ApiResponse<any>> {
+    const response = await client.patch(`/hr/candidates/${id}/stage`, data);
+    return response.data;
+}
+
 // ── Recruitment Dashboard ──
 
 async function getRecruitmentDashboard(): Promise<ApiResponse<any>> {
@@ -462,11 +482,15 @@ export const recruitmentApi = {
     createCandidate,
     getCandidate,
     updateCandidate,
+    deleteCandidate,
+    advanceCandidateStage,
     // Interviews
     listInterviews,
     createInterview,
     getInterview,
     updateInterview,
+    completeInterview,
+    cancelInterview,
     // Recruitment Dashboard
     getRecruitmentDashboard,
     // Training Catalogue
