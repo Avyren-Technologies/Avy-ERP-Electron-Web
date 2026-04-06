@@ -4,6 +4,7 @@ import {
     ArrowRight, ShieldCheck, Factory, Users, BarChart3,
     Wrench, Package, Receipt, Eye, ClipboardList, Smartphone, Globe, Monitor,
     ChevronRight, Cpu, Layers, WifiOff, Lock, Menu, X,
+    Heart, CheckCircle, Ruler, HardHat, FolderKanban,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import companyLogo from "@/assets/logo/Company-Logo.png";
@@ -86,31 +87,36 @@ function StatBlock({ value, suffix, label, delay }: { value: number; suffix: str
 
 /* ─── Data ─── */
 const HERO_STATS = [
-    { value: 9, suffix: "+", label: "Modules" },
-    { value: 9, suffix: "+", label: "Industries" },
-    { value: 99.9, suffix: "%", label: "Uptime SLA" },
-    { value: 3, suffix: "", label: "Platforms" },
+    { value: 14, suffix: "+", label: "Integrated Modules" },
+    { value: 14, suffix: "", label: "Industry Templates" },
+    { value: 4, suffix: "", label: "Deployment Phases" },
+    { value: 2, suffix: "", label: "Months Per Phase" },
 ];
 
 const FLOATING_MODULES = [
     { icon: Factory, label: "Production", color: "from-primary-500 to-primary-700" },
-    { icon: Users, label: "HR", color: "from-accent-500 to-accent-700" },
+    { icon: Users, label: "HRMS", color: "from-accent-500 to-accent-700" },
     { icon: BarChart3, label: "Finance", color: "from-info-500 to-info-700" },
     { icon: Wrench, label: "Maintenance", color: "from-warning-500 to-warning-700" },
     { icon: Package, label: "Inventory", color: "from-success-500 to-success-700" },
-    { icon: ShieldCheck, label: "Security", color: "from-danger-500 to-danger-700" },
+    { icon: Heart, label: "CRM", color: "from-danger-500 to-danger-700" },
 ];
 
 const MODULES = [
-    { icon: Receipt, name: "Sales & Invoicing", desc: "Quote-to-cash lifecycle with GST-compliant invoicing" },
-    { icon: Package, name: "Inventory", desc: "Stock management across warehouses with real-time alerts" },
-    { icon: ShieldCheck, name: "Security", desc: "Gate attendance, goods verification, and visitor control" },
-    { icon: ClipboardList, name: "Vendor Management", desc: "Full procurement lifecycle from PO to GRN" },
-    { icon: BarChart3, name: "Finance", desc: "Payables, receivables, and financial reporting" },
-    { icon: Wrench, name: "Machine Maintenance", desc: "PM scheduling, breakdown management, and OEE integration" },
-    { icon: Users, name: "HR Management", desc: "Employee lifecycle, attendance, payroll, and incentives" },
-    { icon: Factory, name: "Production", desc: "OEE dashboard, production logging, and scrap tracking" },
-    { icon: Eye, name: "Visitor Management", desc: "Pre-registration, QR self-check-in, and audit trails" },
+    { icon: Users, name: "HRMS & Payroll", desc: "Hire to retire" },
+    { icon: Wrench, name: "Asset & Maintenance", desc: "Prevent, track, resolve" },
+    { icon: Eye, name: "Visitor Management", desc: "Register to checkout" },
+    { icon: Package, name: "Inventory & Warehouse", desc: "Track to dispatch" },
+    { icon: ClipboardList, name: "Procurement & Vendor", desc: "Source to pay" },
+    { icon: Factory, name: "Production & Shop Floor", desc: "Plan to ship" },
+    { icon: BarChart3, name: "Finance & Accounting", desc: "Payable to profit" },
+    { icon: Receipt, name: "Sales & Invoicing", desc: "Quote to cash" },
+    { icon: ShieldCheck, name: "Security Module", desc: "Verify and protect" },
+    { icon: Heart, name: "CRM", desc: "Lead to loyalty" },
+    { icon: CheckCircle, name: "Quality Management", desc: "Inspect and certify" },
+    { icon: Ruler, name: "Calibration", desc: "Measure with confidence" },
+    { icon: HardHat, name: "EHSS", desc: "Safety and compliance" },
+    { icon: FolderKanban, name: "Project Management", desc: "Plan to deliver" },
 ];
 
 const PLATFORMS = [
