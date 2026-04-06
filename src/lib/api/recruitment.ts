@@ -285,6 +285,97 @@ async function deleteTrainer(id: string): Promise<ApiResponse<any>> {
     return response.data;
 }
 
+// ── Training Programs ──
+
+async function listTrainingPrograms(params?: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.get('/hr/training-programs', { params });
+    return response.data;
+}
+
+async function createTrainingProgram(data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.post('/hr/training-programs', data);
+    return response.data;
+}
+
+async function getTrainingProgram(id: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/training-programs/${id}`);
+    return response.data;
+}
+
+async function updateTrainingProgram(id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.patch(`/hr/training-programs/${id}`, data);
+    return response.data;
+}
+
+async function deleteTrainingProgram(id: string): Promise<ApiResponse<any>> {
+    const response = await client.delete(`/hr/training-programs/${id}`);
+    return response.data;
+}
+
+async function addProgramCourse(programId: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.post(`/hr/training-programs/${programId}/courses`, data);
+    return response.data;
+}
+
+async function removeProgramCourse(programId: string, courseId: string): Promise<ApiResponse<any>> {
+    const response = await client.delete(`/hr/training-programs/${programId}/courses/${courseId}`);
+    return response.data;
+}
+
+async function enrollInProgram(programId: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.post(`/hr/training-programs/${programId}/enroll`, data);
+    return response.data;
+}
+
+async function listProgramEnrollments(programId: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/training-programs/${programId}/enrollments`);
+    return response.data;
+}
+
+// ── Training Budgets ──
+
+async function listTrainingBudgets(params?: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.get('/hr/training-budgets', { params });
+    return response.data;
+}
+
+async function createTrainingBudget(data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.post('/hr/training-budgets', data);
+    return response.data;
+}
+
+async function updateTrainingBudget(id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.patch(`/hr/training-budgets/${id}`, data);
+    return response.data;
+}
+
+async function getBudgetUtilization(fiscalYear: string): Promise<ApiResponse<any>> {
+    const response = await client.get('/hr/training-budgets/utilization', { params: { fiscalYear } });
+    return response.data;
+}
+
+// ── Training Materials ──
+
+async function listTrainingMaterials(trainingId: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/training-catalogues/${trainingId}/materials`);
+    return response.data;
+}
+
+async function createTrainingMaterial(trainingId: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.post(`/hr/training-catalogues/${trainingId}/materials`, data);
+    return response.data;
+}
+
+async function updateTrainingMaterial(id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.patch(`/hr/training-materials/${id}`, data);
+    return response.data;
+}
+
+async function deleteTrainingMaterial(id: string): Promise<ApiResponse<any>> {
+    const response = await client.delete(`/hr/training-materials/${id}`);
+    return response.data;
+}
+
 // ── Asset Categories ──
 
 async function listAssetCategories(params?: {
@@ -754,6 +845,26 @@ export const recruitmentApi = {
     getTrainer,
     updateTrainer,
     deleteTrainer,
+    // Training Programs
+    listTrainingPrograms,
+    createTrainingProgram,
+    getTrainingProgram,
+    updateTrainingProgram,
+    deleteTrainingProgram,
+    addProgramCourse,
+    removeProgramCourse,
+    enrollInProgram,
+    listProgramEnrollments,
+    // Training Budgets
+    listTrainingBudgets,
+    createTrainingBudget,
+    updateTrainingBudget,
+    getBudgetUtilization,
+    // Training Materials
+    listTrainingMaterials,
+    createTrainingMaterial,
+    updateTrainingMaterial,
+    deleteTrainingMaterial,
     // Asset Categories
     listAssetCategories,
     createAssetCategory,

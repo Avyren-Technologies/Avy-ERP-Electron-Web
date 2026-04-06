@@ -21,6 +21,13 @@ import {
     ClipboardList,
     UserCheck,
     Star,
+    Layers,
+    DollarSign,
+    FileText,
+    Link,
+    Video,
+    ChevronDown,
+    ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -29,8 +36,14 @@ import {
     useTrainingSessions,
     useTrainers,
     useSessionAttendance,
+    useTrainingPrograms,
+    useTrainingProgram,
+    useProgramEnrollments,
+    useTrainingBudgets,
+    useBudgetUtilization,
+    useTrainingMaterials,
 } from "@/features/company-admin/api/use-recruitment-queries";
-import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
+import { useEmployees, useDepartments } from "@/features/company-admin/api/use-hr-queries";
 import {
     useCreateTrainingCatalogue,
     useUpdateTrainingCatalogue,
@@ -46,6 +59,17 @@ import {
     useCreateTrainer,
     useUpdateTrainer,
     useDeleteTrainer,
+    useCreateTrainingProgram,
+    useUpdateTrainingProgram,
+    useDeleteTrainingProgram,
+    useAddProgramCourse,
+    useRemoveProgramCourse,
+    useEnrollInProgram,
+    useCreateTrainingBudget,
+    useUpdateTrainingBudget,
+    useCreateTrainingMaterial,
+    useUpdateTrainingMaterial,
+    useDeleteTrainingMaterial,
 } from "@/features/company-admin/api/use-recruitment-mutations";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -107,6 +131,42 @@ const EMPTY_TRAINER = {
     employeeId: "",
 };
 
+const PROGRAM_CATEGORIES = ["CERTIFICATION", "SKILL_DEVELOPMENT", "COMPLIANCE", "ONBOARDING"];
+const PROGRAM_LEVELS = ["Beginner", "Intermediate", "Advanced"];
+const ENROLLMENT_STATUSES = ["ENROLLED", "IN_PROGRESS", "COMPLETED", "FAILED", "ABANDONED"];
+const MATERIAL_TYPES = ["PDF", "VIDEO", "LINK", "DOCUMENT", "PRESENTATION", "AUDIO"];
+
+const EMPTY_PROGRAM = {
+    name: "",
+    description: "",
+    category: "SKILL_DEVELOPMENT",
+    level: "Beginner",
+    totalDuration: "",
+    isCompulsory: false,
+};
+
+const EMPTY_BUDGET = {
+    fiscalYear: "",
+    departmentId: "",
+    allocatedAmount: "",
+};
+
+const EMPTY_ADD_COURSE = {
+    trainingId: "",
+    sequenceOrder: "",
+    isPrerequisite: false,
+    minPassScore: "",
+};
+
+const EMPTY_MATERIAL = {
+    name: "",
+    type: "PDF",
+    url: "",
+    description: "",
+    sequenceOrder: "",
+    isMandatory: false,
+};
+
 /* ── Badges ── */
 
 function NomStatusBadge({ status }: { status: string }) {
@@ -161,9 +221,57 @@ function AttendanceStatusBadge({ status }: { status: string }) {
     );
 }
 
+function ProgramCategoryBadge({ category }: { category: string }) {
+    const map: Record<string, string> = {
+        CERTIFICATION: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800/50",
+        SKILL_DEVELOPMENT: "bg-info-50 text-info-700 border-info-200 dark:bg-info-900/20 dark:text-info-400 dark:border-info-800/50",
+        COMPLIANCE: "bg-danger-50 text-danger-700 border-danger-200 dark:bg-danger-900/20 dark:text-danger-400 dark:border-danger-800/50",
+        ONBOARDING: "bg-success-50 text-success-700 border-success-200 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50",
+    };
+    return (
+        <span className={cn("inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase", map[category] ?? map.SKILL_DEVELOPMENT)}>
+            {category.replace(/_/g, ' ')}
+        </span>
+    );
+}
+
+function EnrollmentStatusBadge({ status }: { status: string }) {
+    const map: Record<string, string> = {
+        ENROLLED: "bg-info-50 text-info-700 border-info-200 dark:bg-info-900/20 dark:text-info-400 dark:border-info-800/50",
+        IN_PROGRESS: "bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50",
+        COMPLETED: "bg-success-50 text-success-700 border-success-200 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50",
+        FAILED: "bg-danger-50 text-danger-700 border-danger-200 dark:bg-danger-900/20 dark:text-danger-400 dark:border-danger-800/50",
+        ABANDONED: "bg-neutral-100 text-neutral-500 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700",
+    };
+    return (
+        <span className={cn("inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase", map[status] ?? map.ENROLLED)}>
+            {status.replace(/_/g, ' ')}
+        </span>
+    );
+}
+
+function MaterialTypeBadge({ type }: { type: string }) {
+    const map: Record<string, { icon: typeof FileText; cls: string }> = {
+        PDF: { icon: FileText, cls: "bg-danger-50 text-danger-700 border-danger-200 dark:bg-danger-900/20 dark:text-danger-400" },
+        VIDEO: { icon: Video, cls: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400" },
+        LINK: { icon: Link, cls: "bg-info-50 text-info-700 border-info-200 dark:bg-info-900/20 dark:text-info-400" },
+        DOCUMENT: { icon: FileText, cls: "bg-accent-50 text-accent-700 border-accent-200 dark:bg-accent-900/20 dark:text-accent-400" },
+        PRESENTATION: { icon: Layers, cls: "bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/20 dark:text-warning-400" },
+        AUDIO: { icon: Play, cls: "bg-success-50 text-success-700 border-success-200 dark:bg-success-900/20 dark:text-success-400" },
+    };
+    const c = map[type] ?? map.DOCUMENT;
+    const Icon = c.icon;
+    return (
+        <span className={cn("inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border", c.cls)}>
+            <Icon size={10} />
+            {type}
+        </span>
+    );
+}
+
 /* ── Screen ── */
 
-type TabKey = "catalogue" | "nominations" | "sessions" | "trainers";
+type TabKey = "catalogue" | "nominations" | "sessions" | "trainers" | "programs" | "budgets";
 
 export function TrainingCatalogueScreen() {
     const fmt = useCompanyFormatter();
@@ -199,6 +307,29 @@ export function TrainingCatalogueScreen() {
     const [trainerForm, setTrainerForm] = useState({ ...EMPTY_TRAINER });
     const [deleteTrainerTarget, setDeleteTrainerTarget] = useState<any>(null);
 
+    // Programs state
+    const [programModalOpen, setProgramModalOpen] = useState(false);
+    const [programEditingId, setProgramEditingId] = useState<string | null>(null);
+    const [programForm, setProgramForm] = useState({ ...EMPTY_PROGRAM });
+    const [deleteProgramTarget, setDeleteProgramTarget] = useState<any>(null);
+    const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
+    const [addCourseForm, setAddCourseForm] = useState({ ...EMPTY_ADD_COURSE });
+    const [enrollModalOpen, setEnrollModalOpen] = useState(false);
+    const [enrollEmployeeIds, setEnrollEmployeeIds] = useState<string[]>([]);
+
+    // Budgets state
+    const [budgetModalOpen, setBudgetModalOpen] = useState(false);
+    const [budgetEditingId, setBudgetEditingId] = useState<string | null>(null);
+    const [budgetForm, setBudgetForm] = useState({ ...EMPTY_BUDGET });
+    const [budgetFiscalYear, setBudgetFiscalYear] = useState("");
+
+    // Materials state
+    const [materialsTrainingId, setMaterialsTrainingId] = useState<string | null>(null);
+    const [materialModalOpen, setMaterialModalOpen] = useState(false);
+    const [materialEditingId, setMaterialEditingId] = useState<string | null>(null);
+    const [materialForm, setMaterialForm] = useState({ ...EMPTY_MATERIAL });
+    const [deleteMaterialTarget, setDeleteMaterialTarget] = useState<any>(null);
+
     const catQuery = useTrainingCatalogue();
     const nomQuery = useTrainingNominations(nomStatusFilter !== "All" ? { status: nomStatusFilter.toLowerCase() } : undefined);
     const sessionsQuery = useTrainingSessions();
@@ -221,12 +352,43 @@ export function TrainingCatalogueScreen() {
     const updateTrainerMut = useUpdateTrainer();
     const deleteTrainerMut = useDeleteTrainer();
 
+    // Programs
+    const programsQuery = useTrainingPrograms();
+    const selectedProgram = useTrainingProgram(selectedProgramId ?? "");
+    const enrollmentsQuery = useProgramEnrollments(selectedProgramId ?? "");
+    const createProgramMut = useCreateTrainingProgram();
+    const updateProgramMut = useUpdateTrainingProgram();
+    const deleteProgramMut = useDeleteTrainingProgram();
+    const addCourseMut = useAddProgramCourse();
+    const removeCourseMut = useRemoveProgramCourse();
+    const enrollMut = useEnrollInProgram();
+
+    // Budgets
+    const budgetsQuery = useTrainingBudgets();
+    const utilizationQuery = useBudgetUtilization(budgetFiscalYear);
+    const departmentsQuery = useDepartments();
+    const createBudgetMut = useCreateTrainingBudget();
+    const updateBudgetMut = useUpdateTrainingBudget();
+
+    // Materials
+    const materialsQuery = useTrainingMaterials(materialsTrainingId ?? "");
+    const createMaterialMut = useCreateTrainingMaterial();
+    const updateMaterialMut = useUpdateTrainingMaterial();
+    const deleteMaterialMut = useDeleteTrainingMaterial();
+
     const courses: any[] = catQuery.data?.data ?? [];
     const nominations: any[] = nomQuery.data?.data ?? [];
     const sessions: any[] = sessionsQuery.data?.data ?? [];
     const trainers: any[] = trainersQuery.data?.data ?? [];
     const employees: any[] = employeesQuery.data?.data ?? [];
     const attendanceRecords: any[] = attendanceQuery.data?.data ?? [];
+    const programs: any[] = programsQuery.data?.data ?? [];
+    const budgets: any[] = budgetsQuery.data?.data ?? [];
+    const departments: any[] = departmentsQuery.data?.data ?? [];
+    const materials: any[] = materialsQuery.data?.data ?? [];
+    const programDetail: any = selectedProgram.data?.data ?? null;
+    const enrollments: any[] = enrollmentsQuery.data?.data ?? [];
+    const utilization: any[] = utilizationQuery.data?.data ?? [];
 
     const courseName = (id: string) => courses.find((c: any) => c.id === id)?.name ?? id;
     const employeeName = (id: string) => {
@@ -455,6 +617,138 @@ export function TrainingCatalogueScreen() {
         } catch (err) { showApiError(err); }
     };
 
+    /* ── Program Handlers ── */
+    const openCreateProgram = () => { setProgramEditingId(null); setProgramForm({ ...EMPTY_PROGRAM }); setProgramModalOpen(true); };
+    const openEditProgram = (p: any) => {
+        setProgramEditingId(p.id);
+        setProgramForm({
+            name: p.name ?? "", description: p.description ?? "", category: p.category ?? "SKILL_DEVELOPMENT",
+            level: p.level ?? "Beginner", totalDuration: p.totalDuration ?? "", isCompulsory: p.isCompulsory ?? false,
+        });
+        setProgramModalOpen(true);
+    };
+    const handleSaveProgram = async () => {
+        try {
+            const payload = { ...programForm, totalDuration: programForm.totalDuration ? Number(programForm.totalDuration) : undefined };
+            if (programEditingId) {
+                await updateProgramMut.mutateAsync({ id: programEditingId, data: payload });
+                showSuccess("Program Updated", `${programForm.name} has been updated.`);
+            } else {
+                await createProgramMut.mutateAsync(payload);
+                showSuccess("Program Created", `${programForm.name} has been created.`);
+            }
+            setProgramModalOpen(false);
+        } catch (err) { showApiError(err); }
+    };
+    const handleDeleteProgram = async () => {
+        if (!deleteProgramTarget) return;
+        try {
+            await deleteProgramMut.mutateAsync(deleteProgramTarget.id);
+            showSuccess("Program Deleted", `${deleteProgramTarget.name} has been removed.`);
+            setDeleteProgramTarget(null);
+            if (selectedProgramId === deleteProgramTarget.id) setSelectedProgramId(null);
+        } catch (err) { showApiError(err); }
+    };
+    const handleAddCourseToProgram = async () => {
+        if (!selectedProgramId || !addCourseForm.trainingId) return;
+        try {
+            await addCourseMut.mutateAsync({
+                programId: selectedProgramId,
+                data: {
+                    trainingId: addCourseForm.trainingId,
+                    sequenceOrder: addCourseForm.sequenceOrder ? Number(addCourseForm.sequenceOrder) : 1,
+                    isPrerequisite: addCourseForm.isPrerequisite,
+                    minPassScore: addCourseForm.minPassScore ? Number(addCourseForm.minPassScore) : undefined,
+                },
+            });
+            showSuccess("Course Added", "Course added to program.");
+            setAddCourseForm({ ...EMPTY_ADD_COURSE });
+        } catch (err) { showApiError(err); }
+    };
+    const handleRemoveCourse = async (courseId: string) => {
+        if (!selectedProgramId) return;
+        try {
+            await removeCourseMut.mutateAsync({ programId: selectedProgramId, courseId });
+            showSuccess("Course Removed", "Course removed from program.");
+        } catch (err) { showApiError(err); }
+    };
+    const handleEnroll = async () => {
+        if (!selectedProgramId || !enrollEmployeeIds.length) return;
+        try {
+            await enrollMut.mutateAsync({ programId: selectedProgramId, data: { employeeIds: enrollEmployeeIds } });
+            showSuccess("Enrolled", `${enrollEmployeeIds.length} employee(s) enrolled.`);
+            setEnrollEmployeeIds([]);
+            setEnrollModalOpen(false);
+        } catch (err) { showApiError(err); }
+    };
+
+    /* ── Budget Handlers ── */
+    const openCreateBudget = () => { setBudgetEditingId(null); setBudgetForm({ ...EMPTY_BUDGET }); setBudgetModalOpen(true); };
+    const openEditBudget = (b: any) => {
+        setBudgetEditingId(b.id);
+        setBudgetForm({
+            fiscalYear: b.fiscalYear ?? "",
+            departmentId: b.departmentId ?? "",
+            allocatedAmount: b.allocatedAmount ?? "",
+        });
+        setBudgetModalOpen(true);
+    };
+    const handleSaveBudget = async () => {
+        try {
+            const payload = {
+                fiscalYear: budgetForm.fiscalYear,
+                departmentId: budgetForm.departmentId || undefined,
+                allocatedAmount: budgetForm.allocatedAmount ? Number(budgetForm.allocatedAmount) : 0,
+            };
+            if (budgetEditingId) {
+                await updateBudgetMut.mutateAsync({ id: budgetEditingId, data: payload });
+                showSuccess("Budget Updated", "Training budget has been updated.");
+            } else {
+                await createBudgetMut.mutateAsync(payload);
+                showSuccess("Budget Created", "Training budget has been created.");
+            }
+            setBudgetModalOpen(false);
+        } catch (err) { showApiError(err); }
+    };
+
+    /* ── Material Handlers ── */
+    const openMaterials = (trainingId: string) => { setMaterialsTrainingId(trainingId); };
+    const closeMaterials = () => { setMaterialsTrainingId(null); };
+    const openCreateMaterial = () => { setMaterialEditingId(null); setMaterialForm({ ...EMPTY_MATERIAL }); setMaterialModalOpen(true); };
+    const openEditMaterial = (m: any) => {
+        setMaterialEditingId(m.id);
+        setMaterialForm({
+            name: m.name ?? "", type: m.type ?? "PDF", url: m.url ?? "",
+            description: m.description ?? "", sequenceOrder: m.sequenceOrder ?? "", isMandatory: m.isMandatory ?? false,
+        });
+        setMaterialModalOpen(true);
+    };
+    const handleSaveMaterial = async () => {
+        if (!materialsTrainingId) return;
+        try {
+            const payload = {
+                ...materialForm,
+                sequenceOrder: materialForm.sequenceOrder ? Number(materialForm.sequenceOrder) : 1,
+            };
+            if (materialEditingId) {
+                await updateMaterialMut.mutateAsync({ id: materialEditingId, data: payload });
+                showSuccess("Material Updated", `${materialForm.name} has been updated.`);
+            } else {
+                await createMaterialMut.mutateAsync({ trainingId: materialsTrainingId, data: payload });
+                showSuccess("Material Created", `${materialForm.name} has been added.`);
+            }
+            setMaterialModalOpen(false);
+        } catch (err) { showApiError(err); }
+    };
+    const handleDeleteMaterial = async () => {
+        if (!deleteMaterialTarget) return;
+        try {
+            await deleteMaterialMut.mutateAsync(deleteMaterialTarget.id);
+            showSuccess("Material Deleted", `${deleteMaterialTarget.name} has been removed.`);
+            setDeleteMaterialTarget(null);
+        } catch (err) { showApiError(err); }
+    };
+
     const savingCourse = createCourse.isPending || updateCourse.isPending;
     const savingNom = createNom.isPending || updateNom.isPending;
     const savingSession = createSession.isPending || updateSession.isPending;
@@ -463,6 +757,14 @@ export function TrainingCatalogueScreen() {
     const updateNomField = (key: string, value: any) => setNomForm((p) => ({ ...p, [key]: value }));
     const updateSessionField = (key: string, value: any) => setSessionForm((p) => ({ ...p, [key]: value }));
     const updateTrainerField = (key: string, value: any) => setTrainerForm((p) => ({ ...p, [key]: value }));
+    const savingProgram = createProgramMut.isPending || updateProgramMut.isPending;
+    const savingBudget = createBudgetMut.isPending || updateBudgetMut.isPending;
+    const savingMaterial = createMaterialMut.isPending || updateMaterialMut.isPending;
+    const updateProgramField = (key: string, value: any) => setProgramForm((p) => ({ ...p, [key]: value }));
+    const updateBudgetField = (key: string, value: any) => setBudgetForm((p) => ({ ...p, [key]: value }));
+    const updateAddCourseField = (key: string, value: any) => setAddCourseForm((p) => ({ ...p, [key]: value }));
+    const updateMaterialField = (key: string, value: any) => setMaterialForm((p) => ({ ...p, [key]: value }));
+    const departmentName = (id: string) => departments.find((d: any) => d.id === id)?.name ?? "Company-wide";
 
     const getAddButtonConfig = (): { label: string; onClick: () => void } => {
         switch (activeTab) {
@@ -470,6 +772,8 @@ export function TrainingCatalogueScreen() {
             case "nominations": return { label: "Nominate", onClick: openCreateNom };
             case "sessions": return { label: "New Session", onClick: openCreateSession };
             case "trainers": return { label: "New Trainer", onClick: openCreateTrainer };
+            case "programs": return { label: "New Program", onClick: openCreateProgram };
+            case "budgets": return { label: "New Budget", onClick: openCreateBudget };
         }
     };
 
@@ -499,6 +803,8 @@ export function TrainingCatalogueScreen() {
                     { key: "nominations" as TabKey, icon: Award, label: "Nominations" },
                     { key: "sessions" as TabKey, icon: Calendar, label: "Sessions" },
                     { key: "trainers" as TabKey, icon: UserCheck, label: "Trainers" },
+                    { key: "programs" as TabKey, icon: Layers, label: "Programs" },
+                    { key: "budgets" as TabKey, icon: DollarSign, label: "Budgets" },
                 ]).map((tab) => (
                     <button
                         key={tab.key}
@@ -567,6 +873,7 @@ export function TrainingCatalogueScreen() {
                                             <td className="py-4 px-6 text-right font-semibold text-primary-950 dark:text-white">{c.cost ? `\u20B9${Number(c.cost).toLocaleString("en-IN")}` : "\u2014"}</td>
                                             <td className="py-4 px-6 text-right">
                                                 <div className="flex items-center justify-end gap-1">
+                                                    <button onClick={() => openMaterials(c.id)} className="p-2 text-accent-600 dark:text-accent-400 hover:bg-accent-50 dark:hover:bg-accent-900/20 rounded-lg transition-colors" title="Materials"><FileText size={15} /></button>
                                                     <button onClick={() => openEditCourse(c)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit"><Edit3 size={15} /></button>
                                                     <button onClick={() => setDeleteTarget(c)} className="p-2 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors" title="Delete"><Trash2 size={15} /></button>
                                                 </div>
@@ -1141,6 +1448,556 @@ export function TrainingCatalogueScreen() {
                                     </div>
                                 </>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Programs Tab ── */}
+            {activeTab === "programs" && (
+                <div className="space-y-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-xl shadow-neutral-900/5 overflow-hidden">
+                        {programsQuery.isLoading ? <SkeletonTable rows={6} cols={8} /> : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse min-w-[1100px]">
+                                    <thead>
+                                        <tr className="bg-neutral-50/50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
+                                            <th className="py-4 px-6 font-bold">Program Name</th>
+                                            <th className="py-4 px-6 font-bold">Category</th>
+                                            <th className="py-4 px-6 font-bold">Level</th>
+                                            <th className="py-4 px-6 font-bold text-center">Courses</th>
+                                            <th className="py-4 px-6 font-bold text-center">Enrollments</th>
+                                            <th className="py-4 px-6 font-bold text-center">Compulsory</th>
+                                            <th className="py-4 px-6 font-bold text-center">Status</th>
+                                            <th className="py-4 px-6 font-bold text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="text-sm">
+                                        {programs.map((p: any) => (
+                                            <tr key={p.id} className={cn("border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors cursor-pointer", selectedProgramId === p.id && "bg-primary-50/50 dark:bg-primary-900/10")} onClick={() => setSelectedProgramId(selectedProgramId === p.id ? null : p.id)}>
+                                                <td className="py-4 px-6">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
+                                                            <Layers className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+                                                        </div>
+                                                        <div>
+                                                            <span className="font-bold text-primary-950 dark:text-white">{p.name}</span>
+                                                            {p.description && <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 line-clamp-1">{p.description}</p>}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="py-4 px-6"><ProgramCategoryBadge category={p.category ?? "SKILL_DEVELOPMENT"} /></td>
+                                                <td className="py-4 px-6"><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 border border-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700">{p.level ?? "Beginner"}</span></td>
+                                                <td className="py-4 px-6 text-center font-semibold text-primary-950 dark:text-white">{p._count?.courses ?? p.coursesCount ?? 0}</td>
+                                                <td className="py-4 px-6 text-center font-semibold text-primary-950 dark:text-white">{p._count?.enrollments ?? p.enrollmentsCount ?? 0}</td>
+                                                <td className="py-4 px-6 text-center">
+                                                    {p.isCompulsory ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-danger-50 text-danger-700 border border-danger-200 dark:bg-danger-900/20 dark:text-danger-400">Required</span> : <span className="text-neutral-400 text-xs">Optional</span>}
+                                                </td>
+                                                <td className="py-4 px-6 text-center">
+                                                    <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border", p.isActive !== false ? "bg-success-50 text-success-700 border-success-200 dark:bg-success-900/20 dark:text-success-400" : "bg-neutral-100 text-neutral-500 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-400")}>
+                                                        {p.isActive !== false ? "Active" : "Inactive"}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-6 text-right" onClick={(e) => e.stopPropagation()}>
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        <button onClick={() => setSelectedProgramId(selectedProgramId === p.id ? null : p.id)} className="p-2 text-accent-600 dark:text-accent-400 hover:bg-accent-50 dark:hover:bg-accent-900/20 rounded-lg transition-colors" title="Details">{selectedProgramId === p.id ? <ChevronUp size={15} /> : <ChevronDown size={15} />}</button>
+                                                        <button onClick={() => openEditProgram(p)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit"><Edit3 size={15} /></button>
+                                                        <button onClick={() => setDeleteProgramTarget(p)} className="p-2 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors" title="Delete"><Trash2 size={15} /></button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {programs.length === 0 && !programsQuery.isLoading && (
+                                            <tr><td colSpan={8}><EmptyState icon="list" title="No programs found" message="Create your first training program." action={{ label: "New Program", onClick: openCreateProgram }} /></td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Program Detail Panel */}
+                    {selectedProgramId && (
+                        <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-xl shadow-neutral-900/5 p-6 space-y-6">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-bold text-primary-950 dark:text-white">{programDetail?.name ?? "Program Details"}</h3>
+                                <button onClick={() => setEnrollModalOpen(true)} className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-xl font-bold text-sm transition-colors">
+                                    <Users size={14} /> Enroll Employees
+                                </button>
+                            </div>
+
+                            {/* Courses */}
+                            <div>
+                                <h4 className="text-sm font-bold text-primary-950 dark:text-white mb-3">Courses</h4>
+                                {(programDetail?.courses ?? []).length > 0 ? (
+                                    <div className="border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden">
+                                        <table className="w-full text-left text-sm">
+                                            <thead>
+                                                <tr className="bg-neutral-50 dark:bg-neutral-800/50 text-xs text-neutral-500 dark:text-neutral-400 uppercase">
+                                                    <th className="py-3 px-4 font-bold">#</th>
+                                                    <th className="py-3 px-4 font-bold">Training</th>
+                                                    <th className="py-3 px-4 font-bold text-center">Prerequisite</th>
+                                                    <th className="py-3 px-4 font-bold text-center">Min Score</th>
+                                                    <th className="py-3 px-4 font-bold text-right">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {(programDetail.courses as any[]).sort((a: any, b: any) => (a.sequenceOrder ?? 0) - (b.sequenceOrder ?? 0)).map((c: any) => (
+                                                    <tr key={c.id} className="border-t border-neutral-100 dark:border-neutral-800/50">
+                                                        <td className="py-3 px-4 font-mono text-xs text-neutral-500">{c.sequenceOrder ?? 1}</td>
+                                                        <td className="py-3 px-4 font-medium text-primary-950 dark:text-white">{c.training?.name ?? courseName(c.trainingId)}</td>
+                                                        <td className="py-3 px-4 text-center">
+                                                            {c.isPrerequisite ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-warning-50 text-warning-700 border border-warning-200 dark:bg-warning-900/20 dark:text-warning-400">Required</span> : <span className="text-neutral-400 text-xs">No</span>}
+                                                        </td>
+                                                        <td className="py-3 px-4 text-center font-semibold">{c.minPassScore != null ? `${c.minPassScore}%` : "\u2014"}</td>
+                                                        <td className="py-3 px-4 text-right">
+                                                            <button onClick={() => handleRemoveCourse(c.id)} disabled={removeCourseMut.isPending} className="p-2 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors" title="Remove"><Trash2 size={14} /></button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-neutral-400 dark:text-neutral-500">No courses added yet.</p>
+                                )}
+
+                                {/* Add Course Form */}
+                                <div className="mt-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-4 border border-neutral-200 dark:border-neutral-700">
+                                    <h5 className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">Add Course</h5>
+                                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 mb-1">Training</label>
+                                            <select value={addCourseForm.trainingId} onChange={(e) => updateAddCourseField("trainingId", e.target.value)} className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
+                                                <option value="">Select...</option>
+                                                {courses.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 mb-1">Sequence</label>
+                                            <input type="number" value={addCourseForm.sequenceOrder} onChange={(e) => updateAddCourseField("sequenceOrder", e.target.value)} placeholder="1" className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 mb-1">Min Score (%)</label>
+                                            <input type="number" value={addCourseForm.minPassScore} onChange={(e) => updateAddCourseField("minPassScore", e.target.value)} placeholder="Optional" className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button type="button" onClick={() => updateAddCourseField("isPrerequisite", !addCourseForm.isPrerequisite)} className={cn("w-8 h-5 rounded-full transition-colors relative shrink-0", addCourseForm.isPrerequisite ? "bg-primary-600" : "bg-neutral-300 dark:bg-neutral-700")}>
+                                                <div className={cn("w-3.5 h-3.5 rounded-full bg-white absolute top-[3px] transition-all", addCourseForm.isPrerequisite ? "left-[14px]" : "left-[3px]")} />
+                                            </button>
+                                            <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">Prerequisite</span>
+                                        </div>
+                                        <div>
+                                            <button onClick={handleAddCourseToProgram} disabled={addCourseMut.isPending || !addCourseForm.trainingId} className="w-full px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                                                {addCourseMut.isPending ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                                                Add
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Enrollments */}
+                            <div>
+                                <h4 className="text-sm font-bold text-primary-950 dark:text-white mb-3">Enrollments ({enrollments.length})</h4>
+                                {enrollments.length > 0 ? (
+                                    <div className="border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden">
+                                        <table className="w-full text-left text-sm">
+                                            <thead>
+                                                <tr className="bg-neutral-50 dark:bg-neutral-800/50 text-xs text-neutral-500 dark:text-neutral-400 uppercase">
+                                                    <th className="py-3 px-4 font-bold">Employee</th>
+                                                    <th className="py-3 px-4 font-bold text-center">Progress</th>
+                                                    <th className="py-3 px-4 font-bold text-center">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {enrollments.map((e: any) => (
+                                                    <tr key={e.id} className="border-t border-neutral-100 dark:border-neutral-800/50">
+                                                        <td className="py-3 px-4 font-medium text-primary-950 dark:text-white">
+                                                            {e.employee?.firstName ? `${e.employee.firstName} ${e.employee.lastName ?? ''}`.trim() : employeeName(e.employeeId)}
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            <div className="flex items-center gap-2 justify-center">
+                                                                <div className="flex-1 max-w-[120px] bg-neutral-200 dark:bg-neutral-700 rounded-full h-2">
+                                                                    <div className="bg-primary-600 h-2 rounded-full transition-all" style={{ width: `${e.progressPercentage ?? 0}%` }} />
+                                                                </div>
+                                                                <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">{e.progressPercentage ?? 0}%</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-3 px-4 text-center"><EnrollmentStatusBadge status={e.status ?? "ENROLLED"} /></td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-neutral-400 dark:text-neutral-500">No enrollments yet.</p>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ── Budgets Tab ── */}
+            {activeTab === "budgets" && (
+                <div className="space-y-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-xl shadow-neutral-900/5 overflow-hidden">
+                        {budgetsQuery.isLoading ? <SkeletonTable rows={6} cols={7} /> : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse min-w-[900px]">
+                                    <thead>
+                                        <tr className="bg-neutral-50/50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
+                                            <th className="py-4 px-6 font-bold">Fiscal Year</th>
+                                            <th className="py-4 px-6 font-bold">Department</th>
+                                            <th className="py-4 px-6 font-bold text-right">Allocated</th>
+                                            <th className="py-4 px-6 font-bold text-right">Used</th>
+                                            <th className="py-4 px-6 font-bold text-right">Remaining</th>
+                                            <th className="py-4 px-6 font-bold text-center">Utilization</th>
+                                            <th className="py-4 px-6 font-bold text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="text-sm">
+                                        {budgets.map((b: any) => {
+                                            const allocated = Number(b.allocatedAmount ?? 0);
+                                            const used = Number(b.usedAmount ?? 0);
+                                            const remaining = allocated - used;
+                                            const pct = allocated > 0 ? Math.round((used / allocated) * 100) : 0;
+                                            return (
+                                                <tr key={b.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
+                                                    <td className="py-4 px-6">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-lg bg-accent-50 dark:bg-accent-900/30 flex items-center justify-center shrink-0">
+                                                                <DollarSign className="w-4 h-4 text-accent-600 dark:text-accent-400" />
+                                                            </div>
+                                                            <span className="font-bold text-primary-950 dark:text-white">{b.fiscalYear}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{b.department?.name ?? departmentName(b.departmentId) ?? "Company-wide"}</td>
+                                                    <td className="py-4 px-6 text-right font-semibold text-primary-950 dark:text-white">{"\u20B9"}{allocated.toLocaleString("en-IN")}</td>
+                                                    <td className="py-4 px-6 text-right font-semibold text-warning-600 dark:text-warning-400">{"\u20B9"}{used.toLocaleString("en-IN")}</td>
+                                                    <td className="py-4 px-6 text-right font-semibold text-success-600 dark:text-success-400">{"\u20B9"}{remaining.toLocaleString("en-IN")}</td>
+                                                    <td className="py-4 px-6">
+                                                        <div className="flex items-center gap-2 justify-center">
+                                                            <div className="flex-1 max-w-[80px] bg-neutral-200 dark:bg-neutral-700 rounded-full h-2">
+                                                                <div className={cn("h-2 rounded-full transition-all", pct > 90 ? "bg-danger-500" : pct > 70 ? "bg-warning-500" : "bg-success-500")} style={{ width: `${Math.min(pct, 100)}%` }} />
+                                                            </div>
+                                                            <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">{pct}%</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-4 px-6 text-right">
+                                                        <button onClick={() => openEditBudget(b)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit"><Edit3 size={15} /></button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {budgets.length === 0 && !budgetsQuery.isLoading && (
+                                            <tr><td colSpan={7}><EmptyState icon="list" title="No budgets found" message="Create your first training budget." action={{ label: "New Budget", onClick: openCreateBudget }} /></td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Utilization Section */}
+                    {budgets.length > 0 && (
+                        <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-xl shadow-neutral-900/5 p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-sm font-bold text-primary-950 dark:text-white">Budget Utilization</h3>
+                                <select value={budgetFiscalYear} onChange={(e) => setBudgetFiscalYear(e.target.value)} className="px-3 py-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm font-semibold text-neutral-700 dark:text-neutral-300 focus:outline-none">
+                                    <option value="">Select fiscal year...</option>
+                                    {[...new Set(budgets.map((b: any) => b.fiscalYear))].map((fy: any) => <option key={fy} value={fy}>{fy}</option>)}
+                                </select>
+                            </div>
+                            {budgetFiscalYear && utilizationQuery.data ? (
+                                <div className="space-y-3">
+                                    {utilization.map((u: any, i: number) => {
+                                        const alloc = Number(u.allocatedAmount ?? 0);
+                                        const used = Number(u.usedAmount ?? 0);
+                                        const pct = alloc > 0 ? Math.round((used / alloc) * 100) : 0;
+                                        return (
+                                            <div key={i} className="flex items-center gap-4">
+                                                <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400 w-32 truncate">{u.department?.name ?? "Company-wide"}</span>
+                                                <div className="flex-1 bg-neutral-200 dark:bg-neutral-700 rounded-full h-3">
+                                                    <div className={cn("h-3 rounded-full transition-all", pct > 90 ? "bg-danger-500" : pct > 70 ? "bg-warning-500" : "bg-primary-500")} style={{ width: `${Math.min(pct, 100)}%` }} />
+                                                </div>
+                                                <span className="text-xs font-bold text-neutral-600 dark:text-neutral-400 w-16 text-right">{pct}%</span>
+                                                <span className="text-xs text-neutral-500 w-40 text-right">{"\u20B9"}{used.toLocaleString("en-IN")} / {"\u20B9"}{alloc.toLocaleString("en-IN")}</span>
+                                            </div>
+                                        );
+                                    })}
+                                    {utilization.length === 0 && <p className="text-sm text-neutral-400">No utilization data for this fiscal year.</p>}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-neutral-400 dark:text-neutral-500">Select a fiscal year to view utilization breakdown.</p>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ── Program Create/Edit Modal ── */}
+            {programModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-lg animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
+                            <h2 className="text-lg font-bold text-primary-950 dark:text-white">{programEditingId ? "Edit Program" : "New Training Program"}</h2>
+                            <button onClick={() => setProgramModalOpen(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"><X size={18} /></button>
+                        </div>
+                        <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Program Name</label>
+                                <input type="text" value={programForm.name} onChange={(e) => updateProgramField("name", e.target.value)} placeholder="e.g., Full Stack Developer Certification" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Description</label>
+                                <textarea value={programForm.description} onChange={(e) => updateProgramField("description", e.target.value)} rows={2} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all resize-none" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Category</label>
+                                    <select value={programForm.category} onChange={(e) => updateProgramField("category", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
+                                        {PROGRAM_CATEGORIES.map((c) => <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Level</label>
+                                    <select value={programForm.level} onChange={(e) => updateProgramField("level", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
+                                        {PROGRAM_LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Total Duration (hours)</label>
+                                <input type="number" value={programForm.totalDuration} onChange={(e) => updateProgramField("totalDuration", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                            </div>
+                            <div className="flex items-center justify-between py-2 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl px-4 border border-neutral-200 dark:border-neutral-700">
+                                <span className="text-sm font-medium text-primary-950 dark:text-white">Compulsory</span>
+                                <button type="button" onClick={() => updateProgramField("isCompulsory", !programForm.isCompulsory)} className={cn("w-10 h-6 rounded-full transition-colors relative", programForm.isCompulsory ? "bg-primary-600" : "bg-neutral-300 dark:bg-neutral-700")}>
+                                    <div className={cn("w-4 h-4 rounded-full bg-white absolute top-1 transition-all", programForm.isCompulsory ? "left-5" : "left-1")} />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
+                            <button onClick={() => setProgramModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
+                            <button onClick={handleSaveProgram} disabled={savingProgram} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                                {savingProgram && <Loader2 size={14} className="animate-spin" />}
+                                {savingProgram ? "Saving..." : programEditingId ? "Update" : "Create"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Enroll Employees Modal ── */}
+            {enrollModalOpen && selectedProgramId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-lg animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
+                            <h2 className="text-lg font-bold text-primary-950 dark:text-white">Enroll Employees</h2>
+                            <button onClick={() => setEnrollModalOpen(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"><X size={18} /></button>
+                        </div>
+                        <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Select Employees</label>
+                                <select
+                                    multiple
+                                    value={enrollEmployeeIds}
+                                    onChange={(e) => setEnrollEmployeeIds(Array.from(e.target.selectedOptions, o => o.value))}
+                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all max-h-48"
+                                >
+                                    {employees.map((e: any) => <option key={e.id} value={e.id}>{[e.firstName, e.lastName].filter(Boolean).join(" ") || e.email}</option>)}
+                                </select>
+                                <p className="text-xs text-neutral-400 mt-1">Hold Ctrl/Cmd to select multiple employees.</p>
+                            </div>
+                        </div>
+                        <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
+                            <button onClick={() => setEnrollModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
+                            <button onClick={handleEnroll} disabled={enrollMut.isPending || !enrollEmployeeIds.length} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                                {enrollMut.isPending && <Loader2 size={14} className="animate-spin" />}
+                                {enrollMut.isPending ? "Enrolling..." : `Enroll (${enrollEmployeeIds.length})`}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Budget Create/Edit Modal ── */}
+            {budgetModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-lg animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
+                            <h2 className="text-lg font-bold text-primary-950 dark:text-white">{budgetEditingId ? "Edit Budget" : "New Training Budget"}</h2>
+                            <button onClick={() => setBudgetModalOpen(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"><X size={18} /></button>
+                        </div>
+                        <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Fiscal Year</label>
+                                <input type="text" value={budgetForm.fiscalYear} onChange={(e) => updateBudgetField("fiscalYear", e.target.value)} placeholder="e.g., 2026-27" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Department (optional = company-wide)</label>
+                                <select value={budgetForm.departmentId} onChange={(e) => updateBudgetField("departmentId", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
+                                    <option value="">Company-wide</option>
+                                    {departments.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Allocated Amount (INR)</label>
+                                <input type="number" value={budgetForm.allocatedAmount} onChange={(e) => updateBudgetField("allocatedAmount", e.target.value)} placeholder="0" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                            </div>
+                        </div>
+                        <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
+                            <button onClick={() => setBudgetModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
+                            <button onClick={handleSaveBudget} disabled={savingBudget} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                                {savingBudget && <Loader2 size={14} className="animate-spin" />}
+                                {savingBudget ? "Saving..." : budgetEditingId ? "Update" : "Create"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Materials Modal ── */}
+            {materialsTrainingId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-3xl animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
+                            <h2 className="text-lg font-bold text-primary-950 dark:text-white">Training Materials</h2>
+                            <div className="flex items-center gap-2">
+                                <button onClick={openCreateMaterial} className="inline-flex items-center gap-1.5 bg-primary-600 hover:bg-primary-700 text-white px-3 py-1.5 rounded-lg font-bold text-xs transition-colors">
+                                    <Plus size={14} /> Add Material
+                                </button>
+                                <button onClick={closeMaterials} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"><X size={18} /></button>
+                            </div>
+                        </div>
+                        <div className="p-6 overflow-y-auto flex-1">
+                            {materialsQuery.isLoading ? (
+                                <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary-500" /></div>
+                            ) : materials.length === 0 ? (
+                                <div className="text-center py-8 text-neutral-400 text-sm">No materials added yet.</div>
+                            ) : (
+                                <div className="border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden">
+                                    <table className="w-full text-left text-sm">
+                                        <thead>
+                                            <tr className="bg-neutral-50 dark:bg-neutral-800/50 text-xs text-neutral-500 dark:text-neutral-400 uppercase">
+                                                <th className="py-3 px-4 font-bold">Name</th>
+                                                <th className="py-3 px-4 font-bold text-center">Type</th>
+                                                <th className="py-3 px-4 font-bold">URL</th>
+                                                <th className="py-3 px-4 font-bold text-center">Mandatory</th>
+                                                <th className="py-3 px-4 font-bold text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {materials.map((m: any) => (
+                                                <tr key={m.id} className="border-t border-neutral-100 dark:border-neutral-800/50">
+                                                    <td className="py-3 px-4">
+                                                        <div>
+                                                            <span className="font-medium text-primary-950 dark:text-white">{m.name}</span>
+                                                            {m.description && <p className="text-xs text-neutral-400 mt-0.5 line-clamp-1">{m.description}</p>}
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-3 px-4 text-center"><MaterialTypeBadge type={m.type ?? "DOCUMENT"} /></td>
+                                                    <td className="py-3 px-4">
+                                                        {m.url ? (
+                                                            <a href={m.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 dark:text-primary-400 hover:underline truncate max-w-[200px] block">{m.url}</a>
+                                                        ) : "\u2014"}
+                                                    </td>
+                                                    <td className="py-3 px-4 text-center">
+                                                        {m.isMandatory ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-danger-50 text-danger-700 border border-danger-200 dark:bg-danger-900/20 dark:text-danger-400">Required</span> : <span className="text-neutral-400 text-xs">Optional</span>}
+                                                    </td>
+                                                    <td className="py-3 px-4 text-right">
+                                                        <div className="flex items-center justify-end gap-1">
+                                                            <button onClick={() => openEditMaterial(m)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit"><Edit3 size={14} /></button>
+                                                            <button onClick={() => setDeleteMaterialTarget(m)} className="p-2 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors" title="Delete"><Trash2 size={14} /></button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Material Create/Edit Modal ── */}
+            {materialModalOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-lg animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
+                            <h2 className="text-lg font-bold text-primary-950 dark:text-white">{materialEditingId ? "Edit Material" : "Add Material"}</h2>
+                            <button onClick={() => setMaterialModalOpen(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"><X size={18} /></button>
+                        </div>
+                        <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Name</label>
+                                <input type="text" value={materialForm.name} onChange={(e) => updateMaterialField("name", e.target.value)} placeholder="e.g., Course Handbook" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Type</label>
+                                    <select value={materialForm.type} onChange={(e) => updateMaterialField("type", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
+                                        {MATERIAL_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Sequence Order</label>
+                                    <input type="number" value={materialForm.sequenceOrder} onChange={(e) => updateMaterialField("sequenceOrder", e.target.value)} placeholder="1" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">URL</label>
+                                <input type="url" value={materialForm.url} onChange={(e) => updateMaterialField("url", e.target.value)} placeholder="https://..." className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Description</label>
+                                <textarea value={materialForm.description} onChange={(e) => updateMaterialField("description", e.target.value)} rows={2} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all resize-none" />
+                            </div>
+                            <div className="flex items-center justify-between py-2 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl px-4 border border-neutral-200 dark:border-neutral-700">
+                                <span className="text-sm font-medium text-primary-950 dark:text-white">Mandatory</span>
+                                <button type="button" onClick={() => updateMaterialField("isMandatory", !materialForm.isMandatory)} className={cn("w-10 h-6 rounded-full transition-colors relative", materialForm.isMandatory ? "bg-primary-600" : "bg-neutral-300 dark:bg-neutral-700")}>
+                                    <div className={cn("w-4 h-4 rounded-full bg-white absolute top-1 transition-all", materialForm.isMandatory ? "left-5" : "left-1")} />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
+                            <button onClick={() => setMaterialModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
+                            <button onClick={handleSaveMaterial} disabled={savingMaterial} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                                {savingMaterial && <Loader2 size={14} className="animate-spin" />}
+                                {savingMaterial ? "Saving..." : materialEditingId ? "Update" : "Add"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Delete Program Confirmation ── */}
+            {deleteProgramTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200">
+                        <h2 className="text-lg font-bold text-danger-700 dark:text-danger-400 mb-2">Delete Program?</h2>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400">This will permanently delete <strong>{deleteProgramTarget.name}</strong>.</p>
+                        <div className="flex gap-3 mt-6">
+                            <button onClick={() => setDeleteProgramTarget(null)} className="flex-1 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
+                            <button onClick={handleDeleteProgram} disabled={deleteProgramMut.isPending} className="flex-1 py-3 rounded-xl bg-danger-600 hover:bg-danger-700 text-white text-sm font-bold transition-colors disabled:opacity-50">{deleteProgramMut.isPending ? "Deleting..." : "Delete"}</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Delete Material Confirmation ── */}
+            {deleteMaterialTarget && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200">
+                        <h2 className="text-lg font-bold text-danger-700 dark:text-danger-400 mb-2">Delete Material?</h2>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400">This will permanently delete <strong>{deleteMaterialTarget.name}</strong>.</p>
+                        <div className="flex gap-3 mt-6">
+                            <button onClick={() => setDeleteMaterialTarget(null)} className="flex-1 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
+                            <button onClick={handleDeleteMaterial} disabled={deleteMaterialMut.isPending} className="flex-1 py-3 rounded-xl bg-danger-600 hover:bg-danger-700 text-white text-sm font-bold transition-colors disabled:opacity-50">{deleteMaterialMut.isPending ? "Deleting..." : "Delete"}</button>
                         </div>
                     </div>
                 </div>

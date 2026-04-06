@@ -151,6 +151,28 @@ export const recruitmentKeys = {
     // Interview Evaluations
     interviewEvaluations: (interviewId: string) =>
         [...recruitmentKeys.all, 'interview-evaluations', interviewId] as const,
+
+    // Training Programs
+    trainingPrograms: (params?: Record<string, unknown>) =>
+        params
+            ? [...recruitmentKeys.all, 'training-programs', params] as const
+            : [...recruitmentKeys.all, 'training-programs'] as const,
+    trainingProgram: (id: string) =>
+        [...recruitmentKeys.all, 'training-program', id] as const,
+    programEnrollments: (programId: string) =>
+        [...recruitmentKeys.all, 'program-enrollments', programId] as const,
+
+    // Training Budgets
+    trainingBudgets: (params?: Record<string, unknown>) =>
+        params
+            ? [...recruitmentKeys.all, 'training-budgets', params] as const
+            : [...recruitmentKeys.all, 'training-budgets'] as const,
+    budgetUtilization: (fiscalYear: string) =>
+        [...recruitmentKeys.all, 'budget-utilization', fiscalYear] as const,
+
+    // Training Materials
+    trainingMaterials: (trainingId: string) =>
+        [...recruitmentKeys.all, 'training-materials', trainingId] as const,
 };
 
 // ── Requisitions ──
@@ -556,5 +578,57 @@ export function useTrainer(id: string) {
         queryKey: recruitmentKeys.trainer(id),
         queryFn: () => recruitmentApi.getTrainer(id),
         enabled: !!id,
+    });
+}
+
+// ── Training Programs ──
+
+export function useTrainingPrograms(params?: Record<string, unknown>) {
+    return useQuery({
+        queryKey: recruitmentKeys.trainingPrograms(params),
+        queryFn: () => recruitmentApi.listTrainingPrograms(params),
+    });
+}
+
+export function useTrainingProgram(id: string) {
+    return useQuery({
+        queryKey: recruitmentKeys.trainingProgram(id),
+        queryFn: () => recruitmentApi.getTrainingProgram(id),
+        enabled: !!id,
+    });
+}
+
+export function useProgramEnrollments(programId: string) {
+    return useQuery({
+        queryKey: recruitmentKeys.programEnrollments(programId),
+        queryFn: () => recruitmentApi.listProgramEnrollments(programId),
+        enabled: !!programId,
+    });
+}
+
+// ── Training Budgets ──
+
+export function useTrainingBudgets(params?: Record<string, unknown>) {
+    return useQuery({
+        queryKey: recruitmentKeys.trainingBudgets(params),
+        queryFn: () => recruitmentApi.listTrainingBudgets(params),
+    });
+}
+
+export function useBudgetUtilization(fiscalYear: string) {
+    return useQuery({
+        queryKey: recruitmentKeys.budgetUtilization(fiscalYear),
+        queryFn: () => recruitmentApi.getBudgetUtilization(fiscalYear),
+        enabled: !!fiscalYear,
+    });
+}
+
+// ── Training Materials ──
+
+export function useTrainingMaterials(trainingId: string) {
+    return useQuery({
+        queryKey: recruitmentKeys.trainingMaterials(trainingId),
+        queryFn: () => recruitmentApi.listTrainingMaterials(trainingId),
+        enabled: !!trainingId,
     });
 }
