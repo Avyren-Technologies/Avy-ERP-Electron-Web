@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import react from '@vitejs/plugin-react'
 import electron from 'vite-plugin-electron/simple'
+import { nodePolyfills } from 'vite-plugin-node-polyfills'
 
 const spaFallbackPlugin = () => ({
   name: 'spa-fallback-404',
@@ -20,6 +21,7 @@ const spaFallbackPlugin = () => ({
 export default defineConfig({
   base: '/',
   plugins: [
+    nodePolyfills({ include: ['buffer', 'stream', 'crypto', 'util', 'events', 'path', 'process'] }),
     react(),
     electron({
       main: {
