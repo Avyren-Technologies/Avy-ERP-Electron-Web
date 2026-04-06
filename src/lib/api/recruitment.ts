@@ -470,6 +470,114 @@ async function listPendingESign(): Promise<ApiResponse<any>> {
     return response.data;
 }
 
+// ── Offers ──
+
+async function listOffers(params?: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.get('/hr/offers', { params });
+    return response.data;
+}
+
+async function createOffer(data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.post('/hr/offers', data);
+    return response.data;
+}
+
+async function getOffer(id: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/offers/${id}`);
+    return response.data;
+}
+
+async function updateOffer(id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.patch(`/hr/offers/${id}`, data);
+    return response.data;
+}
+
+async function updateOfferStatus(id: string, data: { status: string; rejectionReason?: string }): Promise<ApiResponse<any>> {
+    const response = await client.patch(`/hr/offers/${id}/status`, data);
+    return response.data;
+}
+
+async function deleteOffer(id: string): Promise<ApiResponse<any>> {
+    const response = await client.delete(`/hr/offers/${id}`);
+    return response.data;
+}
+
+// ── Candidate Profile ──
+
+async function listCandidateEducation(candidateId: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/candidates/${candidateId}/education`);
+    return response.data;
+}
+
+async function createCandidateEducation(candidateId: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.post(`/hr/candidates/${candidateId}/education`, data);
+    return response.data;
+}
+
+async function updateCandidateEducation(id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.patch(`/hr/candidate-education/${id}`, data);
+    return response.data;
+}
+
+async function deleteCandidateEducation(id: string): Promise<ApiResponse<any>> {
+    const response = await client.delete(`/hr/candidate-education/${id}`);
+    return response.data;
+}
+
+async function listCandidateExperience(candidateId: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/candidates/${candidateId}/experience`);
+    return response.data;
+}
+
+async function createCandidateExperience(candidateId: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.post(`/hr/candidates/${candidateId}/experience`, data);
+    return response.data;
+}
+
+async function updateCandidateExperience(id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.patch(`/hr/candidate-experience/${id}`, data);
+    return response.data;
+}
+
+async function deleteCandidateExperience(id: string): Promise<ApiResponse<any>> {
+    const response = await client.delete(`/hr/candidate-experience/${id}`);
+    return response.data;
+}
+
+async function listCandidateDocuments(candidateId: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/candidates/${candidateId}/documents`);
+    return response.data;
+}
+
+async function createCandidateDocument(candidateId: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.post(`/hr/candidates/${candidateId}/documents`, data);
+    return response.data;
+}
+
+async function deleteCandidateDocument(id: string): Promise<ApiResponse<any>> {
+    const response = await client.delete(`/hr/candidate-documents/${id}`);
+    return response.data;
+}
+
+// ── Interview Evaluations ──
+
+async function submitInterviewEvaluations(interviewId: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.post(`/hr/interviews/${interviewId}/evaluations`, data);
+    return response.data;
+}
+
+async function listInterviewEvaluations(interviewId: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/interviews/${interviewId}/evaluations`);
+    return response.data;
+}
+
+// ── Candidate Conversion ──
+
+async function convertCandidateToEmployee(candidateId: string): Promise<ApiResponse<any>> {
+    const response = await client.post(`/hr/candidates/${candidateId}/convert-to-employee`);
+    return response.data;
+}
+
 export const recruitmentApi = {
     // Requisitions
     listRequisitions,
@@ -564,4 +672,28 @@ export const recruitmentApi = {
     createDisciplinaryAction,
     getDisciplinaryAction,
     updateDisciplinaryAction,
+    // Offers
+    listOffers,
+    createOffer,
+    getOffer,
+    updateOffer,
+    updateOfferStatus,
+    deleteOffer,
+    // Candidate Profile
+    listCandidateEducation,
+    createCandidateEducation,
+    updateCandidateEducation,
+    deleteCandidateEducation,
+    listCandidateExperience,
+    createCandidateExperience,
+    updateCandidateExperience,
+    deleteCandidateExperience,
+    listCandidateDocuments,
+    createCandidateDocument,
+    deleteCandidateDocument,
+    // Interview Evaluations
+    submitInterviewEvaluations,
+    listInterviewEvaluations,
+    // Candidate Conversion
+    convertCandidateToEmployee,
 };

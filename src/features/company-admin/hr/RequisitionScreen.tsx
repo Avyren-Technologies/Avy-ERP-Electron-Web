@@ -20,12 +20,16 @@ import {
     Filter,
     MapPin,
     DollarSign,
+    FileText,
+    Send,
+    Ban,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
     useRequisitions,
     useCandidates,
     useInterviews,
+    useOffers,
 } from "@/features/company-admin/api/use-recruitment-queries";
 import { useEmployees, useDepartments, useDesignations } from "@/features/company-admin/api/use-hr-queries";
 import {
@@ -40,6 +44,10 @@ import {
     useCancelInterview,
     useDeleteCandidate,
     useAdvanceCandidateStage,
+    useCreateOffer,
+    useUpdateOffer,
+    useUpdateOfferStatus,
+    useDeleteOffer,
 } from "@/features/company-admin/api/use-recruitment-mutations";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -64,10 +72,20 @@ const PRIORITY_OPTIONS = [
     { label: "Urgent", value: "URGENT" },
 ];
 
+const OFFER_STATUS_OPTIONS = [
+    { value: "DRAFT", label: "Draft" },
+    { value: "SENT", label: "Sent" },
+    { value: "ACCEPTED", label: "Accepted" },
+    { value: "REJECTED", label: "Rejected" },
+    { value: "WITHDRAWN", label: "Withdrawn" },
+    { value: "EXPIRED", label: "Expired" },
+];
+
 const TABS = [
     { key: "requisitions" as const, label: "Requisitions", icon: Briefcase },
     { key: "candidates" as const, label: "Candidates", icon: UserPlus },
     { key: "interviews" as const, label: "Interviews", icon: Video },
+    { key: "offers" as const, label: "Offers", icon: FileText },
 ];
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -113,6 +131,17 @@ const EMPTY_INTERVIEW = {
     interviewerIds: [] as string[],
     location: "",
     meetingLink: "",
+    notes: "",
+};
+
+const EMPTY_OFFER = {
+    candidateId: "",
+    offeredCtc: "",
+    ctcBreakup: "",
+    joiningDate: "",
+    validUntil: "",
+    designationId: "",
+    departmentId: "",
     notes: "",
 };
 
@@ -185,6 +214,24 @@ function PriorityBadge({ priority }: { priority: string }) {
     return <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full capitalize", map[p] ?? map.medium)}>{label}</span>;
 }
 
+function OfferStatusBadge({ status }: { status: string }) {
+    const s = status?.toUpperCase();
+    const map: Record<string, string> = {
+        DRAFT: "bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700",
+        SENT: "bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50",
+        ACCEPTED: "bg-success-50 text-success-700 border-success-200 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50",
+        REJECTED: "bg-danger-50 text-danger-700 border-danger-200 dark:bg-danger-900/20 dark:text-danger-400 dark:border-danger-800/50",
+        WITHDRAWN: "bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50",
+        EXPIRED: "bg-neutral-100 text-neutral-500 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700",
+    };
+    const label = OFFER_STATUS_OPTIONS.find((o) => o.value === s)?.label ?? status;
+    return (
+        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize", map[s] ?? map.DRAFT)}>
+            {label}
+        </span>
+    );
+}
+
 /* ── Screen ── */
 
 export function RequisitionScreen() {
@@ -211,10 +258,18 @@ export function RequisitionScreen() {
     const [intEditingId, setIntEditingId] = useState<string | null>(null);
     const [intForm, setIntForm] = useState({ ...EMPTY_INTERVIEW });
 
+    const [offerModalOpen, setOfferModalOpen] = useState(false);
+    const [offerEditingId, setOfferEditingId] = useState<string | null>(null);
+    const [offerForm, setOfferForm] = useState({ ...EMPTY_OFFER });
+    const [deleteOfferTarget, setDeleteOfferTarget] = useState<any>(null);
+    const [rejectOfferTarget, setRejectOfferTarget] = useState<any>(null);
+    const [rejectionReason, setRejectionReason] = useState("");
+
     /* Queries */
     const reqQuery = useRequisitions(statusFilter !== "All" ? { status: statusFilter.toLowerCase() } : undefined);
     const candQuery = useCandidates(selectedReqId ? { requisitionId: selectedReqId } : undefined);
     const intQuery = useInterviews(selectedReqId ? { requisitionId: selectedReqId } : undefined);
+    const offerQuery = useOffers(selectedReqId ? { requisitionId: selectedReqId } : undefined);
     const employeesQuery = useEmployees();
     const departmentsQuery = useDepartments();
     const designationsQuery = useDesignations();
@@ -231,6 +286,10 @@ export function RequisitionScreen() {
     const cancelInterview = useCancelInterview();
     const deleteCandidate = useDeleteCandidate();
     const advanceStage = useAdvanceCandidateStage();
+    const createOffer = useCreateOffer();
+    const updateOffer = useUpdateOffer();
+    const updateOfferStatus = useUpdateOfferStatus();
+    const deleteOfferMut = useDeleteOffer();
 
     /* Complete Interview Modal State */
     const [completeIntModalOpen, setCompleteIntModalOpen] = useState(false);
@@ -247,6 +306,7 @@ export function RequisitionScreen() {
     const requisitions: any[] = reqQuery.data?.data ?? [];
     const candidates: any[] = candQuery.data?.data ?? [];
     const interviews: any[] = intQuery.data?.data ?? [];
+    const offers: any[] = offerQuery.data?.data ?? [];
     const employees: any[] = employeesQuery.data?.data ?? [];
     const departments: any[] = departmentsQuery.data?.data ?? [];
     const designations: any[] = designationsQuery.data?.data ?? [];
@@ -280,6 +340,13 @@ export function RequisitionScreen() {
         if (!search) return true;
         const s = search.toLowerCase();
         return i.type?.toLowerCase().includes(s) || candName(i.candidateId)?.toLowerCase().includes(s);
+    });
+
+    const filteredOffers = offers.filter((o: any) => {
+        if (!search) return true;
+        const s = search.toLowerCase();
+        const cName = o.candidate?.name || candName(o.candidateId);
+        return cName?.toLowerCase().includes(s) || o.status?.toLowerCase().includes(s);
     });
 
     /* ── Requisition Handlers ── */
@@ -409,13 +476,90 @@ export function RequisitionScreen() {
         } catch (err) { showApiError(err); }
     };
 
+    /* ── Offer Handlers ── */
+    const openCreateOffer = () => {
+        setOfferEditingId(null);
+        setOfferForm({ ...EMPTY_OFFER });
+        setOfferModalOpen(true);
+    };
+    const openEditOffer = (o: any) => {
+        setOfferEditingId(o.id);
+        setOfferForm({
+            candidateId: o.candidateId ?? "",
+            offeredCtc: o.offeredCtc ?? "",
+            ctcBreakup: o.ctcBreakup ? JSON.stringify(o.ctcBreakup) : "",
+            joiningDate: o.joiningDate ? o.joiningDate.slice(0, 10) : "",
+            validUntil: o.validUntil ? o.validUntil.slice(0, 10) : "",
+            designationId: o.designationId ?? "",
+            departmentId: o.departmentId ?? "",
+            notes: o.notes ?? "",
+        });
+        setOfferModalOpen(true);
+    };
+    const handleSaveOffer = async () => {
+        try {
+            const payload: Record<string, unknown> = {
+                candidateId: offerForm.candidateId,
+                offeredCtc: offerForm.offeredCtc ? Number(offerForm.offeredCtc) : undefined,
+                joiningDate: offerForm.joiningDate || undefined,
+                validUntil: offerForm.validUntil || undefined,
+                designationId: offerForm.designationId || undefined,
+                departmentId: offerForm.departmentId || undefined,
+                notes: offerForm.notes || undefined,
+            };
+            if (offerForm.ctcBreakup) {
+                try { payload.ctcBreakup = JSON.parse(offerForm.ctcBreakup); } catch { /* ignore invalid JSON */ }
+            }
+            if (offerEditingId) {
+                await updateOffer.mutateAsync({ id: offerEditingId, data: payload });
+                showSuccess("Offer Updated", "Offer has been updated.");
+            } else {
+                await createOffer.mutateAsync(payload);
+                showSuccess("Offer Created", "Offer has been created.");
+            }
+            setOfferModalOpen(false);
+        } catch (err) { showApiError(err); }
+    };
+    const handleDeleteOffer = async () => {
+        if (!deleteOfferTarget) return;
+        try {
+            await deleteOfferMut.mutateAsync(deleteOfferTarget.id);
+            showSuccess("Offer Deleted", "Offer has been removed.");
+            setDeleteOfferTarget(null);
+        } catch (err) { showApiError(err); }
+    };
+    const handleOfferStatusChange = async (id: string, status: string) => {
+        try {
+            await updateOfferStatus.mutateAsync({ id, data: { status } });
+            showSuccess("Offer Status Updated", `Offer marked as ${status.toLowerCase()}.`);
+        } catch (err) { showApiError(err); }
+    };
+    const handleRejectOffer = async () => {
+        if (!rejectOfferTarget) return;
+        try {
+            await updateOfferStatus.mutateAsync({ id: rejectOfferTarget.id, data: { status: "REJECTED", rejectionReason: rejectionReason || undefined } });
+            showSuccess("Offer Rejected", "Offer has been rejected.");
+            setRejectOfferTarget(null);
+            setRejectionReason("");
+        } catch (err) { showApiError(err); }
+    };
+
     const savingReq = createReq.isPending || updateReq.isPending;
     const savingCand = createCand.isPending || updateCand.isPending;
     const savingInt = createInt.isPending || updateInt.isPending;
+    const savingOffer = createOffer.isPending || updateOffer.isPending;
 
     const updateReqField = (key: string, value: any) => setReqForm((p) => ({ ...p, [key]: value }));
     const updateCandField = (key: string, value: any) => setCandForm((p) => ({ ...p, [key]: value }));
     const updateIntField = (key: string, value: any) => setIntForm((p) => ({ ...p, [key]: value }));
+    const updateOfferField = (key: string, value: any) => setOfferForm((p) => ({ ...p, [key]: value }));
+
+    const formatCurrency = (val: number | string | null | undefined) => {
+        if (!val) return "—";
+        const num = typeof val === "string" ? parseFloat(val) : val;
+        if (isNaN(num)) return "—";
+        return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(num);
+    };
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -429,12 +573,13 @@ export function RequisitionScreen() {
                     onClick={() => {
                         if (activeTab === "requisitions") openCreateReq();
                         else if (activeTab === "candidates") openCreateCand();
-                        else openCreateInt();
+                        else if (activeTab === "interviews") openCreateInt();
+                        else openCreateOffer();
                     }}
                     className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none"
                 >
                     <Plus className="w-5 h-5" />
-                    {activeTab === "requisitions" ? "New Requisition" : activeTab === "candidates" ? "Add Candidate" : "Schedule Interview"}
+                    {activeTab === "requisitions" ? "New Requisition" : activeTab === "candidates" ? "Add Candidate" : activeTab === "interviews" ? "Schedule Interview" : "Create Offer"}
                 </button>
             </div>
 
@@ -465,7 +610,7 @@ export function RequisitionScreen() {
                     <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400 dark:text-neutral-500" />
                     <input
                         type="text"
-                        placeholder={activeTab === "requisitions" ? "Search requisitions..." : activeTab === "candidates" ? "Search candidates..." : "Search interviews..."}
+                        placeholder={activeTab === "requisitions" ? "Search requisitions..." : activeTab === "candidates" ? "Search candidates..." : activeTab === "interviews" ? "Search interviews..." : "Search offers..."}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         className="w-full pl-11 pr-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
@@ -485,7 +630,7 @@ export function RequisitionScreen() {
                             </select>
                         </div>
                     )}
-                    {(activeTab === "candidates" || activeTab === "interviews") && selectedReqId && (
+                    {(activeTab === "candidates" || activeTab === "interviews" || activeTab === "offers") && selectedReqId && (
                         <div className="flex items-center gap-2">
                             <Briefcase size={14} className="text-primary-500" />
                             <span className="text-xs font-bold text-primary-600 dark:text-primary-400 truncate max-w-[200px]">{reqTitle(selectedReqId)}</span>
@@ -693,6 +838,212 @@ export function RequisitionScreen() {
                             </table>
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* ── Offers Tab ── */}
+            {activeTab === "offers" && (
+                <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-xl shadow-neutral-900/5 overflow-hidden">
+                    {offerQuery.isLoading ? <SkeletonTable rows={6} cols={7} /> : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse min-w-[1000px]">
+                                <thead>
+                                    <tr className="bg-neutral-50/50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
+                                        <th className="py-4 px-6 font-bold">Candidate</th>
+                                        <th className="py-4 px-6 font-bold">Offered CTC</th>
+                                        <th className="py-4 px-6 font-bold">Joining Date</th>
+                                        <th className="py-4 px-6 font-bold text-center">Status</th>
+                                        <th className="py-4 px-6 font-bold">Valid Until</th>
+                                        <th className="py-4 px-6 font-bold text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="text-sm">
+                                    {filteredOffers.map((o: any) => {
+                                        const cName = o.candidate?.name || candName(o.candidateId);
+                                        const st = o.status?.toUpperCase();
+                                        return (
+                                            <tr key={o.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
+                                                <td className="py-4 px-6">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-lg bg-accent-100 dark:bg-accent-900/30 flex items-center justify-center shrink-0 text-xs font-bold text-accent-700 dark:text-accent-400">
+                                                            {(cName || "").split(" ").map((w: string) => w.charAt(0)).join("").slice(0, 2).toUpperCase()}
+                                                        </div>
+                                                        <span className="font-bold text-primary-950 dark:text-white">{cName}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="py-4 px-6 font-semibold text-primary-950 dark:text-white">{formatCurrency(o.offeredCtc)}</td>
+                                                <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(o.joiningDate)}</td>
+                                                <td className="py-4 px-6 text-center"><OfferStatusBadge status={o.status ?? "DRAFT"} /></td>
+                                                <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(o.validUntil)}</td>
+                                                <td className="py-4 px-6 text-right">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        {st === "DRAFT" && (
+                                                            <>
+                                                                <button onClick={() => openEditOffer(o)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit">
+                                                                    <Edit3 size={15} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleOfferStatusChange(o.id, "SENT")}
+                                                                    className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors"
+                                                                    title="Send Offer"
+                                                                    disabled={updateOfferStatus.isPending}
+                                                                >
+                                                                    <Send size={15} />
+                                                                </button>
+                                                                <button onClick={() => setDeleteOfferTarget(o)} className="p-2 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors" title="Delete">
+                                                                    <Trash2 size={15} />
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                        {st === "SENT" && (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => handleOfferStatusChange(o.id, "ACCEPTED")}
+                                                                    className="p-2 text-success-600 dark:text-success-400 hover:bg-success-50 dark:hover:bg-success-900/20 rounded-lg transition-colors"
+                                                                    title="Accept"
+                                                                    disabled={updateOfferStatus.isPending}
+                                                                >
+                                                                    <CheckCircle2 size={15} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => { setRejectOfferTarget(o); setRejectionReason(""); }}
+                                                                    className="p-2 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors"
+                                                                    title="Reject"
+                                                                >
+                                                                    <XCircle size={15} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleOfferStatusChange(o.id, "WITHDRAWN")}
+                                                                    className="p-2 text-warning-600 dark:text-warning-400 hover:bg-warning-50 dark:hover:bg-warning-900/20 rounded-lg transition-colors"
+                                                                    title="Withdraw"
+                                                                    disabled={updateOfferStatus.isPending}
+                                                                >
+                                                                    <Ban size={15} />
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                        {(st === "ACCEPTED" || st === "REJECTED" || st === "WITHDRAWN" || st === "EXPIRED") && (
+                                                            <button onClick={() => openEditOffer(o)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="View">
+                                                                <Eye size={15} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                    {filteredOffers.length === 0 && !offerQuery.isLoading && (
+                                        <tr><td colSpan={6}><EmptyState icon="list" title="No offers found" message="Create a new offer to get started." action={{ label: "Create Offer", onClick: openCreateOffer }} /></td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ── Offer Create/Edit Modal ── */}
+            {offerModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-2xl animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
+                            <h2 className="text-lg font-bold text-primary-950 dark:text-white">{offerEditingId ? "Edit Offer" : "Create Offer"}</h2>
+                            <button onClick={() => setOfferModalOpen(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"><X size={18} /></button>
+                        </div>
+                        <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Candidate</label>
+                                <select value={offerForm.candidateId} onChange={(e) => updateOfferField("candidateId", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
+                                    <option value="">Select candidate...</option>
+                                    {candidates.map((c: any) => <option key={c.id} value={c.id}>{c.name || [c.firstName, c.lastName].filter(Boolean).join(" ")}</option>)}
+                                </select>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Offered CTC</label>
+                                    <input type="number" value={offerForm.offeredCtc} onChange={(e) => updateOfferField("offeredCtc", e.target.value)} placeholder="e.g., 1200000" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Joining Date</label>
+                                    <input type="date" value={offerForm.joiningDate} onChange={(e) => updateOfferField("joiningDate", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Valid Until</label>
+                                    <input type="date" value={offerForm.validUntil} onChange={(e) => updateOfferField("validUntil", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Designation</label>
+                                    <select value={offerForm.designationId} onChange={(e) => updateOfferField("designationId", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
+                                        <option value="">Select designation...</option>
+                                        {designations.map((d: any) => <option key={d.id} value={d.id}>{d.title || d.name}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Department</label>
+                                <select value={offerForm.departmentId} onChange={(e) => updateOfferField("departmentId", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
+                                    <option value="">Select department...</option>
+                                    {departments.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">CTC Breakup (JSON, optional)</label>
+                                <textarea value={offerForm.ctcBreakup} onChange={(e) => updateOfferField("ctcBreakup", e.target.value)} placeholder='{"basic": 600000, "hra": 240000, ...}' rows={3} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all resize-none font-mono" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Notes</label>
+                                <textarea value={offerForm.notes} onChange={(e) => updateOfferField("notes", e.target.value)} rows={3} placeholder="Additional notes..." className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all resize-none" />
+                            </div>
+                        </div>
+                        <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
+                            <button onClick={() => setOfferModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
+                            <button onClick={handleSaveOffer} disabled={savingOffer} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                                {savingOffer && <Loader2 size={14} className="animate-spin" />}
+                                {savingOffer ? "Saving..." : offerEditingId ? "Update" : "Create"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Delete Offer Confirmation ── */}
+            {deleteOfferTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200">
+                        <h2 className="text-lg font-bold text-danger-700 dark:text-danger-400 mb-2">Delete Offer?</h2>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400">This will permanently delete this offer.</p>
+                        <div className="flex gap-3 mt-6">
+                            <button onClick={() => setDeleteOfferTarget(null)} className="flex-1 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
+                            <button onClick={handleDeleteOffer} disabled={deleteOfferMut.isPending} className="flex-1 py-3 rounded-xl bg-danger-600 hover:bg-danger-700 text-white text-sm font-bold transition-colors disabled:opacity-50">{deleteOfferMut.isPending ? "Deleting..." : "Delete"}</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Reject Offer Modal ── */}
+            {rejectOfferTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200">
+                        <h2 className="text-lg font-bold text-danger-700 dark:text-danger-400 mb-4">Reject Offer?</h2>
+                        <div>
+                            <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Reason (optional)</label>
+                            <textarea
+                                value={rejectionReason}
+                                onChange={(e) => setRejectionReason(e.target.value)}
+                                rows={3}
+                                placeholder="Reason for rejection..."
+                                className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all resize-none"
+                            />
+                        </div>
+                        <div className="flex gap-3 mt-6">
+                            <button onClick={() => { setRejectOfferTarget(null); setRejectionReason(""); }} className="flex-1 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
+                            <button onClick={handleRejectOffer} disabled={updateOfferStatus.isPending} className="flex-1 py-3 rounded-xl bg-danger-600 hover:bg-danger-700 text-white text-sm font-bold transition-colors disabled:opacity-50">
+                                {updateOfferStatus.isPending ? "Rejecting..." : "Reject Offer"}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 
