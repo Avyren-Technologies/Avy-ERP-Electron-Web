@@ -1,320 +1,420 @@
 // ============================================================
-// Bulk Upload Modal — Excel upload, validation & submission
+// Bulk Upload Modal — 3-step wizard (template → validate → import)
 // ============================================================
-import React, { useState, useRef, useCallback } from 'react';
-import { cn } from '@/lib/utils';
-import { showError } from '@/lib/toast';
+import { useState, useRef } from 'react';
 import {
-    X, Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle2,
-    ChevronDown, ChevronRight, Loader2, Building2, AlertTriangle, RotateCcw,
+    X,
+    Download,
+    Upload,
+    CheckCircle,
+    XCircle,
+    Loader2,
+    FileSpreadsheet,
+    ChevronDown,
+    ChevronUp,
+    AlertCircle,
+    AlertTriangle,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { showSuccess, showApiError } from '@/lib/toast';
 import {
-    downloadTemplate,
-    parseAndValidateBulkUpload,
-    type ParsedCompany,
+    downloadCompanyTemplate,
+    useBulkValidateCompanies,
+    useBulkImportCompanies,
+} from '@/features/super-admin/api/use-tenant-queries';
+import type {
+    BulkValidationResult,
+    ValidatedCompany,
+    BulkImportResult,
 } from './bulk-upload-utils';
-import { useOnboardTenant } from '@/features/super-admin/api/use-tenant-queries';
-
-type UploadStage = 'upload' | 'review' | 'submitting' | 'done';
 
 interface BulkUploadModalProps {
     onClose: () => void;
     onSuccess?: () => void;
 }
 
+const STEPS = ['Download Template', 'Upload & Validate', 'Import Results'];
+
 export function BulkUploadModal({ onClose, onSuccess }: Readonly<BulkUploadModalProps>) {
-    const [stage, setStage] = useState<UploadStage>('upload');
-    const [parsedCompanies, setParsedCompanies] = useState<ParsedCompany[]>([]);
-    const [fileName, setFileName] = useState('');
-    const [dragOver, setDragOver] = useState(false);
-    const [submissionResults, setSubmissionResults] = useState<{ name: string; success: boolean; error?: string }[]>([]);
+    const [step, setStep] = useState(1);
+    const [file, setFile] = useState<File | null>(null);
+    const [downloading, setDownloading] = useState(false);
+    const [validationResult, setValidationResult] = useState<BulkValidationResult | null>(null);
+    const [importResult, setImportResult] = useState<BulkImportResult | null>(null);
     const [expandedErrors, setExpandedErrors] = useState<Set<number>>(new Set());
-    const fileRef = useRef<HTMLInputElement>(null);
-    const onboardMutation = useOnboardTenant();
+    const [dragOver, setDragOver] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const handleFile = useCallback(async (file: File) => {
-        if (!(/\.(xlsx|xls)$/i).exec(file.name)) {
-            showError('Invalid file type', 'Please upload an Excel file (.xlsx or .xls).');
-            return;
-        }
-        if (file.size > 10 * 1024 * 1024) {
-            showError('File too large', 'Maximum allowed size is 10 MB.');
-            return;
-        }
-        try {
-            setFileName(file.name);
-            const buffer = await file.arrayBuffer();
-            const results = parseAndValidateBulkUpload(buffer);
-            setParsedCompanies(results);
-            setStage('review');
-        } catch (err) {
-            console.error('BulkUpload: failed to parse workbook', err);
-            showError('Failed to parse file', 'The file may be corrupted or in an unsupported format.');
-        }
-    }, []);
+    const validateMutation = useBulkValidateCompanies();
+    const importMutation = useBulkImportCompanies();
 
-    const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) handleFile(file);
+    const resetState = () => {
+        setStep(1);
+        setFile(null);
+        setValidationResult(null);
+        setImportResult(null);
+        setExpandedErrors(new Set());
+        setDragOver(false);
     };
 
-    const onDrop = (e: React.DragEvent) => {
+    const handleClose = () => {
+        resetState();
+        onClose();
+    };
+
+    const handleDone = () => {
+        onSuccess?.();
+        handleClose();
+    };
+
+    const handleDownloadTemplate = async () => {
+        setDownloading(true);
+        try {
+            await downloadCompanyTemplate();
+            showSuccess('Template Downloaded', 'The Excel template has been downloaded.');
+        } catch (err) {
+            showApiError(err);
+        } finally {
+            setDownloading(false);
+        }
+    };
+
+    const handleFileSelect = (selected: File | null) => {
+        setFile(selected);
+        setValidationResult(null);
+        setExpandedErrors(new Set());
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        handleFileSelect(e.target.files?.[0] ?? null);
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
         e.preventDefault();
         setDragOver(false);
-        const file = e.dataTransfer.files[0];
-        if (file) handleFile(file);
+        const dropped = e.dataTransfer.files[0];
+        if (dropped && dropped.name.endsWith('.xlsx')) {
+            handleFileSelect(dropped);
+        }
     };
 
-    const toggleErrors = (idx: number) => {
-        setExpandedErrors(prev => {
+    const handleValidate = () => {
+        if (!file) return;
+        validateMutation.mutate(file, {
+            onSuccess: (result) => {
+                const payload = result?.data as BulkValidationResult;
+                setValidationResult(payload);
+            },
+            onError: (err) => showApiError(err),
+        });
+    };
+
+    const handleReUpload = () => {
+        setFile(null);
+        setValidationResult(null);
+        setExpandedErrors(new Set());
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const handleImport = () => {
+        if (!validationResult) return;
+        const validCompanies = validationResult.companies
+            .filter((c) => c.valid && c.payload)
+            .map((c) => ({ name: c.name, payload: c.payload }));
+        if (validCompanies.length === 0) return;
+
+        setStep(3);
+        importMutation.mutate(validCompanies, {
+            onSuccess: (result) => {
+                const payload = result?.data as BulkImportResult;
+                setImportResult(payload);
+                showSuccess('Import Complete', `${payload.successCount} company(ies) created successfully.`);
+            },
+            onError: (err) => showApiError(err),
+        });
+    };
+
+    const toggleErrorExpand = (rowIndex: number) => {
+        setExpandedErrors((prev) => {
             const next = new Set(prev);
-            if (next.has(idx)) next.delete(idx);
-            else next.add(idx);
+            if (next.has(rowIndex)) next.delete(rowIndex);
+            else next.add(rowIndex);
             return next;
         });
     };
 
-    const validCompanies = parsedCompanies.filter(c => c.errors.length === 0);
-    const invalidCompanies = parsedCompanies.filter(c => c.errors.length > 0);
-
-    const handleSubmit = async () => {
-        if (validCompanies.length === 0) return;
-        setStage('submitting');
-        const results: { name: string; success: boolean; error?: string }[] = [];
-
-        for (const company of validCompanies) {
-            const name = company.payload?.identity?.displayName || `Company ${company.rowIndex + 1}`;
-            try {
-                await onboardMutation.mutateAsync(company.payload);
-                results.push({ name, success: true });
-            } catch (e: any) {
-                const msg = e?.response?.data?.message ?? e?.response?.data?.error ?? e?.message ?? 'Unknown error';
-                results.push({ name, success: false, error: msg });
-            }
-        }
-
-        setSubmissionResults(results);
-        setStage('done');
-    };
-
-    const handleReset = () => {
-        setStage('upload');
-        setParsedCompanies([]);
-        setFileName('');
-        setSubmissionResults([]);
-        setExpandedErrors(new Set());
-        if (fileRef.current) fileRef.current.value = '';
+    const formatFileSize = (bytes: number) => {
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="bulk-upload-title"
-                className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200"
-            >
-
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-700 shadow-2xl w-full max-w-3xl mx-4 max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
                 {/* Header */}
-                <div className="flex items-center justify-between px-7 py-5 border-b border-neutral-100 dark:border-neutral-800 flex-shrink-0">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-600 flex items-center justify-center">
-                            <FileSpreadsheet size={20} className="text-white" />
-                        </div>
-                        <div>
-                            <h2 id="bulk-upload-title" className="text-lg font-bold text-primary-950 dark:text-white">Bulk Upload Companies</h2>
-                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Upload an Excel file to onboard multiple companies at once</p>
-                        </div>
+                <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-neutral-800 shrink-0">
+                    <div>
+                        <h2 className="text-lg font-bold text-primary-950 dark:text-white">Bulk Company Upload</h2>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
+                            Onboard multiple companies from an Excel file
+                        </p>
                     </div>
                     <button
-                        type="button"
-                        aria-label="Close"
-                        onClick={onClose}
-                        className="p-2 rounded-xl text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-600 transition-colors"
+                        onClick={handleClose}
+                        className="p-2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
                     >
-                        <X size={18} />
+                        <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                {/* Content */}
-                <div className="flex-1 overflow-y-auto px-7 py-6">
-
-                    {/* ---- STAGE: UPLOAD ---- */}
-                    {stage === 'upload' && (
-                        <div className="space-y-6">
-                            {/* Download Template */}
-                            <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800/50 rounded-2xl px-5 py-4">
-                                <div className="flex items-start gap-3">
-                                    <Download size={18} className="text-primary-600 flex-shrink-0 mt-0.5" />
-                                    <div className="flex-1">
-                                        <p className="text-sm font-bold text-primary-800 dark:text-primary-300">Download Template First</p>
-                                        <p className="text-xs text-primary-700 dark:text-primary-400 mt-1 leading-relaxed">
-                                            Download the Excel template, fill in the company details across all 15 sheets,
-                                            then upload it here. Each sheet corresponds to a step in the onboarding wizard.
-                                            Fields marked with * are required.
-                                        </p>
-                                        <button
-                                            type="button"
-                                            onClick={downloadTemplate}
-                                            className="mt-3 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-bold hover:bg-primary-700 shadow-sm shadow-primary-500/20 transition-all"
-                                        >
-                                            <Download size={14} />
-                                            Download Template (.xlsx)
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>                            {/* Upload Area */}
-                             <button
-                                type="button"
-                                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                                onDragLeave={() => setDragOver(false)}
-                                onDrop={onDrop}
-                                onClick={() => fileRef.current?.click()}
-                                className={cn(
-                                    'w-full border-2 border-dashed rounded-2xl px-8 py-12 text-center cursor-pointer transition-all duration-200',
-                                    dragOver
-                                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                                        : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 hover:border-primary-300 dark:hover:border-primary-700'
+                {/* Step Indicator */}
+                <div className="flex items-center justify-center gap-2 px-6 py-3 border-b border-neutral-100 dark:border-neutral-800 shrink-0">
+                    {STEPS.map((label, i) => {
+                        const stepNum = i + 1;
+                        const isActive = step === stepNum;
+                        const isCompleted = step > stepNum;
+                        return (
+                            <div key={label} className="flex items-center gap-2">
+                                {i > 0 && (
+                                    <div className={cn(
+                                        'w-8 h-px',
+                                        isCompleted || isActive ? 'bg-primary-400' : 'bg-neutral-200 dark:bg-neutral-700'
+                                    )} />
                                 )}
-                            >
-                                <Upload size={32} className={cn('mx-auto mb-4', dragOver ? 'text-primary-500' : 'text-neutral-300 dark:text-neutral-500')} />
-                                <p className="text-sm font-bold text-primary-950 dark:text-white">
-                                    {dragOver ? 'Drop your Excel file here' : 'Click to upload or drag & drop'}
-                                </p>
-                                <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-2">
-                                    Supports .xlsx and .xls files. Max size: 10 MB.
-                                </p>
-                            </button>
-                            <input
-                                ref={fileRef}
-                                type="file"
-                                accept=".xlsx,.xls"
-                                className="hidden"
-                                onChange={onFileChange}
-                            />
-
-                            {/* Instructions */}
-                            <div className="bg-neutral-50 dark:bg-neutral-800 rounded-2xl px-5 py-4 border border-neutral-100 dark:border-neutral-800">
-                                <p className="text-xs font-bold text-neutral-600 dark:text-neutral-300 mb-3">How it works:</p>
-                                <div className="space-y-2">
-                                    {[
-                                        'Download the template — it has 15 sheets matching the onboarding steps',
-                                        'Row 1 = Column headers, Row 2 = Hints/examples, Row 3+ = Your data',
-                                        'The "Display Name" column links data across sheets for the same company',
-                                        'Fill multiple rows in a sheet for multiple items (locations, contacts, shifts, etc.)',
-                                        'Upload the filled Excel — errors are highlighted before submission',
-                                        'Only error-free companies are submitted. Fix errors and re-upload the rest.',
-                                    ].map((step, i) => (
-                                        <div key={`step-${step.slice(0, 20)}`} className="flex items-start gap-2">
-                                            <span className="w-5 h-5 rounded-full bg-primary-100 dark:bg-primary-900/40 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                                <span className="text-[10px] font-bold text-primary-700 dark:text-primary-400">{i + 1}</span>
-                                            </span>
-                                            <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-4">{step}</p>
-                                        </div>
-                                    ))}
+                                <div className="flex items-center gap-1.5">
+                                    <span className={cn(
+                                        'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold',
+                                        isActive
+                                            ? 'bg-primary-600 text-white'
+                                            : isCompleted
+                                                ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-400'
+                                                : 'bg-neutral-100 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500'
+                                    )}>
+                                        {isCompleted ? (
+                                            <CheckCircle className="w-4 h-4" />
+                                        ) : (
+                                            stepNum
+                                        )}
+                                    </span>
+                                    <span className={cn(
+                                        'text-xs font-medium hidden sm:inline',
+                                        isActive
+                                            ? 'text-primary-700 dark:text-primary-400'
+                                            : 'text-neutral-400 dark:text-neutral-500'
+                                    )}>
+                                        {label}
+                                    </span>
                                 </div>
                             </div>
+                        );
+                    })}
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+                    {/* ── Step 1: Download Template ── */}
+                    {step === 1 && (
+                        <div className="space-y-5">
+                            <div>
+                                <h3 className="text-base font-bold text-primary-950 dark:text-white">
+                                    Step 1: Download Template
+                                </h3>
+                                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+                                    Download the Excel template, fill in your company data across all sheets, and proceed to upload.
+                                    Each sheet corresponds to a step in the onboarding wizard.
+                                </p>
+                            </div>
+                            <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800/50 rounded-xl p-4 flex items-start gap-3">
+                                <FileSpreadsheet className="w-5 h-5 text-primary-600 dark:text-primary-400 shrink-0 mt-0.5" />
+                                <div className="text-sm text-primary-700 dark:text-primary-300">
+                                    <p className="font-semibold">Template includes:</p>
+                                    <ul className="mt-1 space-y-0.5 list-disc list-inside text-primary-600 dark:text-primary-400">
+                                        <li>15 sheets matching the onboarding wizard steps</li>
+                                        <li>Required fields marked with * and sample data in Row 2</li>
+                                        <li>Display Name column links data across sheets for the same company</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <button
+                                onClick={handleDownloadTemplate}
+                                disabled={downloading}
+                                className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all disabled:opacity-50 dark:shadow-none"
+                            >
+                                {downloading ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <Download className="w-4 h-4" />
+                                )}
+                                {downloading ? 'Downloading...' : 'Download Template'}
+                            </button>
                         </div>
                     )}
 
-                    {/* ---- STAGE: REVIEW ---- */}
-                    {stage === 'review' && (
+                    {/* ── Step 2: Upload & Validate ── */}
+                    {step === 2 && (
                         <div className="space-y-5">
-                            {/* File info */}
-                            <div className="flex items-center gap-3 bg-neutral-50 dark:bg-neutral-800 rounded-xl px-4 py-3 border border-neutral-100 dark:border-neutral-800">
-                                <FileSpreadsheet size={18} className="text-primary-500 flex-shrink-0" />
-                                <div className="flex-1">
-                                    <p className="text-sm font-bold text-primary-950 dark:text-white">{fileName}</p>
-                                    <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                                        {parsedCompanies.length} compan{parsedCompanies.length === 1 ? 'y' : 'ies'} found
-                                    </p>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={handleReset}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                            <div>
+                                <h3 className="text-base font-bold text-primary-950 dark:text-white">
+                                    Step 2: Upload & Validate
+                                </h3>
+                                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+                                    Upload your filled template and validate the data before importing.
+                                </p>
+                            </div>
+
+                            {/* File Dropzone */}
+                            <div className="space-y-3">
+                                <label className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 block">
+                                    Excel File (.xlsx)
+                                </label>
+                                <div
+                                    onClick={() => fileInputRef.current?.click()}
+                                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                                    onDragLeave={() => setDragOver(false)}
+                                    onDrop={handleDrop}
+                                    className={cn(
+                                        'border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors',
+                                        dragOver
+                                            ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                                            : file
+                                                ? 'border-primary-300 bg-primary-50/50 dark:border-primary-700 dark:bg-primary-900/10'
+                                                : 'border-neutral-200 dark:border-neutral-700 hover:border-primary-300 dark:hover:border-primary-700 hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
+                                    )}
                                 >
-                                    <RotateCcw size={11} />
-                                    Re-upload
-                                </button>
-                            </div>
-
-                            {/* Summary bars */}
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-800/50 rounded-xl px-4 py-3">
-                                    <p className="text-2xl font-bold text-success-700 dark:text-success-400">{validCompanies.length}</p>
-                                    <p className="text-xs font-semibold text-success-600 dark:text-success-400">Ready to create</p>
-                                </div>
-                                <div className="bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800/50 rounded-xl px-4 py-3">
-                                    <p className="text-2xl font-bold text-danger-700 dark:text-danger-400">{invalidCompanies.length}</p>
-                                    <p className="text-xs font-semibold text-danger-600 dark:text-danger-400">Have errors</p>
-                                </div>
-                            </div>
-
-                            {/* Valid companies */}
-                            {validCompanies.length > 0 && (
-                                <div>
-                                    <p className="text-xs font-bold text-success-600 uppercase tracking-wider mb-2">
-                                        Valid Companies ({validCompanies.length})
-                                    </p>
-                                    <div className="space-y-2">
-                                        {validCompanies.map((c) => (
-                                            <div key={c.payload?.identity?.displayName ?? `valid-${c.rowIndex}`} className="flex items-center gap-3 bg-success-50 dark:bg-success-900/10 rounded-xl px-4 py-3 border border-success-100 dark:border-success-800/40">
-                                                <CheckCircle2 size={16} className="text-success-500 flex-shrink-0" />
-                                                <div className="flex-1">
-                                                    <p className="text-sm font-bold text-primary-950 dark:text-white">
-                                                        {c.payload?.identity?.displayName || `Company ${c.rowIndex + 1}`}
-                                                    </p>
-                                                    <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                                                        {c.payload?.identity?.industry} · {c.payload?.identity?.businessType}
-                                                    </p>
-                                                </div>
-                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-400">VALID</span>
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept=".xlsx"
+                                        onChange={handleFileChange}
+                                        className="hidden"
+                                    />
+                                    {file ? (
+                                        <div className="flex items-center justify-center gap-3">
+                                            <FileSpreadsheet className="w-8 h-8 text-primary-600 dark:text-primary-400" />
+                                            <div className="text-left">
+                                                <p className="text-sm font-semibold text-primary-950 dark:text-white">{file.name}</p>
+                                                <p className="text-xs text-neutral-500 dark:text-neutral-400">{formatFileSize(file.size)}</p>
                                             </div>
-                                        ))}
-                                    </div>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <Upload className="w-8 h-8 text-neutral-400 mx-auto mb-2" />
+                                            <p className="text-sm text-neutral-600 dark:text-neutral-400 font-medium">
+                                                Click to select or drag & drop your Excel file
+                                            </p>
+                                            <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+                                                Only .xlsx files are supported
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
+                            </div>
+
+                            {/* Validate Button */}
+                            {!validationResult && (
+                                <button
+                                    onClick={handleValidate}
+                                    disabled={!file || validateMutation.isPending}
+                                    className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all disabled:opacity-50 dark:shadow-none"
+                                >
+                                    {validateMutation.isPending ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            Validating...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle className="w-4 h-4" />
+                                            Validate
+                                        </>
+                                    )}
+                                </button>
                             )}
 
-                            {/* Invalid companies with errors */}
-                            {invalidCompanies.length > 0 && (
-                                <div>
-                                    <p className="text-xs font-bold text-danger-600 uppercase tracking-wider mb-2">
-                                        Companies with Errors ({invalidCompanies.length})
-                                    </p>
-                                    <div className="space-y-2">
-                                        {invalidCompanies.map((c, idx) => {
-                                            const isExpanded = expandedErrors.has(idx);
-                                            const displayName = c.payload?.identity?.displayName
-                                                || (c.errors[0]?.row === 0 ? 'File Error' : `Company Row ${c.rowIndex + 1}`);
+                            {/* Validation Results */}
+                            {validationResult && (
+                                <div className="space-y-4">
+                                    {/* Summary Bar */}
+                                    <div className="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700">
+                                        <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+                                            <span className="text-success-600 dark:text-success-400">{validationResult.validCount} valid</span>
+                                            {', '}
+                                            <span className="text-danger-600 dark:text-danger-400">{validationResult.errorCount} errors</span>
+                                            {' out of '}
+                                            <span>{validationResult.totalCompanies} companies</span>
+                                        </span>
+                                    </div>
+
+                                    {/* Company Cards */}
+                                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                                        {validationResult.companies.map((company: ValidatedCompany) => {
+                                            const hasErrors = !company.valid && company.errors && company.errors.length > 0;
+                                            const isExpanded = expandedErrors.has(company.rowIndex);
 
                                             return (
-                                                <div key={c.payload?.identity?.displayName ?? `invalid-${c.rowIndex}`} className="border border-danger-200 dark:border-danger-800/50 rounded-xl overflow-hidden">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => toggleErrors(idx)}
-                                                        className="w-full flex items-center gap-3 bg-danger-50 dark:bg-danger-900/10 px-4 py-3 text-left hover:bg-danger-100 dark:hover:bg-danger-900/20 transition-colors"
+                                                <div
+                                                    key={company.rowIndex}
+                                                    className={cn(
+                                                        'border rounded-xl overflow-hidden',
+                                                        company.valid
+                                                            ? 'border-success-200 dark:border-success-800/40'
+                                                            : 'border-danger-200 dark:border-danger-800/50'
+                                                    )}
+                                                >
+                                                    <div
+                                                        className={cn(
+                                                            'flex items-center gap-3 px-4 py-3',
+                                                            company.valid
+                                                                ? 'bg-success-50 dark:bg-success-900/10'
+                                                                : 'bg-danger-50 dark:bg-danger-900/10',
+                                                            hasErrors && 'cursor-pointer hover:bg-danger-100 dark:hover:bg-danger-900/20 transition-colors'
+                                                        )}
+                                                        onClick={() => hasErrors && toggleErrorExpand(company.rowIndex)}
                                                     >
-                                                        <AlertCircle size={16} className="text-danger-500 flex-shrink-0" />
-                                                        <div className="flex-1">
-                                                            <p className="text-sm font-bold text-primary-950 dark:text-white">{displayName}</p>
-                                                            <p className="text-xs text-danger-600 dark:text-danger-400">
-                                                                {c.errors.length} error{c.errors.length === 1 ? '' : 's'} found
+                                                        {company.valid ? (
+                                                            <CheckCircle className="w-4 h-4 text-success-600 dark:text-success-400 shrink-0" />
+                                                        ) : (
+                                                            <AlertCircle className="w-4 h-4 text-danger-600 dark:text-danger-400 shrink-0" />
+                                                        )}
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-bold text-primary-950 dark:text-white truncate">
+                                                                {company.name}
                                                             </p>
+                                                            {hasErrors && (
+                                                                <p className="text-xs text-danger-600 dark:text-danger-400">
+                                                                    {company.errors!.length} error{company.errors!.length !== 1 ? 's' : ''} found
+                                                                </p>
+                                                            )}
                                                         </div>
-                                                        {isExpanded ? <ChevronDown size={14} className="text-neutral-400" /> : <ChevronRight size={14} className="text-neutral-400" />}
-                                                    </button>
+                                                        {company.valid ? (
+                                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-400">
+                                                                VALID
+                                                            </span>
+                                                        ) : (
+                                                            <>
+                                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-danger-100 dark:bg-danger-900/30 text-danger-700 dark:text-danger-400">
+                                                                    ERRORS
+                                                                </span>
+                                                                {hasErrors && (
+                                                                    isExpanded
+                                                                        ? <ChevronUp className="w-4 h-4 text-neutral-400" />
+                                                                        : <ChevronDown className="w-4 h-4 text-neutral-400" />
+                                                                )}
+                                                            </>
+                                                        )}
+                                                    </div>
 
-                                                    {isExpanded && (
-                                                        <div className="px-4 py-3 bg-white dark:bg-neutral-900 space-y-1.5 max-h-60 overflow-y-auto">
-                                                            {c.errors.map((err, errIdx) => (
+                                                    {/* Expanded Error List */}
+                                                    {hasErrors && isExpanded && (
+                                                        <div className="px-4 py-3 bg-white dark:bg-neutral-900 space-y-1.5 max-h-48 overflow-y-auto border-t border-danger-100 dark:border-danger-800/30">
+                                                            {company.errors!.map((err, errIdx) => (
                                                                 <div key={`${err.sheet}-${err.field}-${errIdx}`} className="flex items-start gap-2 text-xs">
-                                                                    <AlertTriangle size={12} className="text-danger-400 flex-shrink-0 mt-0.5" />
+                                                                    <AlertTriangle className="w-3 h-3 text-danger-400 shrink-0 mt-0.5" />
                                                                     <div>
                                                                         <span className="font-bold text-neutral-700 dark:text-neutral-300">
                                                                             [{err.sheet}] {err.field}
                                                                         </span>
-                                                                        {err.row > 0 && <span className="text-neutral-400 dark:text-neutral-500"> (Row {err.row})</span>}
                                                                         <span className="text-danger-600 dark:text-danger-400"> — {err.message}</span>
                                                                     </div>
                                                                 </div>
@@ -325,148 +425,141 @@ export function BulkUploadModal({ onClose, onSuccess }: Readonly<BulkUploadModal
                                             );
                                         })}
                                     </div>
-                                </div>
-                            )}
 
-                            {invalidCompanies.length > 0 && validCompanies.length > 0 && (
-                                <div className="bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800/50 rounded-xl px-4 py-3">
-                                    <div className="flex items-start gap-2">
-                                        <AlertTriangle size={14} className="text-warning-600 flex-shrink-0 mt-0.5" />
-                                        <p className="text-xs text-warning-700 dark:text-warning-400">
-                                            Only the <strong>{validCompanies.length} valid</strong> compan{validCompanies.length === 1 ? 'y' : 'ies'} will be created.
-                                            Fix the errors in the Excel file and re-upload for the remaining {invalidCompanies.length} compan{invalidCompanies.length === 1 ? 'y' : 'ies'}.
-                                        </p>
+                                    {/* Actions */}
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={handleReUpload}
+                                            className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                                        >
+                                            Re-upload
+                                        </button>
+                                        <button
+                                            onClick={handleImport}
+                                            disabled={validationResult.validCount === 0}
+                                            className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all disabled:opacity-50 dark:shadow-none"
+                                        >
+                                            <Upload className="w-4 h-4" />
+                                            Import {validationResult.validCount} Valid Compan{validationResult.validCount !== 1 ? 'ies' : 'y'}
+                                        </button>
                                     </div>
                                 </div>
                             )}
                         </div>
                     )}
 
-                    {/* ---- STAGE: SUBMITTING ---- */}
-                    {stage === 'submitting' && (
-                        <div className="flex flex-col items-center justify-center py-16 space-y-4">
-                            <Loader2 size={40} className="text-primary-500 animate-spin" />
-                            <p className="text-sm font-bold text-primary-950 dark:text-white">Creating companies...</p>
-                            <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                                Processing {validCompanies.length} compan{validCompanies.length === 1 ? 'y' : 'ies'}. Please wait.
-                            </p>
-                        </div>
-                    )}
-
-                    {/* ---- STAGE: DONE ---- */}
-                    {stage === 'done' && (
+                    {/* ── Step 3: Import Results ── */}
+                    {step === 3 && (
                         <div className="space-y-5">
-                            <div className="text-center py-6">
-                                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-accent-600 flex items-center justify-center mx-auto mb-4">
-                                    <Building2 size={28} className="text-white" />
-                                </div>
-                                <h3 className="text-lg font-bold text-primary-950 dark:text-white">Bulk Upload Complete</h3>
-                                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                                    {submissionResults.filter(r => r.success).length} of {submissionResults.length} companies created successfully
-                                </p>
+                            <div>
+                                <h3 className="text-base font-bold text-primary-950 dark:text-white">
+                                    Step 3: Import Results
+                                </h3>
                             </div>
 
-                            <div className="space-y-2">
-                                {submissionResults.map((result) => (
-                                    <div
-                                        key={`result-${result.name}`}
-                                        className={cn(
-                                            'flex items-center gap-3 rounded-xl px-4 py-3 border',
-                                            result.success
-                                                ? 'bg-success-50 dark:bg-success-900/10 border-success-200 dark:border-success-800/40'
-                                                : 'bg-danger-50 dark:bg-danger-900/10 border-danger-200 dark:border-danger-800/40'
-                                        )}
-                                    >
-                                        {result.success
-                                            ? <CheckCircle2 size={16} className="text-success-500 flex-shrink-0" />
-                                            : <AlertCircle size={16} className="text-danger-500 flex-shrink-0" />
-                                        }
-                                        <div className="flex-1">
-                                            <p className="text-sm font-bold text-primary-950 dark:text-white">{result.name}</p>
-                                            {result.error && (
-                                                <p className="text-xs text-danger-600 dark:text-danger-400 mt-0.5">{result.error}</p>
-                                            )}
+                            {importMutation.isPending && !importResult && (
+                                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                                    <Loader2 className="w-8 h-8 text-primary-600 dark:text-primary-400 animate-spin" />
+                                    <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+                                        Creating companies...
+                                    </p>
+                                </div>
+                            )}
+
+                            {importResult && (
+                                <div className="space-y-4">
+                                    {/* Summary Cards */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-800/50 rounded-xl p-4 text-center">
+                                            <p className="text-2xl font-bold text-success-700 dark:text-success-400">
+                                                {importResult.successCount}
+                                            </p>
+                                            <p className="text-sm font-medium text-success-600 dark:text-success-400 mt-0.5">
+                                                Successfully Created
+                                            </p>
                                         </div>
-                                        <span className={cn(
-                                            'text-[10px] font-bold px-2 py-0.5 rounded',
-                                            result.success
-                                                ? 'bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-400'
-                                                : 'bg-danger-100 dark:bg-danger-900/30 text-danger-700 dark:text-danger-400'
-                                        )}>
-                                            {result.success ? 'CREATED' : 'FAILED'}
-                                        </span>
+                                        <div className="bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800/50 rounded-xl p-4 text-center">
+                                            <p className="text-2xl font-bold text-danger-700 dark:text-danger-400">
+                                                {importResult.failureCount}
+                                            </p>
+                                            <p className="text-sm font-medium text-danger-600 dark:text-danger-400 mt-0.5">
+                                                Failed
+                                            </p>
+                                        </div>
                                     </div>
-                                ))}
-                            </div>
+
+                                    {/* Results List */}
+                                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                                        {importResult.results.map((result, idx) => (
+                                            <div
+                                                key={`result-${result.name}-${idx}`}
+                                                className={cn(
+                                                    'flex items-center gap-3 rounded-xl px-4 py-3 border',
+                                                    result.success
+                                                        ? 'bg-success-50 dark:bg-success-900/10 border-success-200 dark:border-success-800/40'
+                                                        : 'bg-danger-50 dark:bg-danger-900/10 border-danger-200 dark:border-danger-800/40'
+                                                )}
+                                            >
+                                                {result.success ? (
+                                                    <CheckCircle className="w-4 h-4 text-success-600 dark:text-success-400 shrink-0" />
+                                                ) : (
+                                                    <XCircle className="w-4 h-4 text-danger-600 dark:text-danger-400 shrink-0" />
+                                                )}
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-bold text-primary-950 dark:text-white truncate">
+                                                        {result.name}
+                                                    </p>
+                                                    {result.companyId && (
+                                                        <p className="text-xs text-neutral-500 dark:text-neutral-400 font-mono">
+                                                            ID: {result.companyId}
+                                                        </p>
+                                                    )}
+                                                    {result.error && (
+                                                        <p className="text-xs text-danger-600 dark:text-danger-400 mt-0.5">
+                                                            {result.error}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <span className={cn(
+                                                    'text-[10px] font-bold px-2 py-0.5 rounded',
+                                                    result.success
+                                                        ? 'bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-400'
+                                                        : 'bg-danger-100 dark:bg-danger-900/30 text-danger-700 dark:text-danger-400'
+                                                )}>
+                                                    {result.success ? 'CREATED' : 'FAILED'}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-between px-7 py-4 border-t border-neutral-100 dark:border-neutral-800 flex-shrink-0">
-                    {stage === 'upload' && (
-                        <>
-                            <div />
-                            <button
-                                type="button"
-                                onClick={onClose}
-                                className="px-6 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
-                            >
-                                Cancel
-                            </button>
-                        </>
+                <div className="px-6 py-4 border-t border-neutral-200 dark:border-neutral-800 flex items-center justify-between shrink-0 bg-neutral-50/50 dark:bg-neutral-900/50">
+                    <button
+                        onClick={handleClose}
+                        className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                    >
+                        {step === 3 && importResult ? 'Close' : 'Cancel'}
+                    </button>
+                    {step === 1 && (
+                        <button
+                            onClick={() => setStep(2)}
+                            className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none"
+                        >
+                            Next
+                        </button>
                     )}
-
-                    {stage === 'review' && (
-                        <>
-                            <button
-                                type="button"
-                                onClick={handleReset}
-                                className="px-5 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
-                            >
-                                Back
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleSubmit}
-                                disabled={validCompanies.length === 0}
-                                className={cn(
-                                    'flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all',
-                                    validCompanies.length > 0
-                                        ? 'bg-primary-600 text-white hover:bg-primary-700 shadow-sm shadow-primary-500/20'
-                                        : 'bg-neutral-200 dark:bg-neutral-700 text-neutral-400 dark:text-neutral-500 cursor-not-allowed'
-                                )}
-                            >
-                                <Building2 size={15} />
-                                Create {validCompanies.length} Compan{validCompanies.length === 1 ? 'y' : 'ies'}
-                            </button>
-                        </>
-                    )}
-
-                    {stage === 'submitting' && (
-                        <div className="w-full text-center text-xs text-neutral-400 dark:text-neutral-500">
-                            Do not close this window while companies are being created...
-                        </div>
-                    )}
-
-                    {stage === 'done' && (
-                        <>
-                            <button
-                                type="button"
-                                onClick={handleReset}
-                                className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
-                            >
-                                <RotateCcw size={13} />
-                                Upload More
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => { onSuccess?.(); onClose(); }}
-                                className="px-6 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-bold hover:bg-primary-700 shadow-sm shadow-primary-500/20 transition-all"
-                            >
-                                Done
-                            </button>
-                        </>
+                    {step === 3 && importResult && (
+                        <button
+                            onClick={handleDone}
+                            className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none"
+                        >
+                            Done
+                        </button>
                     )}
                 </div>
             </div>
