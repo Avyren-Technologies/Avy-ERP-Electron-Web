@@ -3,6 +3,7 @@
 // ============================================================
 import React, { useState, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
+import { showError } from '@/lib/toast';
 import {
     X, Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle2,
     ChevronDown, ChevronRight, Loader2, Building2, AlertTriangle, RotateCcw,
@@ -33,14 +34,23 @@ export function BulkUploadModal({ onClose, onSuccess }: Readonly<BulkUploadModal
 
     const handleFile = useCallback(async (file: File) => {
         if (!(/\.(xlsx|xls)$/i).exec(file.name)) {
-            alert('Please upload an Excel file (.xlsx or .xls)');
+            showError('Invalid file type', 'Please upload an Excel file (.xlsx or .xls).');
             return;
         }
-        setFileName(file.name);
-        const buffer = await file.arrayBuffer();
-        const results = parseAndValidateBulkUpload(buffer);
-        setParsedCompanies(results);
-        setStage('review');
+        if (file.size > 10 * 1024 * 1024) {
+            showError('File too large', 'Maximum allowed size is 10 MB.');
+            return;
+        }
+        try {
+            setFileName(file.name);
+            const buffer = await file.arrayBuffer();
+            const results = parseAndValidateBulkUpload(buffer);
+            setParsedCompanies(results);
+            setStage('review');
+        } catch (err) {
+            console.error('BulkUpload: failed to parse workbook', err);
+            showError('Failed to parse file', 'The file may be corrupted or in an unsupported format.');
+        }
     }, []);
 
     const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -98,7 +108,12 @@ export function BulkUploadModal({ onClose, onSuccess }: Readonly<BulkUploadModal
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="bulk-upload-title"
+                className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200"
+            >
 
                 {/* Header */}
                 <div className="flex items-center justify-between px-7 py-5 border-b border-neutral-100 dark:border-neutral-800 flex-shrink-0">
@@ -107,12 +122,13 @@ export function BulkUploadModal({ onClose, onSuccess }: Readonly<BulkUploadModal
                             <FileSpreadsheet size={20} className="text-white" />
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-primary-950 dark:text-white">Bulk Upload Companies</h2>
+                            <h2 id="bulk-upload-title" className="text-lg font-bold text-primary-950 dark:text-white">Bulk Upload Companies</h2>
                             <p className="text-xs text-neutral-500 dark:text-neutral-400">Upload an Excel file to onboard multiple companies at once</p>
                         </div>
                     </div>
                     <button
                         type="button"
+                        aria-label="Close"
                         onClick={onClose}
                         className="p-2 rounded-xl text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-600 transition-colors"
                     >

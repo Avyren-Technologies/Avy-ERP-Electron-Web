@@ -33,6 +33,31 @@ const RESERVED_SLUGS = new Set([
     'support', 'status', 'blog', 'avy-erp-api', 'pg', 'ssh',
 ]);
 
+// ---- Allowed timezones (format: ABBR UTC±HH:MM) ----
+export const ALLOWED_TIMEZONES = [
+    'UTC UTC+0:00',
+    'GMT UTC+0:00',
+    'WET UTC+0:00',
+    'CET UTC+1:00',
+    'EET UTC+2:00',
+    'MSK UTC+3:00',
+    'GST UTC+4:00',
+    'PKT UTC+5:00',
+    'IST UTC+5:30',
+    'BST UTC+6:00',
+    'ICT UTC+7:00',
+    'CST UTC+8:00',
+    'JST UTC+9:00',
+    'AEST UTC+10:00',
+    'NZST UTC+12:00',
+    'EST UTC-5:00',
+    'CST UTC-6:00',
+    'MST UTC-7:00',
+    'PST UTC-8:00',
+    'AKST UTC-9:00',
+    'HST UTC-10:00',
+];
+
 // ---- Column Definitions per Sheet ----
 
 const COMPANY_IDENTITY_COLS = [
@@ -93,7 +118,7 @@ const FISCAL_COLS = [
     { header: 'Cutoff Day', key: 'cutoffDay', required: false, hint: CUTOFF_DAYS.slice(0, 4).join(', ') + '...' },
     { header: 'Disbursement Day', key: 'disbursementDay', required: false, hint: DISBURSEMENT_DAYS.slice(0, 4).join(', ') + '...' },
     { header: 'Week Start *', key: 'weekStart', required: true, hint: 'Monday | Sunday | ...' },
-    { header: 'Timezone', key: 'timezone', required: false, hint: 'IST UTC+5:30 (default)' },
+    { header: 'Timezone', key: 'timezone', required: false, hint: `IST UTC+5:30 (default) | ${ALLOWED_TIMEZONES.filter(t => t !== 'IST UTC+5:30').slice(0, 5).join(' | ')} | ...` },
     { header: 'Working Days *', key: 'workingDays', required: true, hint: 'Mon,Tue,Wed,Thu,Fri (comma-separated)' },
 ];
 
@@ -696,6 +721,13 @@ function validateFiscal(row: Record<string, string>, rowIdx: number, errors: Bul
 
     const weekStart = get('weekStart') || 'Monday';
 
+    const rawTimezone = get('timezone');
+    const timezone = rawTimezone || 'IST UTC+5:30';
+    if (rawTimezone && !ALLOWED_TIMEZONES.includes(rawTimezone)) {
+        const examples = ALLOWED_TIMEZONES.slice(0, 5).join(', ');
+        addError(errors, rowIdx, sheet, 'Timezone', `Invalid timezone "${rawTimezone}". Use format ABBR UTC±HH:MM (e.g. ${examples}, …).`);
+    }
+
     const workingDaysStr = get('workingDays');
     let workingDays: string[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
     if (workingDaysStr) {
@@ -710,7 +742,7 @@ function validateFiscal(row: Record<string, string>, rowIdx: number, errors: Bul
         fyType, fyCustomStartMonth: get('fyCustomStartMonth'), fyCustomEndMonth: get('fyCustomEndMonth'),
         payrollFreq: get('payrollFreq') || 'Monthly',
         cutoffDay: get('cutoffDay'), disbursementDay: get('disbursementDay'),
-        weekStart, timezone: 'IST UTC+5:30', workingDays,
+        weekStart, timezone, workingDays,
     };
 }
 
