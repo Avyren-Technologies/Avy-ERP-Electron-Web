@@ -4,6 +4,7 @@ import { authApi, decodeJwtPayload } from '@/lib/api/auth';
 import type { LoginResponse } from '@/lib/api/auth';
 import { useAuthStore, mapBackendRole } from '@/store/useAuthStore';
 import { getLoginPath } from '@/lib/tenant';
+import { unregisterWebPush } from '@/lib/notifications';
 
 export function useLoginMutation() {
     const navigate = useNavigate();
@@ -48,7 +49,10 @@ export function useLogoutMutation() {
     const signOut = useAuthStore((s) => s.signOut);
 
     return useMutation({
-        mutationFn: () => authApi.logout(),
+        mutationFn: async () => {
+            await unregisterWebPush();
+            return authApi.logout();
+        },
         onSuccess: () => {
             signOut();
             navigate(getLoginPath());

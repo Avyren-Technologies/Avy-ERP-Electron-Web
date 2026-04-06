@@ -1,13 +1,14 @@
 // ============================================================
 // DashboardLayout — Main application shell
 // ============================================================
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { useNavigationManifest } from '@/features/company-admin/api';
 import { usePermissionRefresh } from '@/hooks/usePermissionRefresh';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
+import { initWebPushNotifications } from '@/lib/notifications';
 
 export function DashboardLayout() {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -18,6 +19,11 @@ export function DashboardLayout() {
 
     // Auto-logout after inactivity (respects company's sessionTimeoutMinutes from SystemControls)
     useSessionTimeout();
+
+    // Initialize web push notifications after authentication
+    useEffect(() => {
+        initWebPushNotifications();
+    }, []);
 
     // Extract manifest sections from API response envelope
     const manifestSections = manifestData?.data ?? (Array.isArray(manifestData) ? manifestData : undefined);
