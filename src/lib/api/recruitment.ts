@@ -170,6 +170,121 @@ async function getTrainingDashboard(): Promise<ApiResponse<any>> {
     return response.data;
 }
 
+// ── Training Sessions ──
+
+async function listTrainingSessions(params?: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.get('/hr/training-sessions', { params });
+    return response.data;
+}
+
+async function createTrainingSession(data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.post('/hr/training-sessions', data);
+    return response.data;
+}
+
+async function getTrainingSession(id: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/training-sessions/${id}`);
+    return response.data;
+}
+
+async function updateTrainingSession(id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.patch(`/hr/training-sessions/${id}`, data);
+    return response.data;
+}
+
+async function updateTrainingSessionStatus(id: string, data: { status: string; cancelledReason?: string }): Promise<ApiResponse<any>> {
+    const response = await client.patch(`/hr/training-sessions/${id}/status`, data);
+    return response.data;
+}
+
+async function deleteTrainingSession(id: string): Promise<ApiResponse<any>> {
+    const response = await client.delete(`/hr/training-sessions/${id}`);
+    return response.data;
+}
+
+// ── Training Attendance ──
+
+async function listSessionAttendance(sessionId: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/training-sessions/${sessionId}/attendance`);
+    return response.data;
+}
+
+async function registerSessionAttendees(sessionId: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.post(`/hr/training-sessions/${sessionId}/attendance`, data);
+    return response.data;
+}
+
+async function markAttendance(id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.patch(`/hr/training-attendance/${id}`, data);
+    return response.data;
+}
+
+async function bulkMarkAttendance(sessionId: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.patch(`/hr/training-sessions/${sessionId}/attendance/bulk`, data);
+    return response.data;
+}
+
+// ── Training Evaluations ──
+
+async function submitTrainingEvaluation(nominationId: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.post(`/hr/training-nominations/${nominationId}/evaluation`, data);
+    return response.data;
+}
+
+async function getTrainingEvaluation(nominationId: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/training-nominations/${nominationId}/evaluation`);
+    return response.data;
+}
+
+async function listSessionEvaluations(sessionId: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/training-sessions/${sessionId}/evaluations`);
+    return response.data;
+}
+
+async function getTrainingEvaluationSummary(trainingId: string): Promise<ApiResponse<any>> {
+    const response = await client.get('/hr/training-evaluations/summary', { params: { trainingId } });
+    return response.data;
+}
+
+async function submitEssFeedback(nominationId: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.post(`/ess/training/${nominationId}/feedback`, data);
+    return response.data;
+}
+
+// ── Expiring Certificates ──
+
+async function getExpiringCertificates(days: number = 30): Promise<ApiResponse<any>> {
+    const response = await client.get('/hr/training-certificates/expiring', { params: { days } });
+    return response.data;
+}
+
+// ── Trainers ──
+
+async function listTrainers(params?: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.get('/hr/trainers', { params });
+    return response.data;
+}
+
+async function createTrainer(data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.post('/hr/trainers', data);
+    return response.data;
+}
+
+async function getTrainer(id: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/trainers/${id}`);
+    return response.data;
+}
+
+async function updateTrainer(id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.patch(`/hr/trainers/${id}`, data);
+    return response.data;
+}
+
+async function deleteTrainer(id: string): Promise<ApiResponse<any>> {
+    const response = await client.delete(`/hr/trainers/${id}`);
+    return response.data;
+}
+
 // ── Asset Categories ──
 
 async function listAssetCategories(params?: {
@@ -613,6 +728,32 @@ export const recruitmentApi = {
     updateTrainingNomination,
     // Training Dashboard
     getTrainingDashboard,
+    // Training Sessions
+    listTrainingSessions,
+    createTrainingSession,
+    getTrainingSession,
+    updateTrainingSession,
+    updateTrainingSessionStatus,
+    deleteTrainingSession,
+    // Training Attendance
+    listSessionAttendance,
+    registerSessionAttendees,
+    markAttendance,
+    bulkMarkAttendance,
+    // Training Evaluations
+    submitTrainingEvaluation,
+    getTrainingEvaluation,
+    listSessionEvaluations,
+    getTrainingEvaluationSummary,
+    submitEssFeedback,
+    // Expiring Certificates
+    getExpiringCertificates,
+    // Trainers
+    listTrainers,
+    createTrainer,
+    getTrainer,
+    updateTrainer,
+    deleteTrainer,
     // Asset Categories
     listAssetCategories,
     createAssetCategory,

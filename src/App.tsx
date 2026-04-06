@@ -176,6 +176,7 @@ import { ComplianceDashboardScreen } from './features/company-admin/hr/analytics
 import { PerformanceAnalyticsDashboardScreen } from './features/company-admin/hr/analytics/PerformanceAnalyticsDashboardScreen';
 import { RecruitmentDashboardScreen } from './features/company-admin/hr/analytics/RecruitmentDashboardScreen';
 import { AttritionDashboardScreen } from './features/company-admin/hr/analytics/AttritionDashboardScreen';
+import { TrainingDashboardScreen } from './features/company-admin/hr/analytics/TrainingDashboardScreen';
 import { ReportsHubScreen } from './features/company-admin/hr/analytics/ReportsHubScreen';
 
 // ESS Self-Service Screens (Employee)
@@ -452,6 +453,7 @@ function App() {
         <Route path="company/hr/analytics/performance" element={<RequirePermission permission="hr:read"><PerformanceAnalyticsDashboardScreen /></RequirePermission>} />
         <Route path="company/hr/analytics/recruitment" element={<RequirePermission permission="hr:read"><RecruitmentDashboardScreen /></RequirePermission>} />
         <Route path="company/hr/analytics/attrition" element={<RequirePermission permission="hr:read"><AttritionDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/training" element={<RequirePermission permission="hr:read"><TrainingDashboardScreen /></RequirePermission>} />
         {/* Operations module routes */}
         <Route path="inventory" element={<RequireRole roles={['super-admin', 'company-admin']}><InventoryScreen /></RequireRole>} />
         <Route path="production" element={<RequireRole roles={['super-admin', 'company-admin']}><ProductionScreen /></RequireRole>} />

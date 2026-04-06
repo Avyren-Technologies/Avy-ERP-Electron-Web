@@ -40,6 +40,34 @@ export const recruitmentKeys = {
     trainingDashboard: () =>
         [...recruitmentKeys.all, 'training-dashboard'] as const,
 
+    // Training Sessions
+    trainingSessions: (params?: Record<string, unknown>) =>
+        [...recruitmentKeys.all, 'training-sessions', params] as const,
+    trainingSession: (id: string) =>
+        [...recruitmentKeys.all, 'training-session', id] as const,
+
+    // Training Attendance
+    sessionAttendance: (sessionId: string) =>
+        [...recruitmentKeys.all, 'session-attendance', sessionId] as const,
+
+    // Training Evaluations
+    trainingEvaluation: (nominationId: string) =>
+        [...recruitmentKeys.all, 'training-evaluation', nominationId] as const,
+    sessionEvaluations: (sessionId: string) =>
+        [...recruitmentKeys.all, 'session-evaluations', sessionId] as const,
+    evaluationSummary: (trainingId: string) =>
+        [...recruitmentKeys.all, 'evaluation-summary', trainingId] as const,
+
+    // Expiring Certificates
+    expiringCertificates: (days?: number) =>
+        [...recruitmentKeys.all, 'expiring-certificates', days] as const,
+
+    // Trainers
+    trainers: (params?: Record<string, unknown>) =>
+        [...recruitmentKeys.all, 'trainers', params] as const,
+    trainer: (id: string) =>
+        [...recruitmentKeys.all, 'trainer', id] as const,
+
     // Asset Categories
     assetCategories: (params?: Record<string, unknown>) =>
         [...recruitmentKeys.all, 'asset-categories', params] as const,
@@ -449,5 +477,84 @@ export function useInterviewEvaluations(interviewId: string) {
         queryKey: recruitmentKeys.interviewEvaluations(interviewId),
         queryFn: () => recruitmentApi.listInterviewEvaluations(interviewId),
         enabled: !!interviewId,
+    });
+}
+
+// ── Training Sessions ──
+
+export function useTrainingSessions(params?: Record<string, unknown>) {
+    return useQuery({
+        queryKey: recruitmentKeys.trainingSessions(params),
+        queryFn: () => recruitmentApi.listTrainingSessions(params),
+    });
+}
+
+export function useTrainingSession(id: string) {
+    return useQuery({
+        queryKey: recruitmentKeys.trainingSession(id),
+        queryFn: () => recruitmentApi.getTrainingSession(id),
+        enabled: !!id,
+    });
+}
+
+// ── Training Attendance ──
+
+export function useSessionAttendance(sessionId: string) {
+    return useQuery({
+        queryKey: recruitmentKeys.sessionAttendance(sessionId),
+        queryFn: () => recruitmentApi.listSessionAttendance(sessionId),
+        enabled: !!sessionId,
+    });
+}
+
+// ── Training Evaluations ──
+
+export function useTrainingEvaluation(nominationId: string) {
+    return useQuery({
+        queryKey: recruitmentKeys.trainingEvaluation(nominationId),
+        queryFn: () => recruitmentApi.getTrainingEvaluation(nominationId),
+        enabled: !!nominationId,
+    });
+}
+
+export function useSessionEvaluations(sessionId: string) {
+    return useQuery({
+        queryKey: recruitmentKeys.sessionEvaluations(sessionId),
+        queryFn: () => recruitmentApi.listSessionEvaluations(sessionId),
+        enabled: !!sessionId,
+    });
+}
+
+export function useEvaluationSummary(trainingId: string) {
+    return useQuery({
+        queryKey: recruitmentKeys.evaluationSummary(trainingId),
+        queryFn: () => recruitmentApi.getTrainingEvaluationSummary(trainingId),
+        enabled: !!trainingId,
+    });
+}
+
+// ── Expiring Certificates ──
+
+export function useExpiringCertificates(days?: number) {
+    return useQuery({
+        queryKey: recruitmentKeys.expiringCertificates(days),
+        queryFn: () => recruitmentApi.getExpiringCertificates(days),
+    });
+}
+
+// ── Trainers ──
+
+export function useTrainers(params?: Record<string, unknown>) {
+    return useQuery({
+        queryKey: recruitmentKeys.trainers(params),
+        queryFn: () => recruitmentApi.listTrainers(params),
+    });
+}
+
+export function useTrainer(id: string) {
+    return useQuery({
+        queryKey: recruitmentKeys.trainer(id),
+        queryFn: () => recruitmentApi.getTrainer(id),
+        enabled: !!id,
     });
 }
