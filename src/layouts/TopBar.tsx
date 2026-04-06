@@ -3,8 +3,10 @@
 // ============================================================
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
+import { notificationApi } from '@/lib/api/notifications';
+import { showApiError } from '@/lib/toast';
 import {
     Search, Sun, Moon, Monitor, Bell, ChevronDown, X,
     LayoutDashboard, Building2, CreditCard, Blocks, Activity,
@@ -215,22 +217,67 @@ function ThemeSwitch() {
 }
 
 // ============================================================
-// Notifications Panel (list populated from API when available)
+// Notifications Panel (API-backed with polling)
 // ============================================================
-type TopBarNotification = {
-    id: number;
-    title: string;
-    body: string;
-    time: string;
-    unread: boolean;
-    type: 'info' | 'success' | 'warning' | 'danger';
+function formatTimeAgo(dateStr: string): string {
+    const now = Date.now();
+    const then = new Date(dateStr).getTime();
+    const diffMs = now - then;
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHrs = Math.floor(diffMins / 60);
+    if (diffHrs < 24) return `${diffHrs}h ago`;
+    const diffDays = Math.floor(diffHrs / 24);
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return new Date(dateStr).toLocaleDateString();
+}
+
+const notificationKeys = {
+    all: ['notifications'] as const,
+    unreadCount: () => [...notificationKeys.all, 'unread-count'] as const,
+    list: (params?: { page?: number; limit?: number }) =>
+        params ? [...notificationKeys.all, 'list', params] as const : [...notificationKeys.all, 'list'] as const,
 };
 
 function NotificationsPanel() {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
-    const [notifications, setNotifications] = useState<TopBarNotification[]>([]);
-    const unreadCount = notifications.filter((n) => n.unread).length;
+    const queryClient = useQueryClient();
+    const navigate = useNavigate();
+
+    // Poll for unread count every 30 seconds
+    const { data: unreadData } = useQuery({
+        queryKey: notificationKeys.unreadCount(),
+        queryFn: () => notificationApi.getUnreadCount(),
+        refetchInterval: 30000,
+    });
+
+    // Fetch notification list only when dropdown is open
+    const { data: notifData } = useQuery({
+        queryKey: notificationKeys.list({ limit: 15 }),
+        queryFn: () => notificationApi.listNotifications({ limit: 15 }),
+        enabled: open,
+    });
+
+    const markAsReadMutation = useMutation({
+        mutationFn: (id: string) => notificationApi.markAsRead(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: notificationKeys.all });
+        },
+        onError: (err) => showApiError(err),
+    });
+
+    const markAllReadMutation = useMutation({
+        mutationFn: () => notificationApi.markAllAsRead(),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: notificationKeys.all });
+        },
+        onError: (err) => showApiError(err),
+    });
+
+    const unreadCount = unreadData?.data?.count ?? 0;
+    const notifications = notifData?.data ?? [];
 
     useEffect(() => {
         const handler = (e: MouseEvent) => {
@@ -240,11 +287,18 @@ function NotificationsPanel() {
         return () => document.removeEventListener('mousedown', handler);
     }, []);
 
-    const typeColors = {
+    const typeColors: Record<string, string> = {
         info: 'bg-info-50 text-info-600 dark:bg-info-900/40',
         success: 'bg-success-50 text-success-600 dark:bg-success-900/40',
         warning: 'bg-warning-50 text-warning-600 dark:bg-warning-900/40',
         danger: 'bg-danger-50 text-danger-600 dark:bg-danger-900/40',
+    };
+
+    const typeIcons: Record<string, string> = {
+        info: 'i',
+        success: '✓',
+        warning: '!',
+        danger: '!!',
     };
 
     return (
@@ -261,7 +315,9 @@ function NotificationsPanel() {
             >
                 <Bell size={17} strokeWidth={2} />
                 {unreadCount > 0 && (
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-danger-500 rounded-full ring-2 ring-white dark:ring-neutral-900" />
+                    <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-danger-500 rounded-full ring-2 ring-white dark:ring-neutral-900">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
                 )}
             </button>
 
@@ -280,8 +336,9 @@ function NotificationsPanel() {
                         {unreadCount > 0 && (
                             <button
                                 type="button"
-                                onClick={() => setNotifications((n) => n.map((i) => ({ ...i, unread: false })))}
-                                className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline"
+                                onClick={() => markAllReadMutation.mutate()}
+                                disabled={markAllReadMutation.isPending}
+                                className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline disabled:opacity-50"
                             >
                                 Mark all read
                             </button>
@@ -289,7 +346,7 @@ function NotificationsPanel() {
                     </div>
 
                     {/* List */}
-                    <div className="max-h-[400px] overflow-y-auto divide-y divide-neutral-50 dark:divide-neutral-800">
+                    <div className="max-h-[400px] overflow-y-auto divide-y divide-neutral-50 dark:divide-neutral-800 custom-scrollbar">
                         {notifications.length === 0 ? (
                             <div className="px-5 py-12 text-center">
                                 <Bell className="mx-auto mb-3 h-10 w-10 text-neutral-300 dark:text-neutral-600" strokeWidth={1.5} />
@@ -299,28 +356,36 @@ function NotificationsPanel() {
                                 </p>
                             </div>
                         ) : (
-                            notifications.map((n) => (
+                            notifications.map((n: any) => (
                                 <div
                                     key={n.id}
+                                    onClick={() => {
+                                        if (!n.readAt) markAsReadMutation.mutate(n.id);
+                                    }}
                                     className={cn(
                                         'flex items-start gap-3 px-5 py-4 hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer transition-colors',
-                                        n.unread && 'bg-primary-50/60 dark:bg-primary-900/10'
+                                        !n.readAt && 'bg-primary-50/60 dark:bg-primary-900/10'
                                     )}
                                 >
-                                    <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-sm', typeColors[n.type])}>
-                                        {n.type === 'info' && '💬'}
-                                        {n.type === 'success' && '✓'}
-                                        {n.type === 'warning' && '⚠'}
-                                        {n.type === 'danger' && '🔴'}
+                                    <div className={cn(
+                                        'w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-xs font-bold',
+                                        typeColors[n.type] ?? typeColors.info
+                                    )}>
+                                        {typeIcons[n.type] ?? 'i'}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className={cn('text-sm font-semibold text-primary-950 dark:text-white', !n.unread && 'font-medium text-neutral-700 dark:text-neutral-300')}>
+                                        <p className={cn(
+                                            'text-sm text-primary-950 dark:text-white',
+                                            !n.readAt ? 'font-semibold' : 'font-medium text-neutral-700 dark:text-neutral-300'
+                                        )}>
                                             {n.title}
                                         </p>
-                                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 leading-4">{n.body}</p>
-                                        <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-1 font-medium">{n.time}</p>
+                                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 leading-4 line-clamp-2">{n.body}</p>
+                                        <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-1 font-medium">
+                                            {formatTimeAgo(n.createdAt)}
+                                        </p>
                                     </div>
-                                    {n.unread && <span className="w-2 h-2 rounded-full bg-primary-500 flex-shrink-0 mt-1.5" />}
+                                    {!n.readAt && <span className="w-2 h-2 rounded-full bg-primary-500 flex-shrink-0 mt-1.5" />}
                                 </div>
                             ))
                         )}
@@ -328,7 +393,11 @@ function NotificationsPanel() {
 
                     {notifications.length > 0 && (
                         <div className="px-5 py-3 border-t border-neutral-100 dark:border-neutral-800">
-                            <button type="button" className="w-full text-center text-xs font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 py-1">
+                            <button
+                                type="button"
+                                onClick={() => { navigate('/app/notifications'); setOpen(false); }}
+                                className="w-full text-center text-xs font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 py-1"
+                            >
                                 View all notifications
                             </button>
                         </div>
