@@ -3,15 +3,12 @@ import type { ApiResponse } from './auth';
 
 // ── Requisitions ──
 
-async function listRequisitions(params?: {
-    page?: number;
-    limit?: number;
-}): Promise<ApiResponse<any>> {
+async function listRequisitions(params?: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.get('/hr/requisitions', { params });
     return response.data;
 }
 
-async function createRequisition(data: any): Promise<ApiResponse<any>> {
+async function createRequisition(data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.post('/hr/requisitions', data);
     return response.data;
 }
@@ -21,7 +18,7 @@ async function getRequisition(id: string): Promise<ApiResponse<any>> {
     return response.data;
 }
 
-async function updateRequisition(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateRequisition(id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.patch(`/hr/requisitions/${id}`, data);
     return response.data;
 }
@@ -33,17 +30,12 @@ async function deleteRequisition(id: string): Promise<ApiResponse<any>> {
 
 // ── Candidates ──
 
-async function listCandidates(params?: {
-    page?: number;
-    limit?: number;
-    requisitionId?: string;
-    stage?: string;
-}): Promise<ApiResponse<any>> {
+async function listCandidates(params?: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.get('/hr/candidates', { params });
     return response.data;
 }
 
-async function createCandidate(data: any): Promise<ApiResponse<any>> {
+async function createCandidate(data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.post('/hr/candidates', data);
     return response.data;
 }
@@ -53,23 +45,19 @@ async function getCandidate(id: string): Promise<ApiResponse<any>> {
     return response.data;
 }
 
-async function updateCandidate(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateCandidate(id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.patch(`/hr/candidates/${id}`, data);
     return response.data;
 }
 
 // ── Interviews ──
 
-async function listInterviews(params?: {
-    page?: number;
-    limit?: number;
-    candidateId?: string;
-}): Promise<ApiResponse<any>> {
+async function listInterviews(params?: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.get('/hr/interviews', { params });
     return response.data;
 }
 
-async function createInterview(data: any): Promise<ApiResponse<any>> {
+async function createInterview(data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.post('/hr/interviews', data);
     return response.data;
 }
@@ -79,7 +67,7 @@ async function getInterview(id: string): Promise<ApiResponse<any>> {
     return response.data;
 }
 
-async function updateInterview(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateInterview(id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.patch(`/hr/interviews/${id}`, data);
     return response.data;
 }
@@ -113,15 +101,12 @@ async function getRecruitmentDashboard(): Promise<ApiResponse<any>> {
 
 // ── Training Catalogue ──
 
-async function listTrainingCatalogue(params?: {
-    page?: number;
-    limit?: number;
-}): Promise<ApiResponse<any>> {
+async function listTrainingCatalogue(params?: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.get('/hr/training-catalogues', { params });
     return response.data;
 }
 
-async function createTrainingCatalogue(data: any): Promise<ApiResponse<any>> {
+async function createTrainingCatalogue(data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.post('/hr/training-catalogues', data);
     return response.data;
 }
@@ -131,7 +116,7 @@ async function getTrainingCatalogue(id: string): Promise<ApiResponse<any>> {
     return response.data;
 }
 
-async function updateTrainingCatalogue(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateTrainingCatalogue(id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.patch(`/hr/training-catalogues/${id}`, data);
     return response.data;
 }
@@ -143,22 +128,17 @@ async function deleteTrainingCatalogue(id: string): Promise<ApiResponse<any>> {
 
 // ── Training Nominations ──
 
-async function listTrainingNominations(params?: {
-    page?: number;
-    limit?: number;
-    employeeId?: string;
-    status?: string;
-}): Promise<ApiResponse<any>> {
+async function listTrainingNominations(params?: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.get('/hr/training-nominations', { params });
     return response.data;
 }
 
-async function createTrainingNomination(data: any): Promise<ApiResponse<any>> {
+async function createTrainingNomination(data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.post('/hr/training-nominations', data);
     return response.data;
 }
 
-async function updateTrainingNomination(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateTrainingNomination(id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.patch(`/hr/training-nominations/${id}`, data);
     return response.data;
 }
@@ -378,15 +358,12 @@ async function deleteTrainingMaterial(id: string): Promise<ApiResponse<any>> {
 
 // ── Asset Categories ──
 
-async function listAssetCategories(params?: {
-    page?: number;
-    limit?: number;
-}): Promise<ApiResponse<any>> {
+async function listAssetCategories(params?: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.get('/hr/asset-categories', { params });
     return response.data;
 }
 
-async function createAssetCategory(data: any): Promise<ApiResponse<any>> {
+async function createAssetCategory(data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.post('/hr/asset-categories', data);
     return response.data;
 }
@@ -396,7 +373,7 @@ async function getAssetCategory(id: string): Promise<ApiResponse<any>> {
     return response.data;
 }
 
-async function updateAssetCategory(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateAssetCategory(id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.patch(`/hr/asset-categories/${id}`, data);
     return response.data;
 }
@@ -408,17 +385,12 @@ async function deleteAssetCategory(id: string): Promise<ApiResponse<any>> {
 
 // ── Assets ──
 
-async function listAssets(params?: {
-    page?: number;
-    limit?: number;
-    categoryId?: string;
-    status?: string;
-}): Promise<ApiResponse<any>> {
+async function listAssets(params?: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.get('/hr/assets', { params });
     return response.data;
 }
 
-async function createAsset(data: any): Promise<ApiResponse<any>> {
+async function createAsset(data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.post('/hr/assets', data);
     return response.data;
 }
@@ -428,45 +400,36 @@ async function getAsset(id: string): Promise<ApiResponse<any>> {
     return response.data;
 }
 
-async function updateAsset(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateAsset(id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.patch(`/hr/assets/${id}`, data);
     return response.data;
 }
 
 // ── Asset Assignments ──
 
-async function listAssetAssignments(params?: {
-    page?: number;
-    limit?: number;
-    employeeId?: string;
-}): Promise<ApiResponse<any>> {
+async function listAssetAssignments(params?: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.get('/hr/asset-assignments', { params });
     return response.data;
 }
 
-async function createAssetAssignment(data: any): Promise<ApiResponse<any>> {
+async function createAssetAssignment(data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.post('/hr/asset-assignments', data);
     return response.data;
 }
 
-async function updateAssetAssignment(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateAssetAssignment(id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.patch(`/hr/asset-assignments/${id}/return`, data);
     return response.data;
 }
 
 // ── Expense Claims ──
 
-async function listExpenseClaims(params?: {
-    page?: number;
-    limit?: number;
-    employeeId?: string;
-    status?: string;
-}): Promise<ApiResponse<any>> {
+async function listExpenseClaims(params?: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.get('/hr/expense-claims', { params });
     return response.data;
 }
 
-async function createExpenseClaim(data: any): Promise<ApiResponse<any>> {
+async function createExpenseClaim(data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.post('/hr/expense-claims', data);
     return response.data;
 }
@@ -476,12 +439,12 @@ async function getExpenseClaim(id: string): Promise<ApiResponse<any>> {
     return response.data;
 }
 
-async function updateExpenseClaim(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateExpenseClaim(id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.patch(`/hr/expense-claims/${id}`, data);
     return response.data;
 }
 
-async function approveExpenseClaim(id: string, data?: { approvedAmount?: number; itemApprovals?: any[] }): Promise<ApiResponse<any>> {
+async function approveExpenseClaim(id: string, data?: { approvedAmount?: number; itemApprovals?: Record<string, unknown>[] }): Promise<ApiResponse<any>> {
     const response = await client.patch(`/hr/expense-claims/${id}/approve-reject`, { action: 'approve', ...data });
     return response.data;
 }
@@ -493,7 +456,7 @@ async function rejectExpenseClaim(id: string, data?: { rejectionReason?: string 
 
 // ── Expense Categories ──
 
-async function listExpenseCategories(params?: { includeInactive?: boolean }): Promise<ApiResponse<any>> {
+async function listExpenseCategories(params?: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.get('/hr/expense-categories', { params });
     return response.data;
 }
@@ -503,12 +466,12 @@ async function getExpenseCategory(id: string): Promise<ApiResponse<any>> {
     return response.data;
 }
 
-async function createExpenseCategory(data: any): Promise<ApiResponse<any>> {
+async function createExpenseCategory(data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.post('/hr/expense-categories', data);
     return response.data;
 }
 
-async function updateExpenseCategory(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateExpenseCategory(id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.patch(`/hr/expense-categories/${id}`, data);
     return response.data;
 }
@@ -520,15 +483,12 @@ async function deleteExpenseCategory(id: string): Promise<ApiResponse<any>> {
 
 // ── Letter Templates ──
 
-async function listLetterTemplates(params?: {
-    page?: number;
-    limit?: number;
-}): Promise<ApiResponse<any>> {
+async function listLetterTemplates(params?: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.get('/hr/letter-templates', { params });
     return response.data;
 }
 
-async function createLetterTemplate(data: any): Promise<ApiResponse<any>> {
+async function createLetterTemplate(data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.post('/hr/letter-templates', data);
     return response.data;
 }
@@ -538,7 +498,7 @@ async function getLetterTemplate(id: string): Promise<ApiResponse<any>> {
     return response.data;
 }
 
-async function updateLetterTemplate(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateLetterTemplate(id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.patch(`/hr/letter-templates/${id}`, data);
     return response.data;
 }
@@ -550,17 +510,12 @@ async function deleteLetterTemplate(id: string): Promise<ApiResponse<any>> {
 
 // ── Letters ──
 
-async function listLetters(params?: {
-    page?: number;
-    limit?: number;
-    employeeId?: string;
-    type?: string;
-}): Promise<ApiResponse<any>> {
+async function listLetters(params?: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.get('/hr/hr-letters', { params });
     return response.data;
 }
 
-async function createLetter(data: any): Promise<ApiResponse<any>> {
+async function createLetter(data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.post('/hr/hr-letters', data);
     return response.data;
 }
@@ -577,15 +532,12 @@ async function generateLetterPdf(id: string): Promise<ApiResponse<any>> {
 
 // ── Grievance Categories ──
 
-async function listGrievanceCategories(params?: {
-    page?: number;
-    limit?: number;
-}): Promise<ApiResponse<any>> {
+async function listGrievanceCategories(params?: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.get('/hr/grievance-categories', { params });
     return response.data;
 }
 
-async function createGrievanceCategory(data: any): Promise<ApiResponse<any>> {
+async function createGrievanceCategory(data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.post('/hr/grievance-categories', data);
     return response.data;
 }
@@ -595,7 +547,7 @@ async function getGrievanceCategory(id: string): Promise<ApiResponse<any>> {
     return response.data;
 }
 
-async function updateGrievanceCategory(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateGrievanceCategory(id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.patch(`/hr/grievance-categories/${id}`, data);
     return response.data;
 }
@@ -607,17 +559,12 @@ async function deleteGrievanceCategory(id: string): Promise<ApiResponse<any>> {
 
 // ── Grievance Cases ──
 
-async function listGrievanceCases(params?: {
-    page?: number;
-    limit?: number;
-    status?: string;
-    categoryId?: string;
-}): Promise<ApiResponse<any>> {
+async function listGrievanceCases(params?: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.get('/hr/grievance-cases', { params });
     return response.data;
 }
 
-async function createGrievanceCase(data: any): Promise<ApiResponse<any>> {
+async function createGrievanceCase(data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.post('/hr/grievance-cases', data);
     return response.data;
 }
@@ -627,24 +574,19 @@ async function getGrievanceCase(id: string): Promise<ApiResponse<any>> {
     return response.data;
 }
 
-async function updateGrievanceCase(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateGrievanceCase(id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.patch(`/hr/grievance-cases/${id}`, data);
     return response.data;
 }
 
 // ── Disciplinary Actions ──
 
-async function listDisciplinaryActions(params?: {
-    page?: number;
-    limit?: number;
-    employeeId?: string;
-    type?: string;
-}): Promise<ApiResponse<any>> {
+async function listDisciplinaryActions(params?: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.get('/hr/disciplinary-actions', { params });
     return response.data;
 }
 
-async function createDisciplinaryAction(data: any): Promise<ApiResponse<any>> {
+async function createDisciplinaryAction(data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.post('/hr/disciplinary-actions', data);
     return response.data;
 }
@@ -654,7 +596,7 @@ async function getDisciplinaryAction(id: string): Promise<ApiResponse<any>> {
     return response.data;
 }
 
-async function updateDisciplinaryAction(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateDisciplinaryAction(id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
     const response = await client.patch(`/hr/disciplinary-actions/${id}`, data);
     return response.data;
 }

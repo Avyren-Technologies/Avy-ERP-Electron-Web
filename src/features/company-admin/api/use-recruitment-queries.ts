@@ -216,7 +216,7 @@ export const recruitmentKeys = {
 export function useRequisitions(params?: Record<string, unknown>) {
     return useQuery({
         queryKey: recruitmentKeys.requisitions(params),
-        queryFn: () => recruitmentApi.listRequisitions(params as any),
+        queryFn: () => recruitmentApi.listRequisitions(params),
     });
 }
 
@@ -233,7 +233,7 @@ export function useRequisition(id: string) {
 export function useCandidates(params?: Record<string, unknown>) {
     return useQuery({
         queryKey: recruitmentKeys.candidates(params),
-        queryFn: () => recruitmentApi.listCandidates(params as any),
+        queryFn: () => recruitmentApi.listCandidates(params),
     });
 }
 
@@ -250,7 +250,7 @@ export function useCandidate(id: string) {
 export function useInterviews(params?: Record<string, unknown>) {
     return useQuery({
         queryKey: recruitmentKeys.interviews(params),
-        queryFn: () => recruitmentApi.listInterviews(params as any),
+        queryFn: () => recruitmentApi.listInterviews(params),
     });
 }
 
@@ -276,7 +276,7 @@ export function useRecruitmentDashboard() {
 export function useTrainingCatalogue(params?: Record<string, unknown>) {
     return useQuery({
         queryKey: recruitmentKeys.trainingCatalogue(params),
-        queryFn: () => recruitmentApi.listTrainingCatalogue(params as any),
+        queryFn: () => recruitmentApi.listTrainingCatalogue(params),
     });
 }
 
@@ -293,7 +293,7 @@ export function useTrainingCatalogueItem(id: string) {
 export function useTrainingNominations(params?: Record<string, unknown>) {
     return useQuery({
         queryKey: recruitmentKeys.trainingNominations(params),
-        queryFn: () => recruitmentApi.listTrainingNominations(params as any),
+        queryFn: () => recruitmentApi.listTrainingNominations(params),
     });
 }
 
@@ -311,7 +311,7 @@ export function useTrainingDashboard() {
 export function useAssetCategories(params?: Record<string, unknown>) {
     return useQuery({
         queryKey: recruitmentKeys.assetCategories(params),
-        queryFn: () => recruitmentApi.listAssetCategories(params as any),
+        queryFn: () => recruitmentApi.listAssetCategories(params),
     });
 }
 
@@ -328,7 +328,7 @@ export function useAssetCategory(id: string) {
 export function useAssets(params?: Record<string, unknown>) {
     return useQuery({
         queryKey: recruitmentKeys.assets(params),
-        queryFn: () => recruitmentApi.listAssets(params as any),
+        queryFn: () => recruitmentApi.listAssets(params),
     });
 }
 
@@ -345,7 +345,7 @@ export function useAsset(id: string) {
 export function useAssetAssignments(params?: Record<string, unknown>) {
     return useQuery({
         queryKey: recruitmentKeys.assetAssignments(params),
-        queryFn: () => recruitmentApi.listAssetAssignments(params as any),
+        queryFn: () => recruitmentApi.listAssetAssignments(params),
     });
 }
 
@@ -354,7 +354,7 @@ export function useAssetAssignments(params?: Record<string, unknown>) {
 export function useExpenseCategories(params?: Record<string, unknown>) {
     return useQuery({
         queryKey: recruitmentKeys.expenseCategories(params),
-        queryFn: () => recruitmentApi.listExpenseCategories(params as any),
+        queryFn: () => recruitmentApi.listExpenseCategories(params),
     });
 }
 
@@ -371,7 +371,7 @@ export function useExpenseCategory(id: string) {
 export function useExpenseClaims(params?: Record<string, unknown>) {
     return useQuery({
         queryKey: recruitmentKeys.expenseClaims(params),
-        queryFn: () => recruitmentApi.listExpenseClaims(params as any),
+        queryFn: () => recruitmentApi.listExpenseClaims(params),
     });
 }
 
@@ -388,7 +388,7 @@ export function useExpenseClaim(id: string) {
 export function useLetterTemplates(params?: Record<string, unknown>) {
     return useQuery({
         queryKey: recruitmentKeys.letterTemplates(params),
-        queryFn: () => recruitmentApi.listLetterTemplates(params as any),
+        queryFn: () => recruitmentApi.listLetterTemplates(params),
     });
 }
 
@@ -405,7 +405,7 @@ export function useLetterTemplate(id: string) {
 export function useLetters(params?: Record<string, unknown>) {
     return useQuery({
         queryKey: recruitmentKeys.letters(params),
-        queryFn: () => recruitmentApi.listLetters(params as any),
+        queryFn: () => recruitmentApi.listLetters(params),
     });
 }
 
@@ -422,7 +422,7 @@ export function useLetter(id: string) {
 export function useGrievanceCategories(params?: Record<string, unknown>) {
     return useQuery({
         queryKey: recruitmentKeys.grievanceCategories(params),
-        queryFn: () => recruitmentApi.listGrievanceCategories(params as any),
+        queryFn: () => recruitmentApi.listGrievanceCategories(params),
     });
 }
 
@@ -439,7 +439,7 @@ export function useGrievanceCategory(id: string) {
 export function useGrievanceCases(params?: Record<string, unknown>) {
     return useQuery({
         queryKey: recruitmentKeys.grievanceCases(params),
-        queryFn: () => recruitmentApi.listGrievanceCases(params as any),
+        queryFn: () => recruitmentApi.listGrievanceCases(params),
     });
 }
 
@@ -456,7 +456,7 @@ export function useGrievanceCase(id: string) {
 export function useDisciplinaryActions(params?: Record<string, unknown>) {
     return useQuery({
         queryKey: recruitmentKeys.disciplinaryActions(params),
-        queryFn: () => recruitmentApi.listDisciplinaryActions(params as any),
+        queryFn: () => recruitmentApi.listDisciplinaryActions(params),
     });
 }
 

@@ -23,7 +23,6 @@ export async function initWebPushNotifications(): Promise<string | null> {
 
     // Skip if no config
     if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-      console.warn('Firebase config not set — web push notifications disabled');
       return null;
     }
 
@@ -33,7 +32,6 @@ export async function initWebPushNotifications(): Promise<string | null> {
     // Request notification permission
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') {
-      console.log('Notification permission not granted');
       return null;
     }
 
@@ -63,8 +61,8 @@ export async function initWebPushNotifications(): Promise<string | null> {
         platform: 'WEB',
         deviceName: navigator.userAgent.substring(0, 100),
       });
-    } catch (err) {
-      console.error('Failed to register FCM token with backend:', err);
+    } catch {
+      // Silently fail — token registration is non-critical
     }
 
     // Handle foreground messages
@@ -76,8 +74,8 @@ export async function initWebPushNotifications(): Promise<string | null> {
     });
 
     return token;
-  } catch (err) {
-    console.warn('Web push notification setup failed:', err);
+  } catch {
+    // Silently fail — web push setup is non-critical
     return null;
   }
 }
@@ -91,8 +89,8 @@ export async function unregisterWebPush(): Promise<void> {
     const { client } = await import('@/lib/api/client');
     await client.delete('/notifications/register-device', { data: { fcmToken } });
     fcmToken = null;
-  } catch (err) {
-    console.error('Failed to unregister FCM token:', err);
+  } catch {
+    // Silently fail — token unregistration is non-critical
   }
 }
 

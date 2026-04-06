@@ -103,6 +103,9 @@ import { NotificationTemplateScreen } from "./features/company-admin/hr/Notifica
 import { NotificationRuleScreen } from "./features/company-admin/hr/NotificationRuleScreen";
 import { ITDeclarationScreen } from "./features/company-admin/hr/ITDeclarationScreen";
 
+// Notifications
+import { NotificationListScreen } from "./features/notifications/NotificationListScreen";
+
 // Help & Support
 import { HelpSupportScreen } from "./features/help/HelpSupportScreen";
 import { TicketChatScreen } from "./features/support/TicketChatScreen";
@@ -467,7 +470,7 @@ function App() {
         <Route path="announcements" element={<AnnouncementsScreen />} />
         <Route path="help/ticket/:id" element={<TicketChatScreen />} />
         <Route path="help" element={<HelpSupportScreen />} />
-        <Route path="notifications" element={<Placeholder name="Notifications" />} />
+        <Route path="notifications" element={<NotificationListScreen />} />
         <Route path="settings" element={<Placeholder name="Settings" />} />
       </Route>
 

@@ -3,12 +3,16 @@ import { recruitmentApi } from '@/lib/api/recruitment';
 import { showApiError } from '@/lib/toast';
 import { recruitmentKeys } from './use-recruitment-queries';
 
+// NOTE: All mutations invalidate the entire recruitment cache (recruitmentKeys.all).
+// This ensures data consistency but causes refetches across all recruitment queries.
+// For performance optimization, consider more targeted invalidation per entity.
+
 // ── Requisition Mutations ──
 
 export function useCreateRequisition() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (data: any) => recruitmentApi.createRequisition(data),
+        mutationFn: (data: Record<string, unknown>) => recruitmentApi.createRequisition(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -17,7 +21,7 @@ export function useCreateRequisition() {
 export function useUpdateRequisition() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateRequisition(id, data),
+        mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => recruitmentApi.updateRequisition(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -37,7 +41,7 @@ export function useDeleteRequisition() {
 export function useCreateCandidate() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (data: any) => recruitmentApi.createCandidate(data),
+        mutationFn: (data: Record<string, unknown>) => recruitmentApi.createCandidate(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -46,7 +50,7 @@ export function useCreateCandidate() {
 export function useUpdateCandidate() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateCandidate(id, data),
+        mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => recruitmentApi.updateCandidate(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -57,7 +61,7 @@ export function useUpdateCandidate() {
 export function useCreateInterview() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (data: any) => recruitmentApi.createInterview(data),
+        mutationFn: (data: Record<string, unknown>) => recruitmentApi.createInterview(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -66,7 +70,7 @@ export function useCreateInterview() {
 export function useUpdateInterview() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateInterview(id, data),
+        mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => recruitmentApi.updateInterview(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -115,7 +119,7 @@ export function useAdvanceCandidateStage() {
 export function useCreateTrainingCatalogue() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (data: any) => recruitmentApi.createTrainingCatalogue(data),
+        mutationFn: (data: Record<string, unknown>) => recruitmentApi.createTrainingCatalogue(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -124,7 +128,7 @@ export function useCreateTrainingCatalogue() {
 export function useUpdateTrainingCatalogue() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateTrainingCatalogue(id, data),
+        mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => recruitmentApi.updateTrainingCatalogue(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -144,7 +148,7 @@ export function useDeleteTrainingCatalogue() {
 export function useCreateTrainingNomination() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (data: any) => recruitmentApi.createTrainingNomination(data),
+        mutationFn: (data: Record<string, unknown>) => recruitmentApi.createTrainingNomination(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -153,7 +157,7 @@ export function useCreateTrainingNomination() {
 export function useUpdateTrainingNomination() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateTrainingNomination(id, data),
+        mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => recruitmentApi.updateTrainingNomination(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -164,7 +168,7 @@ export function useUpdateTrainingNomination() {
 export function useCreateAssetCategory() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (data: any) => recruitmentApi.createAssetCategory(data),
+        mutationFn: (data: Record<string, unknown>) => recruitmentApi.createAssetCategory(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -173,7 +177,7 @@ export function useCreateAssetCategory() {
 export function useUpdateAssetCategory() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateAssetCategory(id, data),
+        mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => recruitmentApi.updateAssetCategory(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -193,7 +197,7 @@ export function useDeleteAssetCategory() {
 export function useCreateAsset() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (data: any) => recruitmentApi.createAsset(data),
+        mutationFn: (data: Record<string, unknown>) => recruitmentApi.createAsset(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -202,7 +206,7 @@ export function useCreateAsset() {
 export function useUpdateAsset() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateAsset(id, data),
+        mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => recruitmentApi.updateAsset(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -213,7 +217,7 @@ export function useUpdateAsset() {
 export function useCreateAssetAssignment() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (data: any) => recruitmentApi.createAssetAssignment(data),
+        mutationFn: (data: Record<string, unknown>) => recruitmentApi.createAssetAssignment(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -222,7 +226,7 @@ export function useCreateAssetAssignment() {
 export function useUpdateAssetAssignment() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateAssetAssignment(id, data),
+        mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => recruitmentApi.updateAssetAssignment(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -233,7 +237,7 @@ export function useUpdateAssetAssignment() {
 export function useCreateExpenseClaim() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (data: any) => recruitmentApi.createExpenseClaim(data),
+        mutationFn: (data: Record<string, unknown>) => recruitmentApi.createExpenseClaim(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -242,7 +246,7 @@ export function useCreateExpenseClaim() {
 export function useUpdateExpenseClaim() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateExpenseClaim(id, data),
+        mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => recruitmentApi.updateExpenseClaim(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -251,7 +255,7 @@ export function useUpdateExpenseClaim() {
 export function useApproveExpenseClaim() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data?: { approvedAmount?: number; itemApprovals?: any[] } }) => recruitmentApi.approveExpenseClaim(id, data),
+        mutationFn: ({ id, data }: { id: string; data?: { approvedAmount?: number; itemApprovals?: Record<string, unknown>[] } }) => recruitmentApi.approveExpenseClaim(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -271,7 +275,7 @@ export function useRejectExpenseClaim() {
 export function useCreateExpenseCategory() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (data: any) => recruitmentApi.createExpenseCategory(data),
+        mutationFn: (data: Record<string, unknown>) => recruitmentApi.createExpenseCategory(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -280,7 +284,7 @@ export function useCreateExpenseCategory() {
 export function useUpdateExpenseCategory() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateExpenseCategory(id, data),
+        mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => recruitmentApi.updateExpenseCategory(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -300,7 +304,7 @@ export function useDeleteExpenseCategory() {
 export function useCreateLetterTemplate() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (data: any) => recruitmentApi.createLetterTemplate(data),
+        mutationFn: (data: Record<string, unknown>) => recruitmentApi.createLetterTemplate(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -309,7 +313,7 @@ export function useCreateLetterTemplate() {
 export function useUpdateLetterTemplate() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateLetterTemplate(id, data),
+        mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => recruitmentApi.updateLetterTemplate(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -329,7 +333,7 @@ export function useDeleteLetterTemplate() {
 export function useCreateLetter() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (data: any) => recruitmentApi.createLetter(data),
+        mutationFn: (data: Record<string, unknown>) => recruitmentApi.createLetter(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -349,7 +353,7 @@ export function useGenerateLetterPdf() {
 export function useCreateGrievanceCategory() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (data: any) => recruitmentApi.createGrievanceCategory(data),
+        mutationFn: (data: Record<string, unknown>) => recruitmentApi.createGrievanceCategory(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -358,7 +362,7 @@ export function useCreateGrievanceCategory() {
 export function useUpdateGrievanceCategory() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateGrievanceCategory(id, data),
+        mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => recruitmentApi.updateGrievanceCategory(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -378,7 +382,7 @@ export function useDeleteGrievanceCategory() {
 export function useCreateGrievanceCase() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (data: any) => recruitmentApi.createGrievanceCase(data),
+        mutationFn: (data: Record<string, unknown>) => recruitmentApi.createGrievanceCase(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -387,7 +391,7 @@ export function useCreateGrievanceCase() {
 export function useUpdateGrievanceCase() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateGrievanceCase(id, data),
+        mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => recruitmentApi.updateGrievanceCase(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -398,7 +402,7 @@ export function useUpdateGrievanceCase() {
 export function useCreateDisciplinaryAction() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (data: any) => recruitmentApi.createDisciplinaryAction(data),
+        mutationFn: (data: Record<string, unknown>) => recruitmentApi.createDisciplinaryAction(data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
@@ -407,7 +411,7 @@ export function useCreateDisciplinaryAction() {
 export function useUpdateDisciplinaryAction() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => recruitmentApi.updateDisciplinaryAction(id, data),
+        mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => recruitmentApi.updateDisciplinaryAction(id, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
         onError: (err: unknown) => { showApiError(err); },
     });
