@@ -36,6 +36,10 @@ import {
     useUpdateCandidate,
     useCreateInterview,
     useUpdateInterview,
+    useCompleteInterview,
+    useCancelInterview,
+    useDeleteCandidate,
+    useAdvanceCandidateStage,
 } from "@/features/company-admin/api/use-recruitment-mutations";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -47,8 +51,18 @@ const REQ_STATUSES = ["All", "Open", "In Progress", "On Hold", "Filled", "Cancel
 const CANDIDATE_STAGES = ["Applied", "Screening", "Interview", "Offer", "Hired", "Rejected"];
 const INTERVIEW_TYPES = ["Phone", "Video", "In-Person", "Technical", "HR", "Panel"];
 const INTERVIEW_STATUSES = ["Scheduled", "Completed", "Cancelled", "No Show"];
-const EMPLOYMENT_TYPES = ["Full-Time", "Part-Time", "Contract", "Intern"];
-const PRIORITY_OPTIONS = ["Low", "Medium", "High", "Urgent"];
+const EMPLOYMENT_TYPES = [
+    { label: "Full-Time", value: "FULL_TIME" },
+    { label: "Part-Time", value: "PART_TIME" },
+    { label: "Contract", value: "CONTRACT" },
+    { label: "Intern", value: "INTERNSHIP" },
+];
+const PRIORITY_OPTIONS = [
+    { label: "Low", value: "LOW" },
+    { label: "Medium", value: "MEDIUM" },
+    { label: "High", value: "HIGH" },
+    { label: "Urgent", value: "URGENT" },
+];
 
 const TABS = [
     { key: "requisitions" as const, label: "Requisitions", icon: Briefcase },
@@ -64,8 +78,8 @@ const EMPTY_REQ = {
     title: "",
     department: "",
     positions: 1,
-    employmentType: "Full-Time",
-    priority: "Medium",
+    employmentType: "FULL_TIME",
+    priority: "MEDIUM",
     location: "",
     minSalary: "",
     maxSalary: "",
@@ -73,12 +87,13 @@ const EMPTY_REQ = {
     requirements: "",
     hiringManagerId: "",
     deadline: "",
+    experienceMin: "",
+    experienceMax: "",
 };
 
 const EMPTY_CANDIDATE = {
     requisitionId: "",
-    firstName: "",
-    lastName: "",
+    name: "",
     email: "",
     phone: "",
     stage: "Applied",
@@ -159,14 +174,15 @@ function InterviewStatusBadge({ status }: { status: string }) {
 }
 
 function PriorityBadge({ priority }: { priority: string }) {
-    const p = priority?.toLowerCase();
+    const p = priority?.toLowerCase().replace(/_/g, " ");
     const map: Record<string, string> = {
         low: "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400",
         medium: "bg-primary-50 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400",
         high: "bg-warning-50 text-warning-700 dark:bg-warning-900/20 dark:text-warning-400",
         urgent: "bg-danger-50 text-danger-700 dark:bg-danger-900/20 dark:text-danger-400",
     };
-    return <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full capitalize", map[p] ?? map.medium)}>{priority}</span>;
+    const label = PRIORITY_OPTIONS.find((o) => o.value === priority)?.label ?? priority;
+    return <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full capitalize", map[p] ?? map.medium)}>{label}</span>;
 }
 
 /* ── Screen ── */
@@ -211,6 +227,22 @@ export function RequisitionScreen() {
     const updateCand = useUpdateCandidate();
     const createInt = useCreateInterview();
     const updateInt = useUpdateInterview();
+    const completeInterview = useCompleteInterview();
+    const cancelInterview = useCancelInterview();
+    const deleteCandidate = useDeleteCandidate();
+    const advanceStage = useAdvanceCandidateStage();
+
+    /* Complete Interview Modal State */
+    const [completeIntModalOpen, setCompleteIntModalOpen] = useState(false);
+    const [completeIntTarget, setCompleteIntTarget] = useState<any>(null);
+    const [feedbackRating, setFeedbackRating] = useState(5);
+    const [feedbackNotes, setFeedbackNotes] = useState("");
+
+    /* Delete Candidate Confirmation State */
+    const [deleteCandTarget, setDeleteCandTarget] = useState<any>(null);
+
+    /* Cancel Interview Confirmation State */
+    const [cancelIntTarget, setCancelIntTarget] = useState<any>(null);
 
     const requisitions: any[] = reqQuery.data?.data ?? [];
     const candidates: any[] = candQuery.data?.data ?? [];
@@ -228,7 +260,7 @@ export function RequisitionScreen() {
     const reqTitle = (id: string) => requisitions.find((r: any) => r.id === id)?.title ?? id;
     const candName = (id: string) => {
         const c = candidates.find((c: any) => c.id === id);
-        return c ? [c.firstName, c.lastName].filter(Boolean).join(" ") : id;
+        return c ? (c.name || [c.firstName, c.lastName].filter(Boolean).join(" ")) : id;
     };
 
     /* Filtering */
@@ -241,7 +273,7 @@ export function RequisitionScreen() {
     const filteredCands = candidates.filter((c: any) => {
         if (!search) return true;
         const s = search.toLowerCase();
-        return c.firstName?.toLowerCase().includes(s) || c.lastName?.toLowerCase().includes(s) || c.email?.toLowerCase().includes(s);
+        return c.name?.toLowerCase().includes(s) || c.email?.toLowerCase().includes(s);
     });
 
     const filteredInts = interviews.filter((i: any) => {
@@ -255,11 +287,12 @@ export function RequisitionScreen() {
     const openEditReq = (r: any) => {
         setReqEditingId(r.id);
         setReqForm({
-            title: r.title ?? "", department: r.department ?? "", positions: r.positions ?? 1,
-            employmentType: r.employmentType ?? "Full-Time", priority: r.priority ?? "Medium",
-            location: r.location ?? "", minSalary: r.minSalary ?? "", maxSalary: r.maxSalary ?? "",
+            title: r.title ?? "", department: r.departmentId ?? r.department ?? "", positions: r.openings ?? r.positions ?? 1,
+            employmentType: r.employmentType ?? "FULL_TIME", priority: r.priority ?? "MEDIUM",
+            location: r.location ?? "", minSalary: r.budgetMin ?? r.minSalary ?? "", maxSalary: r.budgetMax ?? r.maxSalary ?? "",
             description: r.description ?? "", requirements: r.requirements ?? "",
-            hiringManagerId: r.hiringManagerId ?? "", deadline: r.deadline ?? "",
+            hiringManagerId: r.approvedBy ?? r.hiringManagerId ?? "", deadline: r.targetDate ?? r.deadline ?? "",
+            experienceMin: r.experienceMin ?? "", experienceMax: r.experienceMax ?? "",
         });
         setReqModalOpen(true);
     };
@@ -268,11 +301,16 @@ export function RequisitionScreen() {
             const payload: any = {
                 title: reqForm.title,
                 departmentId: reqForm.department || undefined,
-                designationId: reqForm.hiringManagerId ? undefined : undefined,
                 openings: Number(reqForm.positions) || 1,
+                employmentType: reqForm.employmentType || undefined,
+                priority: reqForm.priority || undefined,
+                location: reqForm.location || undefined,
+                requirements: reqForm.requirements || undefined,
                 description: reqForm.description || undefined,
                 budgetMin: reqForm.minSalary ? Number(reqForm.minSalary) : undefined,
                 budgetMax: reqForm.maxSalary ? Number(reqForm.maxSalary) : undefined,
+                experienceMin: reqForm.experienceMin ? Number(reqForm.experienceMin) : undefined,
+                experienceMax: reqForm.experienceMax ? Number(reqForm.experienceMax) : undefined,
                 targetDate: reqForm.deadline || undefined,
                 approvedBy: reqForm.hiringManagerId || undefined,
             };
@@ -305,8 +343,9 @@ export function RequisitionScreen() {
     const openEditCand = (c: any) => {
         setCandEditingId(c.id);
         setCandForm({
-            requisitionId: c.requisitionId ?? selectedReqId ?? "", firstName: c.firstName ?? "",
-            lastName: c.lastName ?? "", email: c.email ?? "", phone: c.phone ?? "",
+            requisitionId: c.requisitionId ?? selectedReqId ?? "",
+            name: c.name ?? [c.firstName, c.lastName].filter(Boolean).join(" ") ?? "",
+            email: c.email ?? "", phone: c.phone ?? "",
             stage: c.stage ?? "Applied", source: c.source ?? "", resumeUrl: c.resumeUrl ?? "",
             notes: c.notes ?? "", experience: c.experience ?? "", currentCompany: c.currentCompany ?? "",
         });
@@ -314,10 +353,9 @@ export function RequisitionScreen() {
     };
     const handleSaveCand = async () => {
         try {
-            const fullName = [candForm.firstName, candForm.lastName].filter(Boolean).join(" ");
             const payload: any = {
                 requisitionId: candForm.requisitionId,
-                name: fullName,
+                name: candForm.name,
                 email: candForm.email,
                 phone: candForm.phone || undefined,
                 source: candForm.source || undefined,
@@ -325,10 +363,10 @@ export function RequisitionScreen() {
             };
             if (candEditingId) {
                 await updateCand.mutateAsync({ id: candEditingId, data: payload });
-                showSuccess("Candidate Updated", `${fullName} updated.`);
+                showSuccess("Candidate Updated", `${candForm.name} updated.`);
             } else {
                 await createCand.mutateAsync(payload);
-                showSuccess("Candidate Added", `${fullName} added.`);
+                showSuccess("Candidate Added", `${candForm.name} added.`);
             }
             setCandModalOpen(false);
         } catch (err) { showApiError(err); }
@@ -489,7 +527,7 @@ export function RequisitionScreen() {
                                             </td>
                                             <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{r.department || "—"}</td>
                                             <td className="py-4 px-6 text-center font-semibold text-primary-950 dark:text-white">{r.positions ?? 1}</td>
-                                            <td className="py-4 px-6"><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-accent-50 text-accent-700 border border-accent-200 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50">{r.employmentType || "Full-Time"}</span></td>
+                                            <td className="py-4 px-6"><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-accent-50 text-accent-700 border border-accent-200 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50">{EMPLOYMENT_TYPES.find((t) => t.value === r.employmentType)?.label ?? r.employmentType ?? "Full-Time"}</span></td>
                                             <td className="py-4 px-6 text-center"><PriorityBadge priority={r.priority ?? "Medium"} /></td>
                                             <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{r.location || "—"}</td>
                                             <td className="py-4 px-6 text-center"><ReqStatusBadge status={r.status ?? "Open"} /></td>
@@ -546,10 +584,10 @@ export function RequisitionScreen() {
                                             <td className="py-4 px-6">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-8 h-8 rounded-lg bg-accent-100 dark:bg-accent-900/30 flex items-center justify-center shrink-0 text-xs font-bold text-accent-700 dark:text-accent-400">
-                                                        {(c.firstName?.charAt(0) ?? "") + (c.lastName?.charAt(0) ?? "")}
+                                                        {(c.name || "").split(" ").map((w: string) => w.charAt(0)).join("").slice(0, 2).toUpperCase()}
                                                     </div>
                                                     <div>
-                                                        <span className="font-bold text-primary-950 dark:text-white">{[c.firstName, c.lastName].filter(Boolean).join(" ")}</span>
+                                                        <span className="font-bold text-primary-950 dark:text-white">{c.name || [c.firstName, c.lastName].filter(Boolean).join(" ")}</span>
                                                         {c.currentCompany && <p className="text-[10px] text-neutral-400">{c.currentCompany}</p>}
                                                     </div>
                                                 </div>
@@ -573,6 +611,13 @@ export function RequisitionScreen() {
                                                         title="Schedule Interview"
                                                     >
                                                         <ArrowRight size={15} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setDeleteCandTarget(c)}
+                                                        className="p-2 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors"
+                                                        title="Delete"
+                                                    >
+                                                        <Trash2 size={15} />
                                                     </button>
                                                 </div>
                                             </td>
@@ -615,9 +660,29 @@ export function RequisitionScreen() {
                                             <td className="py-4 px-6 text-xs text-neutral-500 dark:text-neutral-400 truncate max-w-[200px]">{i.meetingLink || i.location || "—"}</td>
                                             <td className="py-4 px-6 text-center"><InterviewStatusBadge status={i.status ?? "Scheduled"} /></td>
                                             <td className="py-4 px-6 text-right">
-                                                <button onClick={() => openEditInt(i)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit">
-                                                    <Edit3 size={15} />
-                                                </button>
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <button onClick={() => openEditInt(i)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit">
+                                                        <Edit3 size={15} />
+                                                    </button>
+                                                    {(i.status === "Scheduled" || i.status === "SCHEDULED") && (
+                                                        <>
+                                                            <button
+                                                                onClick={() => { setCompleteIntTarget(i); setFeedbackRating(5); setFeedbackNotes(""); setCompleteIntModalOpen(true); }}
+                                                                className="p-2 text-success-600 dark:text-success-400 hover:bg-success-50 dark:hover:bg-success-900/20 rounded-lg transition-colors"
+                                                                title="Complete"
+                                                            >
+                                                                <CheckCircle2 size={15} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setCancelIntTarget(i)}
+                                                                className="p-2 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors"
+                                                                title="Cancel"
+                                                            >
+                                                                <XCircle size={15} />
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -661,13 +726,13 @@ export function RequisitionScreen() {
                                 <div>
                                     <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Employment Type</label>
                                     <select value={reqForm.employmentType} onChange={(e) => updateReqField("employmentType", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
-                                        {EMPLOYMENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                                        {EMPLOYMENT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                                     </select>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Priority</label>
                                     <select value={reqForm.priority} onChange={(e) => updateReqField("priority", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
-                                        {PRIORITY_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+                                        {PRIORITY_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
                                     </select>
                                 </div>
                             </div>
@@ -689,6 +754,16 @@ export function RequisitionScreen() {
                                 <div>
                                     <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Max Salary</label>
                                     <input type="text" value={reqForm.maxSalary} onChange={(e) => updateReqField("maxSalary", e.target.value)} placeholder="e.g., 1200000" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Experience Min (years)</label>
+                                    <input type="number" value={reqForm.experienceMin} onChange={(e) => updateReqField("experienceMin", e.target.value)} placeholder="e.g., 2" min={0} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Experience Max (years)</label>
+                                    <input type="number" value={reqForm.experienceMax} onChange={(e) => updateReqField("experienceMax", e.target.value)} placeholder="e.g., 8" min={0} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
                                 </div>
                             </div>
                             <div>
@@ -734,15 +809,9 @@ export function RequisitionScreen() {
                                     {requisitions.map((r: any) => <option key={r.id} value={r.id}>{r.title}</option>)}
                                 </select>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">First Name</label>
-                                    <input type="text" value={candForm.firstName} onChange={(e) => updateCandField("firstName", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Last Name</label>
-                                    <input type="text" value={candForm.lastName} onChange={(e) => updateCandField("lastName", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
-                                </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Full Name</label>
+                                <input type="text" value={candForm.name} onChange={(e) => updateCandField("name", e.target.value)} placeholder="e.g., John Doe" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
@@ -805,7 +874,7 @@ export function RequisitionScreen() {
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Candidate</label>
                                 <select value={intForm.candidateId} onChange={(e) => updateIntField("candidateId", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
                                     <option value="">Select candidate...</option>
-                                    {candidates.map((c: any) => <option key={c.id} value={c.id}>{[c.firstName, c.lastName].filter(Boolean).join(" ")}</option>)}
+                                    {candidates.map((c: any) => <option key={c.id} value={c.id}>{c.name || [c.firstName, c.lastName].filter(Boolean).join(" ")}</option>)}
                                 </select>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
@@ -873,10 +942,10 @@ export function RequisitionScreen() {
                         <div className="p-6 overflow-y-auto flex-1 space-y-4">
                             <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 rounded-xl bg-accent-100 dark:bg-accent-900/30 flex items-center justify-center text-lg font-bold text-accent-700 dark:text-accent-400">
-                                    {(candDetailTarget.firstName?.charAt(0) ?? "") + (candDetailTarget.lastName?.charAt(0) ?? "")}
+                                    {(candDetailTarget.name || "").split(" ").map((w: string) => w.charAt(0)).join("").slice(0, 2).toUpperCase()}
                                 </div>
                                 <div>
-                                    <p className="font-bold text-primary-950 dark:text-white text-lg">{[candDetailTarget.firstName, candDetailTarget.lastName].filter(Boolean).join(" ")}</p>
+                                    <p className="font-bold text-primary-950 dark:text-white text-lg">{candDetailTarget.name || [candDetailTarget.firstName, candDetailTarget.lastName].filter(Boolean).join(" ")}</p>
                                     <StageBadge stage={candDetailTarget.stage ?? "Applied"} />
                                 </div>
                             </div>
@@ -915,6 +984,107 @@ export function RequisitionScreen() {
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
                             <button onClick={() => setCandDetailTarget(null)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Close</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Complete Interview Modal ── */}
+            {completeIntModalOpen && completeIntTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200">
+                        <h2 className="text-lg font-bold text-primary-950 dark:text-white mb-4">Complete Interview</h2>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Feedback Rating (1-10)</label>
+                                <input
+                                    type="number"
+                                    value={feedbackRating}
+                                    onChange={(e) => setFeedbackRating(Math.min(10, Math.max(1, Number(e.target.value))))}
+                                    min={1}
+                                    max={10}
+                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Feedback Notes (optional)</label>
+                                <textarea
+                                    value={feedbackNotes}
+                                    onChange={(e) => setFeedbackNotes(e.target.value)}
+                                    rows={3}
+                                    placeholder="Interview feedback..."
+                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all resize-none"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex gap-3 mt-6">
+                            <button onClick={() => { setCompleteIntModalOpen(false); setCompleteIntTarget(null); }} className="flex-1 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
+                            <button
+                                onClick={() => {
+                                    completeInterview.mutate(
+                                        { id: completeIntTarget.id, data: { feedbackRating, feedbackNotes: feedbackNotes || undefined } },
+                                        {
+                                            onSuccess: () => { showSuccess("Interview completed"); setCompleteIntModalOpen(false); setCompleteIntTarget(null); },
+                                            onError: showApiError,
+                                        },
+                                    );
+                                }}
+                                disabled={completeInterview.isPending}
+                                className="flex-1 py-3 rounded-xl bg-success-600 hover:bg-success-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {completeInterview.isPending && <Loader2 size={14} className="animate-spin" />}
+                                {completeInterview.isPending ? "Completing..." : "Complete"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Cancel Interview Confirmation ── */}
+            {cancelIntTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200">
+                        <h2 className="text-lg font-bold text-danger-700 dark:text-danger-400 mb-2">Cancel Interview?</h2>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400">Are you sure you want to cancel this interview?</p>
+                        <div className="flex gap-3 mt-6">
+                            <button onClick={() => setCancelIntTarget(null)} className="flex-1 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">No, Keep</button>
+                            <button
+                                onClick={() => {
+                                    cancelInterview.mutate(cancelIntTarget.id, {
+                                        onSuccess: () => { showSuccess("Interview cancelled"); setCancelIntTarget(null); },
+                                        onError: showApiError,
+                                    });
+                                }}
+                                disabled={cancelInterview.isPending}
+                                className="flex-1 py-3 rounded-xl bg-danger-600 hover:bg-danger-700 text-white text-sm font-bold transition-colors disabled:opacity-50"
+                            >
+                                {cancelInterview.isPending ? "Cancelling..." : "Cancel Interview"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Delete Candidate Confirmation ── */}
+            {deleteCandTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200">
+                        <h2 className="text-lg font-bold text-danger-700 dark:text-danger-400 mb-2">Delete Candidate?</h2>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400">This will permanently delete <strong>{deleteCandTarget.name || [deleteCandTarget.firstName, deleteCandTarget.lastName].filter(Boolean).join(" ")}</strong>.</p>
+                        <div className="flex gap-3 mt-6">
+                            <button onClick={() => setDeleteCandTarget(null)} className="flex-1 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
+                            <button
+                                onClick={() => {
+                                    deleteCandidate.mutate(deleteCandTarget.id, {
+                                        onSuccess: () => { showSuccess("Candidate deleted"); setDeleteCandTarget(null); },
+                                        onError: showApiError,
+                                    });
+                                }}
+                                disabled={deleteCandidate.isPending}
+                                className="flex-1 py-3 rounded-xl bg-danger-600 hover:bg-danger-700 text-white text-sm font-bold transition-colors disabled:opacity-50"
+                            >
+                                {deleteCandidate.isPending ? "Deleting..." : "Delete"}
+                            </button>
                         </div>
                     </div>
                 </div>
