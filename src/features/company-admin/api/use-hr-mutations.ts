@@ -358,6 +358,26 @@ export function useDeleteDocument() {
     });
 }
 
+// ── Bulk Import ──
+
+export function useBulkValidateEmployees() {
+    return useMutation({
+        mutationFn: ({ file, defaultPassword }: { file: File; defaultPassword: string }) =>
+            hrApi.bulkValidate(file, defaultPassword),
+    });
+}
+
+export function useBulkImportEmployees() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ rows, defaultPassword }: { rows: Record<string, unknown>[]; defaultPassword: string }) =>
+            hrApi.bulkImport(rows, defaultPassword),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: hrKeys.employees() });
+        },
+    });
+}
+
 // ── Probation ──
 
 export function useSubmitProbationReview() {

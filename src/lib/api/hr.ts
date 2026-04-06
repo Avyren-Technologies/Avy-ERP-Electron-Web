@@ -554,6 +554,28 @@ async function getOrgChart(): Promise<ApiResponse<any>> {
     return response.data;
 }
 
+// ── Bulk Import ──
+
+async function downloadBulkTemplate(): Promise<Blob> {
+    const response = await client.get('/hr/employees/bulk/template', { responseType: 'blob' });
+    return response.data;
+}
+
+async function bulkValidate(file: File, defaultPassword: string) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('defaultPassword', defaultPassword);
+    const response = await client.post('/hr/employees/bulk/validate', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+}
+
+async function bulkImport(rows: Record<string, unknown>[], defaultPassword: string) {
+    const response = await client.post('/hr/employees/bulk/import', { rows, defaultPassword });
+    return response.data;
+}
+
 export const hrApi = {
     // Departments
     listDepartments,
@@ -619,4 +641,8 @@ export const hrApi = {
     submitProbationReview,
     // Org Chart
     getOrgChart,
+    // Bulk Import
+    downloadBulkTemplate,
+    bulkValidate,
+    bulkImport,
 };

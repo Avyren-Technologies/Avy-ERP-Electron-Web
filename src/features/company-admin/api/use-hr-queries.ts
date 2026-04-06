@@ -185,3 +185,17 @@ export function useOrgChart() {
         queryFn: () => hrApi.getOrgChart(),
     });
 }
+
+// ── Bulk Import ──
+
+export async function downloadBulkEmployeeTemplate() {
+    const blob = await hrApi.downloadBulkTemplate();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Employee_Import_Template.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+}
