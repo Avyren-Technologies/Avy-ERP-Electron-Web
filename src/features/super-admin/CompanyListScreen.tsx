@@ -9,8 +9,10 @@ import {
     ArrowRight,
     Server,
     MapPin,
-    Loader2
+    Loader2,
+    Upload,
 } from "lucide-react";
+import { BulkUploadModal } from "./bulk-upload/BulkUploadModal";
 import { cn } from "@/lib/utils";
 import { useTenantList } from "@/features/super-admin/api/use-tenant-queries";
 import { SkeletonTable } from '@/components/ui/Skeleton';
@@ -31,6 +33,7 @@ export function CompanyListScreen() {
     const [search, setSearch] = useState("");
     const [activeFilter, setActiveFilter] = useState("All");
     const [page, setPage] = useState(1);
+    const [showBulkUpload, setShowBulkUpload] = useState(false);
     const limit = 25;
 
     const { data, isLoading, isError } = useTenantList({
@@ -45,6 +48,13 @@ export function CompanyListScreen() {
     const total = meta?.total ?? companies.length;
 
     return (
+        <>
+        {showBulkUpload && (
+            <BulkUploadModal
+                onClose={() => setShowBulkUpload(false)}
+                onSuccess={() => setShowBulkUpload(false)}
+            />
+        )}
         <div className="space-y-6 animate-in fade-in duration-500">
 
             {/* Header & Actions */}
@@ -53,13 +63,22 @@ export function CompanyListScreen() {
                     <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Companies</h1>
                     <p className="text-neutral-500 dark:text-neutral-400 mt-1">Manage tenant workspaces and subscriptions</p>
                 </div>
-                <button
-                    onClick={() => navigate("/app/companies/add")}
-                    className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none"
-                >
-                    <Plus className="w-5 h-5" />
-                    Add Company
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setShowBulkUpload(true)}
+                        className="inline-flex items-center gap-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 px-5 py-2.5 rounded-xl font-bold text-sm transition-all"
+                    >
+                        <Upload className="w-4 h-4" />
+                        Bulk Upload
+                    </button>
+                    <button
+                        onClick={() => navigate("/app/companies/add")}
+                        className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none"
+                    >
+                        <Plus className="w-5 h-5" />
+                        Add Company
+                    </button>
+                </div>
             </div>
 
             {/* Toolbar */}
@@ -286,5 +305,6 @@ export function CompanyListScreen() {
                 </div>
             </div>
         </div>
+        </>
     );
 }
