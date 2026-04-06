@@ -122,6 +122,7 @@ import { ShiftCheckInScreen } from "./features/company-admin/hr/ShiftCheckInScre
 // HR Recruitment & Training Screens
 import { RequisitionScreen } from "./features/company-admin/hr/RequisitionScreen";
 import { CandidateScreen } from "./features/company-admin/hr/CandidateScreen";
+import { CandidateDetailScreen } from "./features/company-admin/hr/CandidateDetailScreen";
 import { TrainingCatalogueScreen } from "./features/company-admin/hr/TrainingCatalogueScreen";
 import { TrainingNominationScreen } from "./features/company-admin/hr/TrainingNominationScreen";
 
@@ -400,6 +401,7 @@ function App() {
         <Route path="company/hr/my-loans" element={<RequirePermission permission={['hr:read', 'ess:apply-loan']}><MyLoanScreen /></RequirePermission>} />
         {/* Company-admin Recruitment & Training routes */}
         <Route path="company/hr/requisitions" element={<RequirePermission permission="hr:read"><RequisitionScreen /></RequirePermission>} />
+        <Route path="company/hr/candidates/:id" element={<RequirePermission permission="hr:read"><CandidateDetailScreen /></RequirePermission>} />
         <Route path="company/hr/candidates" element={<RequirePermission permission="hr:read"><CandidateScreen /></RequirePermission>} />
         <Route path="company/hr/training" element={<RequirePermission permission="hr:read"><TrainingCatalogueScreen /></RequirePermission>} />
         <Route path="company/hr/training-nominations" element={<RequirePermission permission="hr:read"><TrainingNominationScreen /></RequirePermission>} />

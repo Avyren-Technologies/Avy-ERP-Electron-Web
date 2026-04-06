@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     Briefcase,
@@ -235,6 +236,7 @@ function OfferStatusBadge({ status }: { status: string }) {
 /* ── Screen ── */
 
 export function RequisitionScreen() {
+    const navigate = useNavigate();
     const fmt = useCompanyFormatter();
     const formatDate = (d: string | null | undefined) => d ? fmt.date(d) : "—";
     const formatDateTime = (d: string | null | undefined) => d ? fmt.dateTime(d) : "—";
@@ -732,7 +734,7 @@ export function RequisitionScreen() {
                                                         {(c.name || "").split(" ").map((w: string) => w.charAt(0)).join("").slice(0, 2).toUpperCase()}
                                                     </div>
                                                     <div>
-                                                        <span className="font-bold text-primary-950 dark:text-white">{c.name || [c.firstName, c.lastName].filter(Boolean).join(" ")}</span>
+                                                        <button onClick={() => navigate(`/app/company/hr/candidates/${c.id}`)} className="font-bold text-primary-950 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 hover:underline transition-colors text-left">{c.name || [c.firstName, c.lastName].filter(Boolean).join(" ")}</button>
                                                         {c.currentCompany && <p className="text-[10px] text-neutral-400">{c.currentCompany}</p>}
                                                     </div>
                                                 </div>
