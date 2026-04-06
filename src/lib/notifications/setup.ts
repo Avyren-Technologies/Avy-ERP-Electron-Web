@@ -39,9 +39,18 @@ export async function initWebPushNotifications(): Promise<string | null> {
 
     // Get FCM token
     const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY || '';
+    const swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    await navigator.serviceWorker.ready;
+
+    // Post Firebase config to service worker for background message handling
+    swRegistration.active?.postMessage({
+      type: 'FIREBASE_CONFIG',
+      config: firebaseConfig,
+    });
+
     const token = await getToken(messaging, {
       vapidKey,
-      serviceWorkerRegistration: await navigator.serviceWorker.register('/firebase-messaging-sw.js'),
+      serviceWorkerRegistration: swRegistration,
     });
 
     fcmToken = token;

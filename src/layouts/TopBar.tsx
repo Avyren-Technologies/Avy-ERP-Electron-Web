@@ -1,6 +1,7 @@
 // ============================================================
 // TopBar — Search (Cmd+K), Theme Switch, Notifications, Profile
 // ============================================================
+import { DateTime } from 'luxon';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -230,7 +231,7 @@ function formatTimeAgo(dateStr: string): string {
     if (diffHrs < 24) return `${diffHrs}h ago`;
     const diffDays = Math.floor(diffHrs / 24);
     if (diffDays < 7) return `${diffDays}d ago`;
-    return new Date(dateStr).toLocaleDateString();
+    return DateTime.fromISO(dateStr).toFormat('dd/MM/yyyy');
 }
 
 const notificationKeys = {
