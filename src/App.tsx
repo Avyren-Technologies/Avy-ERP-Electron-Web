@@ -76,6 +76,7 @@ import { RosterScreen } from "./features/company-admin/hr/RosterScreen";
 import { AttendanceRulesScreen } from "./features/company-admin/hr/AttendanceRulesScreen";
 import { AttendanceOverrideScreen } from "./features/company-admin/hr/AttendanceOverrideScreen";
 import { OvertimeRulesScreen } from "./features/company-admin/hr/OvertimeRulesScreen";
+import { AdminAttendanceScreen } from "./features/company-admin/hr/AdminAttendanceScreen";
 
 // HR Payroll & Compliance Screens
 import { SalaryComponentScreen } from "./features/company-admin/hr/SalaryComponentScreen";
@@ -355,6 +356,7 @@ function App() {
         <Route path="company/hr/attendance-rules" element={<RequirePermission permission="hr:read"><AttendanceRulesScreen /></RequirePermission>} />
         <Route path="company/hr/attendance-overrides" element={<RequirePermission permission="hr:read"><AttendanceOverrideScreen /></RequirePermission>} />
         <Route path="company/hr/overtime-rules" element={<RequirePermission permission="hr:read"><OvertimeRulesScreen /></RequirePermission>} />
+        <Route path="company/hr/admin-attendance" element={<RequirePermission permission="attendance:mark"><AdminAttendanceScreen /></RequirePermission>} />
         {/* Company-admin Leave Management routes */}
         <Route path="company/hr/leave-types" element={<RequirePermission permission={['hr:read', 'ess:view-leave']}><LeaveTypeScreen /></RequirePermission>} />
         <Route path="company/hr/leave-policies" element={<RequirePermission permission="hr:read"><LeavePolicyScreen /></RequirePermission>} />
