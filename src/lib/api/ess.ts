@@ -11,6 +11,15 @@ export interface DashboardAnnouncement {
     createdAt: string;
 }
 
+export interface DashboardGeofenceInfo {
+    id: string;
+    name: string;
+    lat: number;
+    lng: number;
+    radius: number;
+    isDefault?: boolean;
+}
+
 export interface DashboardShiftInfo {
     shiftName: string;
     startTime: string;
@@ -22,6 +31,8 @@ export interface DashboardShiftInfo {
     elapsedSeconds: number;
     workedHours: number | string | null;
     locationName: string | null;
+    geofences?: DashboardGeofenceInfo[];
+    assignedGeofence?: DashboardGeofenceInfo | null;
 }
 
 export interface DashboardLeaveBalanceItem {

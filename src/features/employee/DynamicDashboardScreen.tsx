@@ -165,7 +165,9 @@ function normalizeDashboardData(raw: Record<string, unknown>): DashboardData {
             punchOut: att.record?.punchOut ?? null,
             elapsedSeconds: att.elapsedSeconds ?? 0,
             workedHours: att.record?.workedHours ?? null,
-            locationName: att.record?.location?.name ?? att.location?.name ?? null,
+            locationName: att.record?.location?.name ?? cs?.location?.name ?? null,
+            geofences: cs?.location?.geofences ?? [],
+            assignedGeofence: cs?.assignedGeofence ?? null,
         };
     }
 
@@ -667,6 +669,11 @@ function ShiftCheckInHero({ shift }: { shift: DashboardShiftInfo | null }) {
                                     <div className="flex items-center gap-2 justify-center lg:justify-start">
                                         <MapPin className="w-3.5 h-3.5 text-white/50" />
                                         <span className="text-xs text-white/60">{shift.locationName}</span>
+                                        {shift.assignedGeofence ? (
+                                            <span className="text-[10px] text-white/40 bg-white/10 rounded-full px-2 py-0.5">{shift.assignedGeofence.name}</span>
+                                        ) : (shift.geofences?.length ?? 0) > 0 ? (
+                                            <span className="text-[10px] text-white/40 bg-white/10 rounded-full px-2 py-0.5">{shift.geofences!.length} geofence(s)</span>
+                                        ) : null}
                                     </div>
                                 )}
                             </div>
