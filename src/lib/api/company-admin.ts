@@ -861,6 +861,32 @@ export const companyAdminApi = {
     updateShiftBreak,
     deleteShiftBreak,
 
+    // ── Geofences ──
+    listGeofences: async (locationId: string) => {
+        const response = await client.get(`/company/locations/${locationId}/geofences`);
+        return response.data;
+    },
+    listGeofencesForDropdown: async (locationId: string) => {
+        const response = await client.get('/company/geofences', { params: { locationId } });
+        return response.data;
+    },
+    createGeofence: async (locationId: string, data: any) => {
+        const response = await client.post(`/company/locations/${locationId}/geofences`, data);
+        return response.data;
+    },
+    updateGeofence: async (locationId: string, id: string, data: any) => {
+        const response = await client.patch(`/company/locations/${locationId}/geofences/${id}`, data);
+        return response.data;
+    },
+    deleteGeofence: async (locationId: string, id: string) => {
+        const response = await client.delete(`/company/locations/${locationId}/geofences/${id}`);
+        return response.data;
+    },
+    setDefaultGeofence: async (locationId: string, id: string) => {
+        const response = await client.patch(`/company/locations/${locationId}/geofences/${id}/default`);
+        return response.data;
+    },
+
     // ── Support Tickets ──
     createSupportTicket: (data: { subject: string; category?: string; priority?: string; message: string; metadata?: Record<string, unknown> }) =>
         client.post('/company/support/tickets', data).then(r => r.data),
