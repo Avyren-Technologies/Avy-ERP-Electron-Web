@@ -13,6 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useCompanyLocations } from "@/features/company-admin/api/use-company-admin-queries";
 import { useUpdateLocation, useDeleteLocation } from "@/features/company-admin/api/use-company-admin-mutations";
+import { GeofenceManager } from "@/features/company-admin/settings/GeofenceManager";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
@@ -224,7 +225,7 @@ export function LocationManagementScreen() {
             {/* ── Edit Modal ── */}
             {editingLocation && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-lg animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-5xl animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
                             <h2 className="text-lg font-bold text-primary-950 dark:text-white">Edit Location</h2>
                             <button onClick={() => setEditingLocation(null)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
@@ -260,6 +261,16 @@ export function LocationManagementScreen() {
                                     <option value="Active">Active</option>
                                     <option value="Inactive">Inactive</option>
                                 </select>
+                            </div>
+
+                            {/* ── Geofence Manager ── */}
+                            <div className="mt-8 border-t border-neutral-200 dark:border-neutral-700 pt-6">
+                                <GeofenceManager
+                                    locationId={editingLocation.id}
+                                    companyId={editingLocation.companyId}
+                                    locationLat={editingLocation.geoLat}
+                                    locationLng={editingLocation.geoLng}
+                                />
                             </div>
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">

@@ -52,6 +52,7 @@ import {
     useDeleteDocument,
 } from "@/features/company-admin/api/use-hr-mutations";
 import { useSalaryStructures } from "@/features/company-admin/api/use-payroll-queries";
+import { useGeofencesForDropdown } from "@/features/company-admin/api/use-geofence-queries";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
@@ -224,7 +225,7 @@ const EMPTY_PROFESSIONAL = {
     joiningDate: "", employeeTypeId: "", departmentId: "",
     designationId: "", gradeId: "",
     reportingManagerId: "", functionalManagerId: "",
-    workType: "ON_SITE", shiftId: "", locationId: "",
+    workType: "ON_SITE", shiftId: "", locationId: "", geofenceId: "",
     costCentreId: "", noticePeriod: "", probationEndDate: "",
 };
 
@@ -317,6 +318,7 @@ export function EmployeeProfileScreen() {
     const employeesQuery = useEmployees({ limit: 500 });
     const locationsQuery = useCompanyLocations();
     const shiftsQuery = useCompanyShifts();
+    const geofenceQuery = useGeofencesForDropdown(professional.locationId || undefined);
     const rolesQuery = useRbacRoles();
     const docsQuery = useEmployeeDocuments(isNew ? "" : id!);
     const timelineQuery = useEmployeeTimeline(isNew ? "" : id!);
@@ -351,6 +353,7 @@ export function EmployeeProfileScreen() {
     const costCentreOptions = useMemo(() => costCentresFull.map((c: any) => ({ value: c.id, label: `${c.code ?? ""} - ${c.name}` })), [costCentresFull]);
     const locationOptions = useMemo(() => (locationsQuery.data?.data ?? []).map((l: any) => ({ value: l.id, label: l.name })), [locationsQuery.data]);
     const shiftOptions = useMemo(() => (shiftsQuery.data?.data ?? []).map((s: any) => ({ value: s.id, label: s.name })), [shiftsQuery.data]);
+    const geofenceOptions = useMemo(() => ((geofenceQuery.data?.data ?? geofenceQuery.data) ?? []) as { id: string; name: string; radius: number; isDefault: boolean }[], [geofenceQuery.data]);
     const managerOptions = useMemo(() => (employeesQuery.data?.data ?? []).filter((e: any) => e.id !== id).map((e: any) => {
         const name = [e.firstName, e.lastName].filter(Boolean).join(" ") || e.officialEmail || e.id;
         const empId = e.employeeId ?? "";
@@ -417,6 +420,7 @@ export function EmployeeProfileScreen() {
             workType: emp.workType ?? "ON_SITE",
             shiftId: emp.shiftId ?? "",
             locationId: emp.locationId ?? "",
+            geofenceId: emp.geofenceId ?? "",
             costCentreId: emp.costCentreId ?? "",
             noticePeriod: emp.noticePeriodDays?.toString() ?? "",
             probationEndDate: emp.probationEndDate ? new Date(emp.probationEndDate).toISOString().split("T")[0] : "",
@@ -494,6 +498,18 @@ export function EmployeeProfileScreen() {
         }, 500);
         return () => clearTimeout(timer);
     }, [personal, professional, salary, bank, documents, isNew]);
+
+    // Auto-select default geofence when location changes and geofence options load
+    useEffect(() => {
+        if (!geofenceOptions.length) return;
+        // Only auto-select if no geofence is currently chosen (or location just changed)
+        if (!professional.geofenceId) {
+            const defaultGf = geofenceOptions.find((gf) => gf.isDefault);
+            if (defaultGf) {
+                setProfessional((p) => ({ ...p, geofenceId: defaultGf.id }));
+            }
+        }
+    }, [geofenceOptions, professional.locationId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Helpers
     const updatePersonal = (key: string, value: any) => setPersonal((p) => ({ ...p, [key]: value }));
@@ -711,6 +727,7 @@ export function EmployeeProfileScreen() {
         if (professional.shiftId) payload.shiftId = professional.shiftId;
         if (professional.costCentreId) payload.costCentreId = professional.costCentreId;
         if (professional.locationId) payload.locationId = professional.locationId;
+        if (professional.geofenceId) payload.geofenceId = professional.geofenceId;
         if (professional.noticePeriod) payload.noticePeriodDays = parseInt(professional.noticePeriod);
 
         // Work type (already using backend enum values)
@@ -1229,8 +1246,30 @@ export function EmployeeProfileScreen() {
                                 <SelectField label="Grade" value={professional.gradeId} onChange={(v) => updateProfessional("gradeId", v)} options={gradeOptions} disabled={!editing} placeholder="Select grade..." createLink={{ href: "/app/company/hr/grades", label: "Create Grade" }} />
                                 <SelectField label="Reporting Manager" value={professional.reportingManagerId} onChange={(v) => updateProfessional("reportingManagerId", v)} options={managerOptions} disabled={!editing} placeholder="Search manager..." />
                                 <SelectField label="Functional Manager" value={professional.functionalManagerId} onChange={(v) => updateProfessional("functionalManagerId", v)} options={managerOptions} disabled={!editing} placeholder="Search manager..." />
-                                <SelectField label="Location" value={professional.locationId} onChange={(v) => updateProfessional("locationId", v)} options={locationOptions} disabled={!editing} placeholder="Select location..." createLink={{ href: "/app/company/locations", label: "Create Location" }} />
+                                <SelectField label="Location" value={professional.locationId} onChange={(v) => { updateProfessional("locationId", v); updateProfessional("geofenceId", ""); }} options={locationOptions} disabled={!editing} placeholder="Select location..." createLink={{ href: "/app/company/locations", label: "Create Location" }} />
                                 <SelectField label="Shift" value={professional.shiftId} onChange={(v) => updateProfessional("shiftId", v)} options={shiftOptions} disabled={!editing} placeholder="Select shift..." createLink={{ href: "/app/company/shifts", label: "Create Shift" }} />
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Geofence</label>
+                                    <select
+                                        value={professional.geofenceId ?? ""}
+                                        onChange={(e) => updateProfessional("geofenceId", e.target.value || "")}
+                                        disabled={!editing || !professional.locationId}
+                                        className={cn(
+                                            "w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all",
+                                            (!editing || !professional.locationId) && "opacity-60 cursor-not-allowed bg-neutral-100 dark:bg-neutral-800/50"
+                                        )}
+                                    >
+                                        <option value="">No specific geofence</option>
+                                        {geofenceOptions.map((gf) => (
+                                            <option key={gf.id} value={gf.id}>
+                                                {gf.name} ({gf.radius}m){gf.isDefault ? " \u2014 Default" : ""}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-1">
+                                        {!professional.locationId ? "Select a location first" : "Geofence zone for attendance check-in"}
+                                    </p>
+                                </div>
                             </div>
 
                             <RadioGroup
