@@ -69,14 +69,14 @@ interface ResolvedPolicy {
 
 interface EmployeeStatus {
     status: "NOT_CHECKED_IN" | "CHECKED_IN" | "CHECKED_OUT";
-    record: {
+    todayRecord: {
         id: string;
         punchIn: string | null;
         punchOut: string | null;
         workedHours: number | string | null;
         status: string;
     } | null;
-    currentShift?: ShiftInfo | null;
+    shift?: ShiftInfo | null;
     resolvedPolicy?: ResolvedPolicy | null;
     location?: LocationInfo | null;
     assignedGeofence?: GeofenceInfo | null;
@@ -86,8 +86,8 @@ interface EmployeeStatus {
         firstName: string;
         lastName: string;
         profilePhotoUrl?: string | null;
-        department?: { name: string } | null;
-        designation?: { name: string } | null;
+        departmentName?: string | null;
+        designationName?: string | null;
     } | null;
 }
 
@@ -349,7 +349,7 @@ export function AdminAttendanceScreen() {
 
     // Derived
     const attendanceStatus = empStatus?.status ?? "NOT_CHECKED_IN";
-    const shiftInfo = empStatus?.currentShift ?? null;
+    const shiftInfo = empStatus?.shift ?? null;
     const locationInfo = empStatus?.location ?? null;
     const assignedGeofence = empStatus?.assignedGeofence ?? null;
     const resolvedPolicy = empStatus?.resolvedPolicy ?? null;
@@ -503,8 +503,8 @@ export function AdminAttendanceScreen() {
                                                     </div>
                                                     <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
                                                         {employeeInfo?.employeeCode}
-                                                        {employeeInfo?.department ? ` - ${employeeInfo.department.name}` : ""}
-                                                        {employeeInfo?.designation ? ` - ${employeeInfo.designation.name}` : ""}
+                                                        {employeeInfo?.departmentName ? ` - ${employeeInfo.departmentName}` : ""}
+                                                        {employeeInfo?.designationName ? ` - ${employeeInfo.designationName}` : ""}
                                                     </p>
                                                 </div>
                                             </div>
@@ -642,7 +642,7 @@ export function AdminAttendanceScreen() {
                         {selectedEmployeeId && empStatus && !kioskSuccess && (
                             <div className="space-y-6">
                                 {/* Punch record summary */}
-                                {empStatus.record && (
+                                {empStatus.todayRecord && (
                                     <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm p-6">
                                         <div className="flex items-center gap-3 mb-4">
                                             <div className="w-10 h-10 rounded-xl bg-success-50 dark:bg-success-900/20 flex items-center justify-center">
@@ -654,13 +654,13 @@ export function AdminAttendanceScreen() {
                                             <div>
                                                 <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium mb-0.5">Punch In</p>
                                                 <p className="font-semibold text-primary-950 dark:text-white text-sm">
-                                                    {empStatus.record.punchIn ? fmt.time(empStatus.record.punchIn) : "--:--"}
+                                                    {empStatus.todayRecord.punchIn ? fmt.time(empStatus.todayRecord.punchIn) : "--:--"}
                                                 </p>
                                             </div>
                                             <div>
                                                 <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium mb-0.5">Punch Out</p>
                                                 <p className="font-semibold text-primary-950 dark:text-white text-sm">
-                                                    {empStatus.record.punchOut ? fmt.time(empStatus.record.punchOut) : "--:--"}
+                                                    {empStatus.todayRecord.punchOut ? fmt.time(empStatus.todayRecord.punchOut) : "--:--"}
                                                 </p>
                                             </div>
                                         </div>
