@@ -41,7 +41,7 @@ const MONTHS = [
     "July", "August", "September", "October", "November", "December",
 ];
 
-const formatCurrency = (v: number) => `\u20B9${(v ?? 0).toLocaleString("en-IN")}`;
+const formatCurrency = (v: unknown) => `₹${(Number(v) || 0).toLocaleString("en-IN")}`;
 
 const STEP_LABELS = [
     "Lock Attendance",
@@ -354,7 +354,7 @@ export function PayrollRunScreen() {
                                         </div>
                                         <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
                                             <span>{run.employeeCount ?? 0} employees</span>
-                                            <span className="font-mono">{formatCurrency(run.totalNetPay ?? 0)}</span>
+                                            <span className="font-mono">{formatCurrency(run.totalNet ?? run.totalNetPay ?? 0)}</span>
                                         </div>
                                     </button>
                                 ))}
@@ -533,7 +533,7 @@ export function PayrollRunScreen() {
                                                 {[
                                                     { label: "Total Gross", value: formatCurrency(runDetail?.totalGross ?? 0) },
                                                     { label: "Total Deductions", value: formatCurrency(runDetail?.totalDeductions ?? 0) },
-                                                    { label: "Total Net Pay", value: formatCurrency(runDetail?.totalNetPay ?? 0) },
+                                                    { label: "Total Net Pay", value: formatCurrency(runDetail?.totalNet ?? runDetail?.totalNetPay ?? 0) },
                                                     { label: "Variance", value: `${runDetail?.variancePercent ?? 0}%` },
                                                 ].map((item) => (
                                                     <div key={item.label} className="rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 bg-neutral-50/50 dark:bg-neutral-800/30">
@@ -630,7 +630,7 @@ export function PayrollRunScreen() {
                                                     { label: "Total Gross Pay", value: formatCurrency(runDetail?.totalGross ?? 0) },
                                                     { label: "Total Deductions", value: formatCurrency(runDetail?.totalDeductions ?? 0) },
                                                     { label: "Total Statutory", value: formatCurrency((runDetail?.statutory?.pf ?? 0) + (runDetail?.statutory?.esi ?? 0) + (runDetail?.statutory?.pt ?? 0) + (runDetail?.statutory?.tds ?? 0) + (runDetail?.statutory?.lwf ?? 0)) },
-                                                    { label: "Total Net Pay", value: formatCurrency(runDetail?.totalNetPay ?? 0) },
+                                                    { label: "Total Net Pay", value: formatCurrency(runDetail?.totalNet ?? runDetail?.totalNetPay ?? 0) },
                                                 ].map((item) => (
                                                     <div key={item.label} className="flex items-center justify-between py-1.5">
                                                         <span className="text-sm text-neutral-600 dark:text-neutral-400">{item.label}</span>
@@ -669,7 +669,7 @@ export function PayrollRunScreen() {
                                         <div className="bg-success-50/50 dark:bg-success-900/10 rounded-xl border border-success-100 dark:border-success-800/50 p-5">
                                             <div className="flex items-center justify-between">
                                                 <span className="text-sm font-bold text-success-700 dark:text-success-400">Total Disbursement Amount</span>
-                                                <span className="text-2xl font-extrabold font-mono text-success-700 dark:text-success-400">{formatCurrency(runDetail?.totalNetPay ?? 0)}</span>
+                                                <span className="text-2xl font-extrabold font-mono text-success-700 dark:text-success-400">{formatCurrency(runDetail?.totalNet ?? runDetail?.totalNetPay ?? 0)}</span>
                                             </div>
                                         </div>
                                         {completedStep === 5 && (

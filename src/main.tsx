@@ -1,8 +1,6 @@
-import { StrictMode } from 'react'
+import { lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
-import { Analytics } from '@vercel/analytics/react'
-import { SpeedInsights } from '@vercel/speed-insights/react'
 import faviconUrl from '@/assets/logo/app-logo.png'
 import './index.css'
 import App from './App.tsx'
@@ -25,14 +23,18 @@ initCrossTabSync()
   link.href = faviconUrl
 }
 
+// Lazy-load Vercel telemetry — not needed at initial render
+const Analytics = lazy(() => import('@vercel/analytics/react').then(m => ({ default: m.Analytics })))
+const SpeedInsights = lazy(() => import('@vercel/speed-insights/react').then(m => ({ default: m.SpeedInsights })))
+
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <BrowserRouter>
-      <APIProvider>
-        <App />
+  <BrowserRouter>
+    <APIProvider>
+      <App />
+      <Suspense fallback={null}>
         <Analytics />
         <SpeedInsights />
-      </APIProvider>
-    </BrowserRouter>
-  </StrictMode>,
+      </Suspense>
+    </APIProvider>
+  </BrowserRouter>,
 )

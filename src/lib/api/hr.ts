@@ -112,7 +112,7 @@ export interface CreateCostCentrePayload {
 }
 
 export type EmployeeStatus = 'ACTIVE' | 'PROBATION' | 'CONFIRMED' | 'ON_NOTICE' | 'SUSPENDED' | 'EXITED';
-export type Gender = 'MALE' | 'FEMALE' | 'OTHER';
+export type Gender = 'MALE' | 'FEMALE' | 'NON_BINARY' | 'PREFER_NOT_TO_SAY';
 export type MaritalStatus = 'SINGLE' | 'MARRIED' | 'DIVORCED' | 'WIDOWED';
 
 export interface Employee {

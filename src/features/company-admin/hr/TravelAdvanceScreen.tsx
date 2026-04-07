@@ -206,9 +206,9 @@ export function TravelAdvanceScreen() {
     const getOutcomeText = (outcome: string, difference: number) => {
         const o = outcome?.toUpperCase();
         if (o === "EMPLOYEE_OWES" || difference > 0)
-            return { text: `Employee Owes \u20B9${Math.abs(difference).toLocaleString("en-IN")}`, color: "text-warning-700 dark:text-warning-400" };
+            return { text: `Employee Owes ₹${Math.abs(difference).toLocaleString("en-IN")}`, color: "text-warning-700 dark:text-warning-400" };
         if (o === "COMPANY_OWES" || difference < 0)
-            return { text: `Company Owes \u20B9${Math.abs(difference).toLocaleString("en-IN")}`, color: "text-info-700 dark:text-info-400" };
+            return { text: `Company Owes ₹${Math.abs(difference).toLocaleString("en-IN")}`, color: "text-info-700 dark:text-info-400" };
         return { text: "Exact Match", color: "text-success-700 dark:text-success-400" };
     };
 
@@ -282,7 +282,7 @@ export function TravelAdvanceScreen() {
                                                 <span className="font-bold text-primary-950 dark:text-white">{a.employeeName ?? a.employeeId ?? "—"}</span>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6 text-right font-bold text-primary-950 dark:text-white font-mono">{"\u20B9"}{Number(a.amount ?? 0).toLocaleString("en-IN")}</td>
+                                        <td className="py-4 px-6 text-right font-bold text-primary-950 dark:text-white font-mono">{"₹"}{Number(a.amount ?? 0).toLocaleString("en-IN")}</td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{a.tripPurpose || "—"}</td>
                                         <td className="py-4 px-6 text-center"><StatusBadge status={a.status ?? "PENDING"} /></td>
                                         <td className="py-4 px-6 text-center"><SettledBadge settled={a.isSettled ?? a.settled ?? false} /></td>
@@ -353,7 +353,7 @@ export function TravelAdvanceScreen() {
                                         ))}
                                     </select>
                                 </div>
-                                <FormField label={`Amount (\u20B9)`} value={form.amount} onChange={(v) => updateField("amount", v)} placeholder="10000" type="number" required />
+                                <FormField label={`Amount (₹)`} value={form.amount} onChange={(v) => updateField("amount", v)} placeholder="10000" type="number" required />
                             </div>
 
                             {/* Estimated Expenses Breakdown */}
@@ -375,7 +375,7 @@ export function TravelAdvanceScreen() {
                                         </div>
                                         <div className="flex justify-between items-center pt-2 border-t border-neutral-200 dark:border-neutral-700">
                                             <span className="text-xs font-semibold text-neutral-500 uppercase">Estimated Total</span>
-                                            <span className="text-sm font-bold text-primary-700 dark:text-primary-400">{"\u20B9"}{breakdownTotal.toLocaleString("en-IN")}</span>
+                                            <span className="text-sm font-bold text-primary-700 dark:text-primary-400">{"₹"}{breakdownTotal.toLocaleString("en-IN")}</span>
                                         </div>
                                     </div>
                                 )}
@@ -407,7 +407,7 @@ export function TravelAdvanceScreen() {
                                 <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Employee</p>
                                 <p className="text-sm font-bold text-primary-950 dark:text-white">{settleTarget.employeeName ?? settleTarget.employeeId}</p>
                                 <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-3 mb-1">Advance Amount</p>
-                                <p className="text-lg font-bold text-primary-600 dark:text-primary-400">{"\u20B9"}{Number(settleTarget.amount ?? 0).toLocaleString("en-IN")}</p>
+                                <p className="text-lg font-bold text-primary-600 dark:text-primary-400">{"₹"}{Number(settleTarget.amount ?? 0).toLocaleString("en-IN")}</p>
                                 {settleTarget.tripPurpose && (
                                     <>
                                         <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-3 mb-1">Trip Purpose</p>
@@ -439,15 +439,15 @@ export function TravelAdvanceScreen() {
                         <div className="space-y-3 text-left bg-neutral-50 dark:bg-neutral-800 rounded-xl p-4 mb-4">
                             <div className="flex justify-between text-sm">
                                 <span className="text-neutral-500 dark:text-neutral-400">Original Advance</span>
-                                <span className="font-bold text-primary-950 dark:text-white">{"\u20B9"}{Number(settlementResult.advanceAmount ?? 0).toLocaleString("en-IN")}</span>
+                                <span className="font-bold text-primary-950 dark:text-white">{"₹"}{Number(settlementResult.advanceAmount ?? 0).toLocaleString("en-IN")}</span>
                             </div>
                             <div className="flex justify-between text-sm">
                                 <span className="text-neutral-500 dark:text-neutral-400">Expense Claim</span>
-                                <span className="font-bold text-primary-950 dark:text-white">{"\u20B9"}{Number(settlementResult.claimAmount ?? 0).toLocaleString("en-IN")}</span>
+                                <span className="font-bold text-primary-950 dark:text-white">{"₹"}{Number(settlementResult.claimAmount ?? 0).toLocaleString("en-IN")}</span>
                             </div>
                             <div className="border-t border-neutral-200 dark:border-neutral-700 pt-3 flex justify-between text-sm">
                                 <span className="text-neutral-500 dark:text-neutral-400">Difference</span>
-                                <span className="font-bold text-primary-950 dark:text-white">{"\u20B9"}{Math.abs(settlementResult.difference ?? 0).toLocaleString("en-IN")}</span>
+                                <span className="font-bold text-primary-950 dark:text-white">{"₹"}{Math.abs(settlementResult.difference ?? 0).toLocaleString("en-IN")}</span>
                             </div>
                         </div>
                         <p className={cn("text-lg font-bold mb-4", getOutcomeText(settlementResult.outcome, settlementResult.difference).color)}>

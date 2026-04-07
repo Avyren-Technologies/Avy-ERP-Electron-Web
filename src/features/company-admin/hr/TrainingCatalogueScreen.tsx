@@ -870,7 +870,7 @@ export function TrainingCatalogueScreen() {
                                             <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{c.deliveryMode || "\u2014"}</td>
                                             <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{c.duration ? `${c.duration} ${c.durationUnit || "hrs"}` : "\u2014"}</td>
                                             <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{c.provider || "\u2014"}</td>
-                                            <td className="py-4 px-6 text-right font-semibold text-primary-950 dark:text-white">{c.cost ? `\u20B9${Number(c.cost).toLocaleString("en-IN")}` : "\u2014"}</td>
+                                            <td className="py-4 px-6 text-right font-semibold text-primary-950 dark:text-white">{c.cost ? `₹${Number(c.cost).toLocaleString("en-IN")}` : "\u2014"}</td>
                                             <td className="py-4 px-6 text-right">
                                                 <div className="flex items-center justify-end gap-1">
                                                     <button onClick={() => openMaterials(c.id)} className="p-2 text-accent-600 dark:text-accent-400 hover:bg-accent-50 dark:hover:bg-accent-900/20 rounded-lg transition-colors" title="Materials"><FileText size={15} /></button>
@@ -1674,9 +1674,9 @@ export function TrainingCatalogueScreen() {
                                                         </div>
                                                     </td>
                                                     <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{b.department?.name ?? departmentName(b.departmentId) ?? "Company-wide"}</td>
-                                                    <td className="py-4 px-6 text-right font-semibold text-primary-950 dark:text-white">{"\u20B9"}{allocated.toLocaleString("en-IN")}</td>
-                                                    <td className="py-4 px-6 text-right font-semibold text-warning-600 dark:text-warning-400">{"\u20B9"}{used.toLocaleString("en-IN")}</td>
-                                                    <td className="py-4 px-6 text-right font-semibold text-success-600 dark:text-success-400">{"\u20B9"}{remaining.toLocaleString("en-IN")}</td>
+                                                    <td className="py-4 px-6 text-right font-semibold text-primary-950 dark:text-white">{"₹"}{allocated.toLocaleString("en-IN")}</td>
+                                                    <td className="py-4 px-6 text-right font-semibold text-warning-600 dark:text-warning-400">{"₹"}{used.toLocaleString("en-IN")}</td>
+                                                    <td className="py-4 px-6 text-right font-semibold text-success-600 dark:text-success-400">{"₹"}{remaining.toLocaleString("en-IN")}</td>
                                                     <td className="py-4 px-6">
                                                         <div className="flex items-center gap-2 justify-center">
                                                             <div className="flex-1 max-w-[80px] bg-neutral-200 dark:bg-neutral-700 rounded-full h-2">
@@ -1723,7 +1723,7 @@ export function TrainingCatalogueScreen() {
                                                     <div className={cn("h-3 rounded-full transition-all", pct > 90 ? "bg-danger-500" : pct > 70 ? "bg-warning-500" : "bg-primary-500")} style={{ width: `${Math.min(pct, 100)}%` }} />
                                                 </div>
                                                 <span className="text-xs font-bold text-neutral-600 dark:text-neutral-400 w-16 text-right">{pct}%</span>
-                                                <span className="text-xs text-neutral-500 w-40 text-right">{"\u20B9"}{used.toLocaleString("en-IN")} / {"\u20B9"}{alloc.toLocaleString("en-IN")}</span>
+                                                <span className="text-xs text-neutral-500 w-40 text-right">{"₹"}{used.toLocaleString("en-IN")} / {"₹"}{alloc.toLocaleString("en-IN")}</span>
                                             </div>
                                         );
                                     })}

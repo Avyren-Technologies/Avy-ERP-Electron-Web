@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from 'sonner';
 import { AuthLayout } from "./layouts/AuthLayout";
@@ -9,200 +9,218 @@ import { checkPermission } from "./lib/api/auth";
 import { NoPermissionScreen } from "./features/shared/NoPermissionScreen";
 import { getTenantContext, getLoginPath } from "@/lib/tenant";
 import { useTenantBranding } from "@/lib/api/auth";
-import { RegisterCompanyScreen } from "@/features/auth/RegisterCompanyScreen";
-import { TenantNotFoundScreen } from "@/features/auth/TenantNotFoundScreen";
 
-// Screens (Implemented)
-import { ProductShowcaseScreen } from "./features/auth/ProductShowcaseScreen";
-import { LandingScreen } from "./features/auth/LandingScreen";
-import { LoginScreen } from "./features/auth/LoginScreen";
-import { ForgotPasswordScreen } from "./features/auth/ForgotPasswordScreen";
-import { VerifyResetCodeScreen } from "./features/auth/VerifyResetCodeScreen";
-import { ResetPasswordScreen } from "./features/auth/ResetPasswordScreen";
-import { MfaVerifyScreen } from "./features/auth/MfaVerifyScreen";
-import { MfaSetupScreen } from "./features/auth/MfaSetupScreen";
-import { DashboardScreen } from "./features/super-admin/DashboardScreen";
-import { DynamicDashboardScreen } from "./features/employee/DynamicDashboardScreen";
-import { AnnouncementsScreen } from "./features/employee/AnnouncementsScreen";
-import { CompanyListScreen } from "./features/super-admin/CompanyListScreen";
-import { CompanyDetailScreen } from "./features/super-admin/CompanyDetailScreen";
-import { AddCompanyWizard } from "./features/super-admin/AddCompanyWizard";
-import { RegistrationListScreen } from "./features/super-admin/RegistrationListScreen";
-import { RegistrationDetailScreen } from "./features/super-admin/RegistrationDetailScreen";
-import { BillingOverviewScreen } from "./features/super-admin/BillingOverviewScreen";
-import { PlatformMonitorScreen } from "./features/super-admin/PlatformMonitorScreen";
-import { ModuleCatalogueScreen } from "./features/super-admin/ModuleCatalogueScreen";
-import { ModuleAssignmentScreen } from "./features/super-admin/ModuleAssignmentScreen";
-import { AuditLogScreen } from "./features/super-admin/AuditLogScreen";
-import { PaymentHistoryScreen } from "./features/super-admin/PaymentHistoryScreen";
-import { InvoiceListScreen } from "./features/super-admin/InvoiceListScreen";
-import { InvoiceDetailScreen } from "./features/super-admin/InvoiceDetailScreen";
-import { SubscriptionDetailScreen } from "./features/super-admin/SubscriptionDetailScreen";
+// ─── Suspense Fallback ───
+const PageLoader = () => (
+  <div className="flex h-full min-h-[60vh] items-center justify-center">
+    <div className="w-7 h-7 rounded-full border-2 border-primary-200 border-t-primary-600 animate-spin" />
+  </div>
+);
 
-// Company Admin Screens
-import { CompanyProfileScreen } from "./features/company-admin/CompanyProfileScreen";
-import { LocationManagementScreen } from "./features/company-admin/LocationManagementScreen";
-import { ShiftManagementScreen } from "./features/company-admin/ShiftManagementScreen";
-import { ContactManagementScreen } from "./features/company-admin/ContactManagementScreen";
-import { NoSeriesManagementScreen } from "./features/company-admin/NoSeriesManagementScreen";
-import { IOTReasonManagementScreen } from "./features/company-admin/IOTReasonManagementScreen";
-import { SystemControlsScreen } from "./features/company-admin/SystemControlsScreen";
-import { CompanySettingsScreen } from "./features/company-admin/CompanySettingsScreen";
-import { UserManagementScreen } from "./features/company-admin/UserManagementScreen";
-import { RoleManagementScreen } from "./features/company-admin/RoleManagementScreen";
-import { BillingDashboardScreen } from "./features/company-admin/BillingDashboardScreen";
-import { MyInvoicesScreen } from "./features/company-admin/MyInvoicesScreen";
-import { MyPaymentsScreen } from "./features/company-admin/MyPaymentsScreen";
+// ─── Helper: named-export lazy wrapper ───
+// React.lazy expects default export, so we re-export named exports as default
+const lazyNamed = <T extends React.ComponentType<Record<string, unknown>>>(
+  factory: () => Promise<{ [key: string]: T }>,
+  name: string,
+) => lazy(() => factory().then((m) => ({ default: (m as Record<string, T>)[name] })));
 
-// HR Org Structure Screens
-import { DepartmentScreen } from "./features/company-admin/hr/DepartmentScreen";
-import { DesignationScreen } from "./features/company-admin/hr/DesignationScreen";
-import { GradeScreen } from "./features/company-admin/hr/GradeScreen";
-import { EmployeeTypeScreen } from "./features/company-admin/hr/EmployeeTypeScreen";
-import { CostCentreScreen } from "./features/company-admin/hr/CostCentreScreen";
-import { EmployeeDirectoryScreen } from "./features/company-admin/hr/EmployeeDirectoryScreen";
-import { EmployeeProfileScreen } from "./features/company-admin/hr/EmployeeProfileScreen";
+// ─── Auth Screens (lazy) ───
+const ProductShowcaseScreen = lazyNamed(() => import("./features/auth/ProductShowcaseScreen"), "ProductShowcaseScreen");
+const LandingScreen = lazyNamed(() => import("./features/auth/LandingScreen"), "LandingScreen");
+const LoginScreen = lazyNamed(() => import("./features/auth/LoginScreen"), "LoginScreen");
+const ForgotPasswordScreen = lazyNamed(() => import("./features/auth/ForgotPasswordScreen"), "ForgotPasswordScreen");
+const VerifyResetCodeScreen = lazyNamed(() => import("./features/auth/VerifyResetCodeScreen"), "VerifyResetCodeScreen");
+const ResetPasswordScreen = lazyNamed(() => import("./features/auth/ResetPasswordScreen"), "ResetPasswordScreen");
+const MfaVerifyScreen = lazyNamed(() => import("./features/auth/MfaVerifyScreen"), "MfaVerifyScreen");
+const MfaSetupScreen = lazyNamed(() => import("./features/auth/MfaSetupScreen"), "MfaSetupScreen");
+const RegisterCompanyScreen = lazyNamed(() => import("@/features/auth/RegisterCompanyScreen"), "RegisterCompanyScreen");
+const TenantNotFoundScreen = lazyNamed(() => import("@/features/auth/TenantNotFoundScreen"), "TenantNotFoundScreen");
 
-// HR Leave Management Screens
-import { LeaveTypeScreen } from "./features/company-admin/hr/LeaveTypeScreen";
-import { LeavePolicyScreen } from "./features/company-admin/hr/LeavePolicyScreen";
-import { LeaveRequestScreen } from "./features/company-admin/hr/LeaveRequestScreen";
-import { LeaveBalanceScreen } from "./features/company-admin/hr/LeaveBalanceScreen";
+// ─── Super Admin Screens ───
+const DashboardScreen = lazyNamed(() => import("./features/super-admin/DashboardScreen"), "DashboardScreen");
+const CompanyListScreen = lazyNamed(() => import("./features/super-admin/CompanyListScreen"), "CompanyListScreen");
+const CompanyDetailScreen = lazyNamed(() => import("./features/super-admin/CompanyDetailScreen"), "CompanyDetailScreen");
+const AddCompanyWizard = lazyNamed(() => import("./features/super-admin/AddCompanyWizard"), "AddCompanyWizard");
+const RegistrationListScreen = lazyNamed(() => import("./features/super-admin/RegistrationListScreen"), "RegistrationListScreen");
+const RegistrationDetailScreen = lazyNamed(() => import("./features/super-admin/RegistrationDetailScreen"), "RegistrationDetailScreen");
+const BillingOverviewScreen = lazyNamed(() => import("./features/super-admin/BillingOverviewScreen"), "BillingOverviewScreen");
+const PlatformMonitorScreen = lazyNamed(() => import("./features/super-admin/PlatformMonitorScreen"), "PlatformMonitorScreen");
+const ModuleCatalogueScreen = lazyNamed(() => import("./features/super-admin/ModuleCatalogueScreen"), "ModuleCatalogueScreen");
+const ModuleAssignmentScreen = lazyNamed(() => import("./features/super-admin/ModuleAssignmentScreen"), "ModuleAssignmentScreen");
+const AuditLogScreen = lazyNamed(() => import("./features/super-admin/AuditLogScreen"), "AuditLogScreen");
+const PaymentHistoryScreen = lazyNamed(() => import("./features/super-admin/PaymentHistoryScreen"), "PaymentHistoryScreen");
+const InvoiceListScreen = lazyNamed(() => import("./features/super-admin/InvoiceListScreen"), "InvoiceListScreen");
+const InvoiceDetailScreen = lazyNamed(() => import("./features/super-admin/InvoiceDetailScreen"), "InvoiceDetailScreen");
+const SubscriptionDetailScreen = lazyNamed(() => import("./features/super-admin/SubscriptionDetailScreen"), "SubscriptionDetailScreen");
 
-// HR Attendance Screens
-import { AttendanceDashboardScreen } from "./features/company-admin/hr/AttendanceDashboardScreen";
-import { HolidayScreen } from "./features/company-admin/hr/HolidayScreen";
-import { RosterScreen } from "./features/company-admin/hr/RosterScreen";
-import { AttendanceRulesScreen } from "./features/company-admin/hr/AttendanceRulesScreen";
-import { AttendanceOverrideScreen } from "./features/company-admin/hr/AttendanceOverrideScreen";
-import { OvertimeRulesScreen } from "./features/company-admin/hr/OvertimeRulesScreen";
+// ─── Super Admin Support ───
+const SupportDashboardScreen = lazyNamed(() => import("./features/super-admin/support/SupportDashboardScreen"), "SupportDashboardScreen");
+const SupportTicketDetailScreen = lazyNamed(() => import("./features/super-admin/support/SupportTicketDetailScreen"), "SupportTicketDetailScreen");
 
-// HR Payroll & Compliance Screens
-import { SalaryComponentScreen } from "./features/company-admin/hr/SalaryComponentScreen";
-import { SalaryStructureScreen } from "./features/company-admin/hr/SalaryStructureScreen";
-import { EmployeeSalaryScreen } from "./features/company-admin/hr/EmployeeSalaryScreen";
-import { StatutoryConfigScreen } from "./features/company-admin/hr/StatutoryConfigScreen";
-import { TaxConfigScreen } from "./features/company-admin/hr/TaxConfigScreen";
-import { BankConfigScreen } from "./features/company-admin/hr/BankConfigScreen";
-import { LoanPolicyScreen } from "./features/company-admin/hr/LoanPolicyScreen";
-import { LoanScreen } from "./features/company-admin/hr/LoanScreen";
+// ─── Employee Screens ───
+const DynamicDashboardScreen = lazyNamed(() => import("./features/employee/DynamicDashboardScreen"), "DynamicDashboardScreen");
+const AnnouncementsScreen = lazyNamed(() => import("./features/employee/AnnouncementsScreen"), "AnnouncementsScreen");
 
-// HR Payroll Operations Screens
-import { PayrollRunScreen } from "./features/company-admin/hr/PayrollRunScreen";
-import { PayslipScreen } from "./features/company-admin/hr/PayslipScreen";
-import { SalaryHoldScreen } from "./features/company-admin/hr/SalaryHoldScreen";
-import { SalaryRevisionScreen } from "./features/company-admin/hr/SalaryRevisionScreen";
-import { StatutoryFilingScreen } from "./features/company-admin/hr/StatutoryFilingScreen";
-import { PayrollReportScreen } from "./features/company-admin/hr/PayrollReportScreen";
+// ─── Company Admin Screens ───
+const CompanyProfileScreen = lazyNamed(() => import("./features/company-admin/CompanyProfileScreen"), "CompanyProfileScreen");
+const LocationManagementScreen = lazyNamed(() => import("./features/company-admin/LocationManagementScreen"), "LocationManagementScreen");
+const ShiftManagementScreen = lazyNamed(() => import("./features/company-admin/ShiftManagementScreen"), "ShiftManagementScreen");
+const ContactManagementScreen = lazyNamed(() => import("./features/company-admin/ContactManagementScreen"), "ContactManagementScreen");
+const NoSeriesManagementScreen = lazyNamed(() => import("./features/company-admin/NoSeriesManagementScreen"), "NoSeriesManagementScreen");
+const IOTReasonManagementScreen = lazyNamed(() => import("./features/company-admin/IOTReasonManagementScreen"), "IOTReasonManagementScreen");
+const SystemControlsScreen = lazyNamed(() => import("./features/company-admin/SystemControlsScreen"), "SystemControlsScreen");
+const CompanySettingsScreen = lazyNamed(() => import("./features/company-admin/CompanySettingsScreen"), "CompanySettingsScreen");
+const UserManagementScreen = lazyNamed(() => import("./features/company-admin/UserManagementScreen"), "UserManagementScreen");
+const RoleManagementScreen = lazyNamed(() => import("./features/company-admin/RoleManagementScreen"), "RoleManagementScreen");
+const BillingDashboardScreen = lazyNamed(() => import("./features/company-admin/BillingDashboardScreen"), "BillingDashboardScreen");
+const MyInvoicesScreen = lazyNamed(() => import("./features/company-admin/MyInvoicesScreen"), "MyInvoicesScreen");
+const MyPaymentsScreen = lazyNamed(() => import("./features/company-admin/MyPaymentsScreen"), "MyPaymentsScreen");
 
-// HR ESS & Workflow Screens
-import { EssConfigScreen } from "./features/company-admin/hr/EssConfigScreen";
-import { ApprovalWorkflowScreen } from "./features/company-admin/hr/ApprovalWorkflowScreen";
-import { ApprovalRequestScreen } from "./features/company-admin/hr/ApprovalRequestScreen";
-import { NotificationTemplateScreen } from "./features/company-admin/hr/NotificationTemplateScreen";
-import { NotificationRuleScreen } from "./features/company-admin/hr/NotificationRuleScreen";
-import { ITDeclarationScreen } from "./features/company-admin/hr/ITDeclarationScreen";
+// ─── HR Org Structure ───
+const DepartmentScreen = lazyNamed(() => import("./features/company-admin/hr/DepartmentScreen"), "DepartmentScreen");
+const DesignationScreen = lazyNamed(() => import("./features/company-admin/hr/DesignationScreen"), "DesignationScreen");
+const GradeScreen = lazyNamed(() => import("./features/company-admin/hr/GradeScreen"), "GradeScreen");
+const EmployeeTypeScreen = lazyNamed(() => import("./features/company-admin/hr/EmployeeTypeScreen"), "EmployeeTypeScreen");
+const CostCentreScreen = lazyNamed(() => import("./features/company-admin/hr/CostCentreScreen"), "CostCentreScreen");
+const EmployeeDirectoryScreen = lazyNamed(() => import("./features/company-admin/hr/EmployeeDirectoryScreen"), "EmployeeDirectoryScreen");
+const EmployeeProfileScreen = lazyNamed(() => import("./features/company-admin/hr/EmployeeProfileScreen"), "EmployeeProfileScreen");
 
-// Notifications
-import { NotificationListScreen } from "./features/notifications/NotificationListScreen";
+// ─── HR Leave Management ───
+const LeaveTypeScreen = lazyNamed(() => import("./features/company-admin/hr/LeaveTypeScreen"), "LeaveTypeScreen");
+const LeavePolicyScreen = lazyNamed(() => import("./features/company-admin/hr/LeavePolicyScreen"), "LeavePolicyScreen");
+const LeaveRequestScreen = lazyNamed(() => import("./features/company-admin/hr/LeaveRequestScreen"), "LeaveRequestScreen");
+const LeaveBalanceScreen = lazyNamed(() => import("./features/company-admin/hr/LeaveBalanceScreen"), "LeaveBalanceScreen");
 
-// Help & Support
-import { HelpSupportScreen } from "./features/help/HelpSupportScreen";
-import { TicketChatScreen } from "./features/support/TicketChatScreen";
+// ─── HR Attendance ───
+const AttendanceDashboardScreen = lazyNamed(() => import("./features/company-admin/hr/AttendanceDashboardScreen"), "AttendanceDashboardScreen");
+const HolidayScreen = lazyNamed(() => import("./features/company-admin/hr/HolidayScreen"), "HolidayScreen");
+const RosterScreen = lazyNamed(() => import("./features/company-admin/hr/RosterScreen"), "RosterScreen");
+const AttendanceRulesScreen = lazyNamed(() => import("./features/company-admin/hr/AttendanceRulesScreen"), "AttendanceRulesScreen");
+const AttendanceOverrideScreen = lazyNamed(() => import("./features/company-admin/hr/AttendanceOverrideScreen"), "AttendanceOverrideScreen");
+const OvertimeRulesScreen = lazyNamed(() => import("./features/company-admin/hr/OvertimeRulesScreen"), "OvertimeRulesScreen");
 
-// Super-admin Support
-import { SupportDashboardScreen } from "./features/super-admin/support/SupportDashboardScreen";
-import { SupportTicketDetailScreen } from "./features/super-admin/support/SupportTicketDetailScreen";
+// ─── HR Payroll & Compliance ───
+const SalaryComponentScreen = lazyNamed(() => import("./features/company-admin/hr/SalaryComponentScreen"), "SalaryComponentScreen");
+const SalaryStructureScreen = lazyNamed(() => import("./features/company-admin/hr/SalaryStructureScreen"), "SalaryStructureScreen");
+const EmployeeSalaryScreen = lazyNamed(() => import("./features/company-admin/hr/EmployeeSalaryScreen"), "EmployeeSalaryScreen");
+const StatutoryConfigScreen = lazyNamed(() => import("./features/company-admin/hr/StatutoryConfigScreen"), "StatutoryConfigScreen");
+const TaxConfigScreen = lazyNamed(() => import("./features/company-admin/hr/TaxConfigScreen"), "TaxConfigScreen");
+const BankConfigScreen = lazyNamed(() => import("./features/company-admin/hr/BankConfigScreen"), "BankConfigScreen");
+const LoanPolicyScreen = lazyNamed(() => import("./features/company-admin/hr/LoanPolicyScreen"), "LoanPolicyScreen");
+const LoanScreen = lazyNamed(() => import("./features/company-admin/hr/LoanScreen"), "LoanScreen");
 
-// HR Self-Service Screens
-import { MyProfileScreen } from "./features/company-admin/hr/MyProfileScreen";
-import { MyPayslipsScreen } from "./features/company-admin/hr/MyPayslipsScreen";
-import { MyLeaveScreen } from "./features/company-admin/hr/MyLeaveScreen";
-import { MyAttendanceScreen } from "./features/company-admin/hr/MyAttendanceScreen";
-import { TeamViewScreen } from "./features/company-admin/hr/TeamViewScreen";
-import { ShiftCheckInScreen } from "./features/company-admin/hr/ShiftCheckInScreen";
+// ─── HR Payroll Operations ───
+const PayrollRunScreen = lazyNamed(() => import("./features/company-admin/hr/PayrollRunScreen"), "PayrollRunScreen");
+const PayslipScreen = lazyNamed(() => import("./features/company-admin/hr/PayslipScreen"), "PayslipScreen");
+const SalaryHoldScreen = lazyNamed(() => import("./features/company-admin/hr/SalaryHoldScreen"), "SalaryHoldScreen");
+const SalaryRevisionScreen = lazyNamed(() => import("./features/company-admin/hr/SalaryRevisionScreen"), "SalaryRevisionScreen");
+const StatutoryFilingScreen = lazyNamed(() => import("./features/company-admin/hr/StatutoryFilingScreen"), "StatutoryFilingScreen");
+const PayrollReportScreen = lazyNamed(() => import("./features/company-admin/hr/PayrollReportScreen"), "PayrollReportScreen");
 
-// HR Recruitment & Training Screens
-import { RequisitionScreen } from "./features/company-admin/hr/RequisitionScreen";
-import { CandidateScreen } from "./features/company-admin/hr/CandidateScreen";
-import { CandidateDetailScreen } from "./features/company-admin/hr/CandidateDetailScreen";
-import { TrainingCatalogueScreen } from "./features/company-admin/hr/TrainingCatalogueScreen";
-import { TrainingNominationScreen } from "./features/company-admin/hr/TrainingNominationScreen";
+// ─── HR ESS & Workflow ───
+const EssConfigScreen = lazyNamed(() => import("./features/company-admin/hr/EssConfigScreen"), "EssConfigScreen");
+const ApprovalWorkflowScreen = lazyNamed(() => import("./features/company-admin/hr/ApprovalWorkflowScreen"), "ApprovalWorkflowScreen");
+const ApprovalRequestScreen = lazyNamed(() => import("./features/company-admin/hr/ApprovalRequestScreen"), "ApprovalRequestScreen");
+const NotificationTemplateScreen = lazyNamed(() => import("./features/company-admin/hr/NotificationTemplateScreen"), "NotificationTemplateScreen");
+const NotificationRuleScreen = lazyNamed(() => import("./features/company-admin/hr/NotificationRuleScreen"), "NotificationRuleScreen");
+const ITDeclarationScreen = lazyNamed(() => import("./features/company-admin/hr/ITDeclarationScreen"), "ITDeclarationScreen");
 
-// HR Exit & Separation Screens
-import { ExitRequestScreen } from "./features/company-admin/hr/ExitRequestScreen";
-import { ClearanceDashboardScreen } from "./features/company-admin/hr/ClearanceDashboardScreen";
-import { FnFSettlementScreen } from "./features/company-admin/hr/FnFSettlementScreen";
+// ─── Notifications ───
+const NotificationListScreen = lazyNamed(() => import("./features/notifications/NotificationListScreen"), "NotificationListScreen");
 
-// HR Advanced HR Screens
-import { AssetManagementScreen } from "./features/company-admin/hr/AssetManagementScreen";
-import { ExpenseClaimScreen } from "./features/company-admin/hr/ExpenseClaimScreen";
-import { HRLetterScreen } from "./features/company-admin/hr/HRLetterScreen";
-import { GrievanceScreen } from "./features/company-admin/hr/GrievanceScreen";
-import { DisciplinaryScreen } from "./features/company-admin/hr/DisciplinaryScreen";
+// ─── Help & Support ───
+const HelpSupportScreen = lazyNamed(() => import("./features/help/HelpSupportScreen"), "HelpSupportScreen");
+const TicketChatScreen = lazyNamed(() => import("./features/support/TicketChatScreen"), "TicketChatScreen");
 
-// HR Transfer, Promotion & Delegation Screens
-import { TransferScreen } from "./features/company-admin/hr/TransferScreen";
-import { PromotionScreen } from "./features/company-admin/hr/PromotionScreen";
-import { DelegateScreen } from "./features/company-admin/hr/DelegateScreen";
+// ─── HR Self-Service ───
+const MyProfileScreen = lazyNamed(() => import("./features/company-admin/hr/MyProfileScreen"), "MyProfileScreen");
+const MyPayslipsScreen = lazyNamed(() => import("./features/company-admin/hr/MyPayslipsScreen"), "MyPayslipsScreen");
+const MyLeaveScreen = lazyNamed(() => import("./features/company-admin/hr/MyLeaveScreen"), "MyLeaveScreen");
+const MyAttendanceScreen = lazyNamed(() => import("./features/company-admin/hr/MyAttendanceScreen"), "MyAttendanceScreen");
+const TeamViewScreen = lazyNamed(() => import("./features/company-admin/hr/TeamViewScreen"), "TeamViewScreen");
+const ShiftCheckInScreen = lazyNamed(() => import("./features/company-admin/hr/ShiftCheckInScreen"), "ShiftCheckInScreen");
 
-// HR Performance Management Screens
-import { AppraisalCycleScreen } from "./features/company-admin/hr/AppraisalCycleScreen";
-import { GoalScreen } from "./features/company-admin/hr/GoalScreen";
-import { Feedback360Screen } from "./features/company-admin/hr/Feedback360Screen";
-import { RatingsScreen } from "./features/company-admin/hr/RatingsScreen";
-import { SkillScreen } from "./features/company-admin/hr/SkillScreen";
-import { SuccessionScreen } from "./features/company-admin/hr/SuccessionScreen";
-import { PerformanceDashboardScreen } from "./features/company-admin/hr/PerformanceDashboardScreen";
+// ─── HR Recruitment & Training ───
+const RequisitionScreen = lazyNamed(() => import("./features/company-admin/hr/RequisitionScreen"), "RequisitionScreen");
+const CandidateScreen = lazyNamed(() => import("./features/company-admin/hr/CandidateScreen"), "CandidateScreen");
+const CandidateDetailScreen = lazyNamed(() => import("./features/company-admin/hr/CandidateDetailScreen"), "CandidateDetailScreen");
+const TrainingCatalogueScreen = lazyNamed(() => import("./features/company-admin/hr/TrainingCatalogueScreen"), "TrainingCatalogueScreen");
+const TrainingNominationScreen = lazyNamed(() => import("./features/company-admin/hr/TrainingNominationScreen"), "TrainingNominationScreen");
 
-// HR Additional Screens
-import { OnboardingScreen } from "./features/company-admin/hr/OnboardingScreen";
-import { ProbationReviewScreen } from "./features/company-admin/hr/ProbationReviewScreen";
-import { OrgChartScreen } from "./features/company-admin/hr/OrgChartScreen";
-import { Form16Screen } from "./features/company-admin/hr/Form16Screen";
-import { ChatbotScreen } from "./features/company-admin/hr/ChatbotScreen";
-import { BonusBatchScreen } from "./features/company-admin/hr/BonusBatchScreen";
-import { ESignScreen } from "./features/company-admin/hr/ESignScreen";
-import { DataRetentionScreen } from "./features/company-admin/hr/DataRetentionScreen";
-import { BiometricDeviceScreen } from "./features/company-admin/hr/BiometricDeviceScreen";
-import { ShiftRotationScreen } from "./features/company-admin/hr/ShiftRotationScreen";
-import { ProductionIncentiveScreen } from "./features/company-admin/hr/ProductionIncentiveScreen";
-import { TravelAdvanceScreen } from "./features/company-admin/hr/TravelAdvanceScreen";
+// ─── HR Exit & Separation ───
+const ExitRequestScreen = lazyNamed(() => import("./features/company-admin/hr/ExitRequestScreen"), "ExitRequestScreen");
+const ClearanceDashboardScreen = lazyNamed(() => import("./features/company-admin/hr/ClearanceDashboardScreen"), "ClearanceDashboardScreen");
+const FnFSettlementScreen = lazyNamed(() => import("./features/company-admin/hr/FnFSettlementScreen"), "FnFSettlementScreen");
 
-// HR Analytics Dashboard Screens
-import { ExecutiveDashboardScreen as ExecAnalyticsScreen } from './features/company-admin/hr/analytics/ExecutiveDashboardScreen';
-import { WorkforceDashboardScreen } from './features/company-admin/hr/analytics/WorkforceDashboardScreen';
-import { AttendanceAnalyticsDashboardScreen } from './features/company-admin/hr/analytics/AttendanceAnalyticsDashboardScreen';
-import { LeaveAnalyticsDashboardScreen } from './features/company-admin/hr/analytics/LeaveAnalyticsDashboardScreen';
-import { PayrollAnalyticsDashboardScreen } from './features/company-admin/hr/analytics/PayrollAnalyticsDashboardScreen';
-import { ComplianceDashboardScreen } from './features/company-admin/hr/analytics/ComplianceDashboardScreen';
-import { PerformanceAnalyticsDashboardScreen } from './features/company-admin/hr/analytics/PerformanceAnalyticsDashboardScreen';
-import { RecruitmentDashboardScreen } from './features/company-admin/hr/analytics/RecruitmentDashboardScreen';
-import { AttritionDashboardScreen } from './features/company-admin/hr/analytics/AttritionDashboardScreen';
-import { TrainingDashboardScreen } from './features/company-admin/hr/analytics/TrainingDashboardScreen';
-import { ReportsHubScreen } from './features/company-admin/hr/analytics/ReportsHubScreen';
+// ─── HR Advanced ───
+const AssetManagementScreen = lazyNamed(() => import("./features/company-admin/hr/AssetManagementScreen"), "AssetManagementScreen");
+const ExpenseClaimScreen = lazyNamed(() => import("./features/company-admin/hr/ExpenseClaimScreen"), "ExpenseClaimScreen");
+const HRLetterScreen = lazyNamed(() => import("./features/company-admin/hr/HRLetterScreen"), "HRLetterScreen");
+const GrievanceScreen = lazyNamed(() => import("./features/company-admin/hr/GrievanceScreen"), "GrievanceScreen");
+const DisciplinaryScreen = lazyNamed(() => import("./features/company-admin/hr/DisciplinaryScreen"), "DisciplinaryScreen");
 
-// ESS Self-Service Screens (Employee)
-import { MyGoalsScreen } from './features/ess/MyGoalsScreen';
-import { MyForm16Screen } from './features/ess/MyForm16Screen';
-import { MyGrievancesScreen } from './features/ess/MyGrievancesScreen';
-import { MyTrainingScreen } from './features/ess/MyTrainingScreen';
-import { MyAssetsScreen } from './features/ess/MyAssetsScreen';
-import { ShiftSwapScreen } from './features/ess/ShiftSwapScreen';
-import { WfhRequestScreen } from './features/ess/WfhRequestScreen';
-import { MyDocumentsScreen } from './features/ess/MyDocumentsScreen';
-import { PolicyDocumentsScreen } from './features/ess/PolicyDocumentsScreen';
-import { MyHolidaysScreen } from './features/ess/MyHolidaysScreen';
-import { MyExpenseClaimsScreen } from './features/ess/MyExpenseClaimsScreen';
-import { MyLoanScreen } from './features/ess/MyLoanScreen';
-import { MyAppraisalScreen } from './features/ess/MyAppraisalScreen';
+// ─── HR Transfer, Promotion & Delegation ───
+const TransferScreen = lazyNamed(() => import("./features/company-admin/hr/TransferScreen"), "TransferScreen");
+const PromotionScreen = lazyNamed(() => import("./features/company-admin/hr/PromotionScreen"), "PromotionScreen");
+const DelegateScreen = lazyNamed(() => import("./features/company-admin/hr/DelegateScreen"), "DelegateScreen");
 
-// Operations Module Screens
-import { InventoryScreen } from "./features/inventory/InventoryScreen";
-import { ProductionScreen } from "./features/production/ProductionScreen";
-import { MaintenanceScreen } from "./features/maintenance/MaintenanceScreen";
-import { WorkOrdersScreen } from "./features/maintenance/WorkOrdersScreen";
-import { MachineRegistryScreen } from "./features/maintenance/MachineRegistryScreen";
+// ─── HR Performance Management ───
+const AppraisalCycleScreen = lazyNamed(() => import("./features/company-admin/hr/AppraisalCycleScreen"), "AppraisalCycleScreen");
+const GoalScreen = lazyNamed(() => import("./features/company-admin/hr/GoalScreen"), "GoalScreen");
+const Feedback360Screen = lazyNamed(() => import("./features/company-admin/hr/Feedback360Screen"), "Feedback360Screen");
+const RatingsScreen = lazyNamed(() => import("./features/company-admin/hr/RatingsScreen"), "RatingsScreen");
+const SkillScreen = lazyNamed(() => import("./features/company-admin/hr/SkillScreen"), "SkillScreen");
+const SuccessionScreen = lazyNamed(() => import("./features/company-admin/hr/SuccessionScreen"), "SuccessionScreen");
+const PerformanceDashboardScreen = lazyNamed(() => import("./features/company-admin/hr/PerformanceDashboardScreen"), "PerformanceDashboardScreen");
+
+// ─── HR Additional ───
+const OnboardingScreen = lazyNamed(() => import("./features/company-admin/hr/OnboardingScreen"), "OnboardingScreen");
+const ProbationReviewScreen = lazyNamed(() => import("./features/company-admin/hr/ProbationReviewScreen"), "ProbationReviewScreen");
+const OrgChartScreen = lazyNamed(() => import("./features/company-admin/hr/OrgChartScreen"), "OrgChartScreen");
+const Form16Screen = lazyNamed(() => import("./features/company-admin/hr/Form16Screen"), "Form16Screen");
+const ChatbotScreen = lazyNamed(() => import("./features/company-admin/hr/ChatbotScreen"), "ChatbotScreen");
+const BonusBatchScreen = lazyNamed(() => import("./features/company-admin/hr/BonusBatchScreen"), "BonusBatchScreen");
+const ESignScreen = lazyNamed(() => import("./features/company-admin/hr/ESignScreen"), "ESignScreen");
+const DataRetentionScreen = lazyNamed(() => import("./features/company-admin/hr/DataRetentionScreen"), "DataRetentionScreen");
+const BiometricDeviceScreen = lazyNamed(() => import("./features/company-admin/hr/BiometricDeviceScreen"), "BiometricDeviceScreen");
+const ShiftRotationScreen = lazyNamed(() => import("./features/company-admin/hr/ShiftRotationScreen"), "ShiftRotationScreen");
+const ProductionIncentiveScreen = lazyNamed(() => import("./features/company-admin/hr/ProductionIncentiveScreen"), "ProductionIncentiveScreen");
+const TravelAdvanceScreen = lazyNamed(() => import("./features/company-admin/hr/TravelAdvanceScreen"), "TravelAdvanceScreen");
+
+// ─── HR Analytics Dashboards ───
+const ExecAnalyticsScreen = lazyNamed(() => import("./features/company-admin/hr/analytics/ExecutiveDashboardScreen"), "ExecutiveDashboardScreen");
+const WorkforceDashboardScreen = lazyNamed(() => import("./features/company-admin/hr/analytics/WorkforceDashboardScreen"), "WorkforceDashboardScreen");
+const AttendanceAnalyticsDashboardScreen = lazyNamed(() => import("./features/company-admin/hr/analytics/AttendanceAnalyticsDashboardScreen"), "AttendanceAnalyticsDashboardScreen");
+const LeaveAnalyticsDashboardScreen = lazyNamed(() => import("./features/company-admin/hr/analytics/LeaveAnalyticsDashboardScreen"), "LeaveAnalyticsDashboardScreen");
+const PayrollAnalyticsDashboardScreen = lazyNamed(() => import("./features/company-admin/hr/analytics/PayrollAnalyticsDashboardScreen"), "PayrollAnalyticsDashboardScreen");
+const ComplianceDashboardScreen = lazyNamed(() => import("./features/company-admin/hr/analytics/ComplianceDashboardScreen"), "ComplianceDashboardScreen");
+const PerformanceAnalyticsDashboardScreen = lazyNamed(() => import("./features/company-admin/hr/analytics/PerformanceAnalyticsDashboardScreen"), "PerformanceAnalyticsDashboardScreen");
+const RecruitmentDashboardScreen = lazyNamed(() => import("./features/company-admin/hr/analytics/RecruitmentDashboardScreen"), "RecruitmentDashboardScreen");
+const AttritionDashboardScreen = lazyNamed(() => import("./features/company-admin/hr/analytics/AttritionDashboardScreen"), "AttritionDashboardScreen");
+const TrainingDashboardScreen = lazyNamed(() => import("./features/company-admin/hr/analytics/TrainingDashboardScreen"), "TrainingDashboardScreen");
+const ReportsHubScreen = lazyNamed(() => import("./features/company-admin/hr/analytics/ReportsHubScreen"), "ReportsHubScreen");
+
+// ─── ESS Self-Service ───
+const MyGoalsScreen = lazyNamed(() => import("./features/ess/MyGoalsScreen"), "MyGoalsScreen");
+const MyForm16Screen = lazyNamed(() => import("./features/ess/MyForm16Screen"), "MyForm16Screen");
+const MyGrievancesScreen = lazyNamed(() => import("./features/ess/MyGrievancesScreen"), "MyGrievancesScreen");
+const MyTrainingScreen = lazyNamed(() => import("./features/ess/MyTrainingScreen"), "MyTrainingScreen");
+const MyAssetsScreen = lazyNamed(() => import("./features/ess/MyAssetsScreen"), "MyAssetsScreen");
+const ShiftSwapScreen = lazyNamed(() => import("./features/ess/ShiftSwapScreen"), "ShiftSwapScreen");
+const WfhRequestScreen = lazyNamed(() => import("./features/ess/WfhRequestScreen"), "WfhRequestScreen");
+const MyDocumentsScreen = lazyNamed(() => import("./features/ess/MyDocumentsScreen"), "MyDocumentsScreen");
+const PolicyDocumentsScreen = lazyNamed(() => import("./features/ess/PolicyDocumentsScreen"), "PolicyDocumentsScreen");
+const MyHolidaysScreen = lazyNamed(() => import("./features/ess/MyHolidaysScreen"), "MyHolidaysScreen");
+const MyExpenseClaimsScreen = lazyNamed(() => import("./features/ess/MyExpenseClaimsScreen"), "MyExpenseClaimsScreen");
+const MyLoanScreen = lazyNamed(() => import("./features/ess/MyLoanScreen"), "MyLoanScreen");
+const MyAppraisalScreen = lazyNamed(() => import("./features/ess/MyAppraisalScreen"), "MyAppraisalScreen");
+
+// ─── Operations Modules ───
+const InventoryScreen = lazyNamed(() => import("./features/inventory/InventoryScreen"), "InventoryScreen");
+const ProductionScreen = lazyNamed(() => import("./features/production/ProductionScreen"), "ProductionScreen");
+const MaintenanceScreen = lazyNamed(() => import("./features/maintenance/MaintenanceScreen"), "MaintenanceScreen");
+const WorkOrdersScreen = lazyNamed(() => import("./features/maintenance/WorkOrdersScreen"), "WorkOrdersScreen");
+const MachineRegistryScreen = lazyNamed(() => import("./features/maintenance/MachineRegistryScreen"), "MachineRegistryScreen");
 
 // Placeholder components to prevent router crashes before we build them
 const Placeholder = ({ name }: { name: string }) => (
@@ -279,6 +297,7 @@ function App() {
   return (
     <>
     <Toaster position="top-right" richColors closeButton toastOptions={{ style: { fontFamily: 'Inter, system-ui, sans-serif' } }} />
+    <Suspense fallback={<PageLoader />}>
     <Routes>
       {/* Public Auth Routes */}
       <Route element={<AuthLayout />}>
@@ -337,9 +356,9 @@ function App() {
         <Route path="company/users" element={<RequirePermission permission="user:read"><UserManagementScreen /></RequirePermission>} />
         <Route path="company/roles" element={<RequirePermission permission="role:read"><RoleManagementScreen /></RequirePermission>} />
         {/* Company-admin Billing routes */}
-        <Route path="company/billing" element={<RequireRole roles={['company-admin']}><BillingDashboardScreen /></RequireRole>} />
-        <Route path="company/billing/invoices" element={<RequireRole roles={['company-admin']}><MyInvoicesScreen /></RequireRole>} />
-        <Route path="company/billing/payments" element={<RequireRole roles={['company-admin']}><MyPaymentsScreen /></RequireRole>} />
+        <Route path="company/billing" element={<RequirePermission permission="billing:read"><BillingDashboardScreen /></RequirePermission>} />
+        <Route path="company/billing/invoices" element={<RequirePermission permission="billing:read"><MyInvoicesScreen /></RequirePermission>} />
+        <Route path="company/billing/payments" element={<RequirePermission permission="billing:read"><MyPaymentsScreen /></RequirePermission>} />
         {/* Company-admin HR routes */}
         <Route path="company/hr/departments" element={<RequirePermission permission="hr:read"><DepartmentScreen /></RequirePermission>} />
         <Route path="company/hr/designations" element={<RequirePermission permission="hr:read"><DesignationScreen /></RequirePermission>} />
@@ -445,18 +464,18 @@ function App() {
         <Route path="company/hr/production-incentives" element={<RequirePermission permission="hr:read"><ProductionIncentiveScreen /></RequirePermission>} />
         <Route path="company/hr/travel-advances" element={<RequirePermission permission="hr:read"><TravelAdvanceScreen /></RequirePermission>} />
         {/* HR Analytics Dashboard routes */}
-        <Route path="company/hr/analytics/reports" element={<RequirePermission permission="hr:read"><ReportsHubScreen /></RequirePermission>} />
-        <Route path="company/hr/analytics" element={<RequirePermission permission="hr:read"><ExecAnalyticsScreen /></RequirePermission>} />
-        <Route path="company/hr/analytics/executive" element={<RequirePermission permission="hr:read"><ExecAnalyticsScreen /></RequirePermission>} />
-        <Route path="company/hr/analytics/workforce" element={<RequirePermission permission="hr:read"><WorkforceDashboardScreen /></RequirePermission>} />
-        <Route path="company/hr/analytics/attendance" element={<RequirePermission permission="hr:read"><AttendanceAnalyticsDashboardScreen /></RequirePermission>} />
-        <Route path="company/hr/analytics/leave" element={<RequirePermission permission="hr:read"><LeaveAnalyticsDashboardScreen /></RequirePermission>} />
-        <Route path="company/hr/analytics/payroll" element={<RequirePermission permission="hr:read"><PayrollAnalyticsDashboardScreen /></RequirePermission>} />
-        <Route path="company/hr/analytics/compliance" element={<RequirePermission permission="hr:read"><ComplianceDashboardScreen /></RequirePermission>} />
-        <Route path="company/hr/analytics/performance" element={<RequirePermission permission="hr:read"><PerformanceAnalyticsDashboardScreen /></RequirePermission>} />
-        <Route path="company/hr/analytics/recruitment" element={<RequirePermission permission="hr:read"><RecruitmentDashboardScreen /></RequirePermission>} />
-        <Route path="company/hr/analytics/attrition" element={<RequirePermission permission="hr:read"><AttritionDashboardScreen /></RequirePermission>} />
-        <Route path="company/hr/analytics/training" element={<RequirePermission permission="hr:read"><TrainingDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/reports" element={<RequirePermission permission="analytics:export"><ReportsHubScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics" element={<RequirePermission permission="analytics:read"><ExecAnalyticsScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/executive" element={<RequirePermission permission="analytics:read"><ExecAnalyticsScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/workforce" element={<RequirePermission permission="analytics:read"><WorkforceDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/attendance" element={<RequirePermission permission="analytics:read"><AttendanceAnalyticsDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/leave" element={<RequirePermission permission="analytics:read"><LeaveAnalyticsDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/payroll" element={<RequirePermission permission="analytics:read"><PayrollAnalyticsDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/compliance" element={<RequirePermission permission="analytics:read"><ComplianceDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/performance" element={<RequirePermission permission="analytics:read"><PerformanceAnalyticsDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/recruitment" element={<RequirePermission permission="analytics:read"><RecruitmentDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/attrition" element={<RequirePermission permission="analytics:read"><AttritionDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/training" element={<RequirePermission permission="analytics:read"><TrainingDashboardScreen /></RequirePermission>} />
         {/* Operations module routes */}
         <Route path="inventory" element={<RequireRole roles={['super-admin', 'company-admin']}><InventoryScreen /></RequireRole>} />
         <Route path="production" element={<RequireRole roles={['super-admin', 'company-admin']}><ProductionScreen /></RequireRole>} />
@@ -464,8 +483,8 @@ function App() {
         <Route path="maintenance/orders" element={<RequireRole roles={['super-admin', 'company-admin']}><WorkOrdersScreen /></RequireRole>} />
         <Route path="maintenance/machines" element={<RequireRole roles={['super-admin', 'company-admin']}><MachineRegistryScreen /></RequireRole>} />
         {/* Super-admin + company-admin routes */}
-        <Route path="modules" element={<RequireRole roles={['super-admin', 'company-admin']}><ModuleCatalogueScreen /></RequireRole>} />
-        <Route path="monitor" element={<RequireRole roles={['super-admin', 'company-admin']}><PlatformMonitorScreen /></RequireRole>} />
+        <Route path="modules" element={<RequirePermission permission={['platform:admin', 'company:read']}><ModuleCatalogueScreen /></RequirePermission>} />
+        <Route path="monitor" element={<RequirePermission permission={['platform:admin', 'company:read']}><PlatformMonitorScreen /></RequirePermission>} />
         {/* All authenticated users */}
         <Route path="announcements" element={<AnnouncementsScreen />} />
         <Route path="help/ticket/:id" element={<TicketChatScreen />} />
@@ -477,6 +496,7 @@ function App() {
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
     </>
   );
 }

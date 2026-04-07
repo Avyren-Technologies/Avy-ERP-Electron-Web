@@ -51,8 +51,8 @@ interface GeofenceFormState {
 interface GeofenceRecord {
     id: string;
     name: string;
-    latitude: number;
-    longitude: number;
+    lat: number;
+    lng: number;
     radius: number;
     address?: string | null;
     isDefault: boolean;
@@ -234,11 +234,11 @@ export function GeofenceManager({
         (gf: GeofenceRecord) => {
             setIsAdding(false);
             setEditingId(gf.id);
-            const center = { lat: gf.latitude, lng: gf.longitude };
+            const center = { lat: gf.lat, lng: gf.lng };
             setFormState({
                 name: gf.name,
-                lat: gf.latitude,
-                lng: gf.longitude,
+                lat: gf.lat,
+                lng: gf.lng,
                 radius: gf.radius,
                 address: gf.address ?? "",
                 isDefault: gf.isDefault,
@@ -252,6 +252,7 @@ export function GeofenceManager({
     // ---- Map callbacks ----
     const onMapLoad = useCallback((map: google.maps.Map) => {
         mapRef.current = map;
+        map.setCenter(locationCenter);
     }, []);
 
     const onMarkerDragEnd = useCallback(
@@ -273,7 +274,11 @@ export function GeofenceManager({
         const address = place.formatted_address ?? "";
         patchForm({ lat, lng, address });
         setMapCenter({ lat, lng });
-        mapRef.current?.panTo({ lat, lng });
+        const map = mapRef.current;
+        if (map) {
+            map.panTo({ lat, lng });
+            map.setZoom(16);
+        }
     }, [patchForm]);
 
     // ---- Mutations ----
@@ -281,8 +286,8 @@ export function GeofenceManager({
         if (!formState.name.trim()) return;
         const payload = {
             name: formState.name.trim(),
-            latitude: formState.lat,
-            longitude: formState.lng,
+            lat: formState.lat,
+            lng: formState.lng,
             radius: formState.radius,
             address: formState.address.trim() || undefined,
             isDefault: formState.isDefault,
@@ -592,7 +597,6 @@ export function GeofenceManager({
                         <>
                             <GoogleMap
                                 mapContainerStyle={MAP_CONTAINER_STYLE}
-                                center={mapCenter}
                                 zoom={DEFAULT_ZOOM}
                                 onLoad={onMapLoad}
                                 options={{
@@ -634,8 +638,8 @@ export function GeofenceManager({
                                         <Circle
                                             key={`circle-${gf.id}`}
                                             center={{
-                                                lat: gf.latitude,
-                                                lng: gf.longitude,
+                                                lat: gf.lat,
+                                                lng: gf.lng,
                                             }}
                                             radius={gf.radius}
                                             options={INACTIVE_CIRCLE_OPTIONS}
@@ -649,8 +653,8 @@ export function GeofenceManager({
                                         <Marker
                                             key={`marker-${gf.id}`}
                                             position={{
-                                                lat: gf.latitude,
-                                                lng: gf.longitude,
+                                                lat: gf.lat,
+                                                lng: gf.lng,
                                             }}
                                             opacity={0.5}
                                             title={gf.name}

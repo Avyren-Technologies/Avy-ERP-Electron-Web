@@ -342,7 +342,7 @@ export function AssetManagementScreen() {
                                             <td className="py-4 px-6 text-xs font-mono text-neutral-500 dark:text-neutral-400">{a.serialNumber || "—"}</td>
                                             <td className="py-4 px-6"><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">{a.condition || "—"}</span></td>
                                             <td className="py-4 px-6 text-center"><AssetStatusBadge status={a.status ?? "Available"} /></td>
-                                            <td className="py-4 px-6 text-right font-semibold text-primary-950 dark:text-white">{a.purchaseCost ? `\u20B9${Number(a.purchaseCost).toLocaleString("en-IN")}` : "—"}</td>
+                                            <td className="py-4 px-6 text-right font-semibold text-primary-950 dark:text-white">{a.purchaseCost ? `₹${Number(a.purchaseCost).toLocaleString("en-IN")}` : "—"}</td>
                                             <td className="py-4 px-6 text-right">
                                                 <button onClick={() => openEditAsset(a)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit"><Edit3 size={15} /></button>
                                             </td>

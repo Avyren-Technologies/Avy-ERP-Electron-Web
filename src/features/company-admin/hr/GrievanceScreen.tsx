@@ -129,17 +129,19 @@ export function GrievanceScreen() {
 
     const categoryName = (id: string) => categories.find((c: any) => c.id === id)?.name ?? id;
     const categorySla = (id: string) => categories.find((c: any) => c.id === id)?.slaDays ?? 7;
-    const employeeName = (id: string) => {
-        const emp = employees.find((e: any) => e.id === id);
-        if (!emp) return id;
-        return [emp.firstName, emp.lastName].filter(Boolean).join(" ") || emp.fullName || emp.email || id;
+    const employeeName = (idOrRecord: string | any, nestedField = 'employee', idField = 'employeeId') => {
+        const id = typeof idOrRecord === 'string' ? idOrRecord : idOrRecord?.[idField];
+        const record = typeof idOrRecord === 'string' ? null : idOrRecord;
+        const emp = record?.[nestedField] ?? employees.find((e: any) => e.id === id);
+        if (!emp) return id || '';
+        return `${emp.firstName ?? ''} ${emp.lastName ?? ''}`.trim() || emp.fullName || emp.employeeCode || emp.email || id || '';
     };
 
     const filteredCats = categories.filter((c: any) => !search || c.name?.toLowerCase().includes(search.toLowerCase()));
     const filteredCases = cases.filter((c: any) => {
         if (!search) return true;
         const s = search.toLowerCase();
-        return c.subject?.toLowerCase().includes(s) || employeeName(c.employeeId)?.toLowerCase().includes(s) || categoryName(c.categoryId)?.toLowerCase().includes(s);
+        return c.subject?.toLowerCase().includes(s) || employeeName(c)?.toLowerCase().includes(s) || categoryName(c.categoryId)?.toLowerCase().includes(s);
     });
 
     /* Category handlers */
@@ -329,7 +331,7 @@ export function GrievanceScreen() {
                                                     <span className="font-bold text-primary-950 dark:text-white truncate max-w-[200px]">{c.subject}</span>
                                                 </div>
                                             </td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{c.isAnonymous ? "Anonymous" : employeeName(c.employeeId)}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{c.isAnonymous ? "Anonymous" : employeeName(c)}</td>
                                             <td className="py-4 px-6 text-xs text-neutral-500 dark:text-neutral-400">{categoryName(c.categoryId)}</td>
                                             <td className="py-4 px-6 text-center"><PriorityBadge priority={c.priority ?? "Medium"} /></td>
                                             <td className="py-4 px-6 text-center"><CaseStatusBadge status={c.status ?? "Open"} /></td>
@@ -493,7 +495,7 @@ export function GrievanceScreen() {
                             </div>
                             <div><span className="text-xs text-neutral-400 block mb-0.5">Subject</span><p className="font-bold text-primary-950 dark:text-white">{caseDetailTarget.subject}</p></div>
                             <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div><span className="text-xs text-neutral-400 block mb-0.5">Employee</span><p className="font-semibold text-primary-950 dark:text-white">{caseDetailTarget.isAnonymous ? "Anonymous" : employeeName(caseDetailTarget.employeeId)}</p></div>
+                                <div><span className="text-xs text-neutral-400 block mb-0.5">Employee</span><p className="font-semibold text-primary-950 dark:text-white">{caseDetailTarget.isAnonymous ? "Anonymous" : employeeName(caseDetailTarget)}</p></div>
                                 <div><span className="text-xs text-neutral-400 block mb-0.5">Category</span><p className="font-semibold text-primary-950 dark:text-white">{categoryName(caseDetailTarget.categoryId)}</p></div>
                                 <div><span className="text-xs text-neutral-400 block mb-0.5">Filed</span><p className="font-semibold text-primary-950 dark:text-white">{formatDate(caseDetailTarget.createdAt)}</p></div>
                                 <div><span className="text-xs text-neutral-400 block mb-0.5">SLA</span><SlaIndicator createdAt={caseDetailTarget.createdAt} slaDays={categorySla(caseDetailTarget.categoryId)} status={caseDetailTarget.status ?? "Open"} /></div>

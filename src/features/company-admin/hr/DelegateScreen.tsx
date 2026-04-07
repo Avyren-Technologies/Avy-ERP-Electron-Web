@@ -44,16 +44,17 @@ export function DelegateScreen() {
     const delegates: any[] = delegatesQuery.data?.data ?? [];
     const employees: any[] = employeesQuery.data?.data ?? [];
 
-    const getEmployeeName = (id: string) => {
-        const e = employees.find((emp: any) => emp.id === id);
-        return e ? `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim() || e.email || id : id;
+    const getEmployeeName = (record: any, idField = 'employeeId', nestedField = 'employee') => {
+        const emp = record?.[nestedField] ?? employees.find((e: any) => e.id === record?.[idField]);
+        if (!emp) return record?.[idField] ?? '';
+        return `${emp.firstName ?? ''} ${emp.lastName ?? ''}`.trim() || emp.employeeCode || emp.email || record?.[idField] || '';
     };
 
     const filtered = delegates.filter((r: any) => {
         if (!search) return true;
         const q = search.toLowerCase();
-        return (r.managerName || getEmployeeName(r.managerId))?.toLowerCase().includes(q) ||
-            (r.delegateName || getEmployeeName(r.delegateId))?.toLowerCase().includes(q);
+        return getEmployeeName(r, 'managerId', 'manager')?.toLowerCase().includes(q) ||
+            getEmployeeName(r, 'delegateId', 'delegate')?.toLowerCase().includes(q);
     });
 
     const openCreate = () => { setForm({ ...EMPTY_FORM }); setModalOpen(true); };
@@ -132,11 +133,11 @@ export function DelegateScreen() {
                                                 <div className="w-8 h-8 rounded-lg bg-accent-50 dark:bg-accent-900/30 flex items-center justify-center shrink-0">
                                                     <UserCheck className="w-4 h-4 text-accent-600 dark:text-accent-400" />
                                                 </div>
-                                                <span className="font-bold text-primary-950 dark:text-white">{r.managerName || getEmployeeName(r.managerId)}</span>
+                                                <span className="font-bold text-primary-950 dark:text-white">{getEmployeeName(r, 'managerId', 'manager')}</span>
                                             </div>
                                         </td>
                                         <td className="py-4 px-6"><ArrowRight size={14} className="text-neutral-300" /></td>
-                                        <td className="py-4 px-6 font-semibold text-primary-700 dark:text-primary-400">{r.delegateName || getEmployeeName(r.delegateId)}</td>
+                                        <td className="py-4 px-6 font-semibold text-primary-700 dark:text-primary-400">{getEmployeeName(r, 'delegateId', 'delegate')}</td>
                                         <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(r.fromDate)}</td>
                                         <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(r.toDate)}</td>
                                         <td className="py-4 px-6 text-center">
@@ -223,7 +224,7 @@ export function DelegateScreen() {
                     <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200">
                         <h2 className="text-lg font-bold text-danger-700 dark:text-danger-400 mb-2">Revoke Delegation?</h2>
                         <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                            This will revoke the delegation from <strong>{revokeTarget.managerName || getEmployeeName(revokeTarget.managerId)}</strong> to <strong>{revokeTarget.delegateName || getEmployeeName(revokeTarget.delegateId)}</strong>.
+                            This will revoke the delegation from <strong>{getEmployeeName(revokeTarget, 'managerId', 'manager')}</strong> to <strong>{getEmployeeName(revokeTarget, 'delegateId', 'delegate')}</strong>.
                         </p>
                         <div className="flex gap-3 mt-6">
                             <button onClick={() => setRevokeTarget(null)} className="flex-1 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>

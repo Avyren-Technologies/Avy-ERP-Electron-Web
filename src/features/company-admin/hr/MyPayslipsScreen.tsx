@@ -61,22 +61,37 @@ export function MyPayslipsScreen() {
         }
     };
 
-    // Build detail breakdown
-    const earnings: Array<{ label: string; amount: number }> = detailTarget?.earnings ?? [
-        { label: "Basic Salary", amount: detailTarget?.basic ?? 0 },
-        { label: "HRA", amount: detailTarget?.hra ?? 0 },
-        { label: "Special Allowance", amount: detailTarget?.specialAllowance ?? 0 },
-        { label: "Conveyance", amount: detailTarget?.conveyance ?? 0 },
-        { label: "Medical Allowance", amount: detailTarget?.medicalAllowance ?? 0 },
-    ].filter((e) => e.amount > 0);
+    // Normalise earnings — API may return an array, a keyed object, or nothing
+    const earningsRaw = detailTarget?.earnings;
+    const earnings: Array<{ label: string; amount: number }> = Array.isArray(earningsRaw)
+        ? earningsRaw
+        : earningsRaw && typeof earningsRaw === 'object'
+            ? Object.entries(earningsRaw as Record<string, number>)
+                .map(([label, amount]) => ({ label, amount: Number(amount) }))
+                .filter((e) => e.amount > 0)
+            : [
+                { label: "Basic Salary", amount: detailTarget?.basic ?? 0 },
+                { label: "HRA", amount: detailTarget?.hra ?? 0 },
+                { label: "Special Allowance", amount: detailTarget?.specialAllowance ?? 0 },
+                { label: "Conveyance", amount: detailTarget?.conveyance ?? 0 },
+                { label: "Medical Allowance", amount: detailTarget?.medicalAllowance ?? 0 },
+              ].filter((e) => e.amount > 0);
 
-    const deductions: Array<{ label: string; amount: number }> = detailTarget?.deductions ?? [
-        { label: "PF (Employee)", amount: detailTarget?.pfEmployee ?? 0 },
-        { label: "ESI (Employee)", amount: detailTarget?.esiEmployee ?? 0 },
-        { label: "Professional Tax", amount: detailTarget?.professionalTax ?? 0 },
-        { label: "TDS", amount: detailTarget?.tds ?? 0 },
-        { label: "Loan EMI", amount: detailTarget?.loanEmi ?? 0 },
-    ].filter((d) => d.amount > 0);
+    // Normalise deductions — same shape handling
+    const deductionsRaw = detailTarget?.deductions;
+    const deductions: Array<{ label: string; amount: number }> = Array.isArray(deductionsRaw)
+        ? deductionsRaw
+        : deductionsRaw && typeof deductionsRaw === 'object'
+            ? Object.entries(deductionsRaw as Record<string, number>)
+                .map(([label, amount]) => ({ label, amount: Number(amount) }))
+                .filter((d) => d.amount > 0)
+            : [
+                { label: "PF (Employee)", amount: detailTarget?.pfEmployee ?? 0 },
+                { label: "ESI (Employee)", amount: detailTarget?.esiEmployee ?? 0 },
+                { label: "Professional Tax", amount: detailTarget?.professionalTax ?? 0 },
+                { label: "TDS", amount: detailTarget?.tds ?? 0 },
+                { label: "Loan EMI", amount: detailTarget?.loanEmi ?? 0 },
+              ].filter((d) => d.amount > 0);
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">

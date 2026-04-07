@@ -178,7 +178,7 @@ export function useBankFile(params?: Record<string, unknown>) {
     return useQuery({
         queryKey: payrollRunKeys.bankFile(params),
         queryFn: () => payrollRunApi.getBankFile(params as any),
-        enabled: !!params?.payrollRunId,
+        enabled: !!(params?.runId ?? params?.payrollRunId),
     });
 }
 

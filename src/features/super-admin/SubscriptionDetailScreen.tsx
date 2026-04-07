@@ -62,7 +62,7 @@ function amcStatusStyle(status: AmcStatus) {
 
 function formatCurrency(amount?: number): string {
     if (amount == null) return '--';
-    return `\u20B9${amount.toLocaleString('en-IN')}`;
+    return `₹${amount.toLocaleString('en-IN')}`;
 }
 
 const isReactivatable = (status: SubscriptionStatus) =>

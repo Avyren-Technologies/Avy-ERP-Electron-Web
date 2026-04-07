@@ -212,9 +212,7 @@ async function getSalaryRegister(params?: {
 }
 
 async function getBankFile(params?: {
-    month?: number;
-    year?: number;
-    payrollRunId?: string;
+    runId?: string;
 }): Promise<ApiResponse<any>> {
     const response = await client.get('/hr/payroll-reports/bank-file', { params });
     return response.data;

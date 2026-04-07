@@ -149,6 +149,18 @@ const EMPTY_OFFER = {
 /* ── Helpers ── */
 
 // formatDate and formatDateTime moved inside component
+function displayRef(value: unknown): string {
+    if (!value) return "";
+    if (typeof value === "string") return value;
+    if (typeof value === "object") {
+        const v = value as { name?: unknown; title?: unknown; code?: unknown; id?: unknown };
+        if (typeof v.name === "string") return v.name;
+        if (typeof v.title === "string") return v.title;
+        if (typeof v.code === "string") return v.code;
+        if (typeof v.id === "string") return v.id;
+    }
+    return String(value);
+}
 
 /* ── Badges ── */
 
@@ -329,7 +341,9 @@ export function RequisitionScreen() {
     const filteredReqs = requisitions.filter((r: any) => {
         if (!search) return true;
         const s = search.toLowerCase();
-        return r.title?.toLowerCase().includes(s) || r.department?.toLowerCase().includes(s) || r.location?.toLowerCase().includes(s);
+        const department = displayRef(r.department);
+        const location = displayRef(r.location);
+        return r.title?.toLowerCase().includes(s) || department.toLowerCase().includes(s) || location.toLowerCase().includes(s);
     });
 
     const filteredCands = candidates.filter((c: any) => {
@@ -672,11 +686,11 @@ export function RequisitionScreen() {
                                                     <span className="font-bold text-primary-950 dark:text-white">{r.title}</span>
                                                 </div>
                                             </td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{r.department || "—"}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{displayRef(r.department) || "—"}</td>
                                             <td className="py-4 px-6 text-center font-semibold text-primary-950 dark:text-white">{r.positions ?? 1}</td>
                                             <td className="py-4 px-6"><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-accent-50 text-accent-700 border border-accent-200 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50">{EMPLOYMENT_TYPES.find((t) => t.value === r.employmentType)?.label ?? r.employmentType ?? "Full-Time"}</span></td>
                                             <td className="py-4 px-6 text-center"><PriorityBadge priority={r.priority ?? "Medium"} /></td>
-                                            <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{r.location || "—"}</td>
+                                            <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{displayRef(r.location) || "—"}</td>
                                             <td className="py-4 px-6 text-center"><ReqStatusBadge status={r.status ?? "Open"} /></td>
                                             <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(r.deadline)}</td>
                                             <td className="py-4 px-6 text-right">

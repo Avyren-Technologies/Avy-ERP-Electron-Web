@@ -11,7 +11,7 @@ import {
     Filter,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { usePendingESign, useESignStatus } from "@/features/company-admin/api/use-recruitment-queries";
+import { usePendingESign } from "@/features/company-admin/api/use-recruitment-queries";
 import { useDispatchESign } from "@/features/company-admin/api/use-recruitment-mutations";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -77,13 +77,14 @@ export function ESignScreen() {
     const isHrAdmin = useCanPerform('hr:read');
 
     const { data, isLoading, isError } = usePendingESign();
-    const { data: statsData } = useESignStatus('');
     const dispatchMutation = useDispatchESign();
 
-    const records: any[] = (data as any)?.data ?? [];
-    const stats: any = (statsData as any)?.data ?? { pending: 0, signedThisMonth: 0, declined: 0 };
+    const result = (data as any)?.data ?? {};
+    const records: any[] = result?.data ?? [];
+    const stats: any = result?.stats ?? { pending: 0, signedThisMonth: 0, declined: 0 };
 
     const filtered = records.filter((r: any) => {
+        if (statusFilter && r.status?.toUpperCase() !== statusFilter) return false;
         if (!search) return true;
         const s = search.toLowerCase();
         return (

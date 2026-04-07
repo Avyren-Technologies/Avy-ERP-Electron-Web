@@ -128,16 +128,25 @@ export function DisciplinaryScreen() {
     const actions: any[] = actionsQuery.data?.data ?? [];
     const employees: any[] = employeesQuery.data?.data ?? [];
 
-    const employeeName = (id: string) => {
+    const employeeName = (id: string, empObj?: any) => {
+        if (empObj) {
+            const name = [empObj.firstName, empObj.lastName].filter(Boolean).join(" ");
+            if (name) return name;
+        }
         const emp = employees.find((e: any) => e.id === id);
         if (!emp) return id;
         return [emp.firstName, emp.lastName].filter(Boolean).join(" ") || emp.fullName || emp.email || id;
     };
 
+    const formatEnumValue = (val: string) => {
+        if (!val) return "—";
+        return val.replace(/_/g, " ").replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase());
+    };
+
     const filtered = actions.filter((a: any) => {
         if (!search) return true;
         const s = search.toLowerCase();
-        return employeeName(a.employeeId)?.toLowerCase().includes(s) || a.subject?.toLowerCase().includes(s) || a.type?.toLowerCase().includes(s);
+        return employeeName(a.employeeId, a.employee)?.toLowerCase().includes(s) || a.charges?.toLowerCase().includes(s) || a.type?.toLowerCase().includes(s);
     });
 
     const openCreate = () => { setEditingId(null); setForm({ ...EMPTY_ACTION }); setModalOpen(true); };
@@ -209,7 +218,7 @@ export function DisciplinaryScreen() {
                 <div className="flex items-center gap-2">
                     <Filter size={14} className="text-neutral-400" />
                     <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm font-semibold text-neutral-700 dark:text-neutral-300 focus:outline-none">
-                        {STATUSES.map((f) => <option key={f} value={f}>{f}</option>)}
+                        {STATUSES.map((f: string) => <option key={f} value={f}>{f}</option>)}
                     </select>
                 </div>
             </div>
@@ -239,14 +248,14 @@ export function DisciplinaryScreen() {
                                                 <div className="w-8 h-8 rounded-lg bg-danger-50 dark:bg-danger-900/20 flex items-center justify-center shrink-0">
                                                     <Gavel className="w-4 h-4 text-danger-600 dark:text-danger-400" />
                                                 </div>
-                                                <span className="font-bold text-primary-950 dark:text-white">{employeeName(a.employeeId)}</span>
+                                                <span className="font-bold text-primary-950 dark:text-white">{employeeName(a.employeeId, a.employee)}</span>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 truncate max-w-[200px]">{a.subject || "—"}</td>
-                                        <td className="py-4 px-6"><TypeBadge type={a.type ?? "Written Warning"} /></td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 truncate max-w-[200px]">{a.charges || a.subject || "—"}</td>
+                                        <td className="py-4 px-6"><TypeBadge type={formatEnumValue(a.type) ?? "Written Warning"} /></td>
                                         <td className="py-4 px-6 text-center"><SeverityBadge severity={a.severity ?? "Moderate"} /></td>
-                                        <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(a.incidentDate)}</td>
-                                        <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(a.issuedDate)}</td>
+                                        <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(a.createdAt || a.incidentDate)}</td>
+                                        <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(a.createdAt || a.issuedDate)}</td>
                                         <td className="py-4 px-6 text-center"><ActionStatusBadge status={a.status ?? "Draft"} /></td>
                                         {isHrAdmin && (
                                             <td className="py-4 px-6 text-right">
@@ -293,7 +302,7 @@ export function DisciplinaryScreen() {
                                 <div>
                                     <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Severity</label>
                                     <select value={form.severity} onChange={(e) => updateField("severity", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
-                                        {SEVERITY_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                                        {SEVERITY_OPTIONS.map((s: string) => <option key={s} value={s}>{s}</option>)}
                                     </select>
                                 </div>
                             </div>
@@ -366,7 +375,7 @@ export function DisciplinaryScreen() {
                                     <div>
                                         <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Status</label>
                                         <select value={form.status} onChange={(e) => updateField("status", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
-                                            {STATUSES.filter((s) => s !== "All").map((s) => <option key={s} value={s}>{s}</option>)}
+                                            {STATUSES.filter((s: string) => s !== "All").map((s: string) => <option key={s} value={s}>{s}</option>)}
                                         </select>
                                     </div>
                                 )}
@@ -394,17 +403,17 @@ export function DisciplinaryScreen() {
                             <div className="flex items-center justify-between flex-wrap gap-2">
                                 <ActionStatusBadge status={detailTarget.status ?? "Draft"} />
                                 <div className="flex gap-2">
-                                    <TypeBadge type={detailTarget.type ?? "Written Warning"} />
+                                    <TypeBadge type={formatEnumValue(detailTarget.type) ?? "Written Warning"} />
                                     <SeverityBadge severity={detailTarget.severity ?? "Moderate"} />
                                 </div>
                             </div>
-                            <div><span className="text-xs text-neutral-400 block mb-0.5">Employee</span><p className="font-bold text-primary-950 dark:text-white text-lg">{employeeName(detailTarget.employeeId)}</p></div>
-                            <div><span className="text-xs text-neutral-400 block mb-0.5">Subject</span><p className="font-bold text-primary-950 dark:text-white">{detailTarget.subject || "—"}</p></div>
+                            <div><span className="text-xs text-neutral-400 block mb-0.5">Employee</span><p className="font-bold text-primary-950 dark:text-white text-lg">{employeeName(detailTarget.employeeId, detailTarget.employee)}</p></div>
+                            <div><span className="text-xs text-neutral-400 block mb-0.5">Subject</span><p className="font-bold text-primary-950 dark:text-white">{detailTarget.charges || detailTarget.subject || "—"}</p></div>
                             <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div><span className="text-xs text-neutral-400 block mb-0.5">Incident Date</span><p className="font-semibold text-primary-950 dark:text-white">{formatDate(detailTarget.incidentDate)}</p></div>
-                                <div><span className="text-xs text-neutral-400 block mb-0.5">Issued Date</span><p className="font-semibold text-primary-950 dark:text-white">{formatDate(detailTarget.issuedDate)}</p></div>
-                                <div><span className="text-xs text-neutral-400 block mb-0.5">Issued By</span><p className="font-semibold text-primary-950 dark:text-white">{detailTarget.issuedById ? employeeName(detailTarget.issuedById) : "—"}</p></div>
-                                <div><span className="text-xs text-neutral-400 block mb-0.5">Previous Warnings</span><p className="font-semibold text-primary-950 dark:text-white">{detailTarget.previousWarnings ?? 0}</p></div>
+                                <div><span className="text-xs text-neutral-400 block mb-0.5">Incident Date</span><p className="font-semibold text-primary-950 dark:text-white">{formatDate(detailTarget.createdAt || detailTarget.incidentDate)}</p></div>
+                                <div><span className="text-xs text-neutral-400 block mb-0.5">Issued By</span><p className="font-semibold text-primary-950 dark:text-white">{detailTarget.issuedById ? employeeName(detailTarget.issuedById) : "System"}</p></div>
+                                <div><span className="text-xs text-neutral-400 block mb-0.5">Reply Due</span><p className="font-semibold text-primary-950 dark:text-white">{formatDate(detailTarget.replyDueBy || detailTarget.reviewDate)}</p></div>
+                                <div><span className="text-xs text-neutral-400 block mb-0.5">PIP Outcome</span><p className="font-semibold text-primary-950 dark:text-white">{detailTarget.pipOutcome || "—"}</p></div>
                             </div>
                             {detailTarget.description && (
                                 <div><span className="text-xs text-neutral-400 block mb-0.5">Description</span><p className="text-sm text-neutral-600 dark:text-neutral-400">{detailTarget.description}</p></div>
@@ -416,6 +425,12 @@ export function DisciplinaryScreen() {
                                 <div className="bg-warning-50 dark:bg-warning-900/20 rounded-xl p-3 border border-warning-200 dark:border-warning-800/50">
                                     <span className="text-xs text-warning-600 dark:text-warning-400 block mb-0.5 font-semibold">Action Taken</span>
                                     <p className="text-sm text-warning-700 dark:text-warning-400">{detailTarget.actionTaken}</p>
+                                </div>
+                            )}
+                            {detailTarget.replyReceived && (
+                                <div className="bg-primary-50 dark:bg-primary-900/20 rounded-xl p-3 border border-primary-200 dark:border-primary-800/50">
+                                    <span className="text-xs text-primary-600 dark:text-primary-400 block mb-0.5 font-semibold">Reply Received</span>
+                                    <p className="text-sm text-primary-700 dark:text-primary-400">{detailTarget.replyReceived}</p>
                                 </div>
                             )}
                             {detailTarget.improvementPlan && (

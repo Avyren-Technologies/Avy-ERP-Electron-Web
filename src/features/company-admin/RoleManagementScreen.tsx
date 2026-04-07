@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import {
     Shield,
     Plus,
@@ -63,14 +63,10 @@ export function RoleManagementScreen() {
         return modules.filter((m) => m.module !== 'platform');
     }, [catalogueData]);
 
-    // Collect unique action names across all modules for table header
-    const allActions = useMemo(() => {
-        const actionSet = new Set<string>();
-        catalogueModules.forEach((mod) => {
-            mod.actions.forEach((a) => actionSet.add(a));
-        });
-        return Array.from(actionSet);
-    }, [catalogueModules]);
+    // Standard actions shown as table columns
+    const STANDARD_ACTIONS = useMemo(() => {
+        return ['read', 'create', 'update', 'delete', 'approve', 'export', 'configure'];
+    }, []);
 
     // Reference roles as templates — backend returns Record<name, {description, permissions}>
     const roleTemplates = useMemo(() => {
@@ -316,63 +312,104 @@ export function RoleManagementScreen() {
                                                     <tr className="bg-neutral-50 dark:bg-neutral-800/50">
                                                         <th className="py-3 px-4 text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">Module</th>
                                                         <th className="py-3 px-3 text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider text-center">All</th>
-                                                        {allActions.map((a) => (
+                                                        {STANDARD_ACTIONS.map((a) => (
                                                             <th key={a} className="py-3 px-3 text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider text-center">{a}</th>
                                                         ))}
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {catalogueModules.map((mod, i) => (
-                                                        <tr key={mod.module} className={cn(i < catalogueModules.length - 1 && "border-b border-neutral-100 dark:border-neutral-800")}>
-                                                            <td className="py-2.5 px-4 text-xs font-semibold text-primary-950 dark:text-white">{mod.label}</td>
-                                                            <td className="py-2.5 px-3 text-center">
-                                                                {(() => {
-                                                                    const state = getModuleSelectionState(mod);
-                                                                    return (
-                                                                        <button
-                                                                            onClick={() => toggleModuleAll(mod)}
-                                                                            title={state === 'all' ? `Deselect all ${mod.label} permissions` : `Select all ${mod.label} permissions`}
-                                                                            className={cn(
-                                                                                "w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors",
-                                                                                state === 'all'
-                                                                                    ? "bg-primary-600 border-primary-600 text-white"
-                                                                                    : state === 'some'
-                                                                                        ? "bg-primary-200 border-primary-400 text-primary-700 dark:bg-primary-800 dark:border-primary-500 dark:text-primary-300"
-                                                                                        : "border-neutral-300 dark:border-neutral-600 hover:border-primary-400"
-                                                                            )}
-                                                                        >
-                                                                            {state === 'all' && <CheckSquare size={12} />}
-                                                                            {state === 'some' && <Minus size={12} />}
-                                                                        </button>
-                                                                    );
-                                                                })()}
-                                                            </td>
-                                                            {allActions.map((action) => {
-                                                                const hasAction = mod.actions.includes(action);
-                                                                const key = `${mod.module}:${action}`;
-                                                                const checked = matrix[key] ?? false;
-                                                                return (
-                                                                    <td key={action} className="py-2.5 px-3 text-center">
-                                                                        {hasAction ? (
-                                                                            <button
-                                                                                onClick={() => togglePermission(key)}
-                                                                                className={cn(
-                                                                                    "w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors",
-                                                                                    checked
-                                                                                        ? "bg-primary-600 border-primary-600 text-white"
-                                                                                        : "border-neutral-300 dark:border-neutral-600 hover:border-primary-400"
-                                                                                )}
-                                                                            >
-                                                                                {checked && <CheckSquare size={12} />}
-                                                                            </button>
-                                                                        ) : (
-                                                                            <span className="text-neutral-200 dark:text-neutral-700">&mdash;</span>
-                                                                        )}
+                                                    {catalogueModules.map((mod, i) => {
+                                                        const customActions = mod.actions.filter(a => !STANDARD_ACTIONS.includes(a));
+                                                        const isLast = i === catalogueModules.length - 1;
+                                                        return (
+                                                            <Fragment key={mod.module}>
+                                                                <tr className={cn((!isLast && customActions.length === 0) && "border-b border-neutral-100 dark:border-neutral-800")}>
+                                                                    <td className="py-2.5 px-4 text-xs font-semibold text-primary-950 dark:text-white">{mod.label}</td>
+                                                                    <td className="py-2.5 px-3 text-center">
+                                                                        {(() => {
+                                                                            const state = getModuleSelectionState(mod);
+                                                                            return (
+                                                                                <button
+                                                                                    onClick={() => toggleModuleAll(mod)}
+                                                                                    title={state === 'all' ? `Deselect all ${mod.label} permissions` : `Select all ${mod.label} permissions`}
+                                                                                    className={cn(
+                                                                                        "w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors mx-auto",
+                                                                                        state === 'all'
+                                                                                            ? "bg-primary-600 border-primary-600 text-white"
+                                                                                            : state === 'some'
+                                                                                                ? "bg-primary-200 border-primary-400 text-primary-700 dark:bg-primary-800 dark:border-primary-500 dark:text-primary-300"
+                                                                                                : "border-neutral-300 dark:border-neutral-600 hover:border-primary-400"
+                                                                                    )}
+                                                                                >
+                                                                                    {state === 'all' && <CheckSquare size={12} />}
+                                                                                    {state === 'some' && <Minus size={12} />}
+                                                                                </button>
+                                                                            );
+                                                                        })()}
                                                                     </td>
-                                                                );
-                                                            })}
-                                                        </tr>
-                                                    ))}
+                                                                    {STANDARD_ACTIONS.map((action) => {
+                                                                        const hasAction = mod.actions.includes(action);
+                                                                        const key = `${mod.module}:${action}`;
+                                                                        const checked = matrix[key] ?? false;
+                                                                        return (
+                                                                            <td key={action} className="py-2.5 px-3 text-center">
+                                                                                {hasAction ? (
+                                                                                    <button
+                                                                                        onClick={() => togglePermission(key)}
+                                                                                        className={cn(
+                                                                                            "w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors mx-auto",
+                                                                                            checked
+                                                                                                ? "bg-primary-600 border-primary-600 text-white"
+                                                                                                : "border-neutral-300 dark:border-neutral-600 hover:border-primary-400"
+                                                                                        )}
+                                                                                    >
+                                                                                        {checked && <CheckSquare size={12} />}
+                                                                                    </button>
+                                                                                ) : (
+                                                                                    <span className="text-neutral-200 dark:text-neutral-700">&mdash;</span>
+                                                                                )}
+                                                                            </td>
+                                                                        );
+                                                                    })}
+                                                                </tr>
+                                                                {customActions.length > 0 && (
+                                                                    <tr className={cn(!isLast && "border-b border-neutral-100 dark:border-neutral-800")}>
+                                                                        <td colSpan={STANDARD_ACTIONS.length + 2} className="px-4 pb-4 pt-1">
+                                                                            <div className="flex flex-wrap gap-2 pt-3 border-t border-neutral-100 dark:border-neutral-800/50 mt-1">
+                                                                                <span className="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase w-full mb-1">Specific Permissions</span>
+                                                                                {customActions.map(action => {
+                                                                                    const key = `${mod.module}:${action}`;
+                                                                                    const checked = matrix[key] ?? false;
+                                                                                    return (
+                                                                                        <label key={action} className={cn(
+                                                                                            "flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold cursor-pointer transition-colors shadow-sm",
+                                                                                            checked 
+                                                                                                ? "bg-primary-50 border-primary-200 text-primary-700 dark:bg-primary-900/40 dark:border-primary-800 dark:text-primary-300" 
+                                                                                                : "bg-white border-neutral-200 text-neutral-600 hover:border-primary-300 dark:bg-neutral-900 dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-primary-700"
+                                                                                        )}>
+                                                                                            <input 
+                                                                                                type="checkbox" 
+                                                                                                className="sr-only" 
+                                                                                                checked={checked} 
+                                                                                                onChange={() => togglePermission(key)} 
+                                                                                            />
+                                                                                            <div className={cn(
+                                                                                                "w-3.5 h-3.5 flex-shrink-0 rounded-[4px] flex items-center justify-center transition-colors",
+                                                                                                checked ? "bg-primary-600 text-white border-transparent" : "border border-neutral-300 dark:border-neutral-600 bg-transparent"
+                                                                                            )}>
+                                                                                                {checked && <CheckSquare size={10} />}
+                                                                                            </div>
+                                                                                            {action.replace(/-/g, ' ')}
+                                                                                        </label>
+                                                                                    );
+                                                                                })}
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                )}
+                                                            </Fragment>
+                                                        );
+                                                    })}
                                                 </tbody>
                                             </table>
                                         </div>

@@ -75,6 +75,19 @@ function getRowUrgencyClass(days: number): string {
     return "";
 }
 
+function displayRef(value: unknown): string {
+    if (!value) return "";
+    if (typeof value === "string") return value;
+    if (typeof value === "object") {
+        const v = value as { name?: unknown; code?: unknown; id?: unknown; title?: unknown };
+        if (typeof v.name === "string") return v.name;
+        if (typeof v.title === "string") return v.title;
+        if (typeof v.code === "string") return v.code;
+        if (typeof v.id === "string") return v.id;
+    }
+    return String(value);
+}
+
 const DECISIONS = [
     { value: "CONFIRM", label: "Confirm" },
     { value: "EXTEND", label: "Extend Probation" },
@@ -102,10 +115,10 @@ export function ProbationReviewScreen() {
         if (!search) return employees;
         const s = search.toLowerCase();
         return employees.filter((e: any) =>
-            e.name?.toLowerCase().includes(s) ||
-            e.employeeId?.toLowerCase().includes(s) ||
-            e.department?.toLowerCase().includes(s) ||
-            e.designation?.toLowerCase().includes(s)
+            displayRef(e.name).toLowerCase().includes(s) ||
+            displayRef(e.employeeId).toLowerCase().includes(s) ||
+            displayRef(e.department).toLowerCase().includes(s) ||
+            displayRef(e.designation).toLowerCase().includes(s)
         );
     }, [employees, search]);
 
@@ -130,7 +143,7 @@ export function ProbationReviewScreen() {
                     extensionMonths: decision === "EXTEND" ? Number(extensionMonths) : undefined,
                 },
             });
-            showSuccess("Review Submitted", `Probation review for ${selectedEmployee.name} has been submitted.`);
+            showSuccess("Review Submitted", `Probation review for ${displayRef(selectedEmployee.name) || "employee"} has been submitted.`);
             setReviewModalOpen(false);
         } catch (err) {
             showApiError(err);
@@ -249,15 +262,15 @@ export function ProbationReviewScreen() {
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
                                                         <span className="text-xs font-bold text-primary-700 dark:text-primary-400">
-                                                            {(e.name ?? "?")[0]?.toUpperCase()}
+                                                            {(displayRef(e.name) || "?")[0]?.toUpperCase()}
                                                         </span>
                                                     </div>
-                                                    <span className="font-bold text-primary-950 dark:text-white">{e.name}</span>
+                                                    <span className="font-bold text-primary-950 dark:text-white">{displayRef(e.name) || "—"}</span>
                                                 </div>
                                             </td>
-                                            <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{e.employeeId ?? "—"}</td>
-                                            <td className="py-4 px-6 text-neutral-700 dark:text-neutral-300 text-xs">{e.department ?? "—"}</td>
-                                            <td className="py-4 px-6 text-neutral-700 dark:text-neutral-300 text-xs">{e.designation ?? "—"}</td>
+                                            <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{displayRef(e.employeeId) || "—"}</td>
+                                            <td className="py-4 px-6 text-neutral-700 dark:text-neutral-300 text-xs">{displayRef(e.department) || "—"}</td>
+                                            <td className="py-4 px-6 text-neutral-700 dark:text-neutral-300 text-xs">{displayRef(e.designation) || "—"}</td>
                                             <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
                                                 {(e.probationEndDate ?? e.probationEnd) ? fmt.date(e.probationEndDate ?? e.probationEnd) : "—"}
                                             </td>
@@ -301,8 +314,8 @@ export function ProbationReviewScreen() {
                         <div className="p-6 overflow-y-auto flex-1 space-y-5">
                             {/* Employee Info */}
                             <div className="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-4">
-                                <p className="font-bold text-primary-950 dark:text-white">{selectedEmployee.name}</p>
-                                <p className="text-xs text-neutral-500 mt-0.5">{selectedEmployee.employeeId} &middot; {selectedEmployee.department} &middot; {selectedEmployee.designation}</p>
+                                <p className="font-bold text-primary-950 dark:text-white">{displayRef(selectedEmployee.name) || "—"}</p>
+                                <p className="text-xs text-neutral-500 mt-0.5">{displayRef(selectedEmployee.employeeId) || "—"} &middot; {displayRef(selectedEmployee.department) || "—"} &middot; {displayRef(selectedEmployee.designation) || "—"}</p>
                             </div>
 
                             {/* Rating */}

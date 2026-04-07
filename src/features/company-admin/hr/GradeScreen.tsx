@@ -374,8 +374,8 @@ export function GradeScreen() {
                                 <FormField label="Grade Name" value={form.name} onChange={(v) => updateField("name", v)} placeholder="e.g. Junior Band" />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                                <FormField label="CTC Min" value={form.ctcMin} onChange={(v) => updateField("ctcMin", v)} placeholder="e.g. 300000" type="number" prefix={"\u20B9"} />
-                                <FormField label="CTC Max" value={form.ctcMax} onChange={(v) => updateField("ctcMax", v)} placeholder="e.g. 600000" type="number" prefix={"\u20B9"} />
+                                <FormField label="CTC Min" value={form.ctcMin} onChange={(v) => updateField("ctcMin", v)} placeholder="e.g. 300000" type="number" prefix={"₹"} />
+                                <FormField label="CTC Max" value={form.ctcMax} onChange={(v) => updateField("ctcMax", v)} placeholder="e.g. 600000" type="number" prefix={"₹"} />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <FormField label="HRA %" value={form.hraPercent} onChange={(v) => updateField("hraPercent", v)} placeholder="e.g. 40" type="number" suffix="%" />

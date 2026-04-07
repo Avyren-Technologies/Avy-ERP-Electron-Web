@@ -115,6 +115,18 @@ function SelectField({
 
 /* ── Balance Cell ── */
 
+function roundTo2(value: number): number {
+    return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function formatLeaveNumber(value: number): string {
+    if (!Number.isFinite(value)) return "0";
+    return roundTo2(value).toLocaleString(undefined, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+    });
+}
+
 function BalanceCell({ taken, entitlement }: { taken: number; entitlement: number }) {
     const ratio = entitlement > 0 ? taken / entitlement : 0;
     const colorCls =
@@ -126,7 +138,7 @@ function BalanceCell({ taken, entitlement }: { taken: number; entitlement: numbe
 
     return (
         <span className={cn("font-semibold text-xs", colorCls)}>
-            {taken}/{entitlement}
+            {formatLeaveNumber(taken)}/{formatLeaveNumber(entitlement)}
         </span>
     );
 }
@@ -134,10 +146,11 @@ function BalanceCell({ taken, entitlement }: { taken: number; entitlement: numbe
 /* ── Detail Panel Row ── */
 
 function DetailRow({ label, value }: { label: string; value: number | string }) {
+    const displayValue = typeof value === "number" ? formatLeaveNumber(value) : value;
     return (
         <div className="flex items-center justify-between py-1.5">
             <span className="text-xs text-neutral-500 dark:text-neutral-400">{label}</span>
-            <span className="text-xs font-bold text-primary-950 dark:text-white">{value}</span>
+            <span className="text-xs font-bold text-primary-950 dark:text-white">{displayValue}</span>
         </div>
     );
 }
@@ -232,7 +245,7 @@ export function LeaveBalanceScreen() {
             totalTaken += b.taken ?? 0;
             totalEntitlement += b.entitlement ?? 0;
         });
-        return { taken: totalTaken, entitlement: totalEntitlement };
+        return { taken: roundTo2(totalTaken), entitlement: roundTo2(totalEntitlement) };
     };
 
     const openAdjust = (employeeId?: string) => {

@@ -88,7 +88,7 @@ function StatBlock({ value, suffix, label, delay }: { value: number; suffix: str
 /* ─── Data ─── */
 const HERO_STATS = [
     { value: 14, suffix: "+", label: "Integrated Modules" },
-    { value: 14, suffix: "", label: "Industry Templates" },
+    { value: 12, suffix: "", label: "Industry Templates" },
     { value: 4, suffix: "", label: "Deployment Phases" },
     { value: 2, suffix: "", label: "Months Per Phase" },
 ];
@@ -486,7 +486,7 @@ export function LandingScreen() {
                             <div className="h-px w-6 bg-accent-400" />
                         </div>
                         <h2 className="text-2xl md:text-3xl font-black text-neutral-900 dark:text-white mb-3 tracking-tight">
-                            9 Integrated Modules
+                            14 Integrated Modules
                         </h2>
                         <p className="text-neutral-500 dark:text-neutral-400 max-w-xl mx-auto">
                             Activate only what you need. Every module shares data — no silos, no duplicate entry.

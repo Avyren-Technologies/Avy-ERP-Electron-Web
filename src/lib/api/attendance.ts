@@ -108,9 +108,8 @@ async function listRecords(params?: {
     page?: number;
     limit?: number;
     employeeId?: string;
-    date?: string;
-    from?: string;
-    to?: string;
+    dateFrom?: string;
+    dateTo?: string;
     status?: string;
     departmentId?: string;
 }): Promise<ApiResponse<any>> {

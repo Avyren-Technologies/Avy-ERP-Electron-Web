@@ -3,7 +3,6 @@ import fs from 'node:fs'
 import path from 'node:path'
 import react from '@vitejs/plugin-react'
 import electron from 'vite-plugin-electron/simple'
-import { nodePolyfills } from 'vite-plugin-node-polyfills'
 
 const spaFallbackPlugin = () => ({
   name: 'spa-fallback-404',
@@ -21,7 +20,6 @@ const spaFallbackPlugin = () => ({
 export default defineConfig({
   base: '/',
   plugins: [
-    nodePolyfills({ include: ['buffer', 'stream', 'crypto', 'util', 'events', 'path', 'process'] }),
     react(),
     electron({
       main: {
@@ -38,6 +36,26 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Core React framework — cached long-term
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          // Data layer — React Query + Zustand + Axios
+          'vendor-data': ['@tanstack/react-query', 'zustand', 'axios'],
+          // Charts — only loaded when analytics pages are visited
+          'vendor-charts': ['recharts'],
+          // Date/time library
+          'vendor-luxon': ['luxon'],
+          // UI utilities
+          'vendor-ui': ['sonner', 'lucide-react', 'zod'],
+        },
+      },
+    },
+    // Warn if a chunk exceeds 500KB (default is 500KB)
+    chunkSizeWarningLimit: 500,
   },
   server: {
     host: true,

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     PauseCircle,
     Plus,
@@ -23,7 +24,7 @@ const MONTHS = [
     "July", "August", "September", "October", "November", "December",
 ];
 
-const formatCurrency = (v: number) => `\u20B9${(v ?? 0).toLocaleString("en-IN")}`;
+const formatCurrency = (v: number) => `₹${(v ?? 0).toLocaleString("en-IN")}`;
 
 const HOLD_TYPES = [
     { value: "FULL", label: "Full Salary" },
@@ -54,7 +55,17 @@ const EMPTY_HOLD = {
 
 /* ── Screen ── */
 
+/** Extract employee name from nested object */
+function holdEmpName(h: any, employees: any[]) {
+    const emp = h.employee ?? employees.find((e: any) => e.id === h.employeeId);
+    if (!emp) return h.employeeId;
+    return `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim() || emp.employeeId || h.employeeId;
+}
+function holdEmpCode(h: any) { return h.employee?.employeeId ?? ""; }
+function holdEmpDept(h: any) { return h.employee?.department?.name ?? ""; }
+
 export function SalaryHoldScreen() {
+    const fmt = useCompanyFormatter();
     const [search, setSearch] = useState("");
     const [modalOpen, setModalOpen] = useState(false);
     const [form, setForm] = useState({ ...EMPTY_HOLD });
@@ -70,15 +81,10 @@ export function SalaryHoldScreen() {
     const employees: any[] = employeesQuery.data?.data ?? [];
     const payrollRuns: any[] = payrollRunsQuery.data?.data ?? [];
 
-    const getEmployeeName = (id: string) => {
-        const e = employees.find((emp: any) => emp.id === id);
-        return e ? `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim() || e.email || id : id;
-    };
-
     const filtered = holds.filter((h: any) => {
         if (!search) return true;
         const q = search.toLowerCase();
-        return getEmployeeName(h.employeeId).toLowerCase().includes(q) || h.employeeName?.toLowerCase().includes(q) || h.reason?.toLowerCase().includes(q);
+        return holdEmpName(h, employees).toLowerCase().includes(q) || holdEmpCode(h).toLowerCase().includes(q) || h.reason?.toLowerCase().includes(q);
     });
 
     const openCreate = () => { setForm({ ...EMPTY_HOLD }); setModalOpen(true); };
@@ -147,7 +153,7 @@ export function SalaryHoldScreen() {
                             <thead>
                                 <tr className="bg-neutral-50/50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
                                     <th className="py-4 px-6 font-bold">Employee</th>
-                                    <th className="py-4 px-6 font-bold">Run Month</th>
+                                    <th className="py-4 px-6 font-bold">Created</th>
                                     <th className="py-4 px-6 font-bold text-center">Hold Type</th>
                                     <th className="py-4 px-6 font-bold">Reason</th>
                                     <th className="py-4 px-6 font-bold">Components</th>
@@ -157,7 +163,7 @@ export function SalaryHoldScreen() {
                             </thead>
                             <tbody className="text-sm">
                                 {filtered.map((h: any) => {
-                                    const isReleased = h.released || h.status?.toLowerCase() === "released";
+                                    const isReleased = !!h.releasedAt;
                                     return (
                                         <tr key={h.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
                                             <td className="py-4 px-6">
@@ -165,11 +171,17 @@ export function SalaryHoldScreen() {
                                                     <div className="w-8 h-8 rounded-lg bg-warning-50 dark:bg-warning-900/30 flex items-center justify-center shrink-0">
                                                         <PauseCircle className="w-4 h-4 text-warning-600 dark:text-warning-400" />
                                                     </div>
-                                                    <span className="font-bold text-primary-950 dark:text-white">{h.employeeName || getEmployeeName(h.employeeId)}</span>
+                                                    <div>
+                                                        <span className="font-bold text-primary-950 dark:text-white">{holdEmpName(h, employees)}</span>
+                                                        <div className="flex items-center gap-2 mt-0.5">
+                                                            {holdEmpCode(h) && <span className="text-[11px] font-mono text-neutral-400 dark:text-neutral-500">{holdEmpCode(h)}</span>}
+                                                            {holdEmpDept(h) && <span className="text-[10px] text-neutral-400 dark:text-neutral-500">· {holdEmpDept(h)}</span>}
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">
-                                                {h.month && h.year ? `${MONTHS[(h.month ?? 1) - 1]} ${h.year}` : "—"}
+                                                {h.createdAt ? fmt.date(h.createdAt) : "—"}
                                             </td>
                                             <td className="py-4 px-6 text-center">
                                                 <HoldTypeBadge type={h.holdType ?? "full"} />
@@ -279,7 +291,7 @@ export function SalaryHoldScreen() {
                     <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200">
                         <h2 className="text-lg font-bold text-success-700 dark:text-success-400 mb-2">Release Salary Hold?</h2>
                         <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                            This will release the salary hold for <strong>{releaseTarget.employeeName || getEmployeeName(releaseTarget.employeeId)}</strong>.
+                            This will release the salary hold for <strong>{holdEmpName(releaseTarget, employees)}</strong>.
                             The held salary components will be included in the next payroll run.
                         </p>
                         <div className="flex gap-3 mt-6">

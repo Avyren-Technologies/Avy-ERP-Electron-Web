@@ -419,7 +419,7 @@ export function DataRetentionScreen() {
                                 <tbody className="text-sm">
                                     {filteredRequests.map((r: any) => (
                                         <tr key={r.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
-                                            <td className="py-4 px-6 font-bold text-primary-950 dark:text-white">{r.employeeName ?? "—"}</td>
+                                            <td className="py-4 px-6 font-bold text-primary-950 dark:text-white">{r.employeeName ?? (r.employee ? `${r.employee.firstName ?? ''} ${r.employee.lastName ?? ''}`.trim() : "—")}</td>
                                             <td className="py-4 px-6 text-center"><TypeBadge type={r.type ?? "ACCESS"} /></td>
                                             <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
                                                 {r.createdAt ? fmt.date(r.createdAt) : "—"}
@@ -464,7 +464,7 @@ export function DataRetentionScreen() {
                                 <div key={c.id ?? `${c.employeeId}-${c.consentType}`} className="flex items-center justify-between px-6 py-4 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
                                     <div>
                                         <p className="font-bold text-sm text-primary-950 dark:text-white">{c.consentType?.replace(/_/g, " ")}</p>
-                                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{c.employeeName ?? c.employeeId}</p>
+                                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{c.employeeName ?? (c.employee ? `${c.employee.firstName ?? ''} ${c.employee.lastName ?? ''}`.trim() : c.employeeId)}</p>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <span className={cn("text-xs font-bold", c.granted ? "text-success-600 dark:text-success-400" : "text-neutral-400")}>

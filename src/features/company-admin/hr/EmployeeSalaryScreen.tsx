@@ -8,6 +8,7 @@ import {
     Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { useEmployeeSalaries, useSalaryStructures, useSalaryComponents } from "@/features/company-admin/api/use-payroll-queries";
 import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
 import {
@@ -79,6 +80,7 @@ const EMPTY_SALARY = {
 /* ── Screen ── */
 
 export function EmployeeSalaryScreen() {
+    const fmt = useCompanyFormatter();
     const { data, isLoading, isError } = useEmployeeSalaries();
     const structuresQuery = useSalaryStructures();
     const employeesQuery = useEmployees();
@@ -96,16 +98,23 @@ export function EmployeeSalaryScreen() {
     const employees: any[] = employeesQuery.data?.data ?? [];
     const salaryComponents: any[] = componentsQuery.data?.data ?? [];
 
-    const getEmployeeName = (id: string) => {
-        const emp = employees.find((e: any) => e.id === id);
-        return emp ? `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim() : id;
+    /** Extract employee display name from nested employee object or fallback to separate list */
+    const getEmployeeName = (s: any) => {
+        const emp = s.employee ?? employees.find((e: any) => e.id === s.employeeId);
+        if (!emp) return s.employeeId;
+        return `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim() || emp.employeeId || s.employeeId;
     };
-    const getStructureName = (id: string) => structures.find((s: any) => s.id === id)?.name ?? id;
+    const getEmployeeCode = (s: any) => s.employee?.employeeId ?? "";
+    const getStructureName = (s: any) => s.structure?.name ?? structures.find((st: any) => st.id === s.structureId)?.name ?? s.structureId;
 
     const filtered = salaries.filter((s: any) => {
         if (!search) return true;
         const q = search.toLowerCase();
-        return getEmployeeName(s.employeeId).toLowerCase().includes(q) || getStructureName(s.structureId).toLowerCase().includes(q);
+        return (
+            getEmployeeName(s).toLowerCase().includes(q) ||
+            getEmployeeCode(s).toLowerCase().includes(q) ||
+            getStructureName(s).toLowerCase().includes(q)
+        );
     });
 
     const openCreate = () => { setEditingId(null); setForm({ ...EMPTY_SALARY }); setModalOpen(true); };
@@ -141,19 +150,40 @@ export function EmployeeSalaryScreen() {
         if (!form.structureId || !form.annualCtc) return [];
         const structure = structures.find((s: any) => s.id === form.structureId);
         if (!structure?.components) return [];
+        const comps = structure.components as any[];
         const monthly = form.annualCtc / 12;
-        const basicRow = (structure.components as any[]).find((c: any) => {
-            const comp = salaryComponents.find((sc: any) => sc.id === c.componentId);
-            return comp?.code?.toLowerCase() === "basic";
-        });
-        const basicAmt = basicRow ? (basicRow.method === "percentage_of_ctc" ? (monthly * basicRow.value) / 100 : basicRow.value) : 0;
-        return (structure.components as any[]).map((c: any) => {
-            const comp = salaryComponents.find((sc: any) => sc.id === c.componentId);
+
+        // Resolve component details — enriched structures have `component` sub-object, fallback to separate lookup
+        const resolveName = (c: any) => c.component?.name ?? salaryComponents.find((sc: any) => sc.id === c.componentId)?.name ?? "Unknown";
+        const resolveCode = (c: any) => (c.component?.code ?? salaryComponents.find((sc: any) => sc.id === c.componentId)?.code ?? "").toUpperCase();
+        const getMethod = (c: any) => (c.calculationMethod ?? c.method ?? "").toUpperCase();
+
+        // First pass: find basic amount
+        const basicRow = comps.find((c: any) => resolveCode(c) === "BASIC");
+        let basicAmt = 0;
+        if (basicRow) {
+            const m = getMethod(basicRow);
+            if (m === "FIXED") basicAmt = Number(basicRow.value) || 0;
+            else if (m === "PERCENT_OF_GROSS" || m === "PERCENTAGE_OF_CTC") basicAmt = (monthly * (Number(basicRow.value) || 0)) / 100;
+        }
+
+        // Second pass: compute all components
+        return comps.map((c: any) => {
+            const m = getMethod(c);
+            const val = Number(c.value) || 0;
             let amt = 0;
-            if (c.method === "fixed") amt = c.value;
-            else if (c.method === "percentage_of_ctc") amt = (monthly * c.value) / 100;
-            else if (c.method === "percentage_of_basic") amt = (basicAmt * c.value) / 100;
-            return { name: comp?.name ?? "Unknown", monthly: Math.round(amt) };
+            if (m === "FIXED") amt = val;
+            else if (m === "PERCENT_OF_GROSS" || m === "PERCENTAGE_OF_CTC") amt = (monthly * val) / 100;
+            else if (m === "PERCENT_OF_BASIC" || m === "PERCENTAGE_OF_BASIC") amt = (basicAmt * val) / 100;
+            else if (m === "FORMULA") {
+                const formula = (c.formula ?? c.formulaValue ?? "").toString().toLowerCase();
+                const match = formula.match(/([\d.]+)%?\s*of\s*(gross|basic)/);
+                if (match) {
+                    const pct = parseFloat(match[1]);
+                    amt = match[2] === "basic" ? (basicAmt * pct) / 100 : (monthly * pct) / 100;
+                }
+            }
+            return { name: resolveName(c), monthly: Math.round(amt) };
         });
     }, [form.structureId, form.annualCtc, structures, salaryComponents]);
 
@@ -175,7 +205,7 @@ export function EmployeeSalaryScreen() {
             <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm">
                 <div className="relative max-w-md w-full">
                     <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400 dark:text-neutral-500" />
-                    <input type="text" placeholder="Search by employee name..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-11 pr-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                    <input type="text" placeholder="Search by employee name, ID, or structure..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-11 pr-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
                 </div>
             </div>
 
@@ -211,13 +241,16 @@ export function EmployeeSalaryScreen() {
                                                 <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
                                                     <IndianRupee className="w-4 h-4 text-primary-600 dark:text-primary-400" />
                                                 </div>
-                                                <span className="font-bold text-primary-950 dark:text-white">{getEmployeeName(s.employeeId)}</span>
+                                                <div>
+                                                    <span className="font-bold text-primary-950 dark:text-white">{getEmployeeName(s)}</span>
+                                                    {getEmployeeCode(s) && <span className="block text-[11px] font-mono text-neutral-400 dark:text-neutral-500 mt-0.5">{getEmployeeCode(s)}</span>}
+                                                </div>
                                             </div>
                                         </td>
                                         <td className="py-4 px-6 text-right font-mono font-semibold text-primary-950 dark:text-white">₹{(s.annualCtc ?? 0).toLocaleString("en-IN")}</td>
                                         <td className="py-4 px-6 text-right font-mono text-neutral-600 dark:text-neutral-400">₹{Math.round((s.annualCtc ?? 0) / 12).toLocaleString("en-IN")}</td>
-                                        <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{getStructureName(s.structureId)}</td>
-                                        <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{s.effectiveFrom || "—"}</td>
+                                        <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{getStructureName(s)}</td>
+                                        <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{s.effectiveFrom ? fmt.date(s.effectiveFrom) : "—"}</td>
                                         <td className="py-4 px-6 text-center"><CurrentBadge isCurrent={s.isCurrent !== false} /></td>
                                         <td className="py-4 px-6 text-right">
                                             <button onClick={() => openEdit(s)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit"><Edit3 size={15} /></button>

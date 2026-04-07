@@ -29,8 +29,29 @@ import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Helpers ── */
 
-const formatCurrency = (v: number) => v > 0 ? `\u20B9${(v ?? 0).toLocaleString("en-IN")}` : "—";
+const formatCurrency = (v: number) => v > 0 ? `₹${(v ?? 0).toLocaleString("en-IN")}` : "—";
 // formatDate moved inside component
+
+function toNumber(value: unknown): number | null {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+}
+
+function displayRef(value: unknown): string {
+    if (!value) return "";
+    if (typeof value === "string") return value;
+    if (typeof value === "object") {
+        const v = value as { name?: unknown; code?: unknown; id?: unknown };
+        if (typeof v.name === "string") return v.name;
+        if (typeof v.code === "string") return v.code;
+        if (typeof v.id === "string") return v.id;
+    }
+    return String(value);
+}
 
 function PromotionStatusBadge({ status }: { status: string }) {
     const colorMap: Record<string, string> = {
@@ -85,15 +106,17 @@ export function PromotionScreen() {
     const designations: any[] = designationsQuery.data?.data ?? [];
     const grades: any[] = gradesQuery.data?.data ?? [];
 
-    const getEmployeeName = (id: string) => {
-        const e = employees.find((emp: any) => emp.id === id);
-        return e ? `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim() || e.email || id : id;
+    const getEmployeeName = (record: any, idField = 'employeeId', nestedField = 'employee') => {
+        const emp = record?.[nestedField] ?? employees.find((e: any) => e.id === record?.[idField]);
+        if (!emp) return record?.[idField] ?? '';
+        return `${emp.firstName ?? ''} ${emp.lastName ?? ''}`.trim() || emp.employeeCode || emp.email || record?.[idField] || '';
     };
 
     const filtered = promotions.filter((r: any) => {
         if (!search) return true;
         const q = search.toLowerCase();
-        return (r.employeeName || getEmployeeName(r.employeeId))?.toLowerCase().includes(q) || r.toDesignation?.toLowerCase().includes(q);
+        const toDesignation = displayRef(r.toDesignation);
+        return getEmployeeName(r)?.toLowerCase().includes(q) || toDesignation.toLowerCase().includes(q);
     });
 
     const openCreate = () => { setForm({ ...EMPTY_FORM }); setModalOpen(true); };
@@ -119,7 +142,7 @@ export function PromotionScreen() {
     const handleApprove = async (r: any) => {
         try {
             await approveMutation.mutateAsync({ id: r.id });
-            showSuccess("Promotion Approved", `Promotion for ${r.employeeName || getEmployeeName(r.employeeId)} approved.`);
+            showSuccess("Promotion Approved", `Promotion for ${getEmployeeName(r)} approved.`);
         } catch (err) { showApiError(err); }
     };
 
@@ -196,7 +219,13 @@ export function PromotionScreen() {
                             <tbody className="text-sm">
                                 {filtered.map((r: any) => {
                                     const status = (r.status ?? "requested").toLowerCase();
-                                    const incr = r.currentCTC > 0 && r.newCTC > 0 ? (((r.newCTC - r.currentCTC) / r.currentCTC) * 100).toFixed(1) : r.incrementPercent?.toFixed(1) ?? "0.0";
+                                    const currentCTC = toNumber(r.currentCTC);
+                                    const newCTC = toNumber(r.newCTC);
+                                    const incrementPercent = toNumber(r.incrementPercent);
+                                    const incr =
+                                        currentCTC && newCTC && currentCTC > 0 && newCTC > 0
+                                            ? (((newCTC - currentCTC) / currentCTC) * 100).toFixed(1)
+                                            : (incrementPercent?.toFixed(1) ?? "0.0");
                                     return (
                                         <tr key={r.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
                                             <td className="py-4 px-6">
@@ -204,12 +233,12 @@ export function PromotionScreen() {
                                                     <div className="w-8 h-8 rounded-lg bg-success-50 dark:bg-success-900/30 flex items-center justify-center shrink-0">
                                                         <ArrowUpRight className="w-4 h-4 text-success-600 dark:text-success-400" />
                                                     </div>
-                                                    <span className="font-bold text-primary-950 dark:text-white">{r.employeeName || getEmployeeName(r.employeeId)}</span>
+                                                    <span className="font-bold text-primary-950 dark:text-white">{getEmployeeName(r)}</span>
                                                 </div>
                                             </td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{r.fromDesignation || "—"}</td>
-                                            <td className="py-4 px-6 font-semibold text-primary-700 dark:text-primary-400 text-xs">{r.toDesignation || "—"}</td>
-                                            <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{r.fromGrade && r.toGrade ? `${r.fromGrade} \u2192 ${r.toGrade}` : "—"}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{displayRef(r.fromDesignation) || "—"}</td>
+                                            <td className="py-4 px-6 font-semibold text-primary-700 dark:text-primary-400 text-xs">{displayRef(r.toDesignation) || "—"}</td>
+                                            <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{displayRef(r.fromGrade) && displayRef(r.toGrade) ? `${displayRef(r.fromGrade)} \u2192 ${displayRef(r.toGrade)}` : "—"}</td>
                                             <td className="py-4 px-6 text-right text-xs">
                                                 {r.currentCTC > 0 || r.newCTC > 0 ? (
                                                     <span><span className="text-neutral-500">{formatCurrency(r.currentCTC)}</span> <span className="text-neutral-400">{'\u2192'}</span> <span className="font-semibold text-success-700 dark:text-success-400">{formatCurrency(r.newCTC)}</span></span>
@@ -317,7 +346,7 @@ export function PromotionScreen() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
                     <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200">
                         <h2 className="text-lg font-bold text-danger-700 dark:text-danger-400 mb-2">Reject Promotion?</h2>
-                        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">Rejecting promotion for <strong>{rejectTarget.employeeName || getEmployeeName(rejectTarget.employeeId)}</strong>.</p>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">Rejecting promotion for <strong>{getEmployeeName(rejectTarget)}</strong>.</p>
                         <textarea value={rejectNote} onChange={(e) => setRejectNote(e.target.value)} placeholder="Reason for rejection..." rows={3} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none dark:text-white placeholder:text-neutral-400 resize-none" />
                         <div className="flex gap-3 mt-6">
                             <button onClick={() => { setRejectTarget(null); setRejectNote(""); }} className="flex-1 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>

@@ -153,16 +153,18 @@ export function Feedback360Screen() {
     const cycles: any[] = cyclesQuery.data?.data ?? [];
     const employees: any[] = employeesQuery.data?.data ?? [];
 
-    const employeeName = (id: string) => {
-        const emp = employees.find((e: any) => e.id === id);
-        if (!emp) return id || "—";
-        return [emp.firstName, emp.lastName].filter(Boolean).join(" ") || emp.fullName || emp.email || id;
+    const employeeName = (idOrRecord: string | any, nestedField = 'employee', idField = 'employeeId') => {
+        const id = typeof idOrRecord === 'string' ? idOrRecord : idOrRecord?.[idField];
+        const record = typeof idOrRecord === 'string' ? null : idOrRecord;
+        const emp = record?.[nestedField] ?? employees.find((e: any) => e.id === id);
+        if (!emp) return id || '—';
+        return `${emp.firstName ?? ''} ${emp.lastName ?? ''}`.trim() || emp.fullName || emp.employeeCode || emp.email || id || '—';
     };
 
     const filtered = feedbackList.filter((f: any) => {
         if (!search) return true;
         const s = search.toLowerCase();
-        return employeeName(f.employeeId)?.toLowerCase().includes(s) || employeeName(f.raterId)?.toLowerCase().includes(s);
+        return employeeName(f)?.toLowerCase().includes(s) || employeeName(f, 'rater', 'raterId')?.toLowerCase().includes(s);
     });
 
     const openCreate = () => {
@@ -294,10 +296,10 @@ export function Feedback360Screen() {
                                                     <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
                                                         <User className="w-4 h-4 text-primary-600 dark:text-primary-400" />
                                                     </div>
-                                                    <span className="font-bold text-primary-950 dark:text-white">{employeeName(f.employeeId)}</span>
+                                                    <span className="font-bold text-primary-950 dark:text-white">{employeeName(f)}</span>
                                                 </div>
                                             </td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{employeeName(f.raterId)}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{employeeName(f, 'rater', 'raterId')}</td>
                                             <td className="py-4 px-6"><RaterTypeBadge type={f.raterType ?? "PEER"} /></td>
                                             <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{cycleName}</td>
                                             <td className="py-4 px-6 text-center">

@@ -374,7 +374,7 @@ export function CostCentreScreen() {
                                 placeholder="Select location..."
                                 options={locations.map((l: any) => ({ value: l.id, label: l.name }))}
                             />
-                            <FormField label="Annual Budget" value={form.annualBudget} onChange={(v) => updateField("annualBudget", v)} placeholder="e.g. 5000000" type="number" prefix={"\u20B9"} />
+                            <FormField label="Annual Budget" value={form.annualBudget} onChange={(v) => updateField("annualBudget", v)} placeholder="e.g. 5000000" type="number" prefix={"₹"} />
                             <div title="GL Account Code will be available after Finance module is configured">
                                 <FormField label="GL Account Code" value="" onChange={() => {}} placeholder="Available after Finance module setup" disabled />
                             </div>

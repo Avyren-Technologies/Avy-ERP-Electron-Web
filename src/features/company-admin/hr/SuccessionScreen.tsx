@@ -112,16 +112,18 @@ export function SuccessionScreen() {
     const nineBoxData: any = nineBoxQuery.data?.data ?? null;
     const benchData: any[] = benchQuery.data?.data ?? [];
 
-    const employeeName = (id: string) => {
-        const emp = employees.find((e: any) => e.id === id);
-        if (!emp) return id || "—";
-        return [emp.firstName, emp.lastName].filter(Boolean).join(" ") || emp.fullName || emp.email || id;
+    const employeeName = (idOrRecord: string | any, nestedField = 'employee', idField = 'employeeId') => {
+        const id = typeof idOrRecord === 'string' ? idOrRecord : idOrRecord?.[idField];
+        const record = typeof idOrRecord === 'string' ? null : idOrRecord;
+        const emp = record?.[nestedField] ?? employees.find((e: any) => e.id === id);
+        if (!emp) return id || '—';
+        return `${emp.firstName ?? ''} ${emp.lastName ?? ''}`.trim() || emp.fullName || emp.employeeCode || emp.email || id || '—';
     };
 
     const filtered = plans.filter((p: any) => {
         if (!search) return true;
         const s = search.toLowerCase();
-        return p.position?.toLowerCase().includes(s) || p.role?.toLowerCase().includes(s) || employeeName(p.currentHolderId)?.toLowerCase().includes(s);
+        return p.position?.toLowerCase().includes(s) || p.role?.toLowerCase().includes(s) || employeeName(p, 'currentHolder', 'currentHolderId')?.toLowerCase().includes(s);
     });
 
     const openCreate = () => {
@@ -285,9 +287,9 @@ export function SuccessionScreen() {
                                                 <td className="py-4 px-6">
                                                     <div className="flex items-center gap-2">
                                                         <div className="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-[10px] font-bold text-primary-700 dark:text-primary-400">
-                                                            {employeeName(p.currentHolderId).charAt(0).toUpperCase()}
+                                                            {employeeName(p, 'currentHolder', 'currentHolderId').charAt(0).toUpperCase()}
                                                         </div>
-                                                        <span className="text-neutral-700 dark:text-neutral-300">{employeeName(p.currentHolderId)}</span>
+                                                        <span className="text-neutral-700 dark:text-neutral-300">{employeeName(p, 'currentHolder', 'currentHolderId')}</span>
                                                     </div>
                                                 </td>
                                                 <td className="py-4 px-6">

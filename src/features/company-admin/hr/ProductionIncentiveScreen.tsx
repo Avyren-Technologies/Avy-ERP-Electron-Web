@@ -230,6 +230,29 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => ({
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = [CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1].map((y) => ({ value: String(y), label: String(y) }));
 
+function displayRef(value: unknown): string {
+    if (!value) return "";
+    if (typeof value === "string") return value;
+    if (typeof value === "object") {
+        const v = value as { name?: unknown; title?: unknown; code?: unknown; id?: unknown };
+        if (typeof v.name === "string") return v.name;
+        if (typeof v.title === "string") return v.title;
+        if (typeof v.code === "string") return v.code;
+        if (typeof v.id === "string") return v.id;
+    }
+    return String(value);
+}
+
+function idRef(value: unknown): string {
+    if (!value) return "";
+    if (typeof value === "string") return value;
+    if (typeof value === "object") {
+        const v = value as { id?: unknown };
+        if (typeof v.id === "string") return v.id;
+    }
+    return "";
+}
+
 const EMPTY_CONFIG = {
     name: "",
     basis: "SLAB",
@@ -279,7 +302,7 @@ export function ProductionIncentiveScreen() {
     const filteredConfigs = configs.filter((c: any) => {
         if (!search) return true;
         const s = search.toLowerCase();
-        return c.name?.toLowerCase().includes(s) || c.basis?.toLowerCase().includes(s);
+        return displayRef(c.name).toLowerCase().includes(s) || displayRef(c.basis).toLowerCase().includes(s);
     });
 
     const openCreate = () => {
@@ -291,10 +314,10 @@ export function ProductionIncentiveScreen() {
     const openEdit = (config: any) => {
         setEditingId(config.id);
         setForm({
-            name: config.name ?? "",
+            name: displayRef(config.name) ?? "",
             basis: config.basis ?? "SLAB",
             cycle: config.cycle ?? "MONTHLY",
-            department: config.department ?? "",
+            department: config.departmentId ?? idRef(config.department),
             isActive: config.isActive ?? true,
             slabs: (config.slabs ?? []).map((s: any) => ({
                 minOutput: String(s.minOutput ?? ""),
@@ -321,10 +344,10 @@ export function ProductionIncentiveScreen() {
             };
             if (editingId) {
                 await updateMutation.mutateAsync({ id: editingId, data: payload });
-                showSuccess("Config Updated", `${form.name} has been updated.`);
+                showSuccess("Config Updated", `${displayRef(form.name)} has been updated.`);
             } else {
                 await createMutation.mutateAsync(payload);
-                showSuccess("Config Created", `${form.name} has been added.`);
+                showSuccess("Config Created", `${displayRef(form.name)} has been added.`);
             }
             setModalOpen(false);
         } catch (err) {
@@ -336,7 +359,7 @@ export function ProductionIncentiveScreen() {
         if (!deleteTarget) return;
         try {
             await deleteMutation.mutateAsync(deleteTarget.id);
-            showSuccess("Config Deleted", `${deleteTarget.name} has been removed.`);
+            showSuccess("Config Deleted", `${displayRef(deleteTarget.name)} has been removed.`);
             setDeleteTarget(null);
         } catch (err) {
             showApiError(err);
@@ -472,13 +495,13 @@ export function ProductionIncentiveScreen() {
                                                         <div className="w-8 h-8 rounded-lg bg-accent-50 dark:bg-accent-900/30 flex items-center justify-center shrink-0">
                                                             <TrendingUp className="w-4 h-4 text-accent-600 dark:text-accent-400" />
                                                         </div>
-                                                        <span className="font-bold text-primary-950 dark:text-white">{c.name}</span>
+                                                        <span className="font-bold text-primary-950 dark:text-white">{displayRef(c.name) || "—"}</span>
                                                     </div>
                                                 </td>
                                                 <td className="py-4 px-6 text-center"><BasisBadge basis={c.basis ?? "SLAB"} /></td>
                                                 <td className="py-4 px-6 text-center text-neutral-600 dark:text-neutral-400 text-xs font-bold">{c.cycle ?? "MONTHLY"}</td>
                                                 <td className="py-4 px-6 text-center text-neutral-600 dark:text-neutral-400 font-bold">{c.slabs?.length ?? 0}</td>
-                                                <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{c.department || "—"}</td>
+                                                <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{displayRef(c.department) || "—"}</td>
                                                 <td className="py-4 px-6 text-center"><ActiveBadge active={c.isActive ?? true} /></td>
                                                 <td className="py-4 px-6 text-right">
                                                     <div className="flex items-center justify-end gap-1">
@@ -509,7 +532,7 @@ export function ProductionIncentiveScreen() {
                     {/* Filters */}
                     <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm">
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                            <SelectField label="Config" value={filterConfig} onChange={setFilterConfig} options={configs.map((c: any) => ({ value: c.id, label: c.name }))} placeholder="All configs" />
+                            <SelectField label="Config" value={filterConfig} onChange={setFilterConfig} options={configs.map((c: any) => ({ value: c.id, label: displayRef(c.name) || c.id }))} placeholder="All configs" />
                             <FormField label="Employee ID" value={filterEmployee} onChange={setFilterEmployee} placeholder="Filter by employee" />
                             <SelectField label="Status" value={filterStatus} onChange={setFilterStatus} options={[{ value: "DRAFT", label: "Draft" }, { value: "COMPUTED", label: "Computed" }, { value: "MERGED", label: "Merged" }]} placeholder="All" />
                             <SelectField label="Month" value={filterMonth} onChange={setFilterMonth} options={MONTHS} />
@@ -561,7 +584,7 @@ export function ProductionIncentiveScreen() {
                                             <tr key={r.id ?? i} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
                                                 <td className="py-4 px-6 font-bold text-primary-950 dark:text-white">{r.employeeName ?? r.employeeId ?? "—"}</td>
                                                 <td className="py-4 px-6 text-center text-neutral-600 dark:text-neutral-400 font-mono">{r.outputUnits ?? r.output ?? 0}</td>
-                                                <td className="py-4 px-6 text-right font-bold text-success-700 dark:text-success-400">{"\u20B9"}{Number(r.amount ?? r.incentiveAmount ?? 0).toLocaleString("en-IN")}</td>
+                                                <td className="py-4 px-6 text-right font-bold text-success-700 dark:text-success-400">{"₹"}{Number(r.amount ?? r.incentiveAmount ?? 0).toLocaleString("en-IN")}</td>
                                                 <td className="py-4 px-6 text-center"><StatusBadge status={r.status ?? "DRAFT"} /></td>
                                                 <td className="py-4 px-6 text-xs text-neutral-500 dark:text-neutral-400">{r.configName ?? r.configId ?? "—"}</td>
                                             </tr>
@@ -619,7 +642,7 @@ export function ProductionIncentiveScreen() {
                                 </div>
                                 {form.slabs.length > 0 && (
                                     <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 mb-2 text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase">
-                                        <span>Min Output</span><span>Max Output</span><span>Amount ({"\u20B9"})</span><span></span>
+                                        <span>Min Output</span><span>Max Output</span><span>Amount ({"₹"})</span><span></span>
                                     </div>
                                 )}
                                 {form.slabs.map((slab, i) => (
@@ -649,7 +672,7 @@ export function ProductionIncentiveScreen() {
                     <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200">
                         <h2 className="text-lg font-bold text-danger-700 dark:text-danger-400 mb-2">Delete Config?</h2>
                         <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                            This will permanently delete <strong>{deleteTarget.name}</strong>. This action cannot be undone.
+                            This will permanently delete <strong>{displayRef(deleteTarget.name) || "this config"}</strong>. This action cannot be undone.
                         </p>
                         <div className="flex gap-3 mt-6">
                             <button onClick={() => setDeleteTarget(null)} className="flex-1 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>

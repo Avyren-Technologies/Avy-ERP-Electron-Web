@@ -20,6 +20,7 @@ import {
     useESIChallan,
     usePTChallan,
     useVarianceReport,
+    usePayrollRuns,
 } from "@/features/company-admin/api/use-payroll-run-queries";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -31,7 +32,7 @@ const MONTHS = [
     "July", "August", "September", "October", "November", "December",
 ];
 
-const formatCurrency = (v: number) => `\u20B9${(v ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+const formatCurrency = (v: number) => `₹${(v ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 const formatPercent = (v: number) => `${(v ?? 0).toFixed(1)}%`;
 
 type ReportKey = "salary-register" | "bank-file" | "pf-ecr" | "esi-challan" | "pt-challan" | "variance";
@@ -128,47 +129,42 @@ const REPORT_COLUMNS: Record<ReportKey, ColConfig[]> = {
         { key: "tdsAmount", label: "TDS", align: "right", format: "currency" },
     ],
     "bank-file": [
-        { key: "employeeCode", label: "Emp Code", format: "mono" },
         { key: "employeeName", label: "Employee Name" },
         { key: "bankName", label: "Bank" },
-        { key: "ifscCode", label: "IFSC", format: "mono" },
-        { key: "accountNumber", label: "Account No.", format: "mono" },
-        { key: "netPay", label: "Net Pay", align: "right", format: "currency", highlight: true },
+        { key: "ifsc", label: "IFSC", format: "mono" },
+        { key: "bankAccount", label: "Account No.", format: "mono" },
+        { key: "amount", label: "Net Pay", align: "right", format: "currency", highlight: true },
     ],
     "pf-ecr": [
-        { key: "employeeCode", label: "Emp Code", format: "mono" },
         { key: "employeeName", label: "Employee Name" },
         { key: "uan", label: "UAN", format: "mono" },
-        { key: "pfWages", label: "PF Wages", align: "right", format: "currency" },
-        { key: "employeePF", label: "Employee PF", align: "right", format: "currency" },
-        { key: "employerPF", label: "Employer PF", align: "right", format: "currency" },
-        { key: "eps", label: "EPS", align: "right", format: "currency" },
-        { key: "edliCharges", label: "EDLI", align: "right", format: "currency" },
+        { key: "epfWages", label: "PF Wages", align: "right", format: "currency" },
+        { key: "epfContribEmployee", label: "Employee PF", align: "right", format: "currency" },
+        { key: "epfContribEmployer", label: "Employer PF", align: "right", format: "currency" },
+        { key: "epsContribEmployer", label: "EPS", align: "right", format: "currency" },
+        { key: "ncp", label: "NCP Days", align: "right" },
     ],
     "esi-challan": [
-        { key: "employeeCode", label: "Emp Code", format: "mono" },
         { key: "employeeName", label: "Employee Name" },
         { key: "ipNumber", label: "IP Number", format: "mono" },
         { key: "grossWages", label: "Gross Wages", align: "right", format: "currency" },
-        { key: "employeeESI", label: "Employee ESI", align: "right", format: "currency" },
-        { key: "employerESI", label: "Employer ESI", align: "right", format: "currency" },
-        { key: "totalESI", label: "Total ESI", align: "right", format: "currency", highlight: true },
+        { key: "employeeContrib", label: "Employee ESI", align: "right", format: "currency" },
+        { key: "employerContrib", label: "Employer ESI", align: "right", format: "currency" },
+        { key: "totalContrib", label: "Total ESI", align: "right", format: "currency", highlight: true },
     ],
     "pt-challan": [
         { key: "state", label: "State" },
-        { key: "employeeCode", label: "Emp Code", format: "mono" },
         { key: "employeeName", label: "Employee Name" },
-        { key: "grossSalary", label: "Gross Salary", align: "right", format: "currency" },
+        { key: "grossWages", label: "Gross Salary", align: "right", format: "currency" },
         { key: "ptAmount", label: "PT Amount", align: "right", format: "currency", highlight: true },
     ],
     "variance": [
-        { key: "employeeCode", label: "Emp Code", format: "mono" },
+        { key: "employeeId", label: "Emp Code", format: "mono" },
         { key: "employeeName", label: "Employee Name" },
-        { key: "thisMonth", label: "This Month", align: "right", format: "currency" },
-        { key: "lastMonth", label: "Last Month", align: "right", format: "currency" },
-        { key: "varianceAmount", label: "Variance", align: "right", format: "currency" },
+        { key: "department", label: "Department" },
+        { key: "netPay", label: "Net Pay", align: "right", format: "currency" },
         { key: "variancePercent", label: "Variance %", align: "right", format: "percent" },
-        { key: "flag", label: "Flag" },
+        { key: "exceptionNote", label: "Note" },
     ],
 };
 
@@ -198,13 +194,24 @@ function downloadCSV(data: any[], columns: ColConfig[], filename: string) {
 
 export function PayrollReportScreen() {
     const [selectedReport, setSelectedReport] = useState<ReportKey>("salary-register");
-    const [month, setMonth] = useState(new Date().getMonth() + 1);
-    const [year, setYear] = useState(new Date().getFullYear());
+    // Default to previous month (more likely to have a completed payroll run)
+    const [month, setMonth] = useState(() => {
+        const m = new Date().getMonth(); // 0-indexed, so getMonth() gives prev month's 1-indexed
+        return m === 0 ? 12 : m;
+    });
+    const [year, setYear] = useState(() => {
+        const m = new Date().getMonth();
+        return m === 0 ? new Date().getFullYear() - 1 : new Date().getFullYear();
+    });
 
     const params = useMemo(() => ({ month, year }), [month, year]);
 
+    // Fetch payroll runs to resolve runId for bank file
+    const runsQuery = usePayrollRuns({ month, year, limit: 1 });
+    const currentRunId = (runsQuery.data?.data ?? [])[0]?.id as string | undefined;
+
     const salaryRegisterQuery = useSalaryRegister(selectedReport === "salary-register" ? params : {});
-    const bankFileQuery = useBankFile(selectedReport === "bank-file" ? { ...params, payrollRunId: "latest" } : {});
+    const bankFileQuery = useBankFile(selectedReport === "bank-file" && currentRunId ? { runId: currentRunId } : {});
     const pfECRQuery = usePFECR(selectedReport === "pf-ecr" ? params : {});
     const esiChallanQuery = useESIChallan(selectedReport === "esi-challan" ? params : {});
     const ptChallanQuery = usePTChallan(selectedReport === "pt-challan" ? params : {});
@@ -223,7 +230,54 @@ export function PayrollReportScreen() {
     };
 
     const activeQuery = getActiveQuery();
-    const reportData: any[] = activeQuery?.data?.data?.rows ?? activeQuery?.data?.data ?? [];
+    const rawResponse = activeQuery?.data?.data;
+    const rawReportData = rawResponse?.rows ?? rawResponse?.entries ?? rawResponse?.employees ?? rawResponse;
+    const rawArray: any[] = Array.isArray(rawReportData) ? rawReportData : [];
+
+    // Normalize: flatten nested employee data and Decimal fields
+    const reportData: any[] = useMemo(() => rawArray.map((row: any) => {
+        const emp = row.employee;
+        const earnings = typeof row.earnings === 'object' && !Array.isArray(row.earnings) ? row.earnings : {};
+        const deductions = typeof row.deductions === 'object' && !Array.isArray(row.deductions) ? row.deductions : {};
+        const employerContributions = typeof row.employerContributions === 'object' && !Array.isArray(row.employerContributions) ? row.employerContributions : {};
+        return {
+            ...row,
+            employeeCode: row.employeeCode ?? emp?.employeeId ?? "",
+            employeeName: row.employeeName ?? (emp ? `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim() : ""),
+            department: row.department ?? emp?.department?.name ?? "",
+            designation: row.designation ?? emp?.designation?.name ?? "",
+            grossEarnings: Number(row.grossEarnings) || 0,
+            totalDeductions: Number(row.totalDeductions) || 0,
+            netPay: Number(row.netPay) || 0,
+            // Statutory amounts from entries
+            pfAmount: Number(row.pfEmployee ?? deductions.PF_EE ?? 0),
+            esiAmount: Number(row.esiEmployee ?? deductions.ESI_EE ?? 0),
+            ptAmount: Number(row.ptAmount ?? deductions.PT ?? 0),
+            tdsAmount: Number(row.tdsAmount ?? deductions.TDS ?? 0),
+            // PF ECR fields
+            pfWages: Number(row.pfWages ?? earnings.BASIC ?? 0),
+            employeePF: Number(row.employeePF ?? row.pfEmployee ?? deductions.PF_EE ?? 0),
+            employerPF: Number(row.employerPF ?? row.pfEmployer ?? employerContributions.PF_ER ?? 0),
+            eps: Number(row.eps ?? 0),
+            edliCharges: Number(row.edliCharges ?? 0),
+            // ESI fields
+            grossWages: Number(row.grossWages ?? row.grossEarnings ?? 0),
+            employeeESI: Number(row.employeeESI ?? row.esiEmployee ?? deductions.ESI_EE ?? 0),
+            employerESI: Number(row.employerESI ?? row.esiEmployer ?? employerContributions.ESI_ER ?? 0),
+            totalESI: Number(row.totalESI ?? 0) || (Number(row.esiEmployee ?? deductions.ESI_EE ?? 0) + Number(row.esiEmployer ?? employerContributions.ESI_ER ?? 0)),
+            // ESI challan uses employeeContrib/employerContrib from already-flattened backend
+            employeeContrib: Number(row.employeeContrib ?? 0),
+            employerContrib: Number(row.employerContrib ?? 0),
+            totalContrib: Number(row.employeeContrib ?? 0) + Number(row.employerContrib ?? 0),
+            // PT fields
+            grossSalary: Number(row.grossSalary ?? row.grossEarnings ?? 0),
+            // Bank file
+            bankName: row.bankName ?? emp?.bankName ?? "",
+            ifscCode: row.ifscCode ?? emp?.bankIfscCode ?? "",
+            accountNumber: row.accountNumber ?? emp?.bankAccountNumber ?? "",
+            uan: row.uan ?? emp?.uan ?? "",
+        };
+    }), [rawArray]);
     const definedCols = REPORT_COLUMNS[selectedReport] ?? [];
 
     // Use defined columns, falling back to dynamic keys from data

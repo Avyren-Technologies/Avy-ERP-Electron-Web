@@ -106,7 +106,7 @@ const EMPTY_LINE_ITEM: LineItem = {
 
 const formatCurrency = (amt: any) => {
     if (!amt && amt !== 0) return "—";
-    return `\u20B9${Number(amt).toLocaleString("en-IN")}`;
+    return `₹${Number(amt).toLocaleString("en-IN")}`;
 };
 
 function fileToDataUrl(file: File): Promise<string> {

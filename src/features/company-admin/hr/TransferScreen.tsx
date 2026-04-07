@@ -76,6 +76,18 @@ const EMPTY_FORM = {
     toManagerId: "", effectiveDate: "", reason: "", transferType: "LATERAL",
 };
 
+function displayRef(value: unknown): string {
+    if (!value) return "";
+    if (typeof value === "string") return value;
+    if (typeof value === "object") {
+        const v = value as { name?: unknown; code?: unknown; id?: unknown };
+        if (typeof v.name === "string") return v.name;
+        if (typeof v.code === "string") return v.code;
+        if (typeof v.id === "string") return v.id;
+    }
+    return String(value);
+}
+
 /* ── Screen ── */
 
 export function TransferScreen() {
@@ -107,16 +119,19 @@ export function TransferScreen() {
     const designations: any[] = designationsQuery.data?.data ?? [];
     const locations: any[] = locationsQuery.data?.data ?? [];
 
-    const getEmployeeName = (id: string) => {
-        const e = employees.find((emp: any) => emp.id === id);
-        return e ? `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim() || e.email || id : id;
+    const getEmployeeName = (record: any, idField = 'employeeId', nestedField = 'employee') => {
+        const emp = record?.[nestedField] ?? employees.find((e: any) => e.id === record?.[idField]);
+        if (!emp) return record?.[idField] ?? '';
+        return `${emp.firstName ?? ''} ${emp.lastName ?? ''}`.trim() || emp.employeeCode || emp.email || record?.[idField] || '';
     };
 
     const filtered = transfers.filter((r: any) => {
         if (!search) return true;
         const q = search.toLowerCase();
-        return (r.employeeName || getEmployeeName(r.employeeId))?.toLowerCase().includes(q) ||
-            r.toDepartment?.toLowerCase().includes(q) || r.toLocation?.toLowerCase().includes(q);
+        const toDepartment = displayRef(r.toDepartment);
+        const toLocation = displayRef(r.toLocation);
+        return getEmployeeName(r)?.toLowerCase().includes(q) ||
+            toDepartment.toLowerCase().includes(q) || toLocation.toLowerCase().includes(q);
     });
 
     const openCreate = () => { setForm({ ...EMPTY_FORM }); setModalOpen(true); };
@@ -143,7 +158,7 @@ export function TransferScreen() {
     const handleApprove = async (r: any) => {
         try {
             await approveMutation.mutateAsync({ id: r.id });
-            showSuccess("Transfer Approved", `Transfer for ${r.employeeName || getEmployeeName(r.employeeId)} has been approved.`);
+            showSuccess("Transfer Approved", `Transfer for ${getEmployeeName(r)} has been approved.`);
         } catch (err) { showApiError(err); }
     };
 
@@ -232,13 +247,13 @@ export function TransferScreen() {
                                                     <div className="w-8 h-8 rounded-lg bg-accent-50 dark:bg-accent-900/30 flex items-center justify-center shrink-0">
                                                         <ArrowLeftRight className="w-4 h-4 text-accent-600 dark:text-accent-400" />
                                                     </div>
-                                                    <span className="font-bold text-primary-950 dark:text-white">{r.employeeName || getEmployeeName(r.employeeId)}</span>
+                                                    <span className="font-bold text-primary-950 dark:text-white">{getEmployeeName(r)}</span>
                                                 </div>
                                             </td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{r.fromDepartment || "—"}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{displayRef(r.fromDepartment) || "—"}</td>
                                             <td className="py-4 px-6"><ArrowRight size={14} className="text-neutral-300" /></td>
-                                            <td className="py-4 px-6 font-semibold text-primary-700 dark:text-primary-400 text-xs">{r.toDepartment || "—"}</td>
-                                            <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{r.toLocation || "—"}</td>
+                                            <td className="py-4 px-6 font-semibold text-primary-700 dark:text-primary-400 text-xs">{displayRef(r.toDepartment) || "—"}</td>
+                                            <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{displayRef(r.toLocation) || "—"}</td>
                                             <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(r.effectiveDate)}</td>
                                             <td className="py-4 px-6 text-center"><TypeBadge type={r.transferType ?? "Lateral"} /></td>
                                             <td className="py-4 px-6 text-center"><TransferStatusBadge status={r.status ?? "Requested"} /></td>
@@ -345,7 +360,7 @@ export function TransferScreen() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
                     <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200">
                         <h2 className="text-lg font-bold text-danger-700 dark:text-danger-400 mb-2">Reject Transfer?</h2>
-                        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">Rejecting transfer for <strong>{rejectTarget.employeeName || getEmployeeName(rejectTarget.employeeId)}</strong>.</p>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">Rejecting transfer for <strong>{getEmployeeName(rejectTarget)}</strong>.</p>
                         <textarea value={rejectNote} onChange={(e) => setRejectNote(e.target.value)} placeholder="Reason for rejection..." rows={3} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none dark:text-white placeholder:text-neutral-400 transition-all resize-none" />
                         <div className="flex gap-3 mt-6">
                             <button onClick={() => { setRejectTarget(null); setRejectNote(""); }} className="flex-1 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
@@ -369,12 +384,12 @@ export function TransferScreen() {
                                 <TransferStatusBadge status={detailTarget.status ?? "Requested"} />
                             </div>
                             <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div><span className="text-xs text-neutral-400 block mb-0.5">Employee</span><p className="font-bold text-primary-950 dark:text-white">{detailTarget.employeeName || getEmployeeName(detailTarget.employeeId)}</p></div>
+                                <div><span className="text-xs text-neutral-400 block mb-0.5">Employee</span><p className="font-bold text-primary-950 dark:text-white">{getEmployeeName(detailTarget)}</p></div>
                                 <div><span className="text-xs text-neutral-400 block mb-0.5">Transfer Type</span><p className="font-bold text-primary-950 dark:text-white">{detailTarget.transferType || "Lateral"}</p></div>
-                                <div><span className="text-xs text-neutral-400 block mb-0.5">From Dept</span><p className="font-semibold text-neutral-600 dark:text-neutral-400">{detailTarget.fromDepartment || "—"}</p></div>
-                                <div><span className="text-xs text-neutral-400 block mb-0.5">To Dept</span><p className="font-semibold text-primary-700 dark:text-primary-400">{detailTarget.toDepartment || "—"}</p></div>
-                                <div><span className="text-xs text-neutral-400 block mb-0.5">From Location</span><p className="font-semibold text-neutral-600 dark:text-neutral-400">{detailTarget.fromLocation || "—"}</p></div>
-                                <div><span className="text-xs text-neutral-400 block mb-0.5">To Location</span><p className="font-semibold text-primary-700 dark:text-primary-400">{detailTarget.toLocation || "—"}</p></div>
+                                <div><span className="text-xs text-neutral-400 block mb-0.5">From Dept</span><p className="font-semibold text-neutral-600 dark:text-neutral-400">{displayRef(detailTarget.fromDepartment) || "—"}</p></div>
+                                <div><span className="text-xs text-neutral-400 block mb-0.5">To Dept</span><p className="font-semibold text-primary-700 dark:text-primary-400">{displayRef(detailTarget.toDepartment) || "—"}</p></div>
+                                <div><span className="text-xs text-neutral-400 block mb-0.5">From Location</span><p className="font-semibold text-neutral-600 dark:text-neutral-400">{displayRef(detailTarget.fromLocation) || "—"}</p></div>
+                                <div><span className="text-xs text-neutral-400 block mb-0.5">To Location</span><p className="font-semibold text-primary-700 dark:text-primary-400">{displayRef(detailTarget.toLocation) || "—"}</p></div>
                                 <div><span className="text-xs text-neutral-400 block mb-0.5">Effective Date</span><p className="font-semibold text-primary-950 dark:text-white">{formatDate(detailTarget.effectiveDate)}</p></div>
                             </div>
                             {detailTarget.reason && <div><span className="text-xs text-neutral-400 block mb-0.5">Reason</span><p className="text-sm text-neutral-600 dark:text-neutral-400 italic">"{detailTarget.reason}"</p></div>}

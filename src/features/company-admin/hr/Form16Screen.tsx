@@ -42,16 +42,32 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function TypeBadge({ type }: { type: string }) {
-    const isForm16 = type?.toLowerCase().includes("16");
+    const t = type?.toUpperCase() ?? "";
+    const isForm16 = t.includes("16") || t.includes("FORM_16");
+    const isTDS = t.includes("TDS") || t.includes("24Q");
     const cls = isForm16
         ? "bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50"
-        : "bg-accent-50 text-accent-700 border-accent-200 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50";
+        : isTDS
+        ? "bg-accent-50 text-accent-700 border-accent-200 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50"
+        : "bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700";
     return (
         <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border", cls)}>
-            {type}
+            {TYPE_LABELS[type] ?? type?.replace(/_/g, " ")}
         </span>
     );
 }
+
+/* ── Helpers ── */
+
+const MONTHS = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+];
+
+const TYPE_LABELS: Record<string, string> = {
+    PF_ECR: "PF ECR", ESI_CHALLAN: "ESI Challan", PT_CHALLAN: "Professional Tax",
+    TDS_24Q: "TDS 24Q", LWF: "LWF", FORM_16: "Form 16", FORM_24Q: "Form 24Q",
+};
 
 /* ── Constants ── */
 
@@ -83,7 +99,7 @@ export function Form16Screen() {
     const filings: any[] = (filingsData as any)?.data ?? [];
 
     const form16Filings = useMemo(() => filings.filter((f: any) => f.type?.toLowerCase().includes("16")), [filings]);
-    const form24QFilings = useMemo(() => filings.filter((f: any) => f.type?.toLowerCase().includes("24")), [filings]);
+    const form24QFilings = useMemo(() => filings.filter((f: any) => f.type === "TDS_24Q" || f.type?.toLowerCase().includes("24q")), [filings]);
 
     const handleGenerateForm16 = async () => {
         try {
@@ -219,18 +235,22 @@ export function Form16Screen() {
                                 ))}
                             </div>
                         </div>
-                        {form24QFilings.length > 0 && (
+                        {form24QFilings.length > 0 && (() => {
+                            const latest = form24QFilings[0];
+                            const details = latest?.details ?? {};
+                            return (
                             <>
                                 <div className="flex items-center justify-between py-2 px-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg">
                                     <span className="text-xs text-neutral-500">Deductees</span>
-                                    <span className="text-xs font-bold text-primary-950 dark:text-white">{form24QFilings[0]?.deducteeCount ?? "—"}</span>
+                                    <span className="text-xs font-bold text-primary-950 dark:text-white">{details.employeeCount ?? latest?.deducteeCount ?? "—"}</span>
                                 </div>
                                 <div className="flex items-center justify-between py-2 px-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg">
                                     <span className="text-xs text-neutral-500">Total TDS</span>
-                                    <span className="text-xs font-bold text-primary-950 dark:text-white">{form24QFilings[0]?.totalTds ? `\u20B9${Number(form24QFilings[0].totalTds).toLocaleString("en-IN")}` : "—"}</span>
+                                    <span className="text-xs font-bold text-primary-950 dark:text-white">{(details.totalTdsDeducted ?? latest?.amount) ? `₹${Number(details.totalTdsDeducted ?? latest.amount).toLocaleString("en-IN")}` : "—"}</span>
                                 </div>
                             </>
-                        )}
+                            );
+                        })()}
                     </div>
                     <button
                         onClick={handleGenerateForm24Q}
@@ -262,11 +282,11 @@ export function Form16Screen() {
                             <thead>
                                 <tr className="bg-neutral-50/50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
                                     <th className="py-4 px-6 font-bold">Type</th>
-                                    <th className="py-4 px-6 font-bold">Financial Year</th>
-                                    <th className="py-4 px-6 font-bold">Quarter</th>
-                                    <th className="py-4 px-6 font-bold">Generated On</th>
+                                    <th className="py-4 px-6 font-bold">Period</th>
+                                    <th className="py-4 px-6 font-bold text-right">Amount (₹)</th>
+                                    <th className="py-4 px-6 font-bold">Filed Date</th>
+                                    <th className="py-4 px-6 font-bold">Due Date</th>
                                     <th className="py-4 px-6 font-bold text-center">Status</th>
-                                    <th className="py-4 px-6 font-bold text-right">Records</th>
                                 </tr>
                             </thead>
                             <tbody className="text-sm">
@@ -276,18 +296,23 @@ export function Form16Screen() {
                                         className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors"
                                     >
                                         <td className="py-4 px-6">
-                                            <TypeBadge type={f.type ?? f.formType ?? "Form 16"} />
+                                            <TypeBadge type={f.type ?? "—"} />
                                         </td>
-                                        <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{f.financialYear ?? "—"}</td>
-                                        <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{f.quarter ? `Q${f.quarter}` : "—"}</td>
+                                        <td className="py-4 px-6 text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+                                            {f.month && f.year ? `${MONTHS[(f.month - 1)]} ${f.year}` : f.financialYear ?? "—"}
+                                            {f.details?.quarter && <span className="ml-1 text-neutral-400">({f.details.quarter})</span>}
+                                        </td>
+                                        <td className="py-4 px-6 text-right font-mono text-xs font-semibold text-primary-950 dark:text-white">
+                                            {f.amount ? `₹${Number(f.amount).toLocaleString("en-IN")}` : "—"}
+                                        </td>
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                            {f.createdAt ? fmt.date(f.createdAt) : "—"}
+                                            {f.filedAt ? fmt.date(f.filedAt) : "—"}
+                                        </td>
+                                        <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
+                                            {f.dueDate ? fmt.date(f.dueDate) : "—"}
                                         </td>
                                         <td className="py-4 px-6 text-center">
                                             <StatusBadge status={f.status ?? "Pending"} />
-                                        </td>
-                                        <td className="py-4 px-6 text-right font-mono text-xs text-neutral-700 dark:text-neutral-300">
-                                            {f.employeeCount ?? f.deducteeCount ?? f.recordCount ?? "—"}
                                         </td>
                                     </tr>
                                 ))}

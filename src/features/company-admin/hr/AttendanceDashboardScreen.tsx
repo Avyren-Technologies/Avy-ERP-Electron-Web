@@ -8,6 +8,8 @@ import {
     Search,
     Filter,
     ChevronDown,
+    ChevronLeft,
+    ChevronRight,
     BarChart3,
     CheckCircle2,
     XCircle,
@@ -15,6 +17,9 @@ import {
     Loader2,
     X,
     ShieldAlert,
+    Eye,
+    MapPin,
+    Camera,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAttendanceRecords, useAttendanceSummary, useAttendanceOverrides } from "@/features/company-admin/api/use-attendance-queries";
@@ -148,9 +153,52 @@ function normalizeRecord(r: any, fmt: ReturnType<typeof useCompanyFormatter>) {
 
 /* ── Department Breakdown ── */
 
+const DEPT_GRADIENTS = [
+    { from: '#6366f1', to: '#8b5cf6' },  // indigo → violet
+    { from: '#3b82f6', to: '#6366f1' },  // blue → indigo
+    { from: '#8b5cf6', to: '#a78bfa' },  // violet → violet-light
+    { from: '#6366f1', to: '#3b82f6' },  // indigo → blue
+    { from: '#7c3aed', to: '#6366f1' },  // purple → indigo
+    { from: '#4f46e5', to: '#7c3aed' },  // indigo-dark → purple
+    { from: '#2563eb', to: '#4f46e5' },  // blue-dark → indigo-dark
+    { from: '#818cf8', to: '#c084fc' },  // indigo-light → purple-light
+    { from: '#6366f1', to: '#ec4899' },  // indigo → pink
+    { from: '#3b82f6', to: '#06b6d4' },  // blue → cyan
+];
+
+function DeptRing({ present, total, gradient, size = 56 }: { present: number; total: number; gradient: { from: string; to: string }; size?: number }) {
+    const pct = total > 0 ? (present / total) * 100 : 0;
+    const r = (size - 6) / 2;
+    const circ = 2 * Math.PI * r;
+    const offset = circ - (circ * pct) / 100;
+    const gradId = `g-${gradient.from.slice(1)}-${gradient.to.slice(1)}`;
+
+    return (
+        <svg width={size} height={size} className="shrink-0">
+            <defs>
+                <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor={gradient.from} />
+                    <stop offset="100%" stopColor={gradient.to} />
+                </linearGradient>
+            </defs>
+            <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeWidth={5} className="text-neutral-100 dark:text-neutral-800" />
+            <circle
+                cx={size / 2} cy={size / 2} r={r}
+                fill="none" stroke={`url(#${gradId})`} strokeWidth={5}
+                strokeLinecap="round"
+                strokeDasharray={circ} strokeDashoffset={offset}
+                transform={`rotate(-90 ${size / 2} ${size / 2})`}
+                className="transition-all duration-700 ease-out"
+            />
+            <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" className="text-[11px] font-bold fill-primary-950 dark:fill-white">
+                {Math.round(pct)}%
+            </text>
+        </svg>
+    );
+}
+
 function DepartmentBreakdown({ departments }: { departments: any[] }) {
     if (!departments || departments.length === 0) return null;
-    const max = Math.max(...departments.map((d: any) => d.total || 1));
     return (
         <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm p-6">
             <div className="flex items-center gap-3 mb-5">
@@ -159,23 +207,34 @@ function DepartmentBreakdown({ departments }: { departments: any[] }) {
                 </div>
                 <h3 className="text-sm font-bold text-primary-950 dark:text-white">Department Breakdown</h3>
             </div>
-            <div className="space-y-3">
-                {departments.map((dept: any) => (
-                    <div key={dept.departmentId ?? dept.name ?? dept.departmentName}>
-                        <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">{dept.departmentName ?? dept.name}</span>
-                            <span className="text-xs font-bold text-primary-950 dark:text-white">
-                                {dept.present}/{dept.total}
-                            </span>
-                        </div>
-                        <div className="w-full h-2 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {departments.map((dept: any, i: number) => {
+                    const gradient = DEPT_GRADIENTS[i % DEPT_GRADIENTS.length]!;
+                    const pct = dept.total > 0 ? Math.round(((dept.present ?? 0) / dept.total) * 100) : 0;
+                    return (
+                        <div
+                            key={dept.departmentId ?? dept.name ?? dept.departmentName}
+                            className="relative group rounded-xl border border-neutral-100 dark:border-neutral-800 p-4 hover:shadow-md transition-all duration-200 overflow-hidden"
+                        >
+                            {/* Subtle gradient background glow */}
                             <div
-                                className="h-full bg-primary-500 rounded-full transition-all"
-                                style={{ width: `${((dept.present ?? 0) / max) * 100}%` }}
+                                className="absolute inset-0 opacity-[0.04] group-hover:opacity-[0.08] transition-opacity rounded-xl"
+                                style={{ background: `linear-gradient(135deg, ${gradient.from}, ${gradient.to})` }}
                             />
+                            <div className="relative flex flex-col items-center text-center gap-2.5">
+                                <DeptRing present={dept.present ?? 0} total={dept.total ?? 0} gradient={gradient} />
+                                <div>
+                                    <p className="text-[11px] font-bold text-neutral-800 dark:text-neutral-200 leading-tight line-clamp-2">
+                                        {dept.departmentName ?? dept.name}
+                                    </p>
+                                    <p className="text-[10px] font-semibold mt-0.5" style={{ color: gradient.from }}>
+                                        {dept.present}/{dept.total} present
+                                    </p>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );
@@ -188,7 +247,9 @@ export function AttendanceDashboardScreen() {
     const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
     const [department, setDepartment] = useState("");
     const [search, setSearch] = useState("");
+    const [page, setPage] = useState(1);
     const [overrideModal, setOverrideModal] = useState(false);
+    const [detailRecord, setDetailRecord] = useState<any>(null);
     const [overrideForm, setOverrideForm] = useState({
         employeeId: '',
         attendanceRecordId: '',
@@ -199,7 +260,7 @@ export function AttendanceDashboardScreen() {
     });
 
     const summaryQuery = useAttendanceSummary();
-    const recordsQuery = useAttendanceRecords({ date, department: department || undefined });
+    const recordsQuery = useAttendanceRecords({ dateFrom: date, dateTo: date, departmentId: department || undefined, page, limit: 25 });
     const overridesQuery = useAttendanceOverrides({ status: 'PENDING' });
     const processOverrideMutation = useUpdateAttendanceOverride();
     const createOverrideMutation = useCreateAttendanceOverride();
@@ -207,7 +268,9 @@ export function AttendanceDashboardScreen() {
     const summaryRaw = (summaryQuery.data as any)?.data ?? {};
     // Backend wraps counts in a `summary` sub-object
     const summary = summaryRaw.summary ?? summaryRaw;
-    const rawRecords: any[] = (recordsQuery.data as any)?.data ?? [];
+    const recordsResponse = recordsQuery.data as any;
+    const rawRecords: any[] = recordsResponse?.data ?? [];
+    const meta = recordsResponse?.meta ?? { page: 1, limit: 25, total: 0, totalPages: 1 };
     const records = rawRecords.map((r: any) => normalizeRecord(r, fmt));
     const departmentBreakdown: any[] = summaryRaw.departmentBreakdown ?? summaryRaw.departments ?? [];
     const pendingOverrides: any[] = (overridesQuery.data as any)?.data ?? [];
@@ -234,6 +297,9 @@ export function AttendanceDashboardScreen() {
 
     const showPunchIn = ['MISSING_PUNCH_IN', 'NO_PUNCH', 'ABSENT_OVERRIDE'].includes(overrideForm.issueType);
     const showPunchOut = ['MISSING_PUNCH_OUT', 'NO_PUNCH', 'ABSENT_OVERRIDE'].includes(overrideForm.issueType);
+
+    const handleDateChange = (newDate: string) => { setDate(newDate); setPage(1); };
+    const handleDeptChange = (newDept: string) => { setDepartment(newDept); setPage(1); };
 
     const handleApproveOverride = async (overrideId: string) => {
         try {
@@ -345,13 +411,20 @@ export function AttendanceDashboardScreen() {
                                 </tr>
                             </thead>
                             <tbody className="text-sm">
-                                {pendingOverrides.map((ov: any) => (
+                                {pendingOverrides.map((ov: any) => {
+                                    const ovEmp = ov.attendanceRecord?.employee ?? ov.employee ?? {};
+                                    const ovName = [ovEmp.firstName, ovEmp.lastName].filter(Boolean).join(' ') || ov.employeeName || '—';
+                                    const ovDate = ov.attendanceRecord?.date ?? ov.date;
+                                    return (
                                     <tr key={ov.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
                                         <td className="py-3 px-6">
-                                            <span className="font-bold text-primary-950 dark:text-white">{ov.employeeName ?? ov.employee?.name ?? "—"}</span>
+                                            <div>
+                                                <span className="font-bold text-primary-950 dark:text-white">{ovName}</span>
+                                                {ovEmp.employeeId && <span className="block text-[11px] font-mono text-neutral-400 dark:text-neutral-500 mt-0.5">{ovEmp.employeeId}</span>}
+                                            </div>
                                         </td>
                                         <td className="py-3 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-                                            {ov.date ? fmt.date(ov.date) : "—"}
+                                            {ovDate ? fmt.date(ovDate) : "—"}
                                         </td>
                                         <td className="py-3 px-6 text-center">
                                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 border border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50">
@@ -390,7 +463,8 @@ export function AttendanceDashboardScreen() {
                                             </div>
                                         </td>
                                     </tr>
-                                ))}
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
@@ -413,14 +487,14 @@ export function AttendanceDashboardScreen() {
                     <input
                         type="date"
                         value={date}
-                        onChange={(e) => setDate(e.target.value)}
+                        onChange={(e) => handleDateChange(e.target.value)}
                         className="px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
                     />
                     <div className="relative">
                         <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
                         <select
                             value={department}
-                            onChange={(e) => setDepartment(e.target.value)}
+                            onChange={(e) => handleDeptChange(e.target.value)}
                             className="pl-9 pr-8 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white appearance-none transition-all min-w-[160px]"
                         >
                             <option value="">All Departments</option>
@@ -508,13 +582,22 @@ export function AttendanceDashboardScreen() {
                                             <SourceBadge source={rec.source ?? "Manual"} />
                                         </td>
                                         <td className="py-3.5 px-5 text-center">
-                                            <button
-                                                onClick={() => openOverrideModal(rec)}
-                                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100 dark:hover:bg-primary-900/40 border border-primary-200 dark:border-primary-800/50 transition-colors"
-                                            >
-                                                <AlertTriangle size={12} />
-                                                Override
-                                            </button>
+                                            <div className="flex items-center justify-center gap-1.5">
+                                                <button
+                                                    onClick={() => setDetailRecord(rec)}
+                                                    className="p-1.5 rounded-lg text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100 dark:hover:bg-primary-900/40 border border-primary-200 dark:border-primary-800/50 transition-colors"
+                                                    title="View Details"
+                                                >
+                                                    <Eye size={14} />
+                                                </button>
+                                                <button
+                                                    onClick={() => openOverrideModal(rec)}
+                                                    className="p-1.5 rounded-lg text-warning-600 dark:text-warning-400 bg-warning-50 dark:bg-warning-900/20 hover:bg-warning-100 dark:hover:bg-warning-900/40 border border-warning-200 dark:border-warning-800/50 transition-colors"
+                                                    title="Override"
+                                                >
+                                                    <AlertTriangle size={14} />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -529,7 +612,173 @@ export function AttendanceDashboardScreen() {
                         </table>
                     </div>
                 )}
+                {/* Pagination */}
+                {meta.totalPages > 1 && (
+                    <div className="flex items-center justify-between px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                            Showing <span className="font-bold text-neutral-700 dark:text-neutral-300">{(page - 1) * meta.limit + 1}–{Math.min(page * meta.limit, meta.total)}</span> of <span className="font-bold text-neutral-700 dark:text-neutral-300">{meta.total}</span>
+                        </p>
+                        <div className="flex items-center gap-1">
+                            <button
+                                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                disabled={page <= 1}
+                                className="p-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 transition-colors"
+                            >
+                                <ChevronLeft size={16} />
+                            </button>
+                            {Array.from({ length: Math.min(5, meta.totalPages) }, (_, i) => {
+                                let p: number;
+                                if (meta.totalPages <= 5) p = i + 1;
+                                else if (page <= 3) p = i + 1;
+                                else if (page >= meta.totalPages - 2) p = meta.totalPages - 4 + i;
+                                else p = page - 2 + i;
+                                return (
+                                    <button
+                                        key={p}
+                                        onClick={() => setPage(p)}
+                                        className={cn(
+                                            "w-8 h-8 rounded-lg text-xs font-bold transition-colors",
+                                            p === page
+                                                ? "bg-primary-600 text-white"
+                                                : "text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                                        )}
+                                    >
+                                        {p}
+                                    </button>
+                                );
+                            })}
+                            {meta.totalPages > 5 && page < meta.totalPages - 2 && (
+                                <>
+                                    <span className="text-neutral-400 text-xs px-1">...</span>
+                                    <button onClick={() => setPage(meta.totalPages)} className="w-8 h-8 rounded-lg text-xs font-bold text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">{meta.totalPages}</button>
+                                </>
+                            )}
+                            <button
+                                onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
+                                disabled={page >= meta.totalPages}
+                                className="p-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 transition-colors"
+                            >
+                                <ChevronRight size={16} />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
+
+            {/* ── Attendance Detail Modal ── */}
+            {detailRecord && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => setDetailRecord(null)}>
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-lg animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
+                            <div>
+                                <h2 className="text-lg font-bold text-primary-950 dark:text-white">{detailRecord.employeeName}</h2>
+                                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{detailRecord.employeeCode} · {detailRecord.department} · {detailRecord.designation}</p>
+                            </div>
+                            <button onClick={() => setDetailRecord(null)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"><X size={18} /></button>
+                        </div>
+                        <div className="p-6 overflow-y-auto flex-1 space-y-5">
+                            {/* Status + Date */}
+                            <div className="flex items-center gap-3">
+                                <StatusBadge status={detailRecord.status ?? 'Unknown'} />
+                                <span className="text-sm font-mono text-neutral-600 dark:text-neutral-400">{fmt.date(detailRecord.date)}</span>
+                                {detailRecord.isRegularized && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-success-50 text-success-700 border border-success-200">REGULARIZED</span>}
+                            </div>
+
+                            {/* Time Grid */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-3">
+                                    <p className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">Punch In</p>
+                                    <p className="text-sm font-bold text-primary-950 dark:text-white font-mono">{formatPunchTime(detailRecord.punchIn, fmt)}</p>
+                                </div>
+                                <div className="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-3">
+                                    <p className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">Punch Out</p>
+                                    <p className="text-sm font-bold text-primary-950 dark:text-white font-mono">{formatPunchTime(detailRecord.punchOut, fmt)}</p>
+                                </div>
+                                <div className="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-3">
+                                    <p className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">Worked Hours</p>
+                                    <p className="text-sm font-bold text-primary-950 dark:text-white">{formatWorkedHrs(detailRecord.workedHours)}</p>
+                                </div>
+                                <div className="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-3">
+                                    <p className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">Source</p>
+                                    <p className="text-sm font-bold text-primary-950 dark:text-white">{SOURCE_LABELS[detailRecord.source] ?? detailRecord.source ?? '—'}</p>
+                                </div>
+                            </div>
+
+                            {/* Shift */}
+                            {detailRecord.shiftName && (
+                                <div className="bg-primary-50/50 dark:bg-primary-900/10 rounded-xl p-3 border border-primary-100 dark:border-primary-800/30">
+                                    <p className="text-[10px] font-bold text-primary-600 dark:text-primary-400 uppercase tracking-wider mb-1">Shift</p>
+                                    <p className="text-sm font-bold text-primary-950 dark:text-white">{detailRecord.shiftName} <span className="font-mono text-xs text-neutral-500 ml-1">{detailRecord.shiftTime}</span></p>
+                                </div>
+                            )}
+
+                            {/* Late / Early Exit */}
+                            {(detailRecord.isLate || detailRecord.isEarlyExit) && (
+                                <div className="flex gap-3">
+                                    {detailRecord.isLate && detailRecord.lateMinutes != null && (
+                                        <div className="flex-1 bg-warning-50 dark:bg-warning-900/10 rounded-xl p-3 border border-warning-200 dark:border-warning-800/30">
+                                            <p className="text-[10px] font-bold text-warning-600 dark:text-warning-400 uppercase tracking-wider mb-1">Late By</p>
+                                            <p className="text-sm font-bold text-warning-700 dark:text-warning-400">{detailRecord.lateMinutes} minutes</p>
+                                        </div>
+                                    )}
+                                    {detailRecord.isEarlyExit && detailRecord.earlyMinutes != null && (
+                                        <div className="flex-1 bg-danger-50 dark:bg-danger-900/10 rounded-xl p-3 border border-danger-200 dark:border-danger-800/30">
+                                            <p className="text-[10px] font-bold text-danger-600 dark:text-danger-400 uppercase tracking-wider mb-1">Early Exit By</p>
+                                            <p className="text-sm font-bold text-danger-700 dark:text-danger-400">{detailRecord.earlyMinutes} minutes</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Overtime */}
+                            {detailRecord.overtimeHours != null && Number(detailRecord.overtimeHours) > 0 && (
+                                <div className="bg-success-50/50 dark:bg-success-900/10 rounded-xl p-3 border border-success-100 dark:border-success-800/30">
+                                    <p className="text-[10px] font-bold text-success-600 dark:text-success-400 uppercase tracking-wider mb-1">Overtime</p>
+                                    <p className="text-sm font-bold text-success-700 dark:text-success-400">{Number(detailRecord.overtimeHours).toFixed(1)} hours</p>
+                                </div>
+                            )}
+
+                            {/* Location */}
+                            {detailRecord.location?.name && (
+                                <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+                                    <MapPin size={13} />
+                                    <span className="font-semibold">{detailRecord.location.name}</span>
+                                </div>
+                            )}
+
+                            {/* Geo coordinates */}
+                            {(detailRecord.checkInLatitude || detailRecord.checkOutLatitude) && (
+                                <div className="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-3 space-y-1">
+                                    <p className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">Geo Location</p>
+                                    {detailRecord.checkInLatitude && <p className="text-xs text-neutral-600 dark:text-neutral-400">Check-in: {detailRecord.checkInLatitude}, {detailRecord.checkInLongitude}</p>}
+                                    {detailRecord.checkOutLatitude && <p className="text-xs text-neutral-600 dark:text-neutral-400">Check-out: {detailRecord.checkOutLatitude}, {detailRecord.checkOutLongitude}</p>}
+                                </div>
+                            )}
+
+                            {/* Remarks / Reason */}
+                            {detailRecord.remarks && (
+                                <div className="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-3">
+                                    <p className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">Remarks</p>
+                                    <p className="text-sm text-neutral-700 dark:text-neutral-300">{detailRecord.remarks}</p>
+                                </div>
+                            )}
+                            {detailRecord.finalStatusReason && (
+                                <div className="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-3">
+                                    <p className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">Status Reason</p>
+                                    <p className="text-sm text-neutral-700 dark:text-neutral-300">{detailRecord.finalStatusReason}</p>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
+                            <button onClick={() => setDetailRecord(null)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Close</button>
+                            <button onClick={() => { openOverrideModal(detailRecord); setDetailRecord(null); }} className="flex-1 py-2.5 rounded-xl bg-warning-500 hover:bg-warning-600 text-white text-sm font-bold transition-colors flex items-center justify-center gap-2">
+                                <AlertTriangle size={14} />
+                                Create Override
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ── Override Creation Modal ── */}
             {overrideModal && (

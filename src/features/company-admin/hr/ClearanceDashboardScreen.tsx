@@ -104,7 +104,7 @@ export function ClearanceDashboardScreen() {
                         className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm text-neutral-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none">
                         <option value="">-- Select --</option>
                         {exitRequests.map((er: any) => (
-                            <option key={er.id} value={er.id}>{er.employeeName} ({er.separationType})</option>
+                            <option key={er.id} value={er.id}>{er.employeeName ?? (er.employee ? `${er.employee.firstName ?? ''} ${er.employee.lastName ?? ''}`.trim() : er.employeeId)} ({er.separationType})</option>
                         ))}
                     </select>
                 </div>

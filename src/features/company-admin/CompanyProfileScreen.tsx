@@ -546,9 +546,11 @@ export function CompanyProfileScreen() {
                                                                     <span className="text-base flex-shrink-0">{mod.icon}</span>
                                                                     <div className="min-w-0">
                                                                         <p className="text-xs font-bold text-primary-950 dark:text-white truncate">{mod.name}</p>
+                                                                        {/* Pricing hidden — uncomment when pricing is finalized
                                                                         <p className="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500">
-                                                                            {"\u20B9"}{mod.price.toLocaleString('en-IN')}/mo
+                                                                            {"₹"}{mod.price.toLocaleString('en-IN')}/mo
                                                                         </p>
+                                                                        */}
                                                                     </div>
                                                                 </div>
                                                                 {isMasters ? (
@@ -711,11 +713,13 @@ export function CompanyProfileScreen() {
 
                             {confirmAction.type === 'add' && (
                                 <>
+                                    {/* Pricing hidden — uncomment when pricing is finalized
                                     <div className="bg-info-50 dark:bg-info-900/20 rounded-xl px-4 py-3 border border-info-100 dark:border-info-800/50">
                                         <p className="text-xs font-semibold text-info-700 dark:text-info-400">
-                                            This will add {"\u20B9"}{confirmAction.modulePrice.toLocaleString('en-IN')}/mo to your billing.
+                                            This will add {"₹"}{confirmAction.modulePrice.toLocaleString('en-IN')}/mo to your billing.
                                         </p>
                                     </div>
+                                    */}
                                     {confirmAction.autoDeps.length > 0 && (
                                         <div className="bg-warning-50 dark:bg-warning-900/20 rounded-xl px-4 py-3 border border-warning-100 dark:border-warning-800/50">
                                             <p className="text-xs font-semibold text-warning-700 dark:text-warning-400">

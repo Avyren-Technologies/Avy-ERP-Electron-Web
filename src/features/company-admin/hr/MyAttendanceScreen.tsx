@@ -26,23 +26,25 @@ const MONTHS = ["January", "February", "March", "April", "May", "June", "July", 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const STATUS_COLORS: Record<string, string> = {
-    present: "bg-success-500",
-    absent: "bg-danger-500",
-    half_day: "bg-warning-500",
-    leave: "bg-primary-500",
-    holiday: "bg-accent-500",
-    weekend: "bg-neutral-300 dark:bg-neutral-700",
-    regularized: "bg-success-300",
+    PRESENT: "bg-success-500",
+    ABSENT: "bg-danger-500",
+    HALF_DAY: "bg-warning-500",
+    ON_LEAVE: "bg-primary-500",
+    LATE: "bg-warning-400",
+    HOLIDAY: "bg-accent-500",
+    WEEKEND: "bg-neutral-300 dark:bg-neutral-700",
+    REGULARIZED: "bg-success-300",
 };
 
 const STATUS_LABELS: Record<string, string> = {
-    present: "Present",
-    absent: "Absent",
-    half_day: "Half Day",
-    leave: "On Leave",
-    holiday: "Holiday",
-    weekend: "Weekend",
-    regularized: "Regularized",
+    PRESENT: "Present",
+    ABSENT: "Absent",
+    HALF_DAY: "Half Day",
+    ON_LEAVE: "On Leave",
+    LATE: "Late",
+    HOLIDAY: "Holiday",
+    WEEKEND: "Weekend",
+    REGULARIZED: "Regularized",
 };
 
 const formatTime = (t: string | null | undefined) => {
@@ -201,11 +203,11 @@ export function MyAttendanceScreen() {
 
     // Summary stats
     const records: any[] = (data?.data as any) ?? [];
-    const presentCount = records.filter((r: any) => r.status === "present" || r.status === "regularized").length;
-    const absentCount = records.filter((r: any) => r.status === "absent").length;
-    const leaveCount = records.filter((r: any) => r.status === "leave").length;
+    const presentCount = records.filter((r: any) => r.status === "PRESENT" || r.status === "LATE" || r.status === "REGULARIZED").length;
+    const absentCount = records.filter((r: any) => r.status === "ABSENT").length;
+    const leaveCount = records.filter((r: any) => r.status === "ON_LEAVE").length;
     const avgHours = records.length > 0
-        ? (records.reduce((sum: number, r: any) => sum + (Number(r.hoursWorked) || 0), 0) / Math.max(presentCount, 1)).toFixed(1)
+        ? (records.reduce((sum: number, r: any) => sum + (Number(r.workedHours) || 0), 0) / Math.max(presentCount, 1)).toFixed(1)
         : "0.0";
 
     const kpis: KPICardData[] = [
@@ -333,30 +335,30 @@ export function MyAttendanceScreen() {
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
                                     <span className="text-neutral-500 dark:text-neutral-400">Check In</span>
-                                    <span className="font-semibold text-primary-950 dark:text-white">{formatTime(selectedRecord.checkIn)}</span>
+                                    <span className="font-semibold text-primary-950 dark:text-white">{formatTime(selectedRecord.punchIn)}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-neutral-500 dark:text-neutral-400">Check Out</span>
-                                    <span className="font-semibold text-primary-950 dark:text-white">{formatTime(selectedRecord.checkOut)}</span>
+                                    <span className="font-semibold text-primary-950 dark:text-white">{formatTime(selectedRecord.punchOut)}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-neutral-500 dark:text-neutral-400">Hours Worked</span>
-                                    <span className="font-semibold text-primary-950 dark:text-white">{selectedRecord.hoursWorked ?? "—"}</span>
+                                    <span className="font-semibold text-primary-950 dark:text-white">{selectedRecord.workedHours ?? "—"}</span>
                                 </div>
-                                {selectedRecord.shift && (
+                                {selectedRecord.shift?.name && (
                                     <div className="flex justify-between">
                                         <span className="text-neutral-500 dark:text-neutral-400">Shift</span>
-                                        <span className="font-semibold text-primary-950 dark:text-white">{selectedRecord.shift}</span>
+                                        <span className="font-semibold text-primary-950 dark:text-white">{selectedRecord.shift.name}</span>
                                     </div>
                                 )}
-                                {selectedRecord.lateBy && (
+                                {selectedRecord.isLate && (
                                     <div className="flex justify-between">
                                         <span className="text-neutral-500 dark:text-neutral-400">Late By</span>
-                                        <span className="font-semibold text-warning-600 dark:text-warning-400">{selectedRecord.lateBy}</span>
+                                        <span className="font-semibold text-warning-600 dark:text-warning-400">{selectedRecord.lateMinutes} min</span>
                                     </div>
                                 )}
                             </div>
-                            {(selectedRecord.status === "absent" || selectedRecord.status === "half_day" || !selectedRecord.punchIn || !selectedRecord.punchOut || selectedRecord.lateBy) && (
+                            {(selectedRecord.status === "ABSENT" || selectedRecord.status === "HALF_DAY" || !selectedRecord.punchIn || !selectedRecord.punchOut || selectedRecord.isLate) && (
                                 <button
                                     onClick={() => openRegularize(selectedRecord)}
                                     className="w-full mt-4 py-2.5 rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 hover:from-primary-700 hover:to-indigo-700 text-white text-sm font-bold shadow-sm hover:shadow transition-all flex items-center justify-center gap-2"

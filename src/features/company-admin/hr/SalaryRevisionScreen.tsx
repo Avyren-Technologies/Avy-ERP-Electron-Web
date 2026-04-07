@@ -33,7 +33,7 @@ const MONTHS = [
     "July", "August", "September", "October", "November", "December",
 ];
 
-const formatCurrency = (v: number) => `\u20B9${(v ?? 0).toLocaleString("en-IN")}`;
+const formatCurrency = (v: number) => `₹${(v ?? 0).toLocaleString("en-IN")}`;
 // formatDate moved inside component
 
 function RevisionStatusBadge({ status }: { status: string }) {
@@ -93,15 +93,17 @@ export function SalaryRevisionScreen() {
     const detail: any = detailQuery.data?.data ?? null;
     const arrears: any[] = arrearsQuery.data?.data ?? [];
 
-    const getEmployeeName = (id: string) => {
-        const e = employees.find((emp: any) => emp.id === id);
-        return e ? `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim() || e.email || id : id;
+    const getEmpName = (r: any) => {
+        const emp = r.employee ?? employees.find((e: any) => e.id === r.employeeId);
+        if (!emp) return r.employeeId;
+        return `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim() || emp.employeeId || r.employeeId;
     };
+    const getEmpCode = (r: any) => r.employee?.employeeId ?? "";
 
     const filtered = revisions.filter((r: any) => {
         if (!search) return true;
         const q = search.toLowerCase();
-        return getEmployeeName(r.employeeId).toLowerCase().includes(q) || r.employeeName?.toLowerCase().includes(q);
+        return getEmpName(r).toLowerCase().includes(q) || getEmpCode(r).toLowerCase().includes(q);
     });
 
     const openCreate = () => { setForm({ ...EMPTY_REVISION }); setModalOpen(true); };
@@ -194,12 +196,12 @@ export function SalaryRevisionScreen() {
                             <thead>
                                 <tr className="bg-neutral-50/50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
                                     <th className="py-4 px-6 font-bold">Employee</th>
-                                    <th className="py-4 px-6 font-bold text-right">Old CTC (\u20B9)</th>
-                                    <th className="py-4 px-6 font-bold text-right">New CTC (\u20B9)</th>
+                                    <th className="py-4 px-6 font-bold text-right">Old CTC (₹)</th>
+                                    <th className="py-4 px-6 font-bold text-right">New CTC (₹)</th>
                                     <th className="py-4 px-6 font-bold text-right">Increment %</th>
                                     <th className="py-4 px-6 font-bold">Effective Date</th>
                                     <th className="py-4 px-6 font-bold text-center">Status</th>
-                                    <th className="py-4 px-6 font-bold text-right">Arrears (\u20B9)</th>
+                                    <th className="py-4 px-6 font-bold text-right">Arrears (₹)</th>
                                     <th className="py-4 px-6 font-bold text-right">Actions</th>
                                 </tr>
                             </thead>
@@ -214,7 +216,7 @@ export function SalaryRevisionScreen() {
                                                     <div className="w-8 h-8 rounded-lg bg-accent-50 dark:bg-accent-900/30 flex items-center justify-center shrink-0">
                                                         <TrendingUp className="w-4 h-4 text-accent-600 dark:text-accent-400" />
                                                     </div>
-                                                    <span className="font-bold text-primary-950 dark:text-white">{r.employeeName || getEmployeeName(r.employeeId)}</span>
+                                                    <span className="font-bold text-primary-950 dark:text-white">{getEmpName(r)}</span>
                                                 </div>
                                             </td>
                                             <td className="py-4 px-6 text-right font-mono text-neutral-600 dark:text-neutral-400">{formatCurrency(r.oldCTC ?? 0)}</td>
@@ -280,11 +282,11 @@ export function SalaryRevisionScreen() {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Old CTC (\u20B9)</label>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Old CTC (₹)</label>
                                     <input type="number" value={form.oldCTC} onChange={(e) => updateField("oldCTC", Number(e.target.value))} min={0} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">New CTC (\u20B9)</label>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">New CTC (₹)</label>
                                     <input type="number" value={form.newCtc} onChange={(e) => updateField("newCtc", Number(e.target.value))} min={0} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
                                 </div>
                             </div>
@@ -332,7 +334,7 @@ export function SalaryRevisionScreen() {
                             ) : detail ? (
                                 <>
                                     <div className="flex items-center justify-between">
-                                        <p className="font-bold text-primary-950 dark:text-white text-lg">{detail.employeeName || getEmployeeName(detail.employeeId)}</p>
+                                        <p className="font-bold text-primary-950 dark:text-white text-lg">{getEmpName(detail)}</p>
                                         <RevisionStatusBadge status={detail.status ?? "pending"} />
                                     </div>
                                     <div className="grid grid-cols-3 gap-4">

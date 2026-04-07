@@ -504,7 +504,7 @@ export function CandidateDetailScreen() {
     if (candidateQuery.isLoading) {
         return (
             <div className="p-8">
-                <SkeletonTable rows={5} columns={3} />
+                <SkeletonTable rows={5} cols={3} />
             </div>
         );
     }
@@ -612,7 +612,7 @@ export function CandidateDetailScreen() {
                                 )}
                             </div>
                             {educationQuery.isLoading ? (
-                                <SkeletonTable rows={3} columns={4} />
+                                <SkeletonTable rows={3} cols={4} />
                             ) : educationList.length === 0 ? (
                                 <EmptyState icon="list" title="No education records" message="Add education details for this candidate." />
                             ) : (
@@ -664,7 +664,7 @@ export function CandidateDetailScreen() {
                                 )}
                             </div>
                             {experienceQuery.isLoading ? (
-                                <SkeletonTable rows={3} columns={4} />
+                                <SkeletonTable rows={3} cols={4} />
                             ) : experienceList.length === 0 ? (
                                 <EmptyState icon="list" title="No experience records" message="Add work experience for this candidate." />
                             ) : (
@@ -716,7 +716,7 @@ export function CandidateDetailScreen() {
                                 )}
                             </div>
                             {documentsQuery.isLoading ? (
-                                <SkeletonTable rows={3} columns={3} />
+                                <SkeletonTable rows={3} cols={3} />
                             ) : documentsList.length === 0 ? (
                                 <EmptyState icon="list" title="No documents" message="Upload documents for this candidate." />
                             ) : (
@@ -796,7 +796,7 @@ export function CandidateDetailScreen() {
                     {pipeTab === "interviews" && (
                         <div>
                             {interviewsQuery.isLoading ? (
-                                <SkeletonTable rows={3} columns={4} />
+                                <SkeletonTable rows={3} cols={4} />
                             ) : interviewsList.length === 0 ? (
                                 <EmptyState icon="list" title="No interviews" message="No interviews have been scheduled for this candidate." />
                             ) : (
@@ -862,7 +862,7 @@ export function CandidateDetailScreen() {
                     {pipeTab === "offers" && (
                         <div>
                             {offersQuery.isLoading ? (
-                                <SkeletonTable rows={3} columns={5} />
+                                <SkeletonTable rows={3} cols={5} />
                             ) : offersList.length === 0 ? (
                                 <EmptyState icon="list" title="No offers" message="No offers have been made for this candidate." />
                             ) : (

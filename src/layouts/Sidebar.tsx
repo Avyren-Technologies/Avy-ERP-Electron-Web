@@ -135,6 +135,58 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
         setOpenGroups((prev) => ({ ...prev, [path]: !prev[path] }));
     };
 
+    // ── Section-level collapse/expand ──
+    const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
+        const initial: Record<string, boolean> = {};
+        const defaultExpanded = ['Overview', 'My Workspace', 'Team Management'];
+        if (manifestSections) {
+            const seen = new Set<string>();
+            manifestSections.forEach((section) => {
+                if (seen.has(section.group)) return;
+                seen.add(section.group);
+                if (defaultExpanded.includes(section.group)) return;
+                // Skip sections whose items all have children (already self-collapsible)
+                if (section.items.every(i => i.children && i.children.length > 0)) return;
+                const hasActive = section.items.some(item =>
+                    location.pathname === item.path ||
+                    location.pathname.startsWith(item.path + '/') ||
+                    item.children?.some(c => location.pathname.startsWith(c.path))
+                );
+                if (!hasActive) initial[section.group] = true;
+            });
+        }
+        return initial;
+    });
+
+    // Auto-expand section containing active route
+    useEffect(() => {
+        if (!manifestSections) return;
+        manifestSections.forEach((section) => {
+            const hasActive = section.items.some(item =>
+                location.pathname === item.path ||
+                location.pathname.startsWith(item.path + '/') ||
+                item.children?.some(c => location.pathname.startsWith(c.path))
+            );
+            if (hasActive) {
+                setCollapsedSections(prev => {
+                    if (prev[section.group]) return { ...prev, [section.group]: false };
+                    return prev;
+                });
+            }
+        });
+    }, [location.pathname, manifestSections]);
+
+    const toggleSection = (group: string) => {
+        if (group === 'Overview') return;
+        setCollapsedSections(prev => ({ ...prev, [group]: !prev[group] }));
+    };
+
+    // ── Module-level collapse (HRMS, Operations, etc.) ──
+    const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>({});
+    const toggleModule = (moduleName: string) => {
+        setCollapsedModules(prev => ({ ...prev, [moduleName]: !prev[moduleName] }));
+    };
+
     const isItemActive = (item: { path: string; children?: { path: string }[] }) => {
         if (item.children) {
             return item.children.some((c) => location.pathname.startsWith(c.path));
@@ -142,18 +194,36 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
         return location.pathname === item.path || location.pathname.startsWith(item.path + '/');
     };
 
-    // Sections come pre-filtered from the navigation manifest API
-    const visibleSections = (manifestSections ?? []).map((s) => ({
-        group: s.group,
-        moduleSeparator: s.moduleSeparator,
-        items: s.items.map((i) => ({
-            icon: resolveIcon(i.icon),
-            label: i.label,
-            path: i.path,
-            children: i.children,
-            badge: (i as any).badge as number | undefined,
-        })),
-    }));
+    // Sections come pre-filtered from the navigation manifest API.
+    // Deduplicate items within each section by path to avoid duplicate React keys.
+    const visibleSections = (manifestSections ?? []).map((s) => {
+        const seen = new Set<string>();
+        return {
+            group: s.group,
+            moduleSeparator: s.moduleSeparator,
+            items: s.items
+                .filter((i) => {
+                    if (seen.has(i.path)) return false;
+                    seen.add(i.path);
+                    return true;
+                })
+                .map((i) => ({
+                    icon: resolveIcon(i.icon),
+                    label: i.label,
+                    path: i.path,
+                    children: i.children,
+                    badge: (i as any).badge as number | undefined,
+                })),
+        };
+    });
+
+    // Build module→section mapping for module-level collapse
+    const sectionModuleMap: Record<string, string> = {};
+    let _currentMod = '';
+    for (const s of visibleSections) {
+        if (s.moduleSeparator) _currentMod = s.moduleSeparator;
+        if (_currentMod) sectionModuleMap[s.group] = _currentMod;
+    }
 
     // Global Tooltip State for Collapsed Mode
     const [hoveredLabel, setHoveredLabel] = useState<string | null>(null);
@@ -227,38 +297,140 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
 
             {/* ---- Navigation ---- */}
             <nav className="flex-1 py-3 overflow-y-auto overflow-x-hidden custom-scrollbar">
-                {visibleSections.map((section) => (
+                {visibleSections.map((section) => {
+                    const isOverview = section.group === 'Overview';
+                    const hasOnlyChildItems = section.items.every(item => item.children && item.children.length > 0);
+                    const isNonCollapsible = isOverview || hasOnlyChildItems;
+                    const isSectionCollapsed = !isNonCollapsible && !collapsed && !!collapsedSections[section.group];
+                    const moduleOfSection = sectionModuleMap[section.group];
+                    const isModuleCollapsed = !!moduleOfSection && !!collapsedModules[moduleOfSection];
+                    const sectionHasActive = section.items.some(item => isItemActive(item));
+                    const SectionIcon = section.items[0]?.icon ?? Blocks;
+
+                    return (
                     <div key={section.group}>
-                        {/* Module Separator */}
+                        {/* Module Separator — clickable to collapse entire module */}
                         {section.moduleSeparator && !collapsed && (
-                            <div className="flex items-center gap-2 px-5 pt-5 pb-1">
+                            <button
+                                onClick={() => toggleModule(section.moduleSeparator!)}
+                                className="w-full flex items-center gap-2 px-5 pt-5 pb-1 cursor-pointer group/mod"
+                            >
                                 <div className="flex-1 h-px bg-primary-100 dark:bg-primary-900/40" />
                                 <span className="text-[9px] font-bold uppercase tracking-[2px] text-primary-500 dark:text-primary-400 whitespace-nowrap">
                                     {section.moduleSeparator}
                                 </span>
+                                <ChevronDown
+                                    size={11}
+                                    className={cn(
+                                        'text-primary-400 dark:text-primary-500 transition-transform duration-200',
+                                        isModuleCollapsed && '-rotate-90'
+                                    )}
+                                />
                                 <div className="flex-1 h-px bg-primary-100 dark:bg-primary-900/40" />
-                            </div>
+                            </button>
                         )}
                         {collapsed && section.moduleSeparator && (
                             <div className="mx-3 mt-3 mb-1 h-px bg-primary-100 dark:bg-primary-900/40" />
                         )}
 
+                        {!isModuleCollapsed && (
                         <div className={cn('mb-1', collapsed ? 'px-2' : 'px-3')}>
-                            {/* Section label */}
-                            {!collapsed && (
-                                <p className="px-3 pt-3 pb-1.5 text-[10px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
+                            {/* Section header */}
+                            {!collapsed && (isNonCollapsible ? (
+                                <p className="px-3 pt-3 pb-1.5 text-[10px] font-bold uppercase tracking-widest text-neutral-600 dark:text-neutral-300">
                                     {section.group}
                                 </p>
-                            )}
+                            ) : (
+                                <button
+                                    onClick={() => toggleSection(section.group)}
+                                    className={cn(
+                                        'w-full flex items-center gap-3 rounded-xl transition-all duration-150 group relative',
+                                        'px-3 py-2.5',
+                                        sectionHasActive
+                                            ? 'bg-primary-50 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
+                                            : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-200'
+                                    )}
+                                >
+                                    {sectionHasActive && (
+                                        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary-600 rounded-r-full" />
+                                    )}
+                                    <SectionIcon
+                                        size={18}
+                                        strokeWidth={sectionHasActive ? 2.5 : 2}
+                                        className={cn(
+                                            'flex-shrink-0 transition-colors',
+                                            sectionHasActive ? 'text-primary-600 dark:text-primary-400' : 'text-neutral-400 dark:text-neutral-500 group-hover:text-neutral-700 dark:group-hover:text-neutral-300'
+                                        )}
+                                    />
+                                    <span className={cn('flex-1 text-left text-sm font-medium whitespace-nowrap', sectionHasActive && 'font-semibold')}>
+                                        {section.group}
+                                    </span>
+                                    <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
+                                        {section.items.length}
+                                    </span>
+                                    <ChevronDown
+                                        size={13}
+                                        className={cn(
+                                            'text-neutral-400 transition-transform duration-200 flex-shrink-0',
+                                            isSectionCollapsed ? '-rotate-90' : 'rotate-0'
+                                        )}
+                                    />
+                                </button>
+                            ))}
                             {collapsed && <div className="h-3" />}
 
-                            {section.items.map((item) => {
+                            {/* Collapsible sections: child-style items with dotted connectors */}
+                            {!isNonCollapsible && !collapsed && (
+                                <div className={cn(
+                                    'grid transition-[grid-template-rows] duration-200 ease-in-out',
+                                    isSectionCollapsed ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'
+                                )}>
+                                <div className="overflow-hidden">
+                                    <div className="relative mt-0.5 mb-1">
+                                        {/* Vertical dotted line */}
+                                        <div className="absolute left-[21px] top-0 bottom-[18px] w-[2px] animated-dash-y text-neutral-200 dark:text-neutral-700 pointer-events-none" />
+                                        <div className="space-y-0.5">
+                                            {section.items.map((item) => {
+                                                const active = isItemActive(item);
+                                                return (
+                                                    <NavLink
+                                                        key={`${section.group}::${item.path}`}
+                                                        to={item.path}
+                                                        className={cn(
+                                                            'flex items-center gap-2.5 pl-[48px] pr-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 group/sub relative',
+                                                            active
+                                                                ? 'text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 font-semibold'
+                                                                : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800'
+                                                        )}
+                                                    >
+                                                        {/* Horizontal connector */}
+                                                        <span className={cn(
+                                                            'absolute left-[21px] top-1/2 -translate-y-1/2 w-[14px] h-[2px] pointer-events-none animated-dash-x',
+                                                            active ? 'text-primary-400 dark:text-primary-600' : 'text-neutral-200 dark:text-neutral-700'
+                                                        )} />
+                                                        {/* Dot */}
+                                                        <span className={cn(
+                                                            'absolute left-[35px] top-1/2 -translate-y-1/2 w-[5px] h-[5px] rounded-full flex-shrink-0 pointer-events-none',
+                                                            active ? 'bg-primary-600 dark:bg-primary-400' : 'bg-neutral-300 dark:bg-neutral-600'
+                                                        )} />
+                                                        {item.label}
+                                                    </NavLink>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+                                </div>
+                            )}
+
+                            {/* Non-collapsible or collapsed sidebar: full nav items */}
+                            {(isNonCollapsible || collapsed) && section.items.map((item) => {
                             const active = isItemActive(item);
                             const hasChildren = item.children && item.children.length > 0;
                             const isOpen = openGroups[item.path];
 
                             return (
-                                <div key={item.path}>
+                                <div key={`${section.group}::${item.path}`}>
                                     {/* Main Nav Item */}
                                     <button
                                         onMouseEnter={(e) => handleMouseEnter(e, item.label)}
@@ -328,7 +500,7 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
                                                         location.pathname.startsWith(child.path + '/');
                                                     return (
                                                         <NavLink
-                                                            key={child.path}
+                                                            key={`${section.group}::${item.path}::${child.path}::${ci}`}
                                                             to={child.path}
                                                             className={cn(
                                                                 'flex items-center gap-2.5 pl-[48px] pr-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 group/sub relative',
@@ -363,8 +535,10 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
                             );
                         })}
                         </div>
+                        )}
                     </div>
-                ))}
+                    );
+                })}
             </nav>
 
             {/* ---- Bottom: User profile card & sign-out ---- */}

@@ -325,7 +325,7 @@ export function SalaryComponentScreen() {
 
     const getCalcDisplay = (c: any) => {
         switch (c.calculationMethod) {
-            case "FIXED": return `Fixed \u20B9${(c.formulaValue ?? 0).toLocaleString("en-IN")}`;
+            case "FIXED": return `Fixed ₹${(c.formulaValue ?? 0).toLocaleString("en-IN")}`;
             case "PERCENT_OF_BASIC": return `${c.formulaValue ?? 0}% of Basic`;
             case "PERCENT_OF_GROSS": return `${c.formulaValue ?? 0}% of Gross`;
             case "FORMULA": return "Formula";
@@ -463,7 +463,7 @@ export function SalaryComponentScreen() {
 
                             {/* Conditional: Fixed/Percentage value or Formula */}
                             {form.calculationMethod !== "FORMULA" && (
-                                <NumberField label={form.calculationMethod === "FIXED" ? "Fixed Amount (\u20B9)" : "Percentage (%)"} value={form.formulaValue} onChange={(v) => updateField("formulaValue", v)} min={0} />
+                                <NumberField label={form.calculationMethod === "FIXED" ? "Fixed Amount (₹)" : "Percentage (%)"} value={form.formulaValue} onChange={(v) => updateField("formulaValue", v)} min={0} />
                             )}
                             {form.calculationMethod === "FORMULA" && (
                                 <FormField label="Formula Expression" value={form.formula} onChange={(v) => updateField("formula", v)} placeholder="e.g. basic * 0.4" />

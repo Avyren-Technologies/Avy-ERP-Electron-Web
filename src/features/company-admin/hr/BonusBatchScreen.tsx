@@ -193,7 +193,7 @@ export function BonusBatchScreen() {
     const filtered = batches.filter((b: any) => {
         if (!search) return true;
         const s = search.toLowerCase();
-        return b.name?.toLowerCase().includes(s) || b.type?.toLowerCase().includes(s) || b.status?.toLowerCase().includes(s);
+        return b.name?.toLowerCase().includes(s) || (b.bonusType ?? b.type ?? "").toLowerCase().includes(s) || b.status?.toLowerCase().includes(s);
     });
 
     // Build preview items based on selection mode
@@ -248,10 +248,12 @@ export function BonusBatchScreen() {
 
     const handleCreate = async () => {
         try {
-            const items = previewItems.filter((i) => i.employeeId && i.amount > 0);
+            const items = previewItems
+                .filter((i) => i.employeeId && i.amount > 0)
+                .map(({ employeeId, amount, remarks }) => ({ employeeId, amount, remarks: remarks || undefined }));
             await createMutation.mutateAsync({
                 name: formName,
-                type: formType,
+                bonusType: formType,
                 items,
             } as any);
             showSuccess("Batch Created", `${formName} has been created.`);
@@ -373,7 +375,7 @@ export function BonusBatchScreen() {
                                                 <span className="font-bold text-primary-950 dark:text-white">{b.name}</span>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6 text-center"><TypeBadge type={b.type ?? "PERFORMANCE"} /></td>
+                                        <td className="py-4 px-6 text-center"><TypeBadge type={b.bonusType ?? b.type ?? "PERFORMANCE"} /></td>
                                         <td className="py-4 px-6 text-center">
                                             <div className="flex items-center justify-center gap-1 text-neutral-600 dark:text-neutral-400">
                                                 <Users className="w-3.5 h-3.5" />
@@ -381,7 +383,7 @@ export function BonusBatchScreen() {
                                             </div>
                                         </td>
                                         <td className="py-4 px-6 text-right font-mono text-xs text-neutral-700 dark:text-neutral-300">
-                                            {"\u20B9"}{(b.totalAmount ?? 0).toLocaleString("en-IN")}
+                                            {"₹"}{(b.totalAmount ?? 0).toLocaleString("en-IN")}
                                         </td>
                                         <td className="py-4 px-6 text-center"><StatusBadge status={b.status ?? "DRAFT"} /></td>
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">
@@ -623,7 +625,7 @@ export function BonusBatchScreen() {
                                                 </div>
                                                 <div className="bg-success-50 dark:bg-success-900/20 rounded-xl p-3 flex-1">
                                                     <p className="text-[10px] text-neutral-500 uppercase font-semibold">Total Amount</p>
-                                                    <p className="text-lg font-bold text-success-700 dark:text-success-300">{"\u20B9"}{totalAmount.toLocaleString("en-IN")}</p>
+                                                    <p className="text-lg font-bold text-success-700 dark:text-success-300">{"₹"}{totalAmount.toLocaleString("en-IN")}</p>
                                                 </div>
                                             </div>
                                             <div className="overflow-x-auto border border-neutral-200 dark:border-neutral-800 rounded-xl max-h-48 overflow-y-auto">
@@ -639,7 +641,7 @@ export function BonusBatchScreen() {
                                                         {previewItems.map((item) => (
                                                             <tr key={item.employeeId} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0">
                                                                 <td className="py-2 px-3 font-semibold text-primary-950 dark:text-white">{item.employeeName}</td>
-                                                                <td className="py-2 px-3 text-right font-mono">{"\u20B9"}{item.amount.toLocaleString("en-IN")}</td>
+                                                                <td className="py-2 px-3 text-right font-mono">{"₹"}{item.amount.toLocaleString("en-IN")}</td>
                                                                 <td className="py-2 px-3 text-neutral-500">{item.remarks || "—"}</td>
                                                             </tr>
                                                         ))}
@@ -684,7 +686,7 @@ export function BonusBatchScreen() {
                                         </div>
                                         <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-4">
                                             <p className="text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wider font-semibold">Type</p>
-                                            <div className="mt-1"><TypeBadge type={detail.type} /></div>
+                                            <div className="mt-1"><TypeBadge type={detail.bonusType ?? detail.type} /></div>
                                         </div>
                                         <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-4">
                                             <p className="text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wider font-semibold">Status</p>
@@ -704,15 +706,25 @@ export function BonusBatchScreen() {
                                                 </tr>
                                             </thead>
                                             <tbody className="text-sm">
-                                                {(detail.items ?? []).map((item: any, idx: number) => (
-                                                    <tr key={idx} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0">
-                                                        <td className="py-3 px-4 font-semibold text-primary-950 dark:text-white">{item.employeeName ?? item.employeeId}</td>
-                                                        <td className="py-3 px-4 text-right font-mono text-xs">{"\u20B9"}{(item.amount ?? 0).toLocaleString("en-IN")}</td>
-                                                        <td className="py-3 px-4 text-right font-mono text-xs text-danger-600">{"\u20B9"}{(item.tds ?? 0).toLocaleString("en-IN")}</td>
-                                                        <td className="py-3 px-4 text-right font-mono text-xs font-bold text-success-700 dark:text-success-400">{"\u20B9"}{(item.netAmount ?? item.amount ?? 0).toLocaleString("en-IN")}</td>
+                                                {(detail.items ?? []).map((item: any, idx: number) => {
+                                                    const emp = item.employee;
+                                                    const empName = emp ? `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim() : item.employeeName ?? item.employeeId;
+                                                    const empCode = emp?.employeeId ?? "";
+                                                    return (
+                                                    <tr key={item.id ?? idx} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0">
+                                                        <td className="py-3 px-4">
+                                                            <div>
+                                                                <span className="font-semibold text-primary-950 dark:text-white">{empName}</span>
+                                                                {empCode && <span className="block text-[11px] font-mono text-neutral-400 mt-0.5">{empCode}</span>}
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-3 px-4 text-right font-mono text-xs">₹{Number(item.amount ?? 0).toLocaleString("en-IN")}</td>
+                                                        <td className="py-3 px-4 text-right font-mono text-xs text-danger-600">₹{Number(item.tdsAmount ?? item.tds ?? 0).toLocaleString("en-IN")}</td>
+                                                        <td className="py-3 px-4 text-right font-mono text-xs font-bold text-success-700 dark:text-success-400">₹{Number(item.netAmount ?? item.amount ?? 0).toLocaleString("en-IN")}</td>
                                                         <td className="py-3 px-4 text-xs text-neutral-500">{item.remarks || "—"}</td>
                                                     </tr>
-                                                ))}
+                                                    );
+                                                })}
                                             </tbody>
                                         </table>
                                     </div>

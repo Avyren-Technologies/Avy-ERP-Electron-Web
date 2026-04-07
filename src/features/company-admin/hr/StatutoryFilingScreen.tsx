@@ -28,18 +28,32 @@ import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Helpers ── */
 
-const formatCurrency = (v: number) => `\u20B9${(v ?? 0).toLocaleString("en-IN")}`;
+const formatCurrency = (v: number) => `₹${(v ?? 0).toLocaleString("en-IN")}`;
 // formatDate moved inside component
 
+const MONTHS = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+];
+
 const FILING_TYPES = [
-    { value: "PF", label: "PF" },
-    { value: "ESI", label: "ESI" },
-    { value: "PT", label: "Professional Tax" },
-    { value: "TDS", label: "TDS" },
+    { value: "PF_ECR", label: "PF ECR" },
+    { value: "ESI_CHALLAN", label: "ESI Challan" },
+    { value: "PT_CHALLAN", label: "Professional Tax" },
+    { value: "TDS_24Q", label: "TDS 24Q" },
     { value: "LWF", label: "LWF" },
 ];
 
+const TYPE_LABELS: Record<string, string> = {
+    PF_ECR: "PF ECR", PF: "PF", ESI_CHALLAN: "ESI Challan", ESI: "ESI",
+    PT_CHALLAN: "Professional Tax", PT: "PT", TDS_24Q: "TDS 24Q", TDS: "TDS", LWF: "LWF",
+};
+
+const num = (v: unknown) => Number(v) || 0;
+
 function FilingTypeBadge({ type }: { type: string }) {
+    // Map compound types like PF_ECR → pf, ESI_CHALLAN → esi
+    const base = (type ?? "").split("_")[0]?.toLowerCase();
     const colorMap: Record<string, string> = {
         pf: "bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50",
         esi: "bg-accent-50 text-accent-700 border-accent-200 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50",
@@ -47,10 +61,10 @@ function FilingTypeBadge({ type }: { type: string }) {
         tds: "bg-info-50 text-info-700 border-info-200 dark:bg-info-900/20 dark:text-info-400 dark:border-info-800/50",
         lwf: "bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700",
     };
-    const cls = colorMap[type?.toLowerCase()] ?? colorMap.pf;
+    const cls = colorMap[base] ?? colorMap.pf;
     return (
-        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase", cls)}>
-            {type}
+        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border", cls)}>
+            {TYPE_LABELS[type] ?? type?.replace(/_/g, " ")}
         </span>
     );
 }
@@ -153,7 +167,9 @@ export function StatutoryFilingScreen() {
     const filtered = filings.filter((f: any) => {
         if (!search) return true;
         const q = search.toLowerCase();
-        return f.type?.toLowerCase().includes(q) || f.period?.toLowerCase().includes(q);
+        const typeLabel = (TYPE_LABELS[f.type] ?? f.type ?? "").toLowerCase();
+        const period = f.month && f.year ? `${MONTHS[(f.month - 1)] ?? ""} ${f.year}`.toLowerCase() : "";
+        return typeLabel.includes(q) || period.includes(q);
     });
 
     const openCreate = () => { setForm({ ...EMPTY_FILING }); setModalOpen(true); };
@@ -243,7 +259,7 @@ export function StatutoryFilingScreen() {
                                     <th className="py-4 px-6 font-bold text-center">Type</th>
                                     <th className="py-4 px-6 font-bold">Period</th>
                                     <th className="py-4 px-6 font-bold text-center">Status</th>
-                                    <th className="py-4 px-6 font-bold text-right">Amount (\u20B9)</th>
+                                    <th className="py-4 px-6 font-bold text-right">Amount (₹)</th>
                                     <th className="py-4 px-6 font-bold">Due Date</th>
                                     <th className="py-4 px-6 font-bold">Filed Date</th>
                                     <th className="py-4 px-6 font-bold text-right">Actions</th>
@@ -255,11 +271,11 @@ export function StatutoryFilingScreen() {
                                     return (
                                         <tr key={f.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
                                             <td className="py-4 px-6 text-center"><FilingTypeBadge type={f.type ?? "PF"} /></td>
-                                            <td className="py-4 px-6 font-semibold text-primary-950 dark:text-white">{f.period || "—"}</td>
+                                            <td className="py-4 px-6 font-semibold text-primary-950 dark:text-white">{f.month && f.year ? `${MONTHS[(f.month - 1)]} ${f.year}` : f.period || "—"}</td>
                                             <td className="py-4 px-6 text-center"><FilingStatusBadge status={f.status ?? "pending"} /></td>
-                                            <td className="py-4 px-6 text-right font-mono font-semibold text-primary-950 dark:text-white">{formatCurrency(f.amount ?? 0)}</td>
+                                            <td className="py-4 px-6 text-right font-mono font-semibold text-primary-950 dark:text-white">{formatCurrency(num(f.amount))}</td>
                                             <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(f.dueDate)}</td>
-                                            <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(f.filedDate)}</td>
+                                            <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{formatDate(f.filedAt ?? f.filedDate)}</td>
                                             <td className="py-4 px-6 text-right">
                                                 <div className="flex items-center justify-end gap-1">
                                                     {status === "pending" && (
@@ -320,7 +336,7 @@ export function StatutoryFilingScreen() {
                                 <input type="month" value={form.period} onChange={(e) => updateField("period", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Amount (\u20B9)</label>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Amount (₹)</label>
                                 <input type="number" value={form.amount} onChange={(e) => updateField("amount", Number(e.target.value))} min={0} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
                             </div>
                             <div>
