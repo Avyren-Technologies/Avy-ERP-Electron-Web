@@ -357,9 +357,11 @@ function ModuleCard({ mod, isCompanyAdmin, locationModules, onAdd, onRemove, isO
             )}
 
             <div className="flex items-center justify-between pt-4 border-t border-neutral-100 dark:border-neutral-800 relative z-10 mt-auto">
+                {/* Pricing hidden — uncomment when pricing is finalized
                 <span className="font-bold text-primary-600 dark:text-primary-400">
                     {mod.price ?? (mod.isRequired ? "Included" : "Contact Sales")}
                 </span>
+                */}
                 <div className="flex -space-x-2">
                     <div className="w-6 h-6 rounded-full bg-neutral-100 dark:bg-neutral-800 border border-white dark:border-neutral-900 flex items-center justify-center relative z-20">
                         <Smartphone className="w-3 h-3 text-neutral-400 dark:text-neutral-500" />
@@ -445,9 +447,11 @@ function ModuleListItem({ mod, isCompanyAdmin, locationModules, onAdd, onRemove,
                 </span>
             )}
 
+            {/* Pricing hidden — uncomment when pricing is finalized
             <span className="font-bold text-sm text-primary-600 dark:text-primary-400 whitespace-nowrap">
                 {mod.price ?? (mod.isRequired ? "Included" : "Contact Sales")}
             </span>
+            */}
 
             {isCompanyAdmin && (
                 <span className={cn(

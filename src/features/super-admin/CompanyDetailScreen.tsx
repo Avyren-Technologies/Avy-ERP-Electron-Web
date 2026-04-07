@@ -439,6 +439,7 @@ export function CompanyDetailScreen() {
         Pilot: ['Active', 'Inactive'],
         Active: ['Inactive'],
         Inactive: ['Active'],
+        Suspended: ['Active', 'Inactive'],
     };
 
     const currentStatus = (TENANT.wizardStatus ?? 'Draft') as string;
@@ -807,7 +808,15 @@ export function CompanyDetailScreen() {
                     {/* --- Active Modules --- */}
                     <Card>
                         <CardBody>
-                            <SectionHeader icon={Blocks} title="Active Modules" subtitle={`${modules.length} modules enabled`} action={<EditButton label="Manage" />} />
+                            <SectionHeader icon={Blocks} title="Active Modules" subtitle={`${modules.length} modules enabled`} action={<EditButton label="Manage" onClick={() => openEdit('commercial', {
+                                selectedModuleIds: uniqueModuleIds,
+                                customModulePricing: {},
+                                userTier: TENANT.userTier ?? '',
+                                customUserLimit: TENANT.customUserLimit ?? '',
+                                customTierPrice: TENANT.customTierPrice ?? '',
+                                billingType: TENANT.billingType ?? 'monthly',
+                                trialDays: TENANT.trialDays ?? 0,
+                            })} />} />
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
                                 {modules.map((mod) => (
                                     <div key={mod.id} className="flex items-center justify-between bg-neutral-50 border border-neutral-100 rounded-xl px-4 py-3 dark:bg-neutral-800 dark:border-neutral-800">
@@ -815,30 +824,34 @@ export function CompanyDetailScreen() {
                                             <span className="text-lg">{mod.icon}</span>
                                             <p className="text-sm font-semibold text-primary-950 dark:text-white">{mod.name}</p>
                                         </div>
+                                        {/* Pricing hidden — uncomment when pricing is finalized
                                         {mod.price > 0 && (
                                             <span className="text-xs font-bold text-primary-600">
                                                 ₹{mod.price.toLocaleString('en-IN')}
                                             </span>
                                         )}
+                                        */}
                                     </div>
                                 ))}
                                 {modules.length === 0 && (
                                     <p className="text-sm text-neutral-400 dark:text-neutral-500 col-span-2 text-center py-4">No modules configured.</p>
                                 )}
                             </div>
+                            {/* Pricing hidden — uncomment when pricing is finalized
                             {totalMonthlyModules > 0 && (
                                 <div className="flex items-center justify-between bg-primary-50 rounded-xl px-4 py-3 mt-4 border border-primary-100 dark:bg-primary-900/30 dark:border-primary-800/50">
                                     <p className="text-sm font-bold text-primary-800 dark:text-primary-300">Module Cost Subtotal</p>
                                     <p className="text-lg font-bold text-primary-700 dark:text-primary-400">₹{totalMonthlyModules.toLocaleString('en-IN')}<span className="text-xs font-normal text-primary-500">/mo</span></p>
                                 </div>
                             )}
+                            */}
                         </CardBody>
                     </Card>
 
                     {/* --- Locations / Plants --- */}
                     <Card>
                         <CardBody>
-                            <SectionHeader icon={MapPin} title="Plants & Locations" subtitle={`${locations.length} locations`} action={<EditButton label="Manage" />} />
+                            <SectionHeader icon={MapPin} title="Plants & Locations" subtitle={`${locations.length} locations`} action={<EditButton label="Manage" onClick={() => openEdit('locations', { locations })} />} />
                             <div className="space-y-3 mt-5">
                                 {locations.map((loc: any) => (
                                     <div key={loc.id} className="bg-neutral-50 rounded-xl px-5 py-4 border border-neutral-100 dark:bg-neutral-800 dark:border-neutral-800">
@@ -911,7 +924,7 @@ export function CompanyDetailScreen() {
                                 icon={Clock}
                                 title="Shifts & Time"
                                 subtitle={`${shifts.length} shifts configured`}
-                                action={<EditButton label="Manage" />}
+                                action={<EditButton label="Manage" onClick={() => openEdit('shifts', { dayStartTime: TENANT.dayStartTime, dayEndTime: TENANT.dayEndTime, weeklyOffs: TENANT.weeklyOffs ?? [], shifts })} />}
                                 expanded={expandedSections.shifts}
                                 onToggle={() => toggle('shifts')}
                             />
@@ -983,7 +996,7 @@ export function CompanyDetailScreen() {
                                 icon={Hash}
                                 title="Number Series"
                                 subtitle={`${noSeries.length} series configured`}
-                                action={<EditButton label="Manage" />}
+                                action={<EditButton label="Manage" onClick={() => openEdit('noSeries', { noSeries })} />}
                                 expanded={expandedSections.noSeries}
                                 onToggle={() => toggle('noSeries')}
                             />
@@ -1044,7 +1057,7 @@ export function CompanyDetailScreen() {
                                 icon={Activity}
                                 title="IOT Reasons"
                                 subtitle={`${iotReasons.length} reasons configured`}
-                                action={<EditButton label="Manage" />}
+                                action={<EditButton label="Manage" onClick={() => openEdit('iotReasons', { iotReasons })} />}
                                 expanded={expandedSections.iotReasons}
                                 onToggle={() => toggle('iotReasons')}
                             />
@@ -1141,16 +1154,19 @@ export function CompanyDetailScreen() {
                                 <div className="flex items-baseline gap-2">
                                     <p className="text-2xl font-black text-white">{tierLabel}</p>
                                 </div>
+                                {/* Pricing hidden — uncomment when pricing is finalized
                                 {totalMonthly > 0 && (
                                     <p className="text-3xl font-bold text-white mt-3">
                                         ₹{totalMonthly.toLocaleString('en-IN')}
                                         <span className="text-base font-normal text-primary-200">/mo</span>
                                     </p>
                                 )}
+                                */}
                                 <p className="text-xs text-primary-200 mt-1">{billingLabel} billing · {trialDays}d trial</p>
                             </div>
                         </div>
                         <CardBody className="space-y-3">
+                            {/* Pricing hidden — uncomment when pricing is finalized
                             {tierBasePrice > 0 && (
                                 <div className="flex justify-between text-sm">
                                     <span className="text-neutral-500 dark:text-neutral-400">Tier Base</span>
@@ -1161,6 +1177,7 @@ export function CompanyDetailScreen() {
                                 <span className="text-neutral-500 dark:text-neutral-400">Modules ({modules.length})</span>
                                 <span className="font-semibold text-primary-950 dark:text-white">₹{totalMonthlyModules.toLocaleString('en-IN')}</span>
                             </div>
+                            */}
                             <button className="w-full py-2.5 mt-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-sm font-bold rounded-xl transition-colors dark:bg-neutral-700 dark:text-neutral-200">
                                 View Billing History
                             </button>
@@ -1173,7 +1190,7 @@ export function CompanyDetailScreen() {
                     {/* --- User Capacity --- */}
                     <Card>
                         <CardBody>
-                            <SectionHeader icon={Users} title="User Capacity" action={<EditButton label="Edit Limit" />} />
+                            <SectionHeader icon={Users} title="User Capacity" />
                             <div className="mt-5">
                                 <div className="flex justify-between items-end mb-2">
                                     <span className="text-3xl font-black text-primary-950 dark:text-white">{activeUsers}</span>
@@ -1207,7 +1224,7 @@ export function CompanyDetailScreen() {
                                 icon={UserPlus}
                                 title="Users & Access"
                                 subtitle={`${users.length} users provisioned`}
-                                action={<EditButton label="Manage" />}
+                                action={<EditButton label="Manage" onClick={() => openEdit('users', { users })} />}
                                 expanded={expandedSections.users}
                                 onToggle={() => toggle('users')}
                             />
@@ -1260,7 +1277,7 @@ export function CompanyDetailScreen() {
                     {/* --- Key Contacts --- */}
                     <Card>
                         <CardBody>
-                            <SectionHeader icon={Phone} title="Key Contacts" action={<EditButton label="Manage" />} />
+                            <SectionHeader icon={Phone} title="Key Contacts" action={<EditButton label="Manage" onClick={() => openEdit('contacts', { contacts })} />} />
                             <div className="space-y-3 mt-5">
                                 {contacts.map((c: any, i: number) => (
                                     <div key={c.id ?? i} className="flex items-start gap-3 bg-neutral-50 rounded-xl px-4 py-3 border border-neutral-100 dark:bg-neutral-800 dark:border-neutral-800">
