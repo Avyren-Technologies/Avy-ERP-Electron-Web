@@ -48,11 +48,37 @@ interface ShiftBreakInfo {
     isPaid: boolean;
 }
 
+interface GeofenceInfo {
+    id: string;
+    name: string;
+    lat: number;
+    lng: number;
+    radius: number;
+    isDefault?: boolean;
+}
+
+interface LocationInfo {
+    id: string;
+    name: string;
+    geoEnabled?: boolean;
+    geofences?: GeofenceInfo[];
+}
+
+interface ResolvedPolicy {
+    gracePeriodMinutes: number;
+    selfieRequired: boolean;
+    gpsRequired: boolean;
+    [key: string]: unknown;
+}
+
 interface StatusResponse {
     status: "NOT_CHECKED_IN" | "CHECKED_IN" | "CHECKED_OUT" | "NOT_LINKED";
     record: AttendanceRecord | null;
     currentShift?: { name: string; startTime: string; endTime: string; breaks?: ShiftBreakInfo[] } | null;
     elapsedSeconds?: number;
+    resolvedPolicy?: ResolvedPolicy | null;
+    location?: LocationInfo | null;
+    assignedGeofence?: GeofenceInfo | null;
 }
 
 /* ── Helpers ── */
@@ -275,13 +301,23 @@ export function ShiftCheckInScreen() {
         else if (isCheckedIn) checkOutMutation.mutate();
     }, [isDone, isMutating, isCheckIn, isCheckedIn, checkInMutation, checkOutMutation]);
 
+    // Location & geofence info — available both before and after check-in
+    const locationInfo = record?.location ?? statusData?.location ?? null;
+    const activeGeofence = statusData?.assignedGeofence ?? null;
+    const locationGeofences = statusData?.location?.geofences ?? [];
+    const hasGeofenceConfig = !!activeGeofence || locationGeofences.length > 0 || !!locationInfo;
+
     // Geo status display
     const geoStatusInfo = useMemo(() => {
         const s = record?.geoStatus;
-        if (!s || s === "NO_LOCATION") return { text: "No geofence configured", color: "text-neutral-500 dark:text-neutral-400", bgColor: "bg-neutral-100 dark:bg-neutral-800", icon: MapPin };
         if (s === "INSIDE_GEOFENCE") return { text: "Inside geofence", color: "text-success-600 dark:text-success-400", bgColor: "bg-success-50 dark:bg-success-900/20", icon: Shield };
-        return { text: "Outside geofence", color: "text-warning-600 dark:text-warning-400", bgColor: "bg-warning-50 dark:bg-warning-900/20", icon: AlertTriangle };
-    }, [record?.geoStatus]);
+        if (s === "OUTSIDE_GEOFENCE") return { text: "Outside geofence", color: "text-warning-600 dark:text-warning-400", bgColor: "bg-warning-50 dark:bg-warning-900/20", icon: AlertTriangle };
+        // NOT_CHECKED_IN state — show geofence info from status response
+        if (activeGeofence) return { text: `Geofence: ${activeGeofence.name}`, color: "text-primary-600 dark:text-primary-400", bgColor: "bg-primary-50 dark:bg-primary-900/20", icon: Shield };
+        if (locationGeofences.length > 0) return { text: `${locationGeofences.length} geofence(s) configured`, color: "text-primary-600 dark:text-primary-400", bgColor: "bg-primary-50 dark:bg-primary-900/20", icon: Shield };
+        if (!hasGeofenceConfig) return { text: "No geofence configured", color: "text-neutral-500 dark:text-neutral-400", bgColor: "bg-neutral-100 dark:bg-neutral-800", icon: MapPin };
+        return { text: "Geofence ready", color: "text-neutral-500 dark:text-neutral-400", bgColor: "bg-neutral-100 dark:bg-neutral-800", icon: MapPin };
+    }, [record?.geoStatus, activeGeofence, locationGeofences.length, hasGeofenceConfig]);
 
     const GeoIcon = geoStatusInfo.icon;
 
@@ -463,10 +499,10 @@ export function ShiftCheckInScreen() {
                     title="Location"
                 >
                     <div className="space-y-3">
-                        {record?.location && (
+                        {locationInfo && (
                             <div>
                                 <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium mb-0.5">Office</p>
-                                <p className="font-semibold text-primary-950 dark:text-white text-sm">{record.location.name}</p>
+                                <p className="font-semibold text-primary-950 dark:text-white text-sm">{locationInfo.name}</p>
                             </div>
                         )}
 

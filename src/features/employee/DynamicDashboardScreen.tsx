@@ -165,7 +165,7 @@ function normalizeDashboardData(raw: Record<string, unknown>): DashboardData {
             punchOut: att.record?.punchOut ?? null,
             elapsedSeconds: att.elapsedSeconds ?? 0,
             workedHours: att.record?.workedHours ?? null,
-            locationName: att.record?.location?.name ?? null,
+            locationName: att.record?.location?.name ?? att.location?.name ?? null,
         };
     }
 
@@ -195,7 +195,7 @@ function normalizeDashboardData(raw: Record<string, unknown>): DashboardData {
             presentDays: data.stats?.presentDays ?? currentMonth?.presentDays ?? 0,
             workingDays: data.stats?.workingDays ?? currentMonth?.workingDays ?? 0,
             attendancePercentage: data.stats?.attendancePercentage ?? currentMonth?.attendancePercentage ?? 0,
-            pendingApprovalsCount: data.stats?.pendingApprovalsCount ?? (data.pendingApprovals as any[] | null)?.length ?? 0,
+            pendingApprovalsCount: data.stats?.pendingApprovalsCount ?? (Array.isArray(data.pendingApprovals) ? data.pendingApprovals.length : (data.pendingApprovals as any)?.totalCount ?? 0),
             goals: {
                 ...DEFAULT_DASHBOARD_STATS.goals,
                 ...(data.stats?.goals ?? {}),
@@ -205,8 +205,42 @@ function normalizeDashboardData(raw: Record<string, unknown>): DashboardData {
         },
         leaveBalances,
         recentAttendance: data.recentAttendance ?? [],
-        teamSummary: data.teamSummary ?? null,
-        pendingApprovals: data.pendingApprovals ?? [],
+        teamSummary: (() => {
+            const ts = data.teamSummary as Record<string, any> | null;
+            if (!ts) return null;
+            // Backend returns totalMembers/presentToday/onLeaveToday/absentToday
+            // Frontend expects total/present/onLeave/absent/notCheckedIn
+            return {
+                total: ts.total ?? ts.totalMembers ?? 0,
+                present: ts.present ?? ts.presentToday ?? 0,
+                onLeave: ts.onLeave ?? ts.onLeaveToday ?? 0,
+                absent: ts.absent ?? ts.absentToday ?? 0,
+                notCheckedIn: ts.notCheckedIn ?? 0,
+            };
+        })(),
+        pendingApprovals: (() => {
+            const pa = data.pendingApprovals;
+            // Already a flat array — pass through
+            if (Array.isArray(pa)) return pa;
+            // Backend returns an object with recentLeaveRequests + recentOverrides
+            const obj = pa as Record<string, any> | null;
+            if (!obj) return [];
+            const leaves: DashboardPendingApproval[] = (obj.recentLeaveRequests ?? []).map((r: any) => ({
+                id: r.id,
+                employeeName: [r.employee?.firstName, r.employee?.lastName].filter(Boolean).join(" ") || r.employeeName || "Unknown",
+                type: r.leaveType?.name ?? r.type ?? "Leave Request",
+                description: r.reason ?? r.description ?? "",
+                requestedAt: r.createdAt ?? r.requestedAt ?? "",
+            }));
+            const overrides: DashboardPendingApproval[] = (obj.recentOverrides ?? []).map((r: any) => ({
+                id: r.id,
+                employeeName: [r.attendanceRecord?.employee?.firstName, r.attendanceRecord?.employee?.lastName].filter(Boolean).join(" ") || "Unknown",
+                type: r.issueType ?? "Attendance Override",
+                description: r.reason ?? "",
+                requestedAt: r.createdAt ?? "",
+            }));
+            return [...leaves, ...overrides];
+        })(),
         upcomingHolidays: data.upcomingHolidays ?? [],
         shiftCalendar: data.shiftCalendar ?? null,
         weeklyChart: data.weeklyChart ?? null,
@@ -1342,23 +1376,33 @@ function RecentAttendanceList({ records }: { records: DashboardAttendanceDay[] }
                     const wh = parseWorkedHours(day.workedHours);
                     const isLate = day.status.toLowerCase().includes("late");
                     return (
-                        <div key={day.date + i} className="flex items-center justify-between p-3 rounded-xl bg-neutral-50/70 dark:bg-neutral-800/30 hover:bg-neutral-100/80 dark:hover:bg-neutral-800/50 transition-colors">
-                            <div className="flex items-center gap-3 min-w-0">
-                                <div className="text-center flex-shrink-0 w-10">
-                                    <p className="text-xs font-bold text-neutral-800 dark:text-white leading-none">{new Date(day.date).getDate()}</p>
-                                    <p className="text-[9px] text-neutral-400 dark:text-neutral-500 uppercase font-medium">{fmt.date(day.date)}</p>
-                                </div>
-                                <span className={cn("inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border", attendanceStatusColor(day.status))}>{day.status}</span>
-                                {isLate && <span className="w-2 h-2 rounded-full bg-danger-500 flex-shrink-0" title="Late" />}
+                        <div
+                            key={day.date + i}
+                            className="flex items-center gap-2 sm:gap-3 p-3 rounded-xl bg-neutral-50/70 dark:bg-neutral-800/30 hover:bg-neutral-100/80 dark:hover:bg-neutral-800/50 transition-colors"
+                        >
+                            {/* Col 1: Date */}
+                            <div className="text-center w-10 shrink-0">
+                                <p className="text-xs font-bold text-neutral-800 dark:text-white leading-none">{new Date(day.date).getDate()}</p>
+                                <p className="text-[9px] text-neutral-400 dark:text-neutral-500 uppercase font-medium mt-0.5 whitespace-nowrap">{fmt.date(day.date)}</p>
                             </div>
-                            <div className="flex items-center gap-3 flex-shrink-0">
-                                <span className="text-xs text-neutral-500 dark:text-neutral-400 font-mono tabular-nums">
-                                    {formatTimeShort(day.punchIn, fmt)}{day.punchOut ? ` - ${formatTimeShort(day.punchOut, fmt)}` : ""}
+
+                            {/* Col 2: Status badge + late dot */}
+                            <div className="flex items-center gap-1.5 overflow-hidden w-24 shrink-0">
+                                <span className={cn("inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap shrink-0", attendanceStatusColor(day.status))}>
+                                    {day.status}
                                 </span>
-                                <span className="text-xs font-bold text-neutral-800 dark:text-white tabular-nums w-12 text-right bg-primary-50 dark:bg-primary-900/20 px-1.5 py-0.5 rounded-lg">
-                                    {wh != null ? `${wh.toFixed(1)}h` : "--"}
-                                </span>
+                                {isLate && <span className="w-2 h-2 rounded-full bg-danger-500 shrink-0" title="Late" />}
                             </div>
+
+                            {/* Col 3: Punch time range */}
+                            <span className="text-xs text-neutral-500 dark:text-neutral-400 font-mono tabular-nums truncate flex-1 text-center min-w-0">
+                                {formatTimeShort(day.punchIn, fmt)}{day.punchOut ? ` – ${formatTimeShort(day.punchOut, fmt)}` : ""}
+                            </span>
+
+                            {/* Col 4: Hours worked */}
+                            <span className="text-xs font-bold text-neutral-800 dark:text-white tabular-nums text-center bg-primary-50 dark:bg-primary-900/20 px-2 py-0.5 rounded-lg shrink-0 w-12">
+                                {wh != null ? `${wh.toFixed(1)}h` : "--"}
+                            </span>
                         </div>
                     );
                 })}
@@ -1434,6 +1478,17 @@ function TeamSummaryWidget({ summary }: { summary: DashboardTeamSummary }) {
         { label: "On Leave", value: summary.onLeave, total: summary.total, color: "text-info-600 dark:text-info-400", ringColor: "stroke-info-500", bgRing: "stroke-info-100 dark:stroke-info-900/30", icon: UserMinus },
         { label: "Not In", value: summary.notCheckedIn, total: summary.total, color: "text-neutral-500 dark:text-neutral-400", ringColor: "stroke-neutral-400", bgRing: "stroke-neutral-200 dark:stroke-neutral-700", icon: UserCog },
     ];
+
+    if (summary.total === 0) {
+        return (
+            <PremiumCard>
+                <CardHeader title="Team Summary" subtitle="My Reportees" icon={Users} iconClass="bg-info-50 dark:bg-info-900/20" />
+                <div className="py-2">
+                    <EmptyState icon={Users} title="No Reportees" subtitle="You have no reportees assigned yet." />
+                </div>
+            </PremiumCard>
+        );
+    }
 
     return (
         <PremiumCard>
