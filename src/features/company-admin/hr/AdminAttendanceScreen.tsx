@@ -93,11 +93,16 @@ interface EmployeeStatus {
 
 interface TodayLogEntry {
     id: string;
-    employeeCode: string;
-    employeeName: string;
-    action: "CHECK_IN" | "CHECK_OUT";
-    timestamp: string;
+    status: string;
+    punchIn: string | null;
+    punchOut: string | null;
     remarks?: string | null;
+    employee?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        employeeCode: string;
+    } | null;
 }
 
 interface BulkMarkResult {
@@ -945,25 +950,30 @@ export function AdminAttendanceScreen() {
                                 </tr>
                             </thead>
                             <tbody className="text-sm">
-                                {todayLog.map((entry) => (
+                                {todayLog.map((entry) => {
+                                    const entryAction = entry.punchOut ? "CHECK_OUT" : "CHECK_IN";
+                                    const entryTime = entry.punchOut ?? entry.punchIn;
+                                    const entryName = [entry.employee?.firstName, entry.employee?.lastName].filter(Boolean).join(" ");
+                                    return (
                                     <tr key={entry.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
-                                        <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-300">{entry.employeeCode}</td>
-                                        <td className="py-4 px-6 font-semibold text-primary-950 dark:text-white">{entry.employeeName}</td>
+                                        <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-300">{entry.employee?.employeeCode}</td>
+                                        <td className="py-4 px-6 font-semibold text-primary-950 dark:text-white">{entryName}</td>
                                         <td className="py-4 px-6">
                                             <span className={cn(
                                                 "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border",
-                                                entry.action === "CHECK_IN"
+                                                entryAction === "CHECK_IN"
                                                     ? "bg-success-50 dark:bg-success-900/20 text-success-700 dark:text-success-400 border-success-200 dark:border-success-800/50"
                                                     : "bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 border-primary-200 dark:border-primary-800/50"
                                             )}>
-                                                {entry.action === "CHECK_IN" ? <LogIn size={10} /> : <LogOut size={10} />}
-                                                {entry.action === "CHECK_IN" ? "IN" : "OUT"}
+                                                {entryAction === "CHECK_IN" ? <LogIn size={10} /> : <LogOut size={10} />}
+                                                {entryAction === "CHECK_IN" ? "IN" : "OUT"}
                                             </span>
                                         </td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-300 font-mono text-xs">{fmt.time(entry.timestamp)}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-300 font-mono text-xs">{entryTime ? fmt.time(entryTime) : "—"}</td>
                                         <td className="py-4 px-6 text-neutral-500 dark:text-neutral-400 text-xs max-w-[200px] truncate">{entry.remarks ?? "—"}</td>
                                     </tr>
-                                ))}
+                                    );
+                                })}
                             </tbody>
                         </table>
                     )}
