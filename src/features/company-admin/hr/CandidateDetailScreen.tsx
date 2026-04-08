@@ -26,6 +26,8 @@ import {
     ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useFileUpload } from "@/hooks/useFileUpload";
+import { FileUploadZone } from "@/components/FileUploadZone";
 import {
     useCandidate,
     useCandidateEducation,
@@ -297,6 +299,10 @@ export function CandidateDetailScreen() {
     const deleteExperience = useDeleteCandidateExperience();
     const createDocument = useCreateCandidateDocument();
     const deleteDocument = useDeleteCandidateDocument();
+    const { upload: uploadCandidateDoc, isUploading: isCandidateDocUploading, error: candidateDocUploadError, reset: resetCandidateDocUpload } = useFileUpload({
+        category: 'candidate-document',
+        entityId: id ?? 'new',
+    });
     const submitEvaluation = useSubmitInterviewEvaluations();
     const convertToEmployee = useConvertCandidateToEmployee();
     const updateOfferStatus = useUpdateOfferStatus();
@@ -449,6 +455,7 @@ export function CandidateDetailScreen() {
 
     const openAddDocument = () => {
         setDocForm({ ...EMPTY_DOCUMENT });
+        resetCandidateDocUpload();
         setDocModalOpen(true);
     };
     const handleSaveDocument = () => {
@@ -1168,21 +1175,21 @@ export function CandidateDetailScreen() {
                         </select>
                     </div>
                     <div>
-                        <label className="block text-xs font-bold text-neutral-500 mb-1">File Name</label>
-                        <input
-                            value={docForm.fileName}
-                            onChange={(e) => setDocForm((f) => ({ ...f, fileName: e.target.value }))}
-                            className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 dark:text-white"
-                            placeholder="document.pdf"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-neutral-500 mb-1">File URL</label>
-                        <input
-                            value={docForm.fileUrl}
-                            onChange={(e) => setDocForm((f) => ({ ...f, fileUrl: e.target.value }))}
-                            className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30 dark:text-white"
-                            placeholder="https://..."
+                        <label className="block text-xs font-bold text-neutral-500 mb-1">File</label>
+                        <FileUploadZone
+                            onFileSelected={async (file) => {
+                                const key = await uploadCandidateDoc(file);
+                                if (key) {
+                                    setDocForm((f) => ({ ...f, fileUrl: key, fileName: file.name }));
+                                }
+                            }}
+                            isUploading={isCandidateDocUploading}
+                            uploadedFileName={docForm.fileName || null}
+                            error={candidateDocUploadError}
+                            onClear={() => {
+                                setDocForm((f) => ({ ...f, fileUrl: '', fileName: '' }));
+                                resetCandidateDocUpload();
+                            }}
                         />
                     </div>
                     <div className="flex justify-end gap-3 pt-2">
@@ -1191,7 +1198,7 @@ export function CandidateDetailScreen() {
                         </button>
                         <button
                             onClick={handleSaveDocument}
-                            disabled={createDocument.isPending}
+                            disabled={createDocument.isPending || isCandidateDocUploading || !docForm.fileUrl || !docForm.documentType}
                             className="flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white rounded-xl font-bold text-sm hover:bg-primary-700 transition-colors disabled:opacity-50"
                         >
                             {createDocument.isPending && <Loader2 size={14} className="animate-spin" />}

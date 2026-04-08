@@ -505,8 +505,11 @@ export const essApi = {
     // Documents
     getMyDocuments: async () => { const r = await client.get('/hr/ess/my-documents'); return r.data; },
     uploadMyDocument: async (data: any) => { const r = await client.post('/hr/ess/my-documents', data); return r.data; },
+    deleteMyDocument: async (id: string) => { const r = await client.delete(`/hr/ess/my-documents/${id}`); return r.data; },
     // Policy Documents
     getPolicyDocuments: async () => { const r = await client.get('/hr/ess/policy-documents'); return r.data; },
+    createPolicyDocument: async (data: any) => { const r = await client.post('/hr/policy-documents', data); return r.data; },
+    deletePolicyDocument: async (id: string) => { const r = await client.delete(`/hr/policy-documents/${id}`); return r.data; },
     // Holidays, Expense Claims, Loans (ESS)
     getMyHolidays: async (year?: number) => { const r = await client.get('/hr/ess/my-holidays', { params: year ? { year } : {} }); return r.data; },
     getMyExpenseClaims: async () => { const r = await client.get('/hr/ess/my-expense-claims'); return r.data; },

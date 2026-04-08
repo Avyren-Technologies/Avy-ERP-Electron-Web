@@ -369,6 +369,36 @@ export function useUploadMyDocument() {
     });
 }
 
+export function useDeleteMyDocument() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => essApi.deleteMyDocument(id),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: essKeys.myDocuments() });
+        },
+    });
+}
+
+export function useCreatePolicyDocument() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (data: any) => essApi.createPolicyDocument(data),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: essKeys.policyDocuments() });
+        },
+    });
+}
+
+export function useDeletePolicyDocument() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => essApi.deletePolicyDocument(id),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: essKeys.policyDocuments() });
+        },
+    });
+}
+
 // ── My Appraisal (Self-Review) ──
 
 export function useSubmitEssSelfReview() {

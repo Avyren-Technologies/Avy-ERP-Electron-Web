@@ -30,6 +30,8 @@ import {
     ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useFileUpload } from '@/hooks/useFileUpload';
+import { FileUploadZone } from '@/components/FileUploadZone';
 import {
     useTrainingCatalogue,
     useTrainingNominations,
@@ -375,6 +377,10 @@ export function TrainingCatalogueScreen() {
     const createMaterialMut = useCreateTrainingMaterial();
     const updateMaterialMut = useUpdateTrainingMaterial();
     const deleteMaterialMut = useDeleteTrainingMaterial();
+    const { upload: uploadMaterial, isUploading: isMaterialUploading, error: materialUploadError, reset: resetMaterialUpload } = useFileUpload({
+        category: 'training-material',
+        entityId: materialsTrainingId ?? 'new',
+    });
 
     const courses: any[] = catQuery.data?.data ?? [];
     const nominations: any[] = nomQuery.data?.data ?? [];
@@ -714,7 +720,7 @@ export function TrainingCatalogueScreen() {
     /* ── Material Handlers ── */
     const openMaterials = (trainingId: string) => { setMaterialsTrainingId(trainingId); };
     const closeMaterials = () => { setMaterialsTrainingId(null); };
-    const openCreateMaterial = () => { setMaterialEditingId(null); setMaterialForm({ ...EMPTY_MATERIAL }); setMaterialModalOpen(true); };
+    const openCreateMaterial = () => { setMaterialEditingId(null); setMaterialForm({ ...EMPTY_MATERIAL }); resetMaterialUpload(); setMaterialModalOpen(true); };
     const openEditMaterial = (m: any) => {
         setMaterialEditingId(m.id);
         setMaterialForm({
@@ -1940,7 +1946,7 @@ export function TrainingCatalogueScreen() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Type</label>
-                                    <select value={materialForm.type} onChange={(e) => updateMaterialField("type", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
+                                    <select value={materialForm.type} onChange={(e) => { updateMaterialField("type", e.target.value); updateMaterialField("url", ""); resetMaterialUpload(); }} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
                                         {MATERIAL_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                                     </select>
                                 </div>
@@ -1949,10 +1955,32 @@ export function TrainingCatalogueScreen() {
                                     <input type="number" value={materialForm.sequenceOrder} onChange={(e) => updateMaterialField("sequenceOrder", e.target.value)} placeholder="1" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
                                 </div>
                             </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">URL</label>
-                                <input type="url" value={materialForm.url} onChange={(e) => updateMaterialField("url", e.target.value)} placeholder="https://..." className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
-                            </div>
+                            {materialForm.type === 'VIDEO' || materialForm.type === 'LINK' ? (
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">URL</label>
+                                    <input type="url" value={materialForm.url} onChange={(e) => updateMaterialField("url", e.target.value)} placeholder="https://youtube.com/..." className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                </div>
+                            ) : (
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">File</label>
+                                    <FileUploadZone
+                                        onFileSelected={async (file) => {
+                                            const key = await uploadMaterial(file);
+                                            if (key) {
+                                                updateMaterialField('url', key);
+                                            }
+                                        }}
+                                        isUploading={isMaterialUploading}
+                                        uploadedFileName={materialForm.url && !materialForm.url.startsWith('http') ? materialForm.url.split('/').pop() ?? null : null}
+                                        accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
+                                        error={materialUploadError}
+                                        onClear={() => {
+                                            updateMaterialField('url', '');
+                                            resetMaterialUpload();
+                                        }}
+                                    />
+                                </div>
+                            )}
                             <div>
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Description</label>
                                 <textarea value={materialForm.description} onChange={(e) => updateMaterialField("description", e.target.value)} rows={2} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all resize-none" />
