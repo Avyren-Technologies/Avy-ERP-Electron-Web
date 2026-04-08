@@ -255,6 +255,11 @@ export function ExpenseClaimScreen() {
     };
 
     const filtered = claims.filter((c: any) => {
+        // In pending tab, show submitted + pending_approval claims
+        if (activeTab === "pending") {
+            const st = c.status?.toLowerCase();
+            if (st !== "submitted" && st !== "pending_approval") return false;
+        }
         if (!search) return true;
         const s = search.toLowerCase();
         return employeeName(c.employeeId)?.toLowerCase().includes(s) || c.title?.toLowerCase().includes(s) || c.category?.toLowerCase().includes(s) || c.claimNumber?.toLowerCase().includes(s);
@@ -543,7 +548,7 @@ export function ExpenseClaimScreen() {
                         {[
                             { label: "Total Claims", value: filtered.length, cls: "text-primary-600 dark:text-primary-400" },
                             { label: "Total Amount", value: formatCurrency(totalAmount), cls: "text-accent-600 dark:text-accent-400" },
-                            { label: "Pending", value: claims.filter((c: any) => c.status?.toLowerCase() === "submitted").length, cls: "text-warning-600 dark:text-warning-400" },
+                            { label: "Pending", value: claims.filter((c: any) => { const st = c.status?.toLowerCase(); return st === "submitted" || st === "pending_approval"; }).length, cls: "text-warning-600 dark:text-warning-400" },
                             { label: "Approved", value: claims.filter((c: any) => c.status?.toLowerCase() === "approved").length, cls: "text-success-600 dark:text-success-400" },
                         ].map((s) => (
                             <div key={s.label} className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm">
@@ -628,14 +633,32 @@ export function ExpenseClaimScreen() {
                                                     <td className="py-4 px-6 text-right">
                                                         <div className="flex items-center justify-end gap-1">
                                                             <button onClick={() => setDetailTarget(c)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="View"><Eye size={15} /></button>
-                                                            {c.status?.toLowerCase() === "submitted" && (
+                                                            {(c.status?.toLowerCase() === "submitted" || c.status?.toLowerCase() === "pending_approval") && (
                                                                 <>
                                                                     <button onClick={() => openApproveModal(c)} disabled={approveClaim.isPending} className="p-2 text-success-600 hover:bg-success-50 dark:hover:bg-success-900/20 rounded-lg transition-colors" title="Approve"><CheckCircle2 size={15} /></button>
                                                                     <button onClick={() => setRejectTarget(c)} className="p-2 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors" title="Reject"><XCircle size={15} /></button>
                                                                 </>
                                                             )}
-                                                            {(c.status?.toLowerCase() === "draft") && (
-                                                                <button onClick={() => openEdit(c)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit"><Edit3 size={15} /></button>
+                                                            {c.status?.toLowerCase() === "draft" && (
+                                                                <>
+                                                                    <button onClick={() => openEdit(c)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit"><Edit3 size={15} /></button>
+                                                                    <button
+                                                                        onClick={() => { submitClaim.mutateAsync(c.id).then(() => showSuccess("Claim Submitted", "Expense claim submitted for approval.")); }}
+                                                                        disabled={submitClaim.isPending}
+                                                                        className="p-2 text-warning-600 hover:bg-warning-50 dark:hover:bg-warning-900/20 rounded-lg transition-colors"
+                                                                        title="Submit for Approval"
+                                                                    >
+                                                                        <Send size={15} />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => { if (confirm("Delete this draft claim?")) deleteClaim.mutateAsync(c.id).then(() => showSuccess("Claim Deleted", "Draft claim deleted.")); }}
+                                                                        disabled={deleteClaim.isPending}
+                                                                        className="p-2 text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors"
+                                                                        title="Delete"
+                                                                    >
+                                                                        <Trash2 size={15} />
+                                                                    </button>
+                                                                </>
                                                             )}
                                                         </div>
                                                     </td>
