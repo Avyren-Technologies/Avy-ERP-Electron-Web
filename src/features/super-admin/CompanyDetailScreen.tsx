@@ -4,6 +4,7 @@
 // ============================================================
 import { useState } from 'react';
 import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
+import { R2Image } from '@/components/R2Image';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
@@ -509,7 +510,11 @@ export function CompanyDetailScreen() {
                         <div className="flex items-end gap-5">
                             <div className="w-24 h-24 -mt-14 rounded-2xl bg-white border-4 border-white shadow-xl shadow-neutral-900/10 flex-shrink-0 overflow-hidden dark:bg-neutral-900 dark:border-neutral-800">
                                 {TENANT.logoUrl ? (
-                                    <img src={TENANT.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                                    <R2Image fileKey={TENANT.logoUrl} platform alt="Logo" className="w-full h-full object-contain" fallback={
+                                        <div className="w-full h-full bg-gradient-to-tr from-primary-100 to-accent-100 flex items-center justify-center">
+                                            <Building2 size={32} className="text-primary-500" />
+                                        </div>
+                                    } />
                                 ) : (
                                     <div className="w-full h-full bg-gradient-to-tr from-primary-100 to-accent-100 flex items-center justify-center">
                                         <Building2 size={32} className="text-primary-500" />

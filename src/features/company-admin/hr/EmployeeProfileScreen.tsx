@@ -57,6 +57,8 @@ import { SkeletonCard } from "@/components/ui/Skeleton";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { showSuccess, showApiError } from "@/lib/toast";
+import { useFileUpload } from "@/hooks/useFileUpload";
+import { useFileUrl } from "@/hooks/useFileUrl";
 import type { EmployeeStatus } from "@/lib/api/hr";
 
 /* ── Form Atoms ── */
@@ -300,7 +302,7 @@ export function EmployeeProfileScreen() {
     const [ifscError, setIfscError] = useState("");
 
     // Document proof uploads: keyed by document type
-    const [docUploads, setDocUploads] = useState<Record<string, { fileName: string; base64: string }>>({});
+    const [docUploads, setDocUploads] = useState<Record<string, { fileName: string; fileUrl: string }>>({});
 
     // Probation auto-calculation state
     const [probationAutoCalculated, setProbationAutoCalculated] = useState(false);
@@ -331,6 +333,19 @@ export function EmployeeProfileScreen() {
     const statusMutation = useUpdateEmployeeStatus();
     const deleteEmployeeMutation = useDeleteEmployee();
     const deleteDocMutation = useDeleteDocument();
+
+    // R2 file upload hooks
+    const employeeId = isNew ? 'new' : id!;
+    const { upload: uploadPhoto, isUploading: isPhotoUploading } = useFileUpload({
+        category: 'employee-photo',
+        entityId: employeeId,
+        onSuccess: (key) => setProfilePhotoUrl(key),
+    });
+    const { upload: uploadDoc, isUploading: isDocUploading } = useFileUpload({
+        category: 'employee-document',
+        entityId: employeeId,
+    });
+    const { url: photoDisplayUrl } = useFileUrl({ key: profilePhotoUrl });
 
     // Deactivation modal state
     const [showDeactivateModal, setShowDeactivateModal] = useState(false);
@@ -656,23 +671,18 @@ export function EmployeeProfileScreen() {
         }
     }, [professional.designationId, professional.gradeId, professional.joiningDate, designationsFull, gradesFull, editing, isNew]);
 
-    // Document file upload handler
-    const handleDocUpload = (docType: string, file: File) => {
-        if (file.size > 10 * 1024 * 1024) {
-            showApiError({ message: "File must be under 10 MB" });
-            return;
-        }
-        const reader = new FileReader();
-        reader.onload = () => {
+    // Document file upload handler (R2)
+    const handleDocUpload = async (docType: string, file: File) => {
+        const key = await uploadDoc(file);
+        if (key) {
             setDocUploads((prev) => ({
                 ...prev,
-                [docType]: { fileName: file.name, base64: reader.result as string },
+                [docType]: { fileName: file.name, fileUrl: key },
             }));
-        };
-        reader.readAsDataURL(file);
+        }
     };
 
-    const saving = createMutation.isPending || updateMutation.isPending;
+    const saving = createMutation.isPending || updateMutation.isPending || isPhotoUploading || isDocUploading;
 
     const handleSave = async () => {
         // Map frontend field names to backend schema field names
@@ -760,7 +770,7 @@ export function EmployeeProfileScreen() {
         // Initial status (for new employees)
         if (isNew && initialStatus) payload.status = initialStatus;
 
-        // Document proof uploads (base64)
+        // Document proof uploads (R2 keys)
         if (Object.keys(docUploads).length > 0) {
             payload.documentUploads = docUploads;
         }
@@ -987,10 +997,15 @@ export function EmployeeProfileScreen() {
                             {/* Profile Photo */}
                             <div className="flex items-center gap-6 mb-2">
                                 <div className="w-20 h-20 rounded-2xl bg-accent-100 dark:bg-accent-900/30 flex items-center justify-center text-2xl font-bold text-accent-700 dark:text-accent-400 relative">
-                                    {profilePhotoUrl ? (
-                                        <img src={profilePhotoUrl} alt="" className="w-full h-full rounded-2xl object-cover" />
+                                    {photoDisplayUrl ? (
+                                        <img src={photoDisplayUrl} alt="" className="w-full h-full rounded-2xl object-cover" />
                                     ) : (
                                         (personal.firstName?.charAt(0) ?? "") + (personal.lastName?.charAt(0) ?? "") || "?"
+                                    )}
+                                    {isPhotoUploading && (
+                                        <div className="absolute inset-0 rounded-2xl bg-black/40 flex items-center justify-center">
+                                            <Loader2 size={20} className="animate-spin text-white" />
+                                        </div>
                                     )}
                                     {editing && (
                                         <>
@@ -999,18 +1014,11 @@ export function EmployeeProfileScreen() {
                                                 accept="image/*"
                                                 id="profile-photo-input"
                                                 className="hidden"
-                                                onChange={(e) => {
+                                                disabled={isPhotoUploading}
+                                                onChange={async (e) => {
                                                     const file = e.target.files?.[0];
                                                     if (!file) return;
-                                                    if (file.size > 5 * 1024 * 1024) {
-                                                        showApiError({ message: "Photo must be under 5 MB" });
-                                                        return;
-                                                    }
-                                                    const reader = new FileReader();
-                                                    reader.onload = () => {
-                                                        setProfilePhotoUrl(reader.result as string);
-                                                    };
-                                                    reader.readAsDataURL(file);
+                                                    await uploadPhoto(file);
                                                 }}
                                             />
                                             <label

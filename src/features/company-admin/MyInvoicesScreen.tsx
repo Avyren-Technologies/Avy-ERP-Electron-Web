@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
+import { R2Link } from '@/components/R2Link';
 import { useNavigate } from "react-router-dom";
 import {
     FileText, Search, Filter, Download, Eye, X, ChevronLeft, ChevronRight,
@@ -151,16 +152,14 @@ function InvoiceDetailModal({ invoiceId, onClose }: { invoiceId: string; onClose
                             {/* PDF Link */}
                             {invoice.pdfUrl && (
                                 <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800">
-                                    <a
-                                        href={invoice.pdfUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                    <R2Link
+                                        fileKey={invoice.pdfUrl}
                                         className="inline-flex items-center gap-2 px-4 py-2 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 rounded-xl font-bold text-sm hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors"
                                     >
                                         <Download className="w-4 h-4" />
                                         Download PDF
                                         <ExternalLink className="w-3.5 h-3.5" />
-                                    </a>
+                                    </R2Link>
                                 </div>
                             )}
                         </div>
@@ -275,15 +274,13 @@ export function MyInvoicesScreen() {
                                                         <Eye className="w-4 h-4" />
                                                     </button>
                                                     {inv.pdfUrl && (
-                                                        <a
-                                                            href={inv.pdfUrl}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
+                                                        <R2Link
+                                                            fileKey={inv.pdfUrl}
                                                             className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-primary-600 dark:hover:text-primary-400 rounded-lg transition-colors"
                                                             title="Download PDF"
                                                         >
                                                             <Download className="w-4 h-4" />
-                                                        </a>
+                                                        </R2Link>
                                                     )}
                                                 </div>
                                             </td>

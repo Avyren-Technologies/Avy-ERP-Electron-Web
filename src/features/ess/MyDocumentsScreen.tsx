@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
+import { R2Link } from '@/components/R2Link';
 import { useMyDocuments, useUploadMyDocument } from '@/features/company-admin/api';
 import { Loader2, FileText, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -128,9 +129,9 @@ export function MyDocumentsScreen() {
                             </div>
                             <p className="text-sm text-neutral-600 dark:text-neutral-400">{d.fileName}</p>
                             {d.fileUrl && (
-                                <a href={d.fileUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs font-semibold text-primary-600 hover:text-primary-700">
+                                <R2Link fileKey={d.fileUrl} className="mt-2 inline-block text-xs font-semibold text-primary-600 hover:text-primary-700">
                                     View File
-                                </a>
+                                </R2Link>
                             )}
                         </div>
                     ))}

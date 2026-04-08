@@ -270,6 +270,24 @@ export function useRejectExpenseClaim() {
     });
 }
 
+export function useSubmitExpenseClaim() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => recruitmentApi.submitExpenseClaim(id),
+        onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
+    });
+}
+
+export function useDeleteExpenseClaim() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => recruitmentApi.deleteExpenseClaim(id),
+        onSuccess: () => { qc.invalidateQueries({ queryKey: recruitmentKeys.all }); },
+        onError: (err: unknown) => { showApiError(err); },
+    });
+}
+
 // ── Expense Category Mutations ──
 
 export function useCreateExpenseCategory() {

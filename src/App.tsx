@@ -53,20 +53,10 @@ const InvoiceListScreen = lazyNamed(() => import("./features/super-admin/Invoice
 const InvoiceDetailScreen = lazyNamed(() => import("./features/super-admin/InvoiceDetailScreen"), "InvoiceDetailScreen");
 const SubscriptionDetailScreen = lazyNamed(() => import("./features/super-admin/SubscriptionDetailScreen"), "SubscriptionDetailScreen");
 
-<<<<<<< HEAD
 // ─── Super Admin Support ───
 const SupportDashboardScreen = lazyNamed(() => import("./features/super-admin/support/SupportDashboardScreen"), "SupportDashboardScreen");
 const SupportTicketDetailScreen = lazyNamed(() => import("./features/super-admin/support/SupportTicketDetailScreen"), "SupportTicketDetailScreen");
-=======
-// HR Attendance Screens
-import { AttendanceDashboardScreen } from "./features/company-admin/hr/AttendanceDashboardScreen";
-import { HolidayScreen } from "./features/company-admin/hr/HolidayScreen";
-import { RosterScreen } from "./features/company-admin/hr/RosterScreen";
-import { AttendanceRulesScreen } from "./features/company-admin/hr/AttendanceRulesScreen";
-import { AttendanceOverrideScreen } from "./features/company-admin/hr/AttendanceOverrideScreen";
-import { OvertimeRulesScreen } from "./features/company-admin/hr/OvertimeRulesScreen";
-import { AdminAttendanceScreen } from "./features/company-admin/hr/AdminAttendanceScreen";
->>>>>>> 05b9e729867de1b58d9d53091c7ac911d1df863d
+const AdminAttendanceScreen = lazyNamed(() => import("./features/company-admin/hr/AdminAttendanceScreen"), "AdminAttendanceScreen");
 
 // ─── Employee Screens ───
 const DynamicDashboardScreen = lazyNamed(() => import("./features/employee/DynamicDashboardScreen"), "DynamicDashboardScreen");

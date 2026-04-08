@@ -454,6 +454,16 @@ async function rejectExpenseClaim(id: string, data?: { rejectionReason?: string 
     return response.data;
 }
 
+async function submitExpenseClaim(id: string): Promise<ApiResponse<any>> {
+    const response = await client.patch(`/hr/expense-claims/${id}/submit`);
+    return response.data;
+}
+
+async function deleteExpenseClaim(id: string): Promise<ApiResponse<any>> {
+    const response = await client.delete(`/hr/expense-claims/${id}`);
+    return response.data;
+}
+
 // ── Expense Categories ──
 
 async function listExpenseCategories(params?: Record<string, unknown>): Promise<ApiResponse<any>> {
@@ -829,6 +839,8 @@ export const recruitmentApi = {
     updateExpenseClaim,
     approveExpenseClaim,
     rejectExpenseClaim,
+    submitExpenseClaim,
+    deleteExpenseClaim,
     // Expense Categories
     listExpenseCategories,
     getExpenseCategory,

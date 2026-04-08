@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
+import { R2Image } from '@/components/R2Image';
 import { useCanPerform } from "@/hooks/useCanPerform";
 import {
     Search,
@@ -18,20 +19,21 @@ import {
     Briefcase,
     ChevronLeft,
     ChevronRight,
+    X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { client } from "@/lib/api/client";
 import { adminAttendanceApi, adminAttendanceKeys } from "@/lib/api/admin-attendance";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { showSuccess, showApiError } from "@/lib/toast";
-import { useDepartments } from "@/features/company-admin/api/use-hr-queries";
+import { useDepartments, useDesignations } from "@/features/company-admin/api/use-hr-queries";
 import { Skeleton, SkeletonTable } from "@/components/ui/Skeleton";
 
 /* ── Types ── */
 
 interface EmployeeSearchResult {
     id: string;
-    employeeCode: string;
+    employeeId: string; // Prisma field name — the human-readable code like "EMP-000016"
     firstName: string;
     lastName: string;
     profilePhotoUrl?: string | null;
@@ -101,7 +103,7 @@ interface TodayLogEntry {
         id: string;
         firstName: string;
         lastName: string;
-        employeeCode: string;
+        employeeId: string; // Prisma field — the code like "EMP-000016"
     } | null;
 }
 
@@ -115,7 +117,7 @@ interface BulkMarkResult {
 
 function isImageSrc(url: string | undefined | null): url is string {
     if (!url || typeof url !== "string") return false;
-    return url.startsWith("data:image/") || url.startsWith("http://") || url.startsWith("https://") || url.startsWith("/");
+    return url.length > 0;
 }
 
 function getInitials(firstName?: string, lastName?: string): string {
@@ -180,6 +182,9 @@ export function AdminAttendanceScreen() {
 
     // Bulk mode state
     const [bulkDeptFilter, setBulkDeptFilter] = useState("All");
+    const [bulkDesigFilter, setBulkDesigFilter] = useState("All");
+    const [bulkSearch, setBulkSearch] = useState("");
+    const [debouncedBulkSearch, setDebouncedBulkSearch] = useState("");
     const [bulkPage, setBulkPage] = useState(1);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [bulkAction, setBulkAction] = useState<"CHECK_IN" | "CHECK_OUT">("CHECK_IN");
@@ -206,6 +211,12 @@ export function AdminAttendanceScreen() {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
+    // Debounce bulk search
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedBulkSearch(bulkSearch), 300);
+        return () => clearTimeout(timer);
+    }, [bulkSearch]);
+
     // Close dropdown on outside click
     useEffect(() => {
         function handleClick(e: MouseEvent) {
@@ -217,11 +228,17 @@ export function AdminAttendanceScreen() {
         return () => document.removeEventListener("mousedown", handleClick);
     }, []);
 
-    // Employee search query
+    // Employee search query — enabled when focused (empty search) OR when typing 2+ chars
+    const searchEnabled = showDropdown && (debouncedSearch.length === 0 || debouncedSearch.length >= 2);
     const { data: searchResults, isFetching: isSearching } = useQuery({
-        queryKey: ["employees", "search", debouncedSearch],
-        queryFn: () => client.get("/hr/employees", { params: { search: debouncedSearch, limit: 10 } }).then(r => r.data),
-        enabled: debouncedSearch.length >= 2,
+        queryKey: ["employees", "search", debouncedSearch || "__all__"],
+        queryFn: () => client.get("/hr/employees", {
+            params: {
+                ...(debouncedSearch ? { search: debouncedSearch } : {}),
+                limit: 10,
+            }
+        }).then(r => r.data),
+        enabled: searchEnabled,
     });
     const employees: EmployeeSearchResult[] = searchResults?.data ?? [];
 
@@ -233,19 +250,23 @@ export function AdminAttendanceScreen() {
     });
     const empStatus: EmployeeStatus | null = empStatusData?.data ?? null;
 
-    // Departments for bulk mode
+    // Departments & Designations for bulk mode
     const departmentsQuery = useDepartments();
     const departments: Array<{ id: string; name: string }> = departmentsQuery.data?.data ?? [];
+    const designationsQuery = useDesignations();
+    const designations: Array<{ id: string; name: string }> = designationsQuery.data?.data ?? [];
 
-    // Bulk employee list
+    // Bulk employee list — use ACTIVE (Prisma enum value, uppercase)
     const { data: bulkEmployeesData, isPending: isBulkLoading } = useQuery({
-        queryKey: ["employees", "bulk-list", bulkDeptFilter, bulkPage],
+        queryKey: ["employees", "bulk-list", bulkDeptFilter, bulkDesigFilter, debouncedBulkSearch, bulkPage],
         queryFn: () => client.get("/hr/employees", {
             params: {
                 departmentId: bulkDeptFilter === "All" ? undefined : bulkDeptFilter,
+                designationId: bulkDesigFilter === "All" ? undefined : bulkDesigFilter,
+                search: debouncedBulkSearch || undefined,
                 page: bulkPage,
                 limit: 20,
-                status: "active",
+                status: "ACTIVE",
             }
         }).then(r => r.data),
         enabled: bulkMode,
@@ -305,8 +326,16 @@ export function AdminAttendanceScreen() {
     // Handlers
     const handleSelectEmployee = useCallback((emp: EmployeeSearchResult) => {
         setSelectedEmployeeId(emp.id);
-        setSearchTerm(`${emp.firstName} ${emp.lastName} (${emp.employeeCode})`);
+        setSearchTerm(`${emp.firstName} ${emp.lastName} (${emp.employeeId})`);
         setShowDropdown(false);
+        setKioskSuccess(false);
+    }, []);
+
+    const handleClearSearch = useCallback(() => {
+        setSelectedEmployeeId(null);
+        setSearchTerm("");
+        setDebouncedSearch("");
+        setRemarks("");
         setKioskSuccess(false);
     }, []);
 
@@ -406,9 +435,9 @@ export function AdminAttendanceScreen() {
 
             {/* Single Employee Mode */}
             {!bulkMode && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Left: Search + Employee Card */}
-                    <div className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                    {/* Left: Search + Employee Card (3/5 width) */}
+                    <div className="lg:col-span-3 space-y-6">
                         {/* Search */}
                         <div ref={searchRef} className="relative">
                             <div className="relative">
@@ -424,18 +453,25 @@ export function AdminAttendanceScreen() {
                                             setKioskSuccess(false);
                                         }
                                     }}
-                                    onFocus={() => debouncedSearch.length >= 2 && setShowDropdown(true)}
+                                    onFocus={() => setShowDropdown(true)}
                                     placeholder="Search employee by name or code..."
-                                    className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm text-primary-950 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 transition-all"
+                                    className="w-full pl-12 pr-12 py-3.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm text-primary-950 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 transition-all"
                                 />
-                                {isSearching && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-neutral-400" />}
+                                {selectedEmployeeId && (
+                                    <button onClick={handleClearSearch} className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
+                                        <X className="w-4 h-4 text-neutral-400" />
+                                    </button>
+                                )}
+                                {isSearching && !selectedEmployeeId && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-neutral-400" />}
                             </div>
 
                             {/* Dropdown */}
-                            {showDropdown && debouncedSearch.length >= 2 && (
+                            {showDropdown && !selectedEmployeeId && (
                                 <div className="absolute z-20 w-full mt-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl max-h-80 overflow-y-auto">
                                     {employees.length === 0 && !isSearching ? (
-                                        <div className="px-4 py-6 text-center text-sm text-neutral-500">No employees found</div>
+                                        <div className="px-4 py-6 text-center text-sm text-neutral-500">
+                                            {debouncedSearch ? "No employees found" : "Loading employees..."}
+                                        </div>
                                     ) : (
                                         employees.map((emp) => (
                                             <button
@@ -444,22 +480,23 @@ export function AdminAttendanceScreen() {
                                                 className="w-full flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors text-left border-b border-neutral-100 dark:border-neutral-800 last:border-0"
                                             >
                                                 <div className="w-9 h-9 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                                                    {isImageSrc(emp.profilePhotoUrl) ? (
-                                                        <img src={emp.profilePhotoUrl} alt="" className="w-full h-full rounded-full object-cover" />
-                                                    ) : (
+                                                    <R2Image fileKey={emp.profilePhotoUrl} alt="" className="w-full h-full rounded-full object-cover" fallback={
                                                         <span className="text-xs font-bold text-primary-600 dark:text-primary-400">
                                                             {getInitials(emp.firstName, emp.lastName)}
                                                         </span>
-                                                    )}
+                                                    } />
                                                 </div>
-                                                <div className="min-w-0">
+                                                <div className="min-w-0 flex-1">
                                                     <p className="text-sm font-semibold text-primary-950 dark:text-white truncate">
                                                         {emp.firstName} {emp.lastName}
                                                     </p>
                                                     <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                                                        {emp.employeeCode}{emp.department ? ` - ${emp.department.name}` : ""}
+                                                        {emp.employeeId}{emp.department ? ` · ${emp.department.name}` : ""}
                                                     </p>
                                                 </div>
+                                                <span className="text-[10px] font-mono text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded">
+                                                    {emp.employeeId}
+                                                </span>
                                             </button>
                                         ))
                                     )}
@@ -490,27 +527,38 @@ export function AdminAttendanceScreen() {
                                         {/* Employee header */}
                                         <div className="p-6 border-b border-neutral-100 dark:border-neutral-800">
                                             <div className="flex items-center gap-4">
-                                                <div className="w-16 h-16 rounded-2xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                                                    {isImageSrc(employeeInfo?.profilePhotoUrl) ? (
-                                                        <img src={employeeInfo!.profilePhotoUrl!} alt="" className="w-full h-full rounded-2xl object-cover" />
-                                                    ) : (
-                                                        <span className="text-xl font-bold text-primary-600 dark:text-primary-400">
+                                                <div className="w-14 h-14 rounded-2xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                                    <R2Image fileKey={employeeInfo?.profilePhotoUrl} alt="" className="w-full h-full rounded-2xl object-cover" fallback={
+                                                        <span className="text-lg font-bold text-primary-600 dark:text-primary-400">
                                                             {getInitials(employeeInfo?.firstName, employeeInfo?.lastName)}
                                                         </span>
-                                                    )}
+                                                    } />
                                                 </div>
                                                 <div className="min-w-0 flex-1">
-                                                    <div className="flex items-center gap-3">
+                                                    <div className="flex items-center gap-3 flex-wrap">
                                                         <h3 className="text-lg font-bold text-primary-950 dark:text-white truncate">
                                                             {employeeInfo?.firstName} {employeeInfo?.lastName}
                                                         </h3>
                                                         <AttendanceStatusBadge status={attendanceStatus} />
                                                     </div>
-                                                    <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
-                                                        {employeeInfo?.employeeCode}
-                                                        {employeeInfo?.departmentName ? ` - ${employeeInfo.departmentName}` : ""}
-                                                        {employeeInfo?.designationName ? ` - ${employeeInfo.designationName}` : ""}
-                                                    </p>
+                                                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                                        <span className="text-xs font-mono text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded">
+                                                            {employeeInfo?.employeeCode}
+                                                        </span>
+                                                        {employeeInfo?.departmentName && (
+                                                            <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                                                                {employeeInfo.departmentName}
+                                                            </span>
+                                                        )}
+                                                        {employeeInfo?.designationName && (
+                                                            <>
+                                                                <span className="text-neutral-300 dark:text-neutral-600">·</span>
+                                                                <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                                                                    {employeeInfo.designationName}
+                                                                </span>
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -518,12 +566,12 @@ export function AdminAttendanceScreen() {
                                         {/* Details grid */}
                                         <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             {/* Shift info */}
-                                            <div className="flex items-start gap-3">
+                                            <div className="flex items-start gap-3 p-3 rounded-xl bg-neutral-50/50 dark:bg-neutral-800/30">
                                                 <div className="w-9 h-9 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center flex-shrink-0">
                                                     <Briefcase className="w-4 h-4 text-primary-600 dark:text-primary-400" />
                                                 </div>
                                                 <div>
-                                                    <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">Shift</p>
+                                                    <p className="text-[11px] text-neutral-500 dark:text-neutral-400 font-medium uppercase tracking-wider">Shift</p>
                                                     <p className="text-sm font-semibold text-primary-950 dark:text-white">
                                                         {shiftInfo ? `${shiftInfo.name} (${fmt.shiftTime(shiftInfo.startTime)} - ${fmt.shiftTime(shiftInfo.endTime)})` : "No shift assigned"}
                                                     </p>
@@ -531,12 +579,12 @@ export function AdminAttendanceScreen() {
                                             </div>
 
                                             {/* Location info */}
-                                            <div className="flex items-start gap-3">
+                                            <div className="flex items-start gap-3 p-3 rounded-xl bg-neutral-50/50 dark:bg-neutral-800/30">
                                                 <div className="w-9 h-9 rounded-lg bg-accent-50 dark:bg-accent-900/20 flex items-center justify-center flex-shrink-0">
                                                     <MapPin className="w-4 h-4 text-accent-600 dark:text-accent-400" />
                                                 </div>
                                                 <div>
-                                                    <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">Location</p>
+                                                    <p className="text-[11px] text-neutral-500 dark:text-neutral-400 font-medium uppercase tracking-wider">Location</p>
                                                     <p className="text-sm font-semibold text-primary-950 dark:text-white">
                                                         {locationInfo?.name ?? "No location assigned"}
                                                     </p>
@@ -637,38 +685,43 @@ export function AdminAttendanceScreen() {
                             <div className="rounded-2xl border border-dashed border-neutral-300 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-900/50 p-12 text-center">
                                 <UserCheck className="w-12 h-12 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
                                 <h3 className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">Search for an Employee</h3>
-                                <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">Type a name or employee code above to get started</p>
+                                <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">Click the search box above to browse employees or type a name</p>
                             </div>
                         )}
                     </div>
 
-                    {/* Right: Quick info or placeholder (visible on lg) */}
-                    <div className="hidden lg:block">
-                        {selectedEmployeeId && empStatus && !kioskSuccess && (
-                            <div className="space-y-6">
-                                {/* Punch record summary */}
-                                {empStatus.todayRecord && (
-                                    <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm p-6">
-                                        <div className="flex items-center gap-3 mb-4">
-                                            <div className="w-10 h-10 rounded-xl bg-success-50 dark:bg-success-900/20 flex items-center justify-center">
-                                                <Clock className="w-5 h-5 text-success-600 dark:text-success-400" />
-                                            </div>
-                                            <h3 className="font-bold text-sm text-primary-950 dark:text-white">Today's Record</h3>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium mb-0.5">Punch In</p>
-                                                <p className="font-semibold text-primary-950 dark:text-white text-sm">
-                                                    {empStatus.todayRecord.punchIn ? fmt.time(empStatus.todayRecord.punchIn) : "--:--"}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium mb-0.5">Punch Out</p>
-                                                <p className="font-semibold text-primary-950 dark:text-white text-sm">
-                                                    {empStatus.todayRecord.punchOut ? fmt.time(empStatus.todayRecord.punchOut) : "--:--"}
-                                                </p>
-                                            </div>
-                                        </div>
+                    {/* Right: Today's Record (2/5 width, visible on lg) */}
+                    <div className="lg:col-span-2">
+                        {selectedEmployeeId && empStatus && !kioskSuccess && empStatus.todayRecord && (
+                            <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm p-6">
+                                <div className="flex items-center gap-3 mb-5">
+                                    <div className="w-10 h-10 rounded-xl bg-success-50 dark:bg-success-900/20 flex items-center justify-center">
+                                        <Clock className="w-5 h-5 text-success-600 dark:text-success-400" />
+                                    </div>
+                                    <h3 className="font-bold text-sm text-primary-950 dark:text-white">Today's Record</h3>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="p-3 rounded-xl bg-success-50/50 dark:bg-success-900/10 border border-success-100 dark:border-success-900/20">
+                                        <p className="text-[11px] text-success-600 dark:text-success-400 font-medium uppercase tracking-wider mb-0.5">Punch In</p>
+                                        <p className="font-bold text-success-700 dark:text-success-300 text-lg">
+                                            {empStatus.todayRecord.punchIn ? fmt.time(empStatus.todayRecord.punchIn) : "--:--"}
+                                        </p>
+                                    </div>
+                                    <div className="p-3 rounded-xl bg-primary-50/50 dark:bg-primary-900/10 border border-primary-100 dark:border-primary-900/20">
+                                        <p className="text-[11px] text-primary-600 dark:text-primary-400 font-medium uppercase tracking-wider mb-0.5">Punch Out</p>
+                                        <p className="font-bold text-primary-700 dark:text-primary-300 text-lg">
+                                            {empStatus.todayRecord.punchOut ? fmt.time(empStatus.todayRecord.punchOut) : "--:--"}
+                                        </p>
+                                    </div>
+                                </div>
+                                {empStatus.todayRecord.workedHours != null && (
+                                    <div className="mt-4 p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-100 dark:border-neutral-800 text-center">
+                                        <p className="text-[11px] text-neutral-500 dark:text-neutral-400 font-medium uppercase tracking-wider mb-0.5">Worked Hours</p>
+                                        <p className="font-bold text-primary-950 dark:text-white text-lg">
+                                            {typeof empStatus.todayRecord.workedHours === "number"
+                                                ? empStatus.todayRecord.workedHours.toFixed(1)
+                                                : empStatus.todayRecord.workedHours}h
+                                        </p>
                                     </div>
                                 )}
                             </div>
@@ -682,8 +735,25 @@ export function AdminAttendanceScreen() {
                 <div className="space-y-6">
                     {/* Filters + select */}
                     <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm overflow-hidden">
-                        <div className="p-6 border-b border-neutral-100 dark:border-neutral-800">
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                        <div className="p-6 border-b border-neutral-100 dark:border-neutral-800 space-y-4">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-wrap">
+                                {/* Search */}
+                                <div className="relative flex-1 min-w-[200px]">
+                                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                                    <input
+                                        type="text"
+                                        value={bulkSearch}
+                                        onChange={(e) => { setBulkSearch(e.target.value); setBulkPage(1); }}
+                                        placeholder="Search by name or code..."
+                                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm text-primary-950 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 transition-all"
+                                    />
+                                    {bulkSearch && (
+                                        <button onClick={() => { setBulkSearch(""); setBulkPage(1); }} className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-700">
+                                            <X className="w-3.5 h-3.5 text-neutral-400" />
+                                        </button>
+                                    )}
+                                </div>
+
                                 {/* Department filter */}
                                 <div className="relative">
                                     <select
@@ -699,8 +769,31 @@ export function AdminAttendanceScreen() {
                                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
                                 </div>
 
-                                <div className="flex items-center gap-4 ml-auto">
-                                    {/* Selected count */}
+                                {/* Designation filter */}
+                                <div className="relative">
+                                    <select
+                                        value={bulkDesigFilter}
+                                        onChange={(e) => { setBulkDesigFilter(e.target.value); setBulkPage(1); setSelectedIds(new Set()); }}
+                                        className="appearance-none pl-4 pr-10 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm font-medium text-primary-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+                                    >
+                                        <option value="All">All Designations</option>
+                                        {designations.map(d => (
+                                            <option key={d.id} value={d.id}>{d.name}</option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+                                </div>
+
+                                {/* Selected count + clear filters */}
+                                <div className="flex items-center gap-3 ml-auto">
+                                    {(bulkDeptFilter !== "All" || bulkDesigFilter !== "All" || bulkSearch) && (
+                                        <button
+                                            onClick={() => { setBulkDeptFilter("All"); setBulkDesigFilter("All"); setBulkSearch(""); setBulkPage(1); setSelectedIds(new Set()); }}
+                                            className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
+                                        >
+                                            Clear filters
+                                        </button>
+                                    )}
                                     {selectedIds.size > 0 && (
                                         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 border border-primary-200 dark:border-primary-800/50">
                                             <Users size={12} />
@@ -714,14 +807,14 @@ export function AdminAttendanceScreen() {
                         {/* Employee list */}
                         <div className="overflow-x-auto">
                             {isBulkLoading ? (
-                                <div className="p-6"><SkeletonTable rows={5} cols={4} /></div>
+                                <div className="p-6"><SkeletonTable rows={5} cols={5} /></div>
                             ) : bulkEmployees.length === 0 ? (
                                 <div className="p-12 text-center">
                                     <Users className="w-10 h-10 text-neutral-300 mx-auto mb-2" />
-                                    <p className="text-sm text-neutral-500">No employees found</p>
+                                    <p className="text-sm text-neutral-500">{debouncedBulkSearch || bulkDeptFilter !== "All" || bulkDesigFilter !== "All" ? "No employees match the current filters" : "No employees found"}</p>
                                 </div>
                             ) : (
-                                <table className="w-full text-left border-collapse min-w-[500px]">
+                                <table className="w-full text-left border-collapse min-w-[600px]">
                                     <thead>
                                         <tr className="bg-neutral-50/50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
                                             <th className="py-3 px-6 w-12">
@@ -735,6 +828,7 @@ export function AdminAttendanceScreen() {
                                             <th className="py-3 px-6 font-bold">Employee</th>
                                             <th className="py-3 px-6 font-bold">Code</th>
                                             <th className="py-3 px-6 font-bold">Department</th>
+                                            <th className="py-3 px-6 font-bold">Designation</th>
                                         </tr>
                                     </thead>
                                     <tbody className="text-sm">
@@ -761,19 +855,18 @@ export function AdminAttendanceScreen() {
                                                 <td className="py-3 px-6">
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                                                            {isImageSrc(emp.profilePhotoUrl) ? (
-                                                                <img src={emp.profilePhotoUrl} alt="" className="w-full h-full rounded-full object-cover" />
-                                                            ) : (
+                                                            <R2Image fileKey={emp.profilePhotoUrl} alt="" className="w-full h-full rounded-full object-cover" fallback={
                                                                 <span className="text-xs font-bold text-primary-600 dark:text-primary-400">
                                                                     {getInitials(emp.firstName, emp.lastName)}
                                                                 </span>
-                                                            )}
+                                                            } />
                                                         </div>
                                                         <span className="font-semibold text-primary-950 dark:text-white">{emp.firstName} {emp.lastName}</span>
                                                     </div>
                                                 </td>
-                                                <td className="py-3 px-6 text-neutral-600 dark:text-neutral-300 font-mono text-xs">{emp.employeeCode}</td>
+                                                <td className="py-3 px-6 text-neutral-600 dark:text-neutral-300 font-mono text-xs">{emp.employeeId}</td>
                                                 <td className="py-3 px-6 text-neutral-600 dark:text-neutral-300">{emp.department?.name ?? "—"}</td>
+                                                <td className="py-3 px-6 text-neutral-600 dark:text-neutral-300">{emp.designation?.name ?? "—"}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -955,23 +1048,27 @@ export function AdminAttendanceScreen() {
                                     const entryTime = entry.punchOut ?? entry.punchIn;
                                     const entryName = [entry.employee?.firstName, entry.employee?.lastName].filter(Boolean).join(" ");
                                     return (
-                                    <tr key={entry.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
-                                        <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-300">{entry.employee?.employeeCode}</td>
-                                        <td className="py-4 px-6 font-semibold text-primary-950 dark:text-white">{entryName}</td>
-                                        <td className="py-4 px-6">
-                                            <span className={cn(
-                                                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border",
-                                                entryAction === "CHECK_IN"
-                                                    ? "bg-success-50 dark:bg-success-900/20 text-success-700 dark:text-success-400 border-success-200 dark:border-success-800/50"
-                                                    : "bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 border-primary-200 dark:border-primary-800/50"
-                                            )}>
-                                                {entryAction === "CHECK_IN" ? <LogIn size={10} /> : <LogOut size={10} />}
-                                                {entryAction === "CHECK_IN" ? "IN" : "OUT"}
-                                            </span>
-                                        </td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-300 font-mono text-xs">{entryTime ? fmt.time(entryTime) : "—"}</td>
-                                        <td className="py-4 px-6 text-neutral-500 dark:text-neutral-400 text-xs max-w-[200px] truncate">{entry.remarks ?? "—"}</td>
-                                    </tr>
+                                        <tr key={entry.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
+                                            <td className="py-4 px-6">
+                                                <span className="font-mono text-xs text-neutral-600 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded">
+                                                    {entry.employee?.employeeId ?? "—"}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 px-6 font-semibold text-primary-950 dark:text-white">{entryName}</td>
+                                            <td className="py-4 px-6">
+                                                <span className={cn(
+                                                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border",
+                                                    entryAction === "CHECK_IN"
+                                                        ? "bg-success-50 dark:bg-success-900/20 text-success-700 dark:text-success-400 border-success-200 dark:border-success-800/50"
+                                                        : "bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 border-primary-200 dark:border-primary-800/50"
+                                                )}>
+                                                    {entryAction === "CHECK_IN" ? <LogIn size={10} /> : <LogOut size={10} />}
+                                                    {entryAction === "CHECK_IN" ? "IN" : "OUT"}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-300 font-mono text-xs">{entryTime ? fmt.time(entryTime) : "—"}</td>
+                                            <td className="py-4 px-6 text-neutral-500 dark:text-neutral-400 text-xs max-w-[200px] truncate">{entry.remarks ?? "—"}</td>
+                                        </tr>
                                     );
                                 })}
                             </tbody>

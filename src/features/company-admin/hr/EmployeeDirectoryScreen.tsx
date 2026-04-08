@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
+import { R2Image } from '@/components/R2Image';
 import { useNavigate } from "react-router-dom";
 import {
     Users,
@@ -209,17 +210,16 @@ export function EmployeeDirectoryScreen() {
                                         >
                                             <td className="py-4 px-6">
                                                 <div className="flex items-center gap-3">
-                                                    {emp.photoUrl ? (
-                                                        <img
-                                                            src={emp.photoUrl}
-                                                            alt={fullName}
-                                                            className="w-9 h-9 rounded-lg object-cover shrink-0"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-9 h-9 rounded-lg bg-accent-100 dark:bg-accent-900/30 flex items-center justify-center shrink-0 text-sm font-bold text-accent-700 dark:text-accent-400">
-                                                            {getInitials(emp.firstName, emp.lastName)}
-                                                        </div>
-                                                    )}
+                                                    <R2Image
+                                                        fileKey={emp.photoUrl}
+                                                        alt={fullName}
+                                                        className="w-9 h-9 rounded-lg object-cover shrink-0"
+                                                        fallback={
+                                                            <div className="w-9 h-9 rounded-lg bg-accent-100 dark:bg-accent-900/30 flex items-center justify-center shrink-0 text-sm font-bold text-accent-700 dark:text-accent-400">
+                                                                {getInitials(emp.firstName, emp.lastName)}
+                                                            </div>
+                                                        }
+                                                    />
                                                     <div>
                                                         <span className="font-bold text-primary-950 dark:text-white block">{fullName}</span>
                                                         {emp.officialEmail && (

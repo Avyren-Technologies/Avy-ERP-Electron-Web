@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { R2Link } from '@/components/R2Link';
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
 import { useCanPerform } from "@/hooks/useCanPerform";
 import {
@@ -628,9 +629,9 @@ export function CandidateDetailScreen() {
                                                 {edu.university && <p className="text-xs text-neutral-500 dark:text-neutral-400">University: {edu.university}</p>}
                                                 {edu.percentage && <p className="text-xs text-neutral-500">Score: {edu.percentage}%</p>}
                                                 {edu.certificateUrl && (
-                                                    <a href={edu.certificateUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary-600 hover:underline mt-1">
+                                                    <R2Link fileKey={edu.certificateUrl} className="inline-flex items-center gap-1 text-xs text-primary-600 hover:underline mt-1">
                                                         <ExternalLink size={10} /> View Certificate
-                                                    </a>
+                                                    </R2Link>
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-1 shrink-0">
@@ -741,9 +742,9 @@ export function CandidateDetailScreen() {
                                                     <td className="py-3 px-4 text-neutral-700 dark:text-neutral-300 font-medium">{doc.fileName || "--"}</td>
                                                     <td className="py-3 px-4">
                                                         {doc.fileUrl ? (
-                                                            <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary-600 hover:underline">
+                                                            <R2Link fileKey={doc.fileUrl} className="inline-flex items-center gap-1 text-xs text-primary-600 hover:underline">
                                                                 <ExternalLink size={10} /> Open
-                                                            </a>
+                                                            </R2Link>
                                                         ) : "--"}
                                                     </td>
                                                     <td className="py-3 px-4 text-right">

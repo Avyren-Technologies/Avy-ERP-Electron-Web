@@ -160,8 +160,8 @@ export function ExitRequestScreen() {
         if (search.trim()) {
             const q = search.toLowerCase();
             list = list.filter(r => {
-                const name = r.employeeName ?? (r.employee ? `${r.employee.firstName ?? ''} ${r.employee.lastName ?? ''}`.trim() : '');
-                return name.toLowerCase().includes(q) || (r.employee?.employeeId ?? '').toLowerCase().includes(q);
+                const name = r.employeeName ?? '';
+                return name.toLowerCase().includes(q) || r.employeeId.toLowerCase().includes(q);
             });
         }
         return list;
@@ -228,11 +228,11 @@ export function ExitRequestScreen() {
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-3">
                                             <div className="w-8 h-8 rounded-full bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center text-xs font-bold text-primary-600 dark:text-primary-400">
-                                                {(item.employeeName ?? `${item.employee?.firstName ?? ''} ${item.employee?.lastName ?? ''}`.trim())?.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
+                                                {(item.employeeName ?? '').split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
                                             </div>
                                             <div>
-                                                <span className="text-sm font-semibold text-neutral-900 dark:text-white">{item.employeeName ?? `${item.employee?.firstName ?? ''} ${item.employee?.lastName ?? ''}`.trim() || item.employeeId}</span>
-                                                {item.employee?.employeeId && <span className="block text-[11px] font-mono text-neutral-400">{item.employee.employeeId}</span>}
+                                                <span className="text-sm font-semibold text-neutral-900 dark:text-white">{item.employeeName || item.employeeId}</span>
+                                                <span className="block text-[11px] font-mono text-neutral-400">{item.employeeId}</span>
                                             </div>
                                         </div>
                                     </td>

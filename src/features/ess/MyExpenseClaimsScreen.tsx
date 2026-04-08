@@ -1,5 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
+import { useFileUpload } from '@/hooks/useFileUpload';
+import { useFileUrl } from '@/hooks/useFileUrl';
 import {
     useMyExpenseClaims,
     useMyExpenseSummary,
@@ -77,15 +79,6 @@ const EMPTY_LINE_ITEM: LineItem = {
 
 const INR = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' });
 
-function fileToDataUrl(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-}
-
 function formatFileSize(bytes: number): string {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -94,6 +87,30 @@ function formatFileSize(bytes: number): string {
 
 function isImageFile(fileName: string): boolean {
     return /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(fileName);
+}
+
+/* ── Receipt thumbnail for displaying saved receipts with R2 keys ── */
+
+function EssReceiptThumbnail({ fileUrl, fileName, onClick }: { fileUrl: string; fileName: string; onClick?: () => void }) {
+    const { url: resolvedUrl } = useFileUrl({ key: fileUrl });
+    const isImage = isImageFile(fileName);
+
+    if (!isImage || !resolvedUrl) {
+        return (
+            <div className="w-10 h-10 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center flex-shrink-0">
+                <FileText className="w-5 h-5 text-primary-500" />
+            </div>
+        );
+    }
+
+    return (
+        <div
+            className="w-10 h-10 rounded-lg overflow-hidden bg-neutral-200 dark:bg-neutral-700 flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary-400 transition-all"
+            onClick={onClick}
+        >
+            <img src={resolvedUrl} alt={fileName} className="w-full h-full object-cover" />
+        </div>
+    );
 }
 
 function SummaryCards({ summary }: { summary: any }) {
@@ -143,6 +160,10 @@ export function MyExpenseClaimsScreen() {
 
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const { upload: uploadReceipt, isUploading: isReceiptUploading } = useFileUpload({
+        category: 'expense-receipt',
+        entityId: editingId ?? 'draft',
+    });
     const [expandedId, setExpandedId] = useState<string | null>(null);
 
     const [title, setTitle] = useState('');
@@ -307,25 +328,27 @@ export function MyExpenseClaimsScreen() {
             }
 
             try {
-                const dataUrl = await fileToDataUrl(file);
-                const isImage = file.type.startsWith('image/');
-                const previewUrl = isImage ? URL.createObjectURL(file) : undefined;
+                const key = await uploadReceipt(file);
+                if (key) {
+                    const isImage = file.type.startsWith('image/');
+                    const previewUrl = isImage ? URL.createObjectURL(file) : undefined;
 
-                setReceipts((prev) => [
-                    ...prev,
-                    {
-                        fileName: file.name,
-                        fileUrl: dataUrl,
-                        fileSize: file.size,
-                        fileType: file.type,
-                        previewUrl,
-                    },
-                ]);
+                    setReceipts((prev) => [
+                        ...prev,
+                        {
+                            fileName: file.name,
+                            fileUrl: key,
+                            fileSize: file.size,
+                            fileType: file.type,
+                            previewUrl,
+                        },
+                    ]);
+                }
             } catch {
                 showApiError(new Error(`Failed to process file "${file.name}"`));
             }
         }
-    }, []);
+    }, [uploadReceipt]);
 
     function removeReceipt(index: number) {
         setReceipts((prev) => {
@@ -533,47 +556,34 @@ export function MyExpenseClaimsScreen() {
                                     <p className="text-xs text-neutral-400 mt-1">PDF, Images, Documents (max 10MB each)</p>
                                 </div>
 
-                                {receipts.length > 0 && (() => {
-                                    const imageReceipts = receipts.filter((r) => isImageFile(r.fileName) || r.fileUrl?.startsWith("data:image/"));
-                                    return (
-                                        <div className="mt-4 space-y-2">
-                                            {receipts.map((r, idx) => {
-                                                const isImage = isImageFile(r.fileName) || r.fileUrl?.startsWith("data:image/");
-                                                return (
-                                                    <div key={idx} className="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-100 dark:border-neutral-700/50">
-                                                        {r.previewUrl || (r.fileUrl && isImage) ? (
-                                                            <div
-                                                                className="w-10 h-10 rounded-lg overflow-hidden bg-neutral-200 dark:bg-neutral-700 flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary-400 transition-all"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    const viewIdx = imageReceipts.findIndex((ir) => ir.fileName === r.fileName && ir.fileUrl === r.fileUrl);
-                                                                    openImageViewer(
-                                                                        imageReceipts.map((ir) => ({ fileName: ir.fileName, fileUrl: ir.previewUrl || ir.fileUrl })),
-                                                                        viewIdx >= 0 ? viewIdx : 0,
-                                                                    );
-                                                                }}
-                                                            >
-                                                                <img
-                                                                    src={r.previewUrl || r.fileUrl}
-                                                                    alt={r.fileName}
-                                                                    className="w-full h-full object-cover"
-                                                                />
-                                                            </div>
-                                                        ) : (
-                                                            <div className="w-10 h-10 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center flex-shrink-0">
-                                                                {r.fileName.toLowerCase().endsWith('.pdf') ? (
-                                                                    <FileText className="w-5 h-5 text-primary-500" />
-                                                                ) : isImage ? (
-                                                                    <Image className="w-5 h-5 text-primary-500" />
-                                                                ) : (
-                                                                    <FileText className="w-5 h-5 text-primary-500" />
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300 truncate">{r.fileName}</p>
-                                                            {r.fileSize && (
-                                                                <p className="text-xs text-neutral-400">{formatFileSize(r.fileSize)}</p>
+                                {receipts.length > 0 && (
+                                    <div className="mt-4 space-y-2">
+                                        {receipts.map((r, idx) => {
+                                            const isImage = isImageFile(r.fileName);
+                                            return (
+                                                <div key={idx} className="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-100 dark:border-neutral-700/50">
+                                                    {r.previewUrl && isImage ? (
+                                                        <div
+                                                            className="w-10 h-10 rounded-lg overflow-hidden bg-neutral-200 dark:bg-neutral-700 flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary-400 transition-all"
+                                                            onClick={(e) => { e.stopPropagation(); }}
+                                                        >
+                                                            <img
+                                                                src={r.previewUrl}
+                                                                alt={r.fileName}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        </div>
+                                                    ) : !r.previewUrl ? (
+                                                        <EssReceiptThumbnail fileUrl={r.fileUrl} fileName={r.fileName} />
+                                                    ) : (
+                                                        <div className="w-10 h-10 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center flex-shrink-0">
+                                                            <FileText className="w-5 h-5 text-primary-500" />
+                                                        </div>
+                                                    )}
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300 truncate">{r.fileName}</p>
+                                                        {r.fileSize && (
+                                                            <p className="text-xs text-neutral-400">{formatFileSize(r.fileSize)}</p>
                                                             )}
                                                         </div>
                                                         <button onClick={(e) => { e.stopPropagation(); removeReceipt(idx); }} className="p-1.5 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors flex-shrink-0">
@@ -583,8 +593,7 @@ export function MyExpenseClaimsScreen() {
                                                 );
                                             })}
                                         </div>
-                                    );
-                                })()}
+                                    )}
                             </div>
                         </div>
 
@@ -603,7 +612,7 @@ export function MyExpenseClaimsScreen() {
                                 </button>
                                 <button
                                     onClick={editingId ? handleUpdate : handleCreate}
-                                    disabled={(editingId ? updateMutation.isPending : createMutation.isPending) || !title.trim() || !hasValidLineItems}
+                                    disabled={(editingId ? updateMutation.isPending : createMutation.isPending) || isReceiptUploading || !title.trim() || !hasValidLineItems}
                                     className="px-5 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-bold hover:bg-primary-700 disabled:opacity-50 transition-colors"
                                 >
                                     {editingId

@@ -1,5 +1,7 @@
 import { useState, useRef } from "react";
 import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
+import { useFileUpload } from '@/hooks/useFileUpload';
+import { useFileUrl } from '@/hooks/useFileUrl';
 import {
     Receipt,
     Plus,
@@ -15,6 +17,7 @@ import {
     Calendar,
     Paperclip,
     Trash2,
+    Send,
     ExternalLink,
     FileText,
     Settings,
@@ -32,6 +35,8 @@ import {
     useUpdateExpenseClaim,
     useApproveExpenseClaim,
     useRejectExpenseClaim,
+    useSubmitExpenseClaim,
+    useDeleteExpenseClaim,
     useCreateExpenseCategory,
     useUpdateExpenseCategory,
     useDeleteExpenseCategory,
@@ -43,7 +48,7 @@ import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Constants ── */
 
-const STATUS_FILTERS = ["All", "Draft", "Submitted", "Approved", "Rejected", "Paid"];
+const STATUS_FILTERS = ["All", "Draft", "Submitted", "Pending Approval", "Approved", "Partially Approved", "Rejected", "Paid", "Cancelled"];
 
 const PAYMENT_METHODS = [
     { value: 'CASH', label: 'Cash' },
@@ -109,19 +114,40 @@ const formatCurrency = (amt: any) => {
     return `₹${Number(amt).toLocaleString("en-IN")}`;
 };
 
-function fileToDataUrl(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-}
-
 function formatFileSize(bytes: number): string {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/* ── Receipt thumbnail for displaying saved receipts with R2 keys ── */
+
+function ReceiptThumbnail({ fileUrl, fileName, onClick }: { fileUrl: string; fileName: string; onClick?: () => void }) {
+    const { url: resolvedUrl } = useFileUrl({ key: fileUrl });
+    const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(fileName);
+
+    if (!isImage || !resolvedUrl) {
+        return (
+            <div className="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
+                <FileText size={16} className="text-primary-600 dark:text-primary-400" />
+            </div>
+        );
+    }
+
+    return (
+        <img
+            src={resolvedUrl}
+            alt={fileName}
+            className="w-10 h-10 rounded-lg object-cover border border-neutral-200 dark:border-neutral-700 cursor-pointer hover:ring-2 hover:ring-primary-400 transition-all"
+            onClick={onClick}
+        />
+    );
+}
+
+function ReceiptLink({ fileUrl, children }: { fileUrl: string; children: React.ReactNode }) {
+    const { url: resolvedUrl } = useFileUrl({ key: fileUrl });
+    if (!resolvedUrl) return <>{children}</>;
+    return <a href={resolvedUrl} target="_blank" rel="noopener noreferrer">{children}</a>;
 }
 
 /* ── Badge ── */
@@ -131,9 +157,12 @@ function ClaimStatusBadge({ status }: { status: string }) {
     const map: Record<string, { icon: typeof Clock; cls: string }> = {
         draft: { icon: Clock, cls: "bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700" },
         submitted: { icon: Clock, cls: "bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50" },
+        pending_approval: { icon: Clock, cls: "bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50" },
         approved: { icon: CheckCircle2, cls: "bg-success-50 text-success-700 border-success-200 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50" },
+        partially_approved: { icon: CheckCircle2, cls: "bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50" },
         rejected: { icon: XCircle, cls: "bg-danger-50 text-danger-700 border-danger-200 dark:bg-danger-900/20 dark:text-danger-400 dark:border-danger-800/50" },
         paid: { icon: CheckCircle2, cls: "bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50" },
+        cancelled: { icon: XCircle, cls: "bg-neutral-100 text-neutral-500 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700" },
     };
     const c = map[s] ?? map.draft;
     const Icon = c.icon;
@@ -160,6 +189,10 @@ export function ExpenseClaimScreen() {
     const [lineItems, setLineItems] = useState<LineItem[]>([{ ...EMPTY_LINE_ITEM }]);
     const [receiptFiles, setReceiptFiles] = useState<ReceiptFile[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const { upload: uploadReceipt, isUploading: isReceiptUploading } = useFileUpload({
+        category: 'expense-receipt',
+        entityId: editingId ?? 'draft',
+    });
     const [detailTarget, setDetailTarget] = useState<any>(null);
     const [approveTarget, setApproveTarget] = useState<any>(null);
     const [approvedAmount, setApprovedAmount] = useState("");
@@ -184,9 +217,18 @@ export function ExpenseClaimScreen() {
         setViewerOpen(true);
     };
 
-    const claimsQuery = useExpenseClaims(
-        activeTab === "pending" ? { status: "submitted" } : statusFilter !== "All" ? { status: statusFilter.toLowerCase() } : undefined
-    );
+    // Map display filter names to backend status values
+    const statusFilterParam = (() => {
+        if (activeTab === "pending") return undefined; // fetch all, filter client-side
+        if (statusFilter === "All") return undefined;
+        const map: Record<string, string> = {
+            "Draft": "draft", "Submitted": "submitted", "Pending Approval": "pending_approval",
+            "Approved": "approved", "Partially Approved": "partially_approved",
+            "Rejected": "rejected", "Paid": "paid", "Cancelled": "cancelled",
+        };
+        return map[statusFilter] ? { status: map[statusFilter] } : undefined;
+    })();
+    const claimsQuery = useExpenseClaims(statusFilterParam);
     const employeesQuery = useEmployees();
     const categoriesQuery = useExpenseCategories({ includeInactive: true });
     const detailQuery = useExpenseClaim(detailTarget?.id ?? "");
@@ -195,6 +237,8 @@ export function ExpenseClaimScreen() {
     const updateClaim = useUpdateExpenseClaim();
     const approveClaim = useApproveExpenseClaim();
     const rejectClaim = useRejectExpenseClaim();
+    const submitClaim = useSubmitExpenseClaim();
+    const deleteClaim = useDeleteExpenseClaim();
     const createCategory = useCreateExpenseCategory();
     const updateCategory = useUpdateExpenseCategory();
     const deleteCategory = useDeleteExpenseCategory();
@@ -283,22 +327,28 @@ export function ExpenseClaimScreen() {
         setLineItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item));
     };
 
-    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files) return;
+    const processUploadFiles = async (files: FileList) => {
         const newReceipts: ReceiptFile[] = [];
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
             if (file.size > 10 * 1024 * 1024) continue; // skip files > 10MB
-            const dataUrl = await fileToDataUrl(file);
-            newReceipts.push({
-                fileName: file.name,
-                fileUrl: dataUrl,
-                previewUrl: dataUrl,
-                size: file.size,
-            });
+            const key = await uploadReceipt(file);
+            if (key) {
+                newReceipts.push({
+                    fileName: file.name,
+                    fileUrl: key,
+                    previewUrl: URL.createObjectURL(file),
+                    size: file.size,
+                });
+            }
         }
         setReceiptFiles(prev => [...prev, ...newReceipts]);
+    };
+
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files) return;
+        await processUploadFiles(files);
         // Reset input so same file can be selected again
         if (fileInputRef.current) fileInputRef.current.value = "";
     };
@@ -308,19 +358,7 @@ export function ExpenseClaimScreen() {
         e.stopPropagation();
         const files = e.dataTransfer.files;
         if (!files) return;
-        const newReceipts: ReceiptFile[] = [];
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            if (file.size > 10 * 1024 * 1024) continue;
-            const dataUrl = await fileToDataUrl(file);
-            newReceipts.push({
-                fileName: file.name,
-                fileUrl: dataUrl,
-                previewUrl: dataUrl,
-                size: file.size,
-            });
-        }
-        setReceiptFiles(prev => [...prev, ...newReceipts]);
+        await processUploadFiles(files);
     };
 
     const removeReceipt = (index: number) => {
@@ -463,7 +501,7 @@ export function ExpenseClaimScreen() {
         } catch (err) { showApiError(err); }
     };
 
-    const saving = createClaim.isPending || updateClaim.isPending;
+    const saving = createClaim.isPending || updateClaim.isPending || isReceiptUploading;
     const savingCategory = createCategory.isPending || updateCategory.isPending;
     const updateField = (k: string, v: any) => setForm((p) => ({ ...p, [k]: v }));
     const updateCategoryField = (k: string, v: any) => setCategoryForm((p) => ({ ...p, [k]: v }));
@@ -829,24 +867,18 @@ export function ExpenseClaimScreen() {
                                 {receiptFiles.length > 0 && (
                                     <div className="mt-3 space-y-2">
                                         {receiptFiles.map((receipt, index) => {
-                                            const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(receipt.fileName) || receipt.fileUrl?.startsWith("data:image/");
-                                            const imageReceipts = receiptFiles.filter((rf) => /\.(jpg|jpeg|png|gif|webp)$/i.test(rf.fileName) || rf.fileUrl?.startsWith("data:image/"));
+                                            const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(receipt.fileName);
                                             return (
                                                 <div key={index} className="flex items-center gap-3 p-2.5 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700">
-                                                    {isImage && receipt.previewUrl ? (
+                                                    {receipt.previewUrl && isImage ? (
                                                         <img
                                                             src={receipt.previewUrl}
                                                             alt={receipt.fileName}
                                                             className="w-10 h-10 rounded-lg object-cover border border-neutral-200 dark:border-neutral-700 cursor-pointer hover:ring-2 hover:ring-primary-400 transition-all"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                const viewIdx = imageReceipts.findIndex((ir) => ir.fileName === receipt.fileName && ir.fileUrl === receipt.fileUrl);
-                                                                openImageViewer(
-                                                                    imageReceipts.map((ir) => ({ fileName: ir.fileName, fileUrl: ir.previewUrl || ir.fileUrl })),
-                                                                    viewIdx >= 0 ? viewIdx : 0,
-                                                                );
-                                                            }}
+                                                            onClick={(e) => { e.stopPropagation(); }}
                                                         />
+                                                    ) : !receipt.previewUrl ? (
+                                                        <ReceiptThumbnail fileUrl={receipt.fileUrl} fileName={receipt.fileName} />
                                                     ) : (
                                                         <div className="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
                                                             <FileText size={16} className="text-primary-600 dark:text-primary-400" />
@@ -924,67 +956,28 @@ export function ExpenseClaimScreen() {
                             )}
 
                             {/* Receipts */}
-                            {detailReceipts.length > 0 && (() => {
-                                const imageDetailReceipts = detailReceipts.filter((r: any) => {
-                                    const url = r.fileUrl || r.fileName || "";
-                                    return /\.(jpg|jpeg|png|gif|webp)$/i.test(url) || url.startsWith("data:image/");
-                                });
-                                return (
-                                    <div>
-                                        <span className="text-xs text-neutral-400 uppercase font-semibold block mb-2">Receipts / Attachments</span>
-                                        <div className="space-y-2">
-                                            {detailReceipts.map((r: any, i: number) => {
-                                                const url = r.fileUrl || r.fileName || "";
-                                                const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url) || url.startsWith("data:image/");
-                                                return (
-                                                    <div key={i} className="flex items-center gap-3 p-2.5 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700">
-                                                        {isImage ? (
-                                                            <img
-                                                                src={r.fileUrl}
-                                                                alt={r.fileName}
-                                                                className="w-10 h-10 rounded-lg object-cover border border-neutral-200 dark:border-neutral-700 cursor-pointer hover:ring-2 hover:ring-primary-400 transition-all"
-                                                                onClick={() => {
-                                                                    const viewIdx = imageDetailReceipts.findIndex((ir: any) => ir.fileUrl === r.fileUrl);
-                                                                    openImageViewer(
-                                                                        imageDetailReceipts.map((ir: any) => ({ fileName: ir.fileName || "Receipt", fileUrl: ir.fileUrl })),
-                                                                        viewIdx >= 0 ? viewIdx : 0,
-                                                                    );
-                                                                }}
-                                                            />
-                                                        ) : (
-                                                            <div className="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-                                                                <FileText size={16} className="text-primary-600 dark:text-primary-400" />
-                                                            </div>
-                                                        )}
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className="text-sm font-semibold text-primary-950 dark:text-white truncate">{r.fileName || "Receipt"}</p>
-                                                        </div>
-                                                        {r.fileUrl && isImage ? (
-                                                            <button
-                                                                onClick={() => {
-                                                                    const viewIdx = imageDetailReceipts.findIndex((ir: any) => ir.fileUrl === r.fileUrl);
-                                                                    openImageViewer(
-                                                                        imageDetailReceipts.map((ir: any) => ({ fileName: ir.fileName || "Receipt", fileUrl: ir.fileUrl })),
-                                                                        viewIdx >= 0 ? viewIdx : 0,
-                                                                    );
-                                                                }}
-                                                                className="p-1.5 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors"
-                                                                title="View image"
-                                                            >
-                                                                <Eye size={14} />
-                                                            </button>
-                                                        ) : r.fileUrl ? (
-                                                            <a href={r.fileUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors">
-                                                                <ExternalLink size={14} />
-                                                            </a>
-                                                        ) : null}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
+                            {detailReceipts.length > 0 && (
+                                <div>
+                                    <span className="text-xs text-neutral-400 uppercase font-semibold block mb-2">Receipts / Attachments</span>
+                                    <div className="space-y-2">
+                                        {detailReceipts.map((r: any, i: number) => (
+                                            <div key={i} className="flex items-center gap-3 p-2.5 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700">
+                                                <ReceiptThumbnail fileUrl={r.fileUrl} fileName={r.fileName || "Receipt"} />
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-semibold text-primary-950 dark:text-white truncate">{r.fileName || "Receipt"}</p>
+                                                </div>
+                                                {r.fileUrl ? (
+                                                    <ReceiptLink fileUrl={r.fileUrl}>
+                                                        <span className="p-1.5 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors inline-flex">
+                                                            <ExternalLink size={14} />
+                                                        </span>
+                                                    </ReceiptLink>
+                                                ) : null}
+                                            </div>
+                                        ))}
                                     </div>
-                                );
-                            })()}
+                                </div>
+                            )}
 
                             {/* Line Items */}
                             {detailItems.length > 0 && (
@@ -1015,9 +1008,11 @@ export function ExpenseClaimScreen() {
                                                 {item.receipts?.length > 0 && (
                                                     <div className="flex flex-wrap gap-2 mt-2">
                                                         {item.receipts.map((r: any, ri: number) => (
-                                                            <a key={ri} href={r.fileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary-600 dark:text-primary-400 hover:underline">
-                                                                <Paperclip size={10} />{r.fileName || "Receipt"}
-                                                            </a>
+                                                            <ReceiptLink key={ri} fileUrl={r.fileUrl}>
+                                                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary-600 dark:text-primary-400 hover:underline">
+                                                                    <Paperclip size={10} />{r.fileName || "Receipt"}
+                                                                </span>
+                                                            </ReceiptLink>
                                                         ))}
                                                     </div>
                                                 )}

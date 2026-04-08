@@ -116,7 +116,7 @@ export function useCompanyUsers(params?: {
     limit?: number;
     search?: string;
     role?: string;
-    status?: string;
+    isActive?: boolean;
 }) {
     return useQuery({
         queryKey: companyAdminKeys.users(params as Record<string, unknown>),

@@ -75,10 +75,10 @@ function FnFDetailModal({ settlement, onClose, onCompute, onApprove, onPay, isCo
                 <div className="flex items-center justify-between p-6 border-b border-neutral-100 dark:border-neutral-800">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center text-sm font-bold text-primary-600 dark:text-primary-400">
-                            {(settlement.employeeName ?? `${settlement.employee?.firstName ?? ''} ${settlement.employee?.lastName ?? ''}`.trim())?.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
+                            {(settlement.employeeName ?? '').split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-neutral-900 dark:text-white">{settlement.employeeName ?? `${settlement.employee?.firstName ?? ''} ${settlement.employee?.lastName ?? ''}`.trim() || 'Unknown'}</h2>
+                            <h2 className="text-lg font-bold text-neutral-900 dark:text-white">{settlement.employeeName || 'Unknown'}</h2>
                             <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[settlement.status]}`}>{settlement.status}</span>
                         </div>
                     </div>
@@ -168,8 +168,8 @@ export function FnFSettlementScreen() {
         if (search.trim()) {
             const q = search.toLowerCase();
             list = list.filter(s => {
-                const name = s.employeeName ?? (s.employee ? `${s.employee.firstName ?? ''} ${s.employee.lastName ?? ''}`.trim() : '');
-                return name.toLowerCase().includes(q) || (s.employee?.employeeId ?? '').toLowerCase().includes(q);
+                const name = s.employeeName ?? '';
+                return name.toLowerCase().includes(q);
             });
         }
         return list;
@@ -259,9 +259,9 @@ export function FnFSettlementScreen() {
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-3">
                                             <div className="w-8 h-8 rounded-full bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center text-xs font-bold text-primary-600 dark:text-primary-400">
-                                                {(item.employeeName ?? `${item.employee?.firstName ?? ''} ${item.employee?.lastName ?? ''}`.trim())?.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
+                                                {(item.employeeName ?? '').split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
                                             </div>
-                                            <span className="text-sm font-semibold text-neutral-900 dark:text-white">{item.employeeName ?? `${item.employee?.firstName ?? ''} ${item.employee?.lastName ?? ''}`.trim() || item.employeeId}</span>
+                                            <span className="text-sm font-semibold text-neutral-900 dark:text-white">{item.employeeName || 'Unknown'}</span>
                                         </div>
                                     </td>
                                     <td className="px-4 py-3 text-right text-sm font-bold text-primary-700 dark:text-primary-400">{formatCurrency(item.totalAmount)}</td>

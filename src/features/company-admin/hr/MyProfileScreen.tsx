@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
+import { useFileUrl } from '@/hooks/useFileUrl';
 import { UserCircle, Mail, Phone, Briefcase, CreditCard, Shield, Pencil, X, Loader2, Lock, Eye, EyeOff, KeyRound } from "lucide-react";
 import { useMyProfile } from "@/features/company-admin/api/use-ess-queries";
 import { useUpdateMyProfile } from "@/features/company-admin/api/use-ess-mutations";
@@ -185,7 +186,7 @@ function buildFullName(p: EssMyProfileData): string {
 
 function isImageSrc(url: string | undefined | null): url is string {
     if (!url || typeof url !== "string") return false;
-    return url.startsWith("data:image/") || url.startsWith("http://") || url.startsWith("https://") || url.startsWith("/");
+    return url.length > 0;
 }
 
 /* ── Info Row ── */
@@ -393,6 +394,8 @@ export function MyProfileScreen() {
         );
     }
 
+    const { url: profilePhotoUrl } = useFileUrl({ key: profile.profilePhotoUrl });
+
     const fullName = buildFullName(profile);
     const primaryEmail = profile.officialEmail ?? profile.personalEmail ?? profile.email ?? "";
     const phone = profile.personalMobile ?? profile.phone ?? "";
@@ -424,9 +427,9 @@ export function MyProfileScreen() {
             {/* Profile Header Card */}
             <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm p-6">
                 <div className="flex items-center gap-5">
-                    {isImageSrc(profile.profilePhotoUrl) ? (
+                    {isImageSrc(profilePhotoUrl) ? (
                         <img
-                            src={profile.profilePhotoUrl!}
+                            src={profilePhotoUrl!}
                             alt=""
                             className="w-20 h-20 rounded-2xl object-cover shadow-lg border border-neutral-200 dark:border-neutral-700"
                         />

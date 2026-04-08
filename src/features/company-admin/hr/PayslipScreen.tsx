@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
+import { R2Link } from '@/components/R2Link';
 import {
     FileText,
     Search,
@@ -209,7 +210,7 @@ export function PayslipScreen() {
                         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
                             <h2 className="text-lg font-bold text-primary-950 dark:text-white">Payslip</h2>
                             <div className="flex items-center gap-2">
-                                {detail?.pdfUrl && <a href={detail.pdfUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-colors" title="Download PDF"><Download size={16} /></a>}
+                                {detail?.pdfUrl && <R2Link fileKey={detail.pdfUrl} className="p-1.5 rounded-lg text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-colors" title="Download PDF"><Download size={16} /></R2Link>}
                                 <button onClick={() => setDetailId(null)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"><X size={18} /></button>
                             </div>
                         </div>

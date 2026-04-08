@@ -7,6 +7,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { X, Loader2, AlertCircle, Plus, Trash2, Edit3, Star, Upload, Camera } from 'lucide-react';
 import { useRef } from 'react';
+import { useFileUpload } from '@/hooks/useFileUpload';
+import { useFileUrl } from '@/hooks/useFileUrl';
 import { useUpdateCompanySection } from '@/features/super-admin/api/use-tenant-queries';
 import { showSuccess } from '@/lib/toast';
 import {
@@ -62,23 +64,32 @@ const SECTION_TITLES: Record<string, string> = {
 function IdentityForm({
     form,
     setField,
+    companyId,
 }: {
     form: Record<string, any>;
     setField: (key: string, value: any) => void;
+    companyId: string;
 }) {
     const fileRef = useRef<HTMLInputElement>(null);
     const [logoMode, setLogoMode] = useState<'upload' | 'url'>('upload');
 
-    const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { upload: uploadLogo, isUploading: isLogoUploading } = useFileUpload({
+        category: 'company-logo',
+        entityId: companyId ?? 'new',
+        platform: true,
+        companyId: companyId,
+        onSuccess: (key) => setField('logoUrl', key),
+    });
+
+    const { url: logoPreviewUrl } = useFileUrl({
+        key: form.logoUrl,
+        platform: true,
+    });
+
+    const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        if (file.size > 2 * 1024 * 1024) return; // 2MB max
-        const reader = new FileReader();
-        reader.onload = () => {
-            const result = typeof reader.result === 'string' ? reader.result : '';
-            setField('logoUrl', result);
-        };
-        reader.readAsDataURL(file);
+        await uploadLogo(file);
     };
 
     const removeLogo = () => {
@@ -94,12 +105,14 @@ function IdentityForm({
                 <div className="flex items-center gap-4">
                     <div className={cn(
                         'w-20 h-20 rounded-2xl flex items-center justify-center flex-shrink-0 overflow-hidden',
-                        form.logoUrl
+                        logoPreviewUrl
                             ? 'border-2 border-primary-200 dark:border-primary-800/50'
                             : 'border-2 border-dashed border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800'
                     )}>
-                        {form.logoUrl ? (
-                            <img src={form.logoUrl} alt="Logo preview" className="w-full h-full object-contain" />
+                        {isLogoUploading ? (
+                            <Loader2 size={20} className="animate-spin text-primary-500" />
+                        ) : logoPreviewUrl ? (
+                            <img src={logoPreviewUrl} alt="Logo preview" className="w-full h-full object-contain" />
                         ) : (
                             <span className="text-[10px] text-neutral-400 font-medium">No logo</span>
                         )}
@@ -108,17 +121,17 @@ function IdentityForm({
                         <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={handleFile} className="hidden" />
                         {form.logoUrl ? (
                             <div className="flex gap-2">
-                                <button type="button" onClick={() => fileRef.current?.click()} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 border border-primary-200 dark:border-primary-800/50 hover:bg-primary-100 transition-colors">
-                                    <Camera size={13} /> Change
+                                <button type="button" onClick={() => fileRef.current?.click()} disabled={isLogoUploading} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 border border-primary-200 dark:border-primary-800/50 hover:bg-primary-100 transition-colors disabled:opacity-50">
+                                    {isLogoUploading ? <Loader2 size={13} className="animate-spin" /> : <Camera size={13} />} Change
                                 </button>
-                                <button type="button" onClick={removeLogo} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-danger-50 dark:bg-danger-900/20 text-danger-600 border border-danger-200 dark:border-danger-800/50 hover:bg-danger-100 transition-colors">
+                                <button type="button" onClick={removeLogo} disabled={isLogoUploading} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-danger-50 dark:bg-danger-900/20 text-danger-600 border border-danger-200 dark:border-danger-800/50 hover:bg-danger-100 transition-colors disabled:opacity-50">
                                     <X size={13} /> Remove
                                 </button>
                             </div>
                         ) : (
                             <div className="flex gap-2">
-                                <button type="button" onClick={() => { setLogoMode('upload'); fileRef.current?.click(); }} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-primary-600 text-white hover:bg-primary-700 shadow-sm shadow-primary-500/20 transition-colors">
-                                    <Upload size={13} /> Upload
+                                <button type="button" onClick={() => { setLogoMode('upload'); fileRef.current?.click(); }} disabled={isLogoUploading} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-primary-600 text-white hover:bg-primary-700 shadow-sm shadow-primary-500/20 transition-colors disabled:opacity-50">
+                                    {isLogoUploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />} Upload
                                 </button>
                                 <button type="button" onClick={() => setLogoMode(logoMode === 'url' ? 'upload' : 'url')} className="px-3 py-2 rounded-xl text-xs font-bold border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">
                                     {logoMode === 'url' ? 'Hide URL' : 'Use URL'}
@@ -2018,7 +2031,7 @@ export function CompanyDetailEditModal({
     const renderForm = () => {
         switch (section) {
             case 'identity':
-                return <IdentityForm form={form} setField={setField} />;
+                return <IdentityForm form={form} setField={setField} companyId={companyId} />;
             case 'statutory':
                 return <StatutoryForm form={form} setField={setField} />;
             case 'address':

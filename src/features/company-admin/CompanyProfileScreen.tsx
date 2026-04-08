@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
+import { R2Image } from '@/components/R2Image';
 import {
     Building2,
     Edit3,
@@ -280,7 +281,13 @@ export function CompanyProfileScreen() {
             {/* Header */}
             <div className="flex items-center gap-5">
                 {profile?.logoUrl ? (
-                    <img src={profile.logoUrl} alt="Company Logo" className="w-20 h-20 rounded-2xl object-contain border border-neutral-200 dark:border-neutral-700" />
+                    <R2Image fileKey={profile.logoUrl} alt="Company Logo" className="w-20 h-20 rounded-2xl object-contain border border-neutral-200 dark:border-neutral-700" fallback={
+                        <div className="w-20 h-20 rounded-2xl bg-primary-100 dark:bg-primary-900/40 flex items-center justify-center border border-primary-200 dark:border-primary-800 flex-shrink-0">
+                            <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">
+                                {(profile?.displayName || profile?.name || "C").slice(0, 2).toUpperCase()}
+                            </span>
+                        </div>
+                    } />
                 ) : (
                     <div className="w-20 h-20 rounded-2xl bg-primary-100 dark:bg-primary-900/40 flex items-center justify-center border border-primary-200 dark:border-primary-800 flex-shrink-0">
                         <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">

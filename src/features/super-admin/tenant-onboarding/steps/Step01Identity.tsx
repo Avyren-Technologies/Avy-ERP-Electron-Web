@@ -3,8 +3,10 @@ import React, { useRef, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Building2, Upload, X, Camera, Globe } from 'lucide-react';
+import { Building2, Upload, X, Camera, Globe, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useFileUpload } from '@/hooks/useFileUpload';
+import { useFileUrl } from '@/hooks/useFileUrl';
 import {
     SectionCard, FormInput, FormSelect, FormDatePicker, RadioOption, TwoCol, ThreeCol
 } from '../atoms';
@@ -136,15 +138,26 @@ export function Step01Identity({ onConfirmSubmit }: { onConfirmSubmit?: () => vo
 
     const watchedSlug = watch('slug');
 
-    const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { upload: uploadLogo, isUploading: isLogoUploading } = useFileUpload({
+        category: 'company-logo',
+        entityId: 'onboarding',
+        platform: true,
+        companyId: 'onboarding',
+        onSuccess: (key) => {
+            setStep1({ logoPreviewUrl: key });
+        },
+    });
+
+    const { url: logoDisplayUrl } = useFileUrl({
+        key: step1.logoPreviewUrl,
+        platform: true,
+    });
+
+    const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-            const result = typeof reader.result === 'string' ? reader.result : '';
-            setStep1({ logoFile: file, logoPreviewUrl: result });
-        };
-        reader.readAsDataURL(file);
+        setStep1({ logoFile: file });
+        await uploadLogo(file);
     };
 
     const removeLogo = () => {
@@ -168,14 +181,16 @@ export function Step01Identity({ onConfirmSubmit }: { onConfirmSubmit?: () => vo
                     <div
                         className={cn(
                             'w-24 h-24 rounded-2xl flex items-center justify-center flex-shrink-0 overflow-hidden',
-                            step1.logoPreviewUrl
+                            logoDisplayUrl
                                 ? 'border-2 border-primary-200 dark:border-primary-800/50'
                                 : 'border-2 border-dashed border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800'
                         )}
                     >
-                        {step1.logoPreviewUrl ? (
+                        {isLogoUploading ? (
+                            <Loader2 size={24} className="animate-spin text-primary-500" />
+                        ) : logoDisplayUrl ? (
                             <img
-                                src={step1.logoPreviewUrl}
+                                src={logoDisplayUrl}
                                 alt="Company logo"
                                 className="w-full h-full object-cover"
                             />
@@ -191,19 +206,21 @@ export function Step01Identity({ onConfirmSubmit }: { onConfirmSubmit?: () => vo
                                 <button
                                     type="button"
                                     onClick={() => fileRef.current?.click()}
+                                    disabled={isLogoUploading}
                                     className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold
                     bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 border border-primary-200 dark:border-primary-800/50
-                    hover:bg-primary-100 dark:bg-primary-900/40 transition-colors"
+                    hover:bg-primary-100 dark:bg-primary-900/40 transition-colors disabled:opacity-50"
                                 >
-                                    <Camera size={13} />
+                                    {isLogoUploading ? <Loader2 size={13} className="animate-spin" /> : <Camera size={13} />}
                                     Change Logo
                                 </button>
                                 <button
                                     type="button"
                                     onClick={removeLogo}
+                                    disabled={isLogoUploading}
                                     className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold
                     bg-danger-50 dark:bg-danger-900/20 text-danger-600 border border-danger-200 dark:border-danger-800/50
-                    hover:bg-danger-100 dark:bg-danger-900/30 transition-colors"
+                    hover:bg-danger-100 dark:bg-danger-900/30 transition-colors disabled:opacity-50"
                                 >
                                     <X size={13} />
                                     Remove
@@ -213,11 +230,12 @@ export function Step01Identity({ onConfirmSubmit }: { onConfirmSubmit?: () => vo
                             <button
                                 type="button"
                                 onClick={() => fileRef.current?.click()}
+                                disabled={isLogoUploading}
                                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold
                   bg-primary-600 text-white hover:bg-primary-700 shadow-sm shadow-primary-500/20
-                  transition-colors"
+                  transition-colors disabled:opacity-50"
                             >
-                                <Upload size={14} />
+                                {isLogoUploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
                                 Upload Logo
                             </button>
                         )}

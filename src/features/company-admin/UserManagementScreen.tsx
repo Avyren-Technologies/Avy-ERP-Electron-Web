@@ -183,7 +183,7 @@ export function UserManagementScreen() {
     const { data, isLoading, isError } = useCompanyUsers({
         search: search || undefined,
         role: roleFilter === "All" ? undefined : roleFilter,
-        status: statusFilter === "All" ? undefined : statusFilter.toLowerCase(),
+        isActive: statusFilter === "All" ? undefined : statusFilter === "Active",
         page,
         limit,
     });

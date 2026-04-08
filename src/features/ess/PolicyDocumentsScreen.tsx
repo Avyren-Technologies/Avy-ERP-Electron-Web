@@ -1,5 +1,6 @@
 import { usePolicyDocuments } from '@/features/company-admin/api';
 import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
+import { R2Link } from '@/components/R2Link';
 import { Loader2, BookOpen, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -52,9 +53,9 @@ export function PolicyDocumentsScreen() {
                                     </p>
                                 </div>
                                 {p.fileUrl && (
-                                    <a href={p.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-primary-600 border border-primary-200 rounded-lg hover:bg-primary-50 transition-colors">
+                                    <R2Link fileKey={p.fileUrl} className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-primary-600 border border-primary-200 rounded-lg hover:bg-primary-50 transition-colors">
                                         <ExternalLink className="w-3.5 h-3.5" /> View
-                                    </a>
+                                    </R2Link>
                                 )}
                             </div>
                             {p.description && <p className="text-sm text-neutral-600 dark:text-neutral-400">{p.description}</p>}

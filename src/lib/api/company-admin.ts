@@ -492,6 +492,7 @@ async function listUsers(params?: {
     limit?: number;
     search?: string;
     role?: string;
+    isActive?: boolean;
     status?: string;
 }): Promise<ApiResponse<CompanyUser[]>> {
     const response = await client.get('/company/users', { params });

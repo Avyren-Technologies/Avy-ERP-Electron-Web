@@ -19,6 +19,7 @@ import { useAuthStore, getUserInitials, getDisplayName, getRoleLabel } from '@/s
 import { checkPermission } from '@/lib/api/auth';
 import { essApi } from '@/lib/api/ess';
 import { useNavigationManifest } from '@/features/company-admin/api';
+import { useFileUrl } from '@/hooks/useFileUrl';
 
 
 // ============================================================
@@ -445,16 +446,16 @@ function ProfileDropdown() {
         retry: false,
     });
 
-    const profilePhotoUrl = myProfileData?.data?.profilePhotoUrl;
+    const profilePhotoKey = myProfileData?.data?.profilePhotoUrl;
+    const { url: profilePhotoUrl } = useFileUrl({ key: profilePhotoKey });
     const showProfilePhoto =
         !imageLoadFailed &&
         typeof profilePhotoUrl === 'string' &&
-        profilePhotoUrl.length > 0 &&
-        (profilePhotoUrl.startsWith('http://') || profilePhotoUrl.startsWith('https://') || profilePhotoUrl.startsWith('/') || profilePhotoUrl.startsWith('data:image/'));
+        profilePhotoUrl.length > 0;
 
     useEffect(() => {
         setImageLoadFailed(false);
-    }, [profilePhotoUrl]);
+    }, [profilePhotoKey]);
 
     useEffect(() => {
         const handler = (e: MouseEvent) => {
@@ -494,7 +495,7 @@ function ProfileDropdown() {
             </button>
 
             {open && (
-                <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-2xl shadow-2xl shadow-neutral-900/15 z-50 animate-in fade-in slide-in-from-top-2 duration-100 overflow-hidden">
+                <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-2xl shadow-2xl shadow-neutral-900/15 z-[120] animate-in fade-in slide-in-from-top-2 duration-100 overflow-hidden">
                     <div className="px-4 py-4 border-b border-neutral-100 dark:border-neutral-800">
                         <div className="flex items-center gap-3">
                             {showProfilePhoto ? (
@@ -807,7 +808,7 @@ export function TopBar({ sidebarCollapsed }: TopBarProps) {
 
     return (
         <>
-            <header className="h-16 flex-shrink-0 flex items-center justify-between px-6 gap-4 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md border-b border-neutral-200/60 dark:border-neutral-800 sticky top-0 z-10">
+            <header className="h-16 flex-shrink-0 flex items-center justify-between px-6 gap-4 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md border-b border-neutral-200/60 dark:border-neutral-800 sticky top-0 z-40">
 
                 {/* Left — page title */}
                 <div className="flex items-center gap-3 min-w-0">
