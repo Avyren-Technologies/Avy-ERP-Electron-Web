@@ -248,11 +248,12 @@ function NotificationsPanel() {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
 
-    // Poll for unread count every 30 seconds
+    // Socket.io drives real-time updates via notification:new. We keep
+    // a long-interval fallback poll (5 min) to recover if sockets drop.
     const { data: unreadData } = useQuery({
         queryKey: notificationKeys.unreadCount(),
         queryFn: () => notificationApi.getUnreadCount(),
-        refetchInterval: 30000,
+        refetchInterval: 300000,
     });
 
     // Fetch notification list only when dropdown is open

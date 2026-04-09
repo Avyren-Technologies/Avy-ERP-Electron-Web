@@ -128,6 +128,7 @@ const ITDeclarationScreen = lazyNamed(() => import("./features/company-admin/hr/
 
 // ─── Notifications ───
 const NotificationListScreen = lazyNamed(() => import("./features/notifications/NotificationListScreen"), "NotificationListScreen");
+const NotificationPreferencesScreen = lazyNamed(() => import("./features/settings/NotificationPreferencesScreen"), "NotificationPreferencesScreen");
 
 // ─── Help & Support ───
 const HelpSupportScreen = lazyNamed(() => import("./features/help/HelpSupportScreen"), "HelpSupportScreen");
@@ -492,6 +493,7 @@ function App() {
         <Route path="help/ticket/:id" element={<TicketChatScreen />} />
         <Route path="help" element={<HelpSupportScreen />} />
         <Route path="notifications" element={<NotificationListScreen />} />
+        <Route path="settings/notifications" element={<NotificationPreferencesScreen />} />
         <Route path="settings" element={<Placeholder name="Settings" />} />
       </Route>
 

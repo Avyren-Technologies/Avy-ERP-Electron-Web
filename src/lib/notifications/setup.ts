@@ -58,8 +58,14 @@ export async function initWebPushNotifications(): Promise<string | null> {
       const { client } = await import('@/lib/api/client');
       await client.post('/notifications/register-device', {
         fcmToken: token,
+        tokenType: 'FCM_WEB',
         platform: 'WEB',
         deviceName: navigator.userAgent.substring(0, 100),
+        deviceModel: navigator.platform,
+        osVersion: navigator.platform,
+        appVersion: (import.meta as any).env?.VITE_APP_VERSION ?? 'web',
+        locale: navigator.language,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
     } catch {
       // Silently fail — token registration is non-critical

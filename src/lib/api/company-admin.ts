@@ -214,6 +214,9 @@ export interface CompanySettings {
     razorpayEnabled: boolean;
     emailNotifications: boolean;
     whatsappNotifications: boolean;
+    pushNotifications: boolean;
+    smsNotifications: boolean;
+    inAppNotifications: boolean;
     biometricIntegration: boolean;
     eSignIntegration: boolean;
 }
