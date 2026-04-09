@@ -99,17 +99,32 @@ export function NotificationPreferencesScreen() {
         },
 
         onSuccess: (result) => {
-            // Server returns the updated preference; merge into cache to avoid refetch
+            // Server returns the updated preference row (a full Prisma record
+            // with id/userId/createdAt/updatedAt). Pick ONLY the known
+            // NotificationPreferenceData fields so the cache never holds
+            // unexpected shape drift.
             const existing = queryClient.getQueryData<EnvelopeShape>(notificationPreferencesKey);
-            if (existing?.data) {
-                const resultData = (result as EnvelopeShape | undefined)?.data;
-                if (resultData) {
-                    queryClient.setQueryData<EnvelopeShape>(notificationPreferencesKey, {
-                        ...existing,
-                        data: { ...existing.data, preference: resultData as unknown as NotificationPreferenceData },
-                    });
-                }
-            }
+            if (!existing?.data) return;
+
+            const raw = (result as { data?: Record<string, unknown> } | undefined)?.data;
+            if (!raw) return;
+
+            const picked: NotificationPreferenceData = {
+                inAppEnabled: Boolean(raw.inAppEnabled),
+                pushEnabled: Boolean(raw.pushEnabled),
+                emailEnabled: Boolean(raw.emailEnabled),
+                smsEnabled: Boolean(raw.smsEnabled),
+                whatsappEnabled: Boolean(raw.whatsappEnabled),
+                deviceStrategy: (raw.deviceStrategy === 'LATEST_ONLY' ? 'LATEST_ONLY' : 'ALL'),
+                quietHoursEnabled: Boolean(raw.quietHoursEnabled),
+                quietHoursStart: (raw.quietHoursStart as string | null) ?? null,
+                quietHoursEnd: (raw.quietHoursEnd as string | null) ?? null,
+            };
+
+            queryClient.setQueryData<EnvelopeShape>(notificationPreferencesKey, {
+                ...existing,
+                data: { ...existing.data, preference: picked },
+            });
         },
     });
 
