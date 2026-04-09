@@ -1,7 +1,23 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { notificationApi, type NotificationPreferenceData, type NotificationPreferencesResponse } from '@/lib/api/notifications';
+import { Lock } from 'lucide-react';
+import {
+    notificationApi,
+    type NotificationPreferenceData,
+    type NotificationPreferencesResponse,
+    type NotificationCategoryPreference,
+    type NotificationChannel,
+} from '@/lib/api/notifications';
 import { showSuccess, showApiError } from '@/lib/toast';
+
+// Channels displayed in the category matrix header (IN_APP is omitted
+// because in-app delivery is always the system of record).
+const CATEGORY_MATRIX_CHANNELS: Array<{ key: NotificationChannel; label: string }> = [
+    { key: 'PUSH', label: 'Push' },
+    { key: 'EMAIL', label: 'Email' },
+    { key: 'SMS', label: 'SMS' },
+    { key: 'WHATSAPP', label: 'WhatsApp' },
+];
 
 /** Separate root key so notification list/unread invalidations don't refetch preferences. */
 export const notificationPreferencesKey = ['notification-preferences'] as const;
@@ -133,6 +149,52 @@ export function NotificationPreferencesScreen() {
         onSuccess: () => showSuccess('Test notification sent'),
         onError: (err) => showApiError(err),
     });
+
+    // Single-cell mutation for the category × channel matrix. Optimistic
+    // update with rollback on error — matches the main preferences pattern.
+    const categoryMutation = useMutation({
+        mutationFn: (entry: NotificationCategoryPreference) =>
+            notificationApi.updateCategoryPreferences([entry]),
+        onMutate: async (entry) => {
+            await queryClient.cancelQueries({ queryKey: notificationPreferencesKey });
+            const previous = queryClient.getQueryData<EnvelopeShape>(notificationPreferencesKey);
+            if (previous?.data) {
+                const prefs = previous.data.categoryPreferences ?? [];
+                const existingIdx = prefs.findIndex(
+                    (p) => p.category === entry.category && p.channel === entry.channel,
+                );
+                const nextPrefs =
+                    existingIdx >= 0
+                        ? prefs.map((p, i) => (i === existingIdx ? entry : p))
+                        : [...prefs, entry];
+                queryClient.setQueryData<EnvelopeShape>(notificationPreferencesKey, {
+                    ...previous,
+                    data: { ...previous.data, categoryPreferences: nextPrefs },
+                });
+            }
+            return { previous };
+        },
+        onError: (err, _entry, ctx) => {
+            if (ctx?.previous) {
+                queryClient.setQueryData(notificationPreferencesKey, ctx.previous);
+            }
+            showApiError(err);
+        },
+    });
+
+    /** Look up the current enabled state for a (category, channel) cell. */
+    const getCategoryCell = (
+        prefs: NotificationCategoryPreference[] | undefined,
+        category: string,
+        channel: NotificationChannel,
+    ): boolean => {
+        const entry = prefs?.find((p) => p.category === category && p.channel === channel);
+        return entry?.enabled ?? true; // default = enabled when no row exists
+    };
+
+    const toggleCategoryCell = (category: string, channel: NotificationChannel, enabled: boolean) => {
+        categoryMutation.mutate({ category, channel, enabled });
+    };
 
     const update = (patch: Partial<NotificationPreferenceData>) => {
         updateMutation.mutate(patch);
@@ -309,6 +371,104 @@ export function NotificationPreferencesScreen() {
                         </div>
                     </div>
                 )}
+            </section>
+
+            {/* Fine-tune by category */}
+            <section className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6">
+                <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-2">
+                    Fine-tune by category
+                </h2>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+                    Mute individual notification categories per channel. Locked categories (security alerts) cannot be disabled.
+                </p>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-b border-neutral-200 dark:border-neutral-800">
+                                <th className="text-left py-2 pr-4 font-medium text-neutral-700 dark:text-neutral-300">
+                                    Category
+                                </th>
+                                {CATEGORY_MATRIX_CHANNELS.map((c) => (
+                                    <th
+                                        key={c.key}
+                                        className="text-center py-2 px-2 font-medium text-neutral-700 dark:text-neutral-300"
+                                    >
+                                        {c.label}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {(envelope?.data?.categoryCatalogue ?? []).map((cat) => (
+                                <tr
+                                    key={cat.code}
+                                    className="border-b border-neutral-100 dark:border-neutral-800 last:border-b-0"
+                                >
+                                    <td className="py-3 pr-4">
+                                        <div className="flex items-center gap-2">
+                                            {cat.locked && (
+                                                <Lock
+                                                    size={14}
+                                                    className="text-amber-500 shrink-0"
+                                                    aria-label="Locked — cannot be disabled"
+                                                />
+                                            )}
+                                            <div className="min-w-0">
+                                                <div
+                                                    className={`font-medium ${
+                                                        cat.locked
+                                                            ? 'text-neutral-400 dark:text-neutral-500'
+                                                            : 'text-neutral-900 dark:text-neutral-100'
+                                                    }`}
+                                                >
+                                                    {cat.label}
+                                                </div>
+                                                <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                                                    {cat.description}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    {CATEGORY_MATRIX_CHANNELS.map((c) => {
+                                        const checked = getCategoryCell(
+                                            envelope?.data?.categoryPreferences,
+                                            cat.code,
+                                            c.key,
+                                        );
+                                        const disabled = !!cat.locked;
+                                        return (
+                                            <td key={c.key} className="py-3 px-2 text-center">
+                                                <button
+                                                    type="button"
+                                                    role="switch"
+                                                    aria-checked={checked}
+                                                    aria-label={`${cat.label} ${c.label}`}
+                                                    disabled={disabled}
+                                                    onClick={() =>
+                                                        !disabled && toggleCategoryCell(cat.code, c.key, !checked)
+                                                    }
+                                                    className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                                                        disabled
+                                                            ? 'bg-neutral-200 dark:bg-neutral-700 cursor-not-allowed opacity-50'
+                                                            : checked
+                                                              ? 'bg-indigo-600 cursor-pointer'
+                                                              : 'bg-neutral-300 dark:bg-neutral-700 cursor-pointer'
+                                                    }`}
+                                                >
+                                                    <span
+                                                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition ${
+                                                            checked ? 'translate-x-4' : 'translate-x-0'
+                                                        }`}
+                                                    />
+                                                </button>
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
             {/* Test notification */}
