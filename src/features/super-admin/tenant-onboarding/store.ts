@@ -64,7 +64,7 @@ const defaultStep5: Step5Form = {
     razorpayEnabled: false, razorpayKeyId: '', razorpayKeySecret: '',
     razorpayWebhookSecret: '', razorpayAccountNumber: '',
     razorpayAutoDisbursement: false, razorpayTestMode: true,
-    emailNotif: false, whatsapp: false,
+    emailNotif: false, pushNotif: true, smsNotif: false, inAppNotif: true, whatsapp: false,
 };
 
 const defaultStep6: Step6Form = {

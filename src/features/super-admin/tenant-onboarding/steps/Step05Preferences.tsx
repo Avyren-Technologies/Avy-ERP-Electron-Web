@@ -32,6 +32,9 @@ const schema = z.object({
     razorpayTestMode: z.boolean(),
 
     emailNotif: z.boolean(),
+    pushNotif: z.boolean(),
+    smsNotif: z.boolean(),
+    inAppNotif: z.boolean(),
     whatsapp: z.boolean(),
 }).superRefine((data, ctx) => {
     if (data.bankIntegration && data.razorpayEnabled) {
@@ -146,6 +149,9 @@ export function Step05Preferences() {
             razorpayAutoDisbursement: step5.razorpayAutoDisbursement,
             razorpayTestMode: step5.razorpayTestMode,
             emailNotif: step5.emailNotif,
+            pushNotif: step5.pushNotif ?? true,
+            smsNotif: step5.smsNotif ?? false,
+            inAppNotif: step5.inAppNotif ?? true,
             whatsapp: false,
         }
     });
@@ -224,6 +230,18 @@ export function Step05Preferences() {
 
                     <Controller name="emailNotif" control={control} render={({ field }) => (
                         <ToggleRow label="Email Notifications" subtitle="Automated emails for payslips, leave approvals, breakdown alerts, and reminders" value={field.value} onToggle={field.onChange} />
+                    )} />
+
+                    <Controller name="pushNotif" control={control} render={({ field }) => (
+                        <ToggleRow label="Push Notifications" subtitle="Mobile push alerts for approvals, salary credits, and real-time updates" value={field.value} onToggle={field.onChange} />
+                    )} />
+
+                    <Controller name="inAppNotif" control={control} render={({ field }) => (
+                        <ToggleRow label="In-App Notifications" subtitle="Notification feed inside the web and mobile apps (always enabled — cannot be disabled per user)" value={field.value} onToggle={field.onChange} />
+                    )} />
+
+                    <Controller name="smsNotif" control={control} render={({ field }) => (
+                        <ToggleRow label="SMS Notifications" subtitle="Transactional SMS via Twilio for critical alerts — daily caps apply to control cost" value={field.value} onToggle={field.onChange} />
                     )} />
 
                     <div className="relative opacity-60 pointer-events-none">
