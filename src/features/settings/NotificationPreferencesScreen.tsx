@@ -1,9 +1,15 @@
-import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { notificationApi, type NotificationPreferenceData, type NotificationPreferencesResponse } from '@/lib/api/notifications';
 import { showSuccess, showApiError } from '@/lib/toast';
 
-const PREF_KEY = ['notifications', 'preferences'] as const;
+/** Separate root key so notification list/unread invalidations don't refetch preferences. */
+export const notificationPreferencesKey = ['notification-preferences'] as const;
+
+interface EnvelopeShape {
+    data?: NotificationPreferencesResponse;
+    success?: boolean;
+}
 
 interface ToggleRowProps {
     label: string;
@@ -28,6 +34,7 @@ function ToggleRow({ label, description, checked, disabled, disabledReason, onCh
                 type="button"
                 role="switch"
                 aria-checked={checked}
+                aria-label={label}
                 disabled={disabled}
                 onClick={() => !disabled && onChange(!checked)}
                 className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
@@ -51,21 +58,59 @@ function ToggleRow({ label, description, checked, disabled, disabledReason, onCh
 export function NotificationPreferencesScreen() {
     const queryClient = useQueryClient();
 
-    const { data, isLoading } = useQuery({
-        queryKey: PREF_KEY,
+    const { data, isLoading, isError, refetch } = useQuery({
+        queryKey: notificationPreferencesKey,
         queryFn: notificationApi.getPreferences,
         staleTime: 30_000,
     });
 
-    const [pref, setPref] = useState<NotificationPreferenceData | null>(null);
+    const envelope = data as EnvelopeShape | undefined;
+    const preference = envelope?.data?.preference;
+    const companyMasters = envelope?.data?.companyMasters;
+
+    // Local state for quiet hours time inputs (debounced via blur instead of per-keystroke)
+    const [quietStartDraft, setQuietStartDraft] = useState<string | null>(null);
+    const [quietEndDraft, setQuietEndDraft] = useState<string | null>(null);
 
     const updateMutation = useMutation({
-        mutationFn: (data: Partial<NotificationPreferenceData>) => notificationApi.updatePreferences(data),
-        onSuccess: () => {
-            showSuccess('Preferences updated');
-            queryClient.invalidateQueries({ queryKey: PREF_KEY });
+        mutationFn: (patch: Partial<NotificationPreferenceData>) => notificationApi.updatePreferences(patch),
+
+        // Optimistic update with full rollback
+        onMutate: async (patch) => {
+            await queryClient.cancelQueries({ queryKey: notificationPreferencesKey });
+            const previous = queryClient.getQueryData<EnvelopeShape>(notificationPreferencesKey);
+            if (previous?.data) {
+                queryClient.setQueryData<EnvelopeShape>(notificationPreferencesKey, {
+                    ...previous,
+                    data: {
+                        ...previous.data,
+                        preference: { ...previous.data.preference, ...patch },
+                    },
+                });
+            }
+            return { previous };
         },
-        onError: (err) => showApiError(err),
+
+        onError: (err, _patch, ctx) => {
+            if (ctx?.previous) {
+                queryClient.setQueryData(notificationPreferencesKey, ctx.previous);
+            }
+            showApiError(err);
+        },
+
+        onSuccess: (result) => {
+            // Server returns the updated preference; merge into cache to avoid refetch
+            const existing = queryClient.getQueryData<EnvelopeShape>(notificationPreferencesKey);
+            if (existing?.data) {
+                const resultData = (result as EnvelopeShape | undefined)?.data;
+                if (resultData) {
+                    queryClient.setQueryData<EnvelopeShape>(notificationPreferencesKey, {
+                        ...existing,
+                        data: { ...existing.data, preference: resultData as unknown as NotificationPreferenceData },
+                    });
+                }
+            }
+        },
     });
 
     const testMutation = useMutation({
@@ -74,27 +119,34 @@ export function NotificationPreferencesScreen() {
         onError: (err) => showApiError(err),
     });
 
-    useEffect(() => {
-        const envelope = data as { data?: NotificationPreferencesResponse } | undefined;
-        if (envelope?.data?.preference) setPref(envelope.data.preference);
-    }, [data]);
-
-    const envelope = data as { data?: NotificationPreferencesResponse } | undefined;
-    const companyMasters = envelope?.data?.companyMasters;
-
     const update = (patch: Partial<NotificationPreferenceData>) => {
-        if (!pref) return;
-        const next = { ...pref, ...patch };
-        setPref(next);
         updateMutation.mutate(patch);
     };
 
-    if (isLoading || !pref || !companyMasters) {
+    if (isError) {
         return (
-            <div className="p-8">
-                <div className="animate-pulse space-y-3">
+            <div className="max-w-2xl p-8 text-center">
+                <p className="text-red-600 dark:text-red-400 font-medium">Failed to load preferences.</p>
+                <button
+                    type="button"
+                    onClick={() => refetch()}
+                    className="mt-4 inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                >
+                    Retry
+                </button>
+            </div>
+        );
+    }
+
+    if (isLoading || !preference || !companyMasters) {
+        return (
+            <div className="max-w-3xl p-8">
+                <div className="animate-pulse space-y-6">
                     <div className="h-8 bg-neutral-200 dark:bg-neutral-800 rounded w-1/3" />
                     <div className="h-4 bg-neutral-200 dark:bg-neutral-800 rounded w-2/3" />
+                    <div className="h-32 bg-neutral-100 dark:bg-neutral-900 rounded-xl" />
+                    <div className="h-32 bg-neutral-100 dark:bg-neutral-900 rounded-xl" />
+                    <div className="h-32 bg-neutral-100 dark:bg-neutral-900 rounded-xl" />
                 </div>
             </div>
         );
@@ -113,18 +165,21 @@ export function NotificationPreferencesScreen() {
             <section className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6">
                 <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">Delivery Channels</h2>
 
-                <ToggleRow
-                    label="In-App Notifications"
-                    description="Bell icon history is always shown regardless of this toggle."
-                    checked={pref.inAppEnabled}
-                    disabled={true}
-                    disabledReason="Always enabled — in-app is the system of record."
-                    onChange={() => {}}
-                />
+                <div className="flex items-start justify-between gap-4 py-3 border-b border-neutral-200 dark:border-neutral-800">
+                    <div className="flex-1 min-w-0">
+                        <div className="font-medium text-neutral-900 dark:text-neutral-100">In-App Notifications</div>
+                        <div className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
+                            Bell icon history is always shown — this is the system of record and cannot be disabled.
+                        </div>
+                    </div>
+                    <div className="inline-flex items-center rounded-full bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:text-indigo-300">
+                        Always on
+                    </div>
+                </div>
                 <ToggleRow
                     label="Push Notifications"
                     description="Lock-screen alerts on your devices (mobile + browser)."
-                    checked={pref.pushEnabled}
+                    checked={preference.pushEnabled}
                     disabled={!companyMasters.push}
                     disabledReason={!companyMasters.push ? 'Disabled by company administrator' : undefined}
                     onChange={(v) => update({ pushEnabled: v })}
@@ -132,7 +187,7 @@ export function NotificationPreferencesScreen() {
                 <ToggleRow
                     label="Email Notifications"
                     description="Email alerts for important events."
-                    checked={pref.emailEnabled}
+                    checked={preference.emailEnabled}
                     disabled={!companyMasters.email}
                     disabledReason={!companyMasters.email ? 'Disabled by company administrator' : undefined}
                     onChange={(v) => update({ emailEnabled: v })}
@@ -140,7 +195,7 @@ export function NotificationPreferencesScreen() {
                 <ToggleRow
                     label="SMS Notifications"
                     description="Text message alerts (if enabled by your company)."
-                    checked={pref.smsEnabled}
+                    checked={preference.smsEnabled}
                     disabled={!companyMasters.sms}
                     disabledReason={!companyMasters.sms ? 'Disabled by company administrator' : undefined}
                     onChange={(v) => update({ smsEnabled: v })}
@@ -148,7 +203,7 @@ export function NotificationPreferencesScreen() {
                 <ToggleRow
                     label="WhatsApp Notifications"
                     description="WhatsApp alerts (if enabled by your company)."
-                    checked={pref.whatsappEnabled}
+                    checked={preference.whatsappEnabled}
                     disabled={!companyMasters.whatsapp}
                     disabledReason={!companyMasters.whatsapp ? 'Disabled by company administrator' : undefined}
                     onChange={(v) => update({ whatsappEnabled: v })}
@@ -163,9 +218,9 @@ export function NotificationPreferencesScreen() {
                         <input
                             type="radio"
                             name="deviceStrategy"
-                            checked={pref.deviceStrategy === 'ALL'}
+                            checked={preference.deviceStrategy === 'ALL'}
                             onChange={() => update({ deviceStrategy: 'ALL' })}
-                            className="w-4 h-4 text-indigo-600"
+                            className="w-4 h-4 accent-indigo-600"
                         />
                         <div>
                             <div className="font-medium text-neutral-900 dark:text-neutral-100">All Devices</div>
@@ -178,9 +233,9 @@ export function NotificationPreferencesScreen() {
                         <input
                             type="radio"
                             name="deviceStrategy"
-                            checked={pref.deviceStrategy === 'LATEST_ONLY'}
+                            checked={preference.deviceStrategy === 'LATEST_ONLY'}
                             onChange={() => update({ deviceStrategy: 'LATEST_ONLY' })}
-                            className="w-4 h-4 text-indigo-600"
+                            className="w-4 h-4 accent-indigo-600"
                         />
                         <div>
                             <div className="font-medium text-neutral-900 dark:text-neutral-100">Latest Device Only</div>
@@ -198,10 +253,10 @@ export function NotificationPreferencesScreen() {
                 <ToggleRow
                     label="Enable Quiet Hours"
                     description="Suppress non-critical notifications during the set window. Critical notifications (security, payroll) still arrive."
-                    checked={pref.quietHoursEnabled}
+                    checked={preference.quietHoursEnabled}
                     onChange={(v) => update({ quietHoursEnabled: v })}
                 />
-                {pref.quietHoursEnabled && (
+                {preference.quietHoursEnabled && (
                     <div className="mt-4 grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
@@ -209,8 +264,14 @@ export function NotificationPreferencesScreen() {
                             </label>
                             <input
                                 type="time"
-                                value={pref.quietHoursStart ?? ''}
-                                onChange={(e) => update({ quietHoursStart: e.target.value })}
+                                value={quietStartDraft ?? preference.quietHoursStart ?? ''}
+                                onChange={(e) => setQuietStartDraft(e.target.value)}
+                                onBlur={() => {
+                                    if (quietStartDraft !== null && quietStartDraft !== preference.quietHoursStart) {
+                                        update({ quietHoursStart: quietStartDraft });
+                                    }
+                                    setQuietStartDraft(null);
+                                }}
                                 className="w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-neutral-900 dark:text-neutral-100"
                             />
                         </div>
@@ -220,8 +281,14 @@ export function NotificationPreferencesScreen() {
                             </label>
                             <input
                                 type="time"
-                                value={pref.quietHoursEnd ?? ''}
-                                onChange={(e) => update({ quietHoursEnd: e.target.value })}
+                                value={quietEndDraft ?? preference.quietHoursEnd ?? ''}
+                                onChange={(e) => setQuietEndDraft(e.target.value)}
+                                onBlur={() => {
+                                    if (quietEndDraft !== null && quietEndDraft !== preference.quietHoursEnd) {
+                                        update({ quietHoursEnd: quietEndDraft });
+                                    }
+                                    setQuietEndDraft(null);
+                                }}
                                 className="w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-neutral-900 dark:text-neutral-100"
                             />
                         </div>

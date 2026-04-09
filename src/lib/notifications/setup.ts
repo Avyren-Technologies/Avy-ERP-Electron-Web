@@ -56,14 +56,24 @@ export async function initWebPushNotifications(): Promise<string | null> {
     // Register with backend
     try {
       const { client } = await import('@/lib/api/client');
+
+      // Prefer modern `userAgentData` (Chromium) for structured device info,
+      // fall back to userAgent parsing. `navigator.platform` is deprecated and
+      // should not be used.
+      const uaData = (navigator as Navigator & {
+        userAgentData?: { platform?: string; brands?: Array<{ brand: string; version: string }> };
+      }).userAgentData;
+
       await client.post('/notifications/register-device', {
         fcmToken: token,
         tokenType: 'FCM_WEB',
         platform: 'WEB',
         deviceName: navigator.userAgent.substring(0, 100),
-        deviceModel: navigator.platform,
-        osVersion: navigator.platform,
-        appVersion: (import.meta as any).env?.VITE_APP_VERSION ?? 'web',
+        deviceModel: uaData?.platform ?? undefined,
+        osVersion: uaData?.brands?.[0]
+          ? `${uaData.brands[0].brand} ${uaData.brands[0].version}`
+          : undefined,
+        appVersion: import.meta.env.VITE_APP_VERSION ?? 'unknown',
         locale: navigator.language,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });

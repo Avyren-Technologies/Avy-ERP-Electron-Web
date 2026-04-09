@@ -252,7 +252,6 @@ export function CompanySettingsScreen() {
                         <Toggle label="Email Notifications" description="Send email alerts for key events" checked={settings.emailNotifications} onChange={(v) => updateField("emailNotifications", v)} />
                         <Toggle label="Push Notifications" description="Deliver notifications to users' devices" checked={settings.pushNotifications} onChange={(v) => updateField("pushNotifications", v)} />
                         <Toggle label="SMS Notifications" description="Send SMS alerts (requires SMS provider)" checked={settings.smsNotifications} onChange={(v) => updateField("smsNotifications", v)} />
-                        <Toggle label="In-App Notifications" description="Show bell icon notifications in web and mobile" checked={settings.inAppNotifications} onChange={(v) => updateField("inAppNotifications", v)} />
                         <Toggle label="WhatsApp Notifications" description="Send WhatsApp alerts" checked={settings.whatsappNotifications} onChange={(v) => updateField("whatsappNotifications", v)} />
                         <Toggle label="Biometric Integration" description="Enable biometric device integration" checked={settings.biometricIntegration} onChange={(v) => updateField("biometricIntegration", v)} />
                         <Toggle label="E-Sign Integration" description="Enable electronic signature workflows" checked={settings.eSignIntegration} onChange={(v) => updateField("eSignIntegration", v)} />

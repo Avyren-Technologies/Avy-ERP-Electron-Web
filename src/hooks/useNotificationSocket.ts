@@ -1,13 +1,15 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { connectSocket, getSocket } from '@/lib/socket';
+import { connectSocket } from '@/lib/socket';
 
 /**
- * Subscribes to 'notification:new' Socket.io events and invalidates React Query
- * notification keys so the bell icon and notification list re-fetch instantly.
+ * Subscribes to `notification:new` Socket.io events and invalidates
+ * notification React Query keys so the bell icon and notification list
+ * re-fetch instantly.
  *
- * Contract: the socket payload is treated as a UI hint only. We always re-fetch
- * via React Query — never append the payload directly to state.
+ * Invalidates explicitly the `['notifications', 'unread-count']` and
+ * `['notifications', 'list']` branches so it does NOT also refetch
+ * `['notification-preferences']` on every bell ping.
  */
 export function useNotificationSocket() {
     const queryClient = useQueryClient();
@@ -16,12 +18,14 @@ export function useNotificationSocket() {
         const socket = connectSocket();
 
         const handler = () => {
-            queryClient.invalidateQueries({ queryKey: ['notifications'] });
+            queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
+            queryClient.invalidateQueries({ queryKey: ['notifications', 'list'] });
         };
         socket.on('notification:new', handler);
 
+        // Capture the socket variable for cleanup — not getSocket() at cleanup time.
         return () => {
-            getSocket().off('notification:new', handler);
+            socket.off('notification:new', handler);
         };
     }, [queryClient]);
 }
