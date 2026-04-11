@@ -285,6 +285,12 @@ export function MyProfileScreen() {
 
     const mfaEnabled = authUser?.mfaEnabled === true;
 
+    /** Must run unconditionally — do not place after loading/error early returns (Rules of Hooks). */
+    const { url: profilePhotoUrl } = useFileUrl({
+        key: profile?.profilePhotoUrl ?? undefined,
+        enabled: !isLoading && !isError && !!profile?.firstName,
+    });
+
     const openEdit = () => {
         if (profile) {
             setEditForm({
@@ -393,8 +399,6 @@ export function MyProfileScreen() {
             </div>
         );
     }
-
-    const { url: profilePhotoUrl } = useFileUrl({ key: profile.profilePhotoUrl });
 
     const fullName = buildFullName(profile);
     const primaryEmail = profile.officialEmail ?? profile.personalEmail ?? profile.email ?? "";

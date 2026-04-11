@@ -391,6 +391,7 @@ export function ExpenseClaimScreen() {
                         amount: Number(item.amount) || 0,
                         expenseDate: item.expenseDate || undefined,
                         merchantName: item.merchantName || undefined,
+                        receipts: receiptFiles.length > 0 ? receiptFiles.map(r => ({ fileName: r.fileName, fileUrl: r.fileUrl })) : undefined,
                     })),
                 receipts: receiptFiles.map(r => ({
                     fileName: r.fileName,

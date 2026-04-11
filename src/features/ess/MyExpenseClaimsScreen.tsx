@@ -269,7 +269,9 @@ export function MyExpenseClaimsScreen() {
                 amount: parseFloat(item.amount),
                 expenseDate: item.expenseDate || new Date().toISOString().slice(0, 10),
                 merchantName: item.merchantName || undefined,
-                receipts: item.receiptUrl ? [{ fileName: item.receiptUrl.split('/').pop() ?? 'receipt', fileUrl: item.receiptUrl }] : undefined,
+                receipts: item.receiptUrl
+                    ? [{ fileName: item.receiptUrl.split('/').pop() ?? 'receipt', fileUrl: item.receiptUrl }]
+                    : validReceipts.length > 0 ? validReceipts.map((r) => ({ fileName: r.fileName, fileUrl: r.fileUrl })) : undefined,
             })) : undefined,
         };
     }

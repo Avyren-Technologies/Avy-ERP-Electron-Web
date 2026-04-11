@@ -19,10 +19,16 @@ const PageLoader = () => (
 
 // ─── Helper: named-export lazy wrapper ───
 // React.lazy expects default export, so we re-export named exports as default
+// Module type is Record<string, unknown> so files may export query keys / constants alongside the screen.
 const lazyNamed = <T extends React.ComponentType<Record<string, unknown>>>(
-  factory: () => Promise<{ [key: string]: T }>,
+  factory: () => Promise<Record<string, unknown>>,
   name: string,
-) => lazy(() => factory().then((m) => ({ default: (m as Record<string, T>)[name] })));
+) =>
+  lazy(() =>
+    factory().then((m) => ({
+      default: m[name] as T,
+    })),
+  );
 
 // ─── Auth Screens (lazy) ───
 const ProductShowcaseScreen = lazyNamed(() => import("./features/auth/ProductShowcaseScreen"), "ProductShowcaseScreen");
@@ -60,7 +66,7 @@ const AdminAttendanceScreen = lazyNamed(() => import("./features/company-admin/h
 
 // ─── Employee Screens ───
 const DynamicDashboardScreen = lazyNamed(() => import("./features/employee/DynamicDashboardScreen"), "DynamicDashboardScreen");
-const AnnouncementsScreen = lazyNamed(() => import("./features/employee/AnnouncementsScreen"), "AnnouncementsScreen");
+const EmployeeAnnouncementsScreen = lazyNamed(() => import("./features/employee/AnnouncementsScreen"), "EmployeeAnnouncementsScreen");
 
 // ─── Company Admin Screens ───
 const CompanyProfileScreen = lazyNamed(() => import("./features/company-admin/CompanyProfileScreen"), "CompanyProfileScreen");
@@ -494,6 +500,7 @@ function App() {
         <Route path="monitor" element={<RequirePermission permission={['platform:admin', 'company:read']}><PlatformMonitorScreen /></RequirePermission>} />
         {/* All authenticated users */}
         <Route path="announcements" element={<AnnouncementsScreen />} />
+        <Route path="employee/announcements" element={<EmployeeAnnouncementsScreen />} />
         <Route path="help/ticket/:id" element={<TicketChatScreen />} />
         <Route path="help" element={<HelpSupportScreen />} />
         <Route path="notifications" element={<NotificationListScreen />} />
