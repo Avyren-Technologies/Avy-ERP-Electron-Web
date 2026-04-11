@@ -125,6 +125,7 @@ const ApprovalRequestScreen = lazyNamed(() => import("./features/company-admin/h
 const NotificationTemplateScreen = lazyNamed(() => import("./features/company-admin/hr/NotificationTemplateScreen"), "NotificationTemplateScreen");
 const NotificationRuleScreen = lazyNamed(() => import("./features/company-admin/hr/NotificationRuleScreen"), "NotificationRuleScreen");
 const NotificationAnalyticsScreen = lazyNamed(() => import("./features/company-admin/hr/NotificationAnalyticsScreen"), "NotificationAnalyticsScreen");
+const AnnouncementsScreen = lazyNamed(() => import("./features/company-admin/hr/AnnouncementsScreen"), "AnnouncementsScreen");
 const ITDeclarationScreen = lazyNamed(() => import("./features/company-admin/hr/ITDeclarationScreen"), "ITDeclarationScreen");
 
 // ─── Notifications ───
@@ -406,6 +407,7 @@ function App() {
         <Route path="company/hr/notification-templates" element={<RequirePermission permission="hr:configure"><NotificationTemplateScreen /></RequirePermission>} />
         <Route path="company/hr/notification-rules" element={<RequirePermission permission="hr:configure"><NotificationRuleScreen /></RequirePermission>} />
         <Route path="company/hr/notification-analytics" element={<RequirePermission permission="hr:configure"><NotificationAnalyticsScreen /></RequirePermission>} />
+        <Route path="company/hr/announcements" element={<RequirePermission permission="hr:configure"><AnnouncementsScreen /></RequirePermission>} />
         <Route path="company/hr/it-declarations" element={<RequirePermission permission={['hr:read', 'ess:it-declaration']}><ITDeclarationScreen /></RequirePermission>} />
         {/* Self-Service routes (accessible to all users with ESS permissions) */}
         <Route path="company/hr/my-profile" element={<RequirePermission permission="ess:view-profile"><MyProfileScreen /></RequirePermission>} />

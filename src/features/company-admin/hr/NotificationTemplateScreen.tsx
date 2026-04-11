@@ -27,10 +27,11 @@ import { showSuccess, showApiError } from "@/lib/toast";
 /* ── Constants ── */
 
 const CHANNELS = [
-    { value: "email", label: "Email", icon: Mail },
-    { value: "push", label: "Push", icon: Smartphone },
-    { value: "sms", label: "SMS", icon: MessageSquare },
-    { value: "in_app", label: "In-App", icon: Bell },
+    { value: "EMAIL", label: "Email", icon: Mail },
+    { value: "PUSH", label: "Push", icon: Smartphone },
+    { value: "SMS", label: "SMS", icon: MessageSquare },
+    { value: "IN_APP", label: "In-App", icon: Bell },
+    { value: "WHATSAPP", label: "WhatsApp", icon: MessageSquare },
 ];
 
 const AVAILABLE_TOKENS = [
@@ -51,7 +52,7 @@ const AVAILABLE_TOKENS = [
 
 const EMPTY_FORM = {
     name: "",
-    channel: "email",
+    channel: "EMAIL",
     subject: "",
     body: "",
     isActive: true,
