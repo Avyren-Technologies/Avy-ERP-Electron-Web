@@ -777,8 +777,10 @@ export function EmployeeProfileScreen() {
 
         // Include user account fields if creating a new employee with login
         if (isNew && createUserAccount) {
-            if (!personal.officialEmail) {
-                showApiError({ message: "Official Email is required when creating a login account." });
+            if (!personal.officialEmail?.trim() && !personal.personalEmail?.trim()) {
+                showApiError({
+                    message: "Personal or work email is required when enabling login for this employee.",
+                });
                 return;
             }
             if (!userPassword || userPassword.length < 6) {
@@ -1170,10 +1172,10 @@ export function EmployeeProfileScreen() {
                                             />
                                             <span className="text-sm font-semibold text-primary-950 dark:text-white">Enable login for this employee</span>
                                         </label>
-                                        {!personal.officialEmail && createUserAccount && (
+                                        {!personal.officialEmail?.trim() && !personal.personalEmail?.trim() && createUserAccount && (
                                             <div className="flex items-center gap-2 px-3 py-2 bg-warning-50 dark:bg-warning-900/20 rounded-lg border border-warning-200 dark:border-warning-800/50">
                                                 <AlertCircle size={13} className="text-warning-500 flex-shrink-0" />
-                                                <p className="text-xs font-semibold text-warning-700 dark:text-warning-400">Official Email (above) is required to create a login account.</p>
+                                                <p className="text-xs font-semibold text-warning-700 dark:text-warning-400">Enter a personal or work email above to create a login account.</p>
                                             </div>
                                         )}
                                         {createUserAccount && (

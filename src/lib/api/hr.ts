@@ -555,9 +555,14 @@ async function getOrgChart(): Promise<ApiResponse<any>> {
 }
 
 // ── Bulk Import ──
+/** Web client default axios timeout is 10s; bulk validate/import can take much longer. */
+const BULK_HR_REQUEST_TIMEOUT_MS = 600_000; // 10 minutes
 
 async function downloadBulkTemplate(): Promise<Blob> {
-    const response = await client.get('/hr/employees/bulk/template', { responseType: 'blob' });
+    const response = await client.get('/hr/employees/bulk/template', {
+        responseType: 'blob',
+        timeout: BULK_HR_REQUEST_TIMEOUT_MS,
+    });
     return response.data;
 }
 
@@ -567,12 +572,17 @@ async function bulkValidate(file: File, defaultPassword: string) {
     formData.append('defaultPassword', defaultPassword);
     const response = await client.post('/hr/employees/bulk/validate', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: BULK_HR_REQUEST_TIMEOUT_MS,
     });
     return response.data;
 }
 
 async function bulkImport(rows: Record<string, unknown>[], defaultPassword: string) {
-    const response = await client.post('/hr/employees/bulk/import', { rows, defaultPassword });
+    const response = await client.post(
+        '/hr/employees/bulk/import',
+        { rows, defaultPassword },
+        { timeout: BULK_HR_REQUEST_TIMEOUT_MS },
+    );
     return response.data;
 }
 
