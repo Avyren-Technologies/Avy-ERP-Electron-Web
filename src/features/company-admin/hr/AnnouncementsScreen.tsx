@@ -29,7 +29,7 @@ export function AnnouncementsScreen() {
     const { data: deptData } = useQuery({
         queryKey: ['departments-list'],
         queryFn: async () => {
-            const r = await client.get('/hr/org-structure/departments?limit=200');
+            const r = await client.get('/hr/departments?limit=200');
             return r.data;
         },
         staleTime: 60_000,
@@ -37,7 +37,7 @@ export function AnnouncementsScreen() {
     const { data: desigData } = useQuery({
         queryKey: ['designations-list'],
         queryFn: async () => {
-            const r = await client.get('/hr/org-structure/designations?limit=200');
+            const r = await client.get('/hr/designations?limit=200');
             return r.data;
         },
         staleTime: 60_000,
