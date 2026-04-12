@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Megaphone, Send, Users, Building2, Briefcase, UserCheck } from 'lucide-react';
+import { Send, Users, Building2, Briefcase } from 'lucide-react';
 import { client } from '@/lib/api/client';
 import { showSuccess, showApiError } from '@/lib/toast';
 
