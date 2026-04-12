@@ -61,16 +61,23 @@ const EMPTY_FORM = {
 /* ── Helpers ── */
 
 function ChannelBadge({ channel }: { channel: string }) {
-    const ch = CHANNELS.find((c) => c.value === channel);
+    const normalizedChannel = channel.toUpperCase();
+    const ch = CHANNELS.find((c) => c.value === normalizedChannel);
     const Icon = ch?.icon ?? Mail;
     const colors: Record<string, string> = {
-        email: "bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50",
-        push: "bg-accent-50 text-accent-700 border-accent-200 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50",
-        sms: "bg-success-50 text-success-700 border-success-200 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50",
-        in_app: "bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50",
+        EMAIL: "bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50",
+        PUSH: "bg-accent-50 text-accent-700 border-accent-200 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50",
+        SMS: "bg-success-50 text-success-700 border-success-200 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50",
+        IN_APP: "bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50",
+        WHATSAPP: "bg-success-50 text-success-700 border-success-200 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50",
     };
     return (
-        <span className={cn("inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize", colors[channel] ?? colors.email)}>
+        <span
+            className={cn(
+                "inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize",
+                colors[normalizedChannel] ?? colors.EMAIL
+            )}
+        >
             <Icon size={10} />
             {ch?.label ?? channel}
         </span>
