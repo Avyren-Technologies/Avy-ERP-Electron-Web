@@ -45,17 +45,38 @@ export function AnnouncementsScreen() {
 
     const departments: Department[] = (deptData as any)?.data?.departments ?? (deptData as any)?.data ?? [];
     const designations: Designation[] = (desigData as any)?.data?.designations ?? (desigData as any)?.data ?? [];
+    const hasRequiredRecipientSelection =
+        recipientType === 'DEPARTMENT'
+            ? departmentId.trim().length > 0
+            : recipientType === 'DESIGNATION'
+                ? designationId.trim().length > 0
+                : true;
+    const canSend = title.trim().length > 0 && body.trim().length > 0 && channels.length > 0 && hasRequiredRecipientSelection;
 
     const sendMutation = useMutation({
         mutationFn: async () => {
+            if (!canSend) {
+                throw new Error('Please complete all required announcement fields before sending.');
+            }
+
             let recipientFilter: Record<string, unknown>;
             switch (recipientType) {
-                case 'DEPARTMENT':
-                    recipientFilter = { type: 'DEPARTMENT', departmentId };
+                case 'DEPARTMENT': {
+                    const trimmedDepartmentId = departmentId.trim();
+                    if (!trimmedDepartmentId) {
+                        throw new Error('Please select a department before sending.');
+                    }
+                    recipientFilter = { type: 'DEPARTMENT', departmentId: trimmedDepartmentId };
                     break;
-                case 'DESIGNATION':
-                    recipientFilter = { type: 'DESIGNATION', designationId };
+                }
+                case 'DESIGNATION': {
+                    const trimmedDesignationId = designationId.trim();
+                    if (!trimmedDesignationId) {
+                        throw new Error('Please select a designation before sending.');
+                    }
+                    recipientFilter = { type: 'DESIGNATION', designationId: trimmedDesignationId };
                     break;
+                }
                 default:
                     recipientFilter = { type: 'COMPANY_WIDE' };
             }
