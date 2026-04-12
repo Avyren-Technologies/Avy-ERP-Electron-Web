@@ -66,7 +66,7 @@ const AdminAttendanceScreen = lazyNamed(() => import("./features/company-admin/h
 
 // ─── Employee Screens ───
 const DynamicDashboardScreen = lazyNamed(() => import("./features/employee/DynamicDashboardScreen"), "DynamicDashboardScreen");
-const EmployeeAnnouncementsScreen = lazyNamed(() => import("./features/employee/AnnouncementsScreen"), "EmployeeAnnouncementsScreen");
+const EmployeeAnnouncementsScreen = lazyNamed(() => import("./features/employee/AnnouncementsScreen"), "AnnouncementsScreen");
 
 // ─── Company Admin Screens ───
 const CompanyProfileScreen = lazyNamed(() => import("./features/company-admin/CompanyProfileScreen"), "CompanyProfileScreen");
