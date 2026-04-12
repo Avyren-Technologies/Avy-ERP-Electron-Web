@@ -47,7 +47,14 @@ function SelectField({ label, value, onChange, options, placeholder }: { label: 
 
 function MultiSelectField({ label, selected, onChange, options, showAllOption }: { label: string; selected: string[]; onChange: (v: string[]) => void; options: { value: string; label: string }[]; showAllOption?: boolean }) {
     const isAllSelected = showAllOption && selected.length === 0;
-    const toggle = (val: string) => { onChange(selected.includes(val) ? selected.filter((s) => s !== val) : [...selected, val]); };
+    const toggle = (val: string) => {
+        if (isAllSelected) {
+            // Switching from "All" to specific: select only the clicked one
+            onChange([val]);
+        } else {
+            onChange(selected.includes(val) ? selected.filter((s) => s !== val) : [...selected, val]);
+        }
+    };
     const handleAllClick = () => { onChange([]); };
     return (
         <div>
@@ -55,7 +62,7 @@ function MultiSelectField({ label, selected, onChange, options, showAllOption }:
             <div className="flex flex-wrap gap-2">
                 {showAllOption && (
                     <button type="button" onClick={handleAllClick} className={cn("px-3 py-1.5 rounded-lg text-xs font-bold border transition-all", isAllSelected ? "bg-primary-50 text-primary-700 border-primary-300 dark:bg-primary-900/30 dark:text-primary-400 dark:border-primary-700" : "bg-neutral-50 text-neutral-500 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700 hover:border-neutral-300")}>
-                        All
+                        All (applies to everyone)
                     </button>
                 )}
                 {options.map((o) => (

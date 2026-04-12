@@ -264,7 +264,7 @@ export function DataRetentionScreen() {
         if (!deleteTarget) return;
         try {
             await deletePolicy.mutateAsync(deleteTarget.id);
-            showSuccess("Policy Deleted", `${deleteTarget.category} policy removed.`);
+            showSuccess("Policy Deleted", `${CATEGORY_LABEL_MAP[deleteTarget.dataCategory] ?? CATEGORY_LABEL_MAP[deleteTarget.category] ?? deleteTarget.dataCategory ?? deleteTarget.category ?? 'Policy'} removed.`);
             setDeleteTarget(null);
         } catch (err) {
             showApiError(err);
@@ -539,7 +539,7 @@ export function DataRetentionScreen() {
                     <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200">
                         <h2 className="text-lg font-bold text-danger-700 dark:text-danger-400 mb-2">Delete Policy?</h2>
                         <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                            This will permanently delete the <strong>{deleteTarget.category?.replace(/_/g, " ")}</strong> retention policy.
+                            This will permanently delete the <strong>{CATEGORY_LABEL_MAP[deleteTarget.dataCategory] ?? CATEGORY_LABEL_MAP[deleteTarget.category] ?? (deleteTarget.dataCategory ?? deleteTarget.category ?? '').replace(/_/g, " ")}</strong> retention policy.
                         </p>
                         <div className="flex gap-3 mt-6">
                             <button onClick={() => setDeleteTarget(null)} className="flex-1 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
@@ -575,8 +575,8 @@ export function DataRetentionScreen() {
                                     {dueItems.map((d: any, idx: number) => (
                                         <div key={idx} className="flex items-center justify-between p-4 bg-warning-50 dark:bg-warning-900/20 rounded-xl border border-warning-200 dark:border-warning-800/50">
                                             <div>
-                                                <p className="font-bold text-sm text-warning-800 dark:text-warning-300">{d.category?.replace(/_/g, " ")}</p>
-                                                <p className="text-xs text-warning-600 dark:text-warning-400 mt-0.5">Action: {d.action}</p>
+                                                <p className="font-bold text-sm text-warning-800 dark:text-warning-300">{CATEGORY_LABEL_MAP[d.dataCategory] ?? CATEGORY_LABEL_MAP[d.category] ?? (d.dataCategory ?? d.category ?? '').replace(/_/g, " ")}</p>
+                                                <p className="text-xs text-warning-600 dark:text-warning-400 mt-0.5">Action: {(d.actionAfter ?? d.action ?? '').replace('ANONYMISE', 'ANONYMIZE')}</p>
                                             </div>
                                             <div className="bg-warning-100 dark:bg-warning-900/40 px-3 py-1 rounded-full">
                                                 <span className="font-bold text-sm text-warning-700 dark:text-warning-300">{d.overdueCount ?? 0}</span>

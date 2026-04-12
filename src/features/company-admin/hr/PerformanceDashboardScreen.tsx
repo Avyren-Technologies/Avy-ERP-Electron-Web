@@ -83,7 +83,9 @@ function ActivityItem({ icon: Icon, title, description, time, color }: {
 export function PerformanceDashboardScreen() {
     const { data, isLoading, isError, refetch } = usePerformanceDashboard();
 
-    const dashboard: any = data?.data ?? {};
+    const raw = data?.data ?? data ?? {};
+    // Handle both envelope shapes: { success, data: {...} } and direct payload
+    const dashboard: any = raw?.cycleStats !== undefined ? raw : (raw?.data ?? raw);
 
     // Backend returns: { cycleStats, goals, skills, succession }
     const cs = dashboard.cycleStats ?? {};
