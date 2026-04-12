@@ -499,7 +499,7 @@ function App() {
         <Route path="modules" element={<RequirePermission permission={['platform:admin', 'company:read']}><ModuleCatalogueScreen /></RequirePermission>} />
         <Route path="monitor" element={<RequirePermission permission={['platform:admin', 'company:read']}><PlatformMonitorScreen /></RequirePermission>} />
         {/* All authenticated users */}
-        <Route path="announcements" element={<AnnouncementsScreen />} />
+        <Route path="announcements" element={<EmployeeAnnouncementsScreen />} />
         <Route path="employee/announcements" element={<EmployeeAnnouncementsScreen />} />
         <Route path="help/ticket/:id" element={<TicketChatScreen />} />
         <Route path="help" element={<HelpSupportScreen />} />
