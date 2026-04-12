@@ -85,24 +85,71 @@ export function PerformanceDashboardScreen() {
 
     const dashboard: any = data?.data ?? {};
 
-    // Extract or fallback KPIs
-    const cycleCompletion = dashboard.cycleCompletion ?? dashboard.cycleCompletionPct ?? 0;
-    const avgRating = dashboard.avgRating ?? dashboard.averageRating ?? 0;
-    const feedbackCompletion = dashboard.feedbackCompletion ?? dashboard.feedbackCompletionPct ?? 0;
-    const skillCoverage = dashboard.skillCoverage ?? dashboard.skillCoveragePct ?? 0;
-    const totalEmployees = dashboard.totalEmployees ?? 0;
-    const totalGoals = dashboard.totalGoals ?? dashboard.goalsCount ?? 0;
-    const activeCycles = dashboard.activeCycles ?? dashboard.activeCycleCount ?? 0;
-    const pendingReviews = dashboard.pendingReviews ?? dashboard.pendingReviewCount ?? 0;
+    // Backend returns: { cycleStats, goals, skills, succession }
+    const cs = dashboard.cycleStats ?? {};
+    const goals = dashboard.goals ?? {};
+    const skills = dashboard.skills ?? {};
+    const succession = dashboard.succession ?? {};
 
-    // Distribution data
-    const ratingDistribution = dashboard.ratingDistribution ?? [];
-    const goalStatus = dashboard.goalStatus ?? dashboard.goalStatusBreakdown ?? [];
-    const departmentScores = dashboard.departmentScores ?? dashboard.departmentPerformance ?? [];
-    const recentActivity = dashboard.recentActivity ?? dashboard.activityFeed ?? [];
+    // Extract KPIs from nested structure
+    const cycleCompletion = cs.completionPercent ?? 0;
+    const avgRating = (() => {
+        const dist = cs.ratingDistribution ?? {};
+        const entries = Object.entries(dist) as [string, number][];
+        const total = entries.reduce((s, [, c]) => s + (c as number), 0);
+        if (total === 0) return 0;
+        return entries.reduce((s, [r, c]) => s + Number(r) * (c as number), 0) / total;
+    })();
+    const feedbackCompletion = cs.selfReviewPercent ?? 0;
+    const skillCoverage = skills.totalMappings > 0
+        ? Math.round(((skills.totalMappings - skills.totalGaps) / skills.totalMappings) * 100)
+        : 0;
+    const totalEmployees = cs.totalEntries ?? 0;
+    const totalGoals = goals.total ?? 0;
+    const activeCycles = cs.cycle ? 1 : 0;
+    const pendingReviews = (cs.pendingSelfReview ?? 0) + (cs.pendingManagerReview ?? 0);
 
-    // Cycle progress breakdown
-    const cycleProgress = dashboard.cycleProgress ?? dashboard.stageBreakdown ?? [];
+    // Rating distribution: convert backend object { 1: count, 2: count, ... } to array
+    const ratingDistribution = Object.entries(cs.ratingDistribution ?? {}).map(
+        ([rating, count]) => ({ label: `${rating} Star${Number(rating) !== 1 ? 's' : ''}`, count: count as number })
+    );
+
+    // Goal status breakdown as array
+    const goalStatus = [
+        goals.active > 0 && { status: 'Active', count: goals.active },
+        goals.completed > 0 && { status: 'Completed', count: goals.completed },
+        (goals.total - goals.active - goals.completed) > 0 && { status: 'Other', count: goals.total - goals.active - goals.completed },
+    ].filter(Boolean) as { status: string; count: number }[];
+
+    // Top performers as recent activity
+    const recentActivity = (cs.topPerformers ?? []).map((tp: any) => ({
+        type: 'review_published',
+        title: `${tp.employee?.firstName ?? ''} ${tp.employee?.lastName ?? ''}`.trim() || 'Employee',
+        description: `Rating: ${Number(tp.finalRating).toFixed(1)}${tp.promotionRecommended ? ' — Promotion recommended' : ''} — ${tp.employee?.department?.name ?? ''}`,
+        timeAgo: cs.cycle?.status ?? '',
+    }));
+
+    // Cycle progress stages
+    const cycleProgress = cs.totalEntries > 0 ? [
+        { stage: 'Pending Self Review', count: cs.pendingSelfReview ?? 0 },
+        { stage: 'Manager Review Pending', count: (cs.totalEntries - (cs.pendingSelfReview ?? 0) - (cs.pendingManagerReview ?? 0) > 0 ? cs.totalEntries - (cs.pendingSelfReview ?? 0) - (cs.pendingManagerReview ?? 0) : 0) },
+        { stage: 'Published', count: Math.round((cs.completionPercent / 100) * cs.totalEntries) },
+    ].filter(item => item.count > 0) : [];
+
+    // Department scores from top performers
+    const departmentScores = (() => {
+        const deptMap: Record<string, { totalRating: number; count: number }> = {};
+        for (const tp of cs.topPerformers ?? []) {
+            const dept = tp.employee?.department?.name ?? 'Unknown';
+            if (!deptMap[dept]) deptMap[dept] = { totalRating: 0, count: 0 };
+            deptMap[dept].totalRating += Number(tp.finalRating ?? 0);
+            deptMap[dept].count += 1;
+        }
+        return Object.entries(deptMap).map(([department, { totalRating, count }]) => ({
+            department,
+            avgScore: totalRating / count,
+        }));
+    })();
 
     if (isLoading) {
         return (

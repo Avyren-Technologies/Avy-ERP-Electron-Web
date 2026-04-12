@@ -120,10 +120,43 @@ export function SuccessionScreen() {
         return `${emp.firstName ?? ''} ${emp.lastName ?? ''}`.trim() || emp.fullName || emp.employeeCode || emp.email || id || '—';
     };
 
-    const filtered = plans.filter((p: any) => {
+    /** Extract the successor employee name from the backend nested `successor` relation */
+    const successorName = (plan: any) => {
+        const s = plan.successor;
+        if (s?.firstName || s?.lastName) return `${s.firstName ?? ''} ${s.lastName ?? ''}`.trim();
+        return employeeName(plan.successorId ?? plan, 'successor', 'successorId');
+    };
+
+    /** Get position/role title — backend uses criticalRoleTitle + criticalRoleDesignation */
+    const getPosition = (p: any) => p.position || p.criticalRoleTitle || '—';
+    const getRole = (p: any) => p.role || p.criticalRoleDesignation?.name || '';
+
+    // Group plans by criticalRoleTitle for the table view (multiple successors per role)
+    const groupedPlans = plans.reduce((acc: Record<string, any>, p: any) => {
+        const key = getPosition(p);
+        if (!acc[key]) {
+            acc[key] = {
+                ...p,
+                position: getPosition(p),
+                role: getRole(p),
+                successors: [],
+                status: p.status ?? 'ACTIVE',
+            };
+        }
+        acc[key].successors.push({
+            employeeId: p.successorId,
+            employee: p.successor,
+            readiness: p.readiness,
+            notes: p.developmentPlan,
+        });
+        return acc;
+    }, {});
+    const groupedPlanList: any[] = Object.values(groupedPlans);
+
+    const filtered = groupedPlanList.filter((p: any) => {
         if (!search) return true;
         const s = search.toLowerCase();
-        return p.position?.toLowerCase().includes(s) || p.role?.toLowerCase().includes(s) || employeeName(p, 'currentHolder', 'currentHolderId')?.toLowerCase().includes(s);
+        return p.position?.toLowerCase().includes(s) || p.role?.toLowerCase().includes(s);
     });
 
     const openCreate = () => {
@@ -279,27 +312,36 @@ export function SuccessionScreen() {
                                                             <Shield className="w-4 h-4 text-accent-600 dark:text-accent-400" />
                                                         </div>
                                                         <div>
-                                                            <span className="font-bold text-primary-950 dark:text-white">{p.position || "—"}</span>
-                                                            {p.role && <p className="text-[10px] text-neutral-400">{p.role}</p>}
+                                                            <span className="font-bold text-primary-950 dark:text-white">{p.position || p.criticalRoleTitle || "—"}</span>
+                                                            {(p.role || p.criticalRoleDesignation?.name) && <p className="text-[10px] text-neutral-400">{p.role || p.criticalRoleDesignation?.name}</p>}
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td className="py-4 px-6">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-[10px] font-bold text-primary-700 dark:text-primary-400">
-                                                            {employeeName(p, 'currentHolder', 'currentHolderId').charAt(0).toUpperCase()}
+                                                    {p.currentHolderId || p.currentHolder ? (
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-[10px] font-bold text-primary-700 dark:text-primary-400">
+                                                                {employeeName(p, 'currentHolder', 'currentHolderId').charAt(0).toUpperCase()}
+                                                            </div>
+                                                            <span className="text-neutral-700 dark:text-neutral-300">{employeeName(p, 'currentHolder', 'currentHolderId')}</span>
                                                         </div>
-                                                        <span className="text-neutral-700 dark:text-neutral-300">{employeeName(p, 'currentHolder', 'currentHolderId')}</span>
-                                                    </div>
+                                                    ) : (
+                                                        <span className="text-xs text-neutral-400">—</span>
+                                                    )}
                                                 </td>
                                                 <td className="py-4 px-6">
                                                     <div className="flex flex-wrap gap-1">
-                                                        {successors.slice(0, 3).map((s: any, i: number) => (
-                                                            <div key={i} className="flex items-center gap-1">
-                                                                <span className="text-xs text-neutral-600 dark:text-neutral-400">{employeeName(s.employeeId)}</span>
-                                                                <ReadinessBadge readiness={s.readiness} />
-                                                            </div>
-                                                        ))}
+                                                        {successors.slice(0, 3).map((s: any, i: number) => {
+                                                            const name = s.employee?.firstName
+                                                                ? `${s.employee.firstName ?? ''} ${s.employee.lastName ?? ''}`.trim()
+                                                                : employeeName(s.employeeId);
+                                                            return (
+                                                                <div key={i} className="flex items-center gap-1">
+                                                                    <span className="text-xs text-neutral-600 dark:text-neutral-400">{name}</span>
+                                                                    <ReadinessBadge readiness={s.readiness} />
+                                                                </div>
+                                                            );
+                                                        })}
                                                         {successors.length > 3 && <span className="text-[10px] text-neutral-400">+{successors.length - 3} more</span>}
                                                         {successors.length === 0 && <span className="text-xs text-neutral-400">—</span>}
                                                     </div>

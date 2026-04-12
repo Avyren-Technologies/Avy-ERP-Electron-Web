@@ -27,6 +27,7 @@ import {
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useOrgChart } from "@/features/company-admin/api/use-hr-queries";
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
+import { useFileUrl } from "@/hooks/useFileUrl";
 import { cn } from "@/lib/utils";
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -162,10 +163,15 @@ function Avatar({
     };
     const initials = getInitials(name);
 
-    if (imageUrl) {
+    // profilePhotoUrl is an R2 key — resolve to a presigned download URL
+    const isFullUrl = imageUrl?.startsWith("http://") || imageUrl?.startsWith("https://");
+    const { url: resolvedUrl } = useFileUrl({ key: imageUrl, enabled: !!imageUrl && !isFullUrl });
+    const src = isFullUrl ? imageUrl : resolvedUrl;
+
+    if (src) {
         return (
             <img
-                src={imageUrl}
+                src={src}
                 alt={name}
                 className={cn(
                     "rounded-full object-cover ring-2 ring-white dark:ring-neutral-800 shadow-md",

@@ -178,7 +178,7 @@ export function KPIGrid({ kpis, onDrilldown, gridClassName }: KPIGridProps) {
             </div>
 
             {/* Trend badge */}
-            {kpi.trend !== undefined && (
+            {kpi.trend !== undefined && kpi.trend !== null && !Number.isNaN(kpi.trend) && Number.isFinite(kpi.trend) && (
               <div className={cn('relative z-10 mt-2.5 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold', trendBg, trendColor)}>
                 <TrendIcon className="h-3 w-3" />
                 <span>{Math.abs(kpi.trend).toFixed(1)}%</span>

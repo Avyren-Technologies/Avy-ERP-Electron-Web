@@ -40,12 +40,19 @@ const REGIME_OPTIONS = [
 
 const STATUS_FILTERS = ["All", "Draft", "Submitted", "Verified", "Locked"];
 
+interface DeclarationField {
+    key: string;
+    label: string;
+    placeholder?: string;
+    type?: "text" | "number";
+}
+
 interface DeclarationSection {
     key: string;
     title: string;
     description: string;
     maxLimit?: number;
-    fields: Array<{ key: string; label: string; placeholder?: string }>;
+    fields: DeclarationField[];
 }
 
 const DECLARATION_SECTIONS: DeclarationSection[] = [
@@ -98,8 +105,8 @@ const DECLARATION_SECTIONS: DeclarationSection[] = [
         description: "House Rent Allowance exemption under Section 10(13A)",
         fields: [
             { key: "monthlyRent", label: "Monthly Rent Paid" },
-            { key: "landlordName", label: "Landlord Name", placeholder: "Name of landlord" },
-            { key: "landlordPan", label: "Landlord PAN (if rent > 1L/year)", placeholder: "ABCDE1234F" },
+            { key: "landlordName", label: "Landlord Name", type: "text", placeholder: "Name of landlord" },
+            { key: "landlordPan", label: "Landlord PAN (if rent > 1L/year)", type: "text", placeholder: "ABCDE1234F" },
         ],
     },
     {
@@ -111,13 +118,13 @@ const DECLARATION_SECTIONS: DeclarationSection[] = [
         ],
     },
     {
-        key: "homeLoan",
+        key: "homeLoanInterest",
         title: "Home Loan Interest - Section 24(b)",
         description: "Interest on home loan (Max 2,00,000 for self-occupied)",
         fields: [
-            { key: "homeLoanInterest", label: "Home Loan Interest (Annual)" },
-            { key: "lenderName", label: "Lender Name", placeholder: "Bank / Institution name" },
-            { key: "loanAccountNo", label: "Loan Account Number", placeholder: "Account number" },
+            { key: "interestAmount", label: "Interest Amount (Annual)" },
+            { key: "lenderName", label: "Lender Name", type: "text", placeholder: "Bank / Institution name" },
+            { key: "loanAccountNo", label: "Loan Account Number", type: "text", placeholder: "Account number" },
         ],
     },
     {
@@ -173,12 +180,20 @@ const formatCurrency = (amount: number | string | undefined) => {
 
 /* ── Screen ── */
 
+/** Set of field keys that are text (non-numeric) — excluded from totals */
+const TEXT_FIELD_KEYS = new Set(
+    DECLARATION_SECTIONS.flatMap((s) => s.fields.filter((f) => f.type === "text").map((f) => f.key))
+);
+
 /** Compute total declared amount from all sections of a declaration */
 function computeTotalDeclared(d: any): number {
     let total = 0;
     const sumObj = (obj: any) => {
         if (!obj || typeof obj !== "object") return 0;
-        return Object.values(obj).reduce((s: number, v) => s + (typeof v === "number" ? v : (Number(v) || 0)), 0);
+        return Object.entries(obj).reduce((s: number, [k, v]) => {
+            if (TEXT_FIELD_KEYS.has(k)) return s;
+            return s + (typeof v === "number" ? v : (Number(v) || 0));
+        }, 0);
     };
     // Section 80C (capped)
     total += Math.min(sumObj(d.section80C), 150000);
@@ -280,7 +295,9 @@ export function ITDeclarationScreen() {
 
     const runningTotal = DECLARATION_SECTIONS.reduce((total, section) => {
         const sectionData = (form.declarations[section.key] as any) ?? {};
-        return total + section.fields.reduce((sum, field) => sum + (Number(sectionData[field.key]) || 0), 0);
+        return total + section.fields
+            .filter((field) => field.type !== "text")
+            .reduce((sum, field) => sum + (Number(sectionData[field.key]) || 0), 0);
     }, 0);
 
     const openCreate = () => {
@@ -524,11 +541,14 @@ export function ITDeclarationScreen() {
                                                         <div key={field.key} className="flex items-center gap-3">
                                                             <label className="text-xs text-neutral-600 dark:text-neutral-400 w-1/2 truncate">{field.label}</label>
                                                             <input
-                                                                type={field.placeholder ? "text" : "number"}
+                                                                type={field.type === "text" ? "text" : "number"}
                                                                 value={sectionData[field.key] ?? ""}
                                                                 onChange={(e) => updateDeclaration(section.key, field.key, e.target.value)}
                                                                 placeholder={field.placeholder ?? "0"}
-                                                                className="flex-1 px-3 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all text-right"
+                                                                className={cn(
+                                                                    "flex-1 px-3 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all",
+                                                                    field.type !== "text" && "text-right"
+                                                                )}
                                                             />
                                                         </div>
                                                     ))}
@@ -588,7 +608,7 @@ export function ITDeclarationScreen() {
                                     if (!sectionData || typeof sectionData !== "object") return null;
                                     const entries = Object.entries(sectionData).filter(([, v]) => Number(v) > 0 || (typeof v === "string" && v.trim()));
                                     if (entries.length === 0) return null;
-                                    const sectionTotal = entries.reduce((s, [, v]) => s + (Number(v) || 0), 0);
+                                    const sectionTotal = entries.reduce((s, [k, v]) => TEXT_FIELD_KEYS.has(k) ? s : s + (Number(v) || 0), 0);
                                     return (
                                         <div key={section.key} className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-3">
                                             <div className="flex justify-between items-center mb-1.5">
