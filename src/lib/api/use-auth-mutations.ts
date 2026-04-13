@@ -5,6 +5,7 @@ import type { LoginResponse } from '@/lib/api/auth';
 import { useAuthStore, mapBackendRole } from '@/store/useAuthStore';
 import { getLoginPath } from '@/lib/tenant';
 import { unregisterWebPush } from '@/lib/notifications';
+import { disconnectSocket } from '@/lib/socket';
 
 export function useLoginMutation() {
     const navigate = useNavigate();
@@ -51,6 +52,9 @@ export function useLogoutMutation() {
     return useMutation({
         mutationFn: async () => {
             await unregisterWebPush();
+            // Disconnect the shared Socket.io singleton so the next login
+            // doesn't inherit the previous user's authenticated socket.
+            disconnectSocket();
             return authApi.logout();
         },
         onSuccess: () => {
@@ -58,7 +62,8 @@ export function useLogoutMutation() {
             navigate(getLoginPath());
         },
         onError: () => {
-            // Even if the API call fails, sign out locally
+            // Even if the API call fails, sign out locally and drop the socket.
+            disconnectSocket();
             signOut();
             navigate(getLoginPath());
         },

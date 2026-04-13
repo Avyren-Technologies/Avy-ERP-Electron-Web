@@ -9,6 +9,7 @@ import { useNavigationManifest } from '@/features/company-admin/api';
 import { usePermissionRefresh } from '@/hooks/usePermissionRefresh';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { initWebPushNotifications } from '@/lib/notifications';
+import { useNotificationSocket } from '@/hooks/useNotificationSocket';
 
 export function DashboardLayout() {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -24,6 +25,9 @@ export function DashboardLayout() {
     useEffect(() => {
         initWebPushNotifications();
     }, []);
+
+    // Subscribe to real-time notification:new socket events
+    useNotificationSocket();
 
     // Extract manifest sections from API response envelope
     const manifestSections = manifestData?.data ?? (Array.isArray(manifestData) ? manifestData : undefined);

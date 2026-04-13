@@ -109,6 +109,33 @@ function buildSummary(entityType: string, data: any): string {
     }
 }
 
+/** Extract employee name from various response shapes */
+function extractEmployeeName(raw: any): string {
+    // Nested employee object (if backend includes relation)
+    if (raw.employee?.firstName || raw.employee?.lastName) {
+        return `${raw.employee.firstName ?? ''} ${raw.employee.lastName ?? ''}`.trim();
+    }
+    // Explicit employeeName field
+    if (raw.employeeName) return raw.employeeName;
+    if (raw.requesterName) return raw.requesterName;
+    // Snapshot data from createRequest
+    if (raw.data?.employee_name) return raw.data.employee_name;
+    if (raw.data?.employeeName) return raw.data.employeeName;
+    return "Employee";
+}
+
+/** Extract current approver display name from step data */
+function extractApproverName(stepData: any): string {
+    // If step has approver user details
+    if (stepData?.approverName) return stepData.approverName;
+    if (stepData?.approver?.firstName || stepData?.approver?.lastName) {
+        return `${stepData.approver.firstName ?? ''} ${stepData.approver.lastName ?? ''}`.trim();
+    }
+    // Fall back to role label
+    if (stepData?.approverRole) return stepData.approverRole;
+    return "—";
+}
+
 /** Normalize API response item to a shape the UI can render */
 function mapRequest(raw: any): any {
     const steps = raw.workflow?.steps ?? raw.steps ?? [];
@@ -116,13 +143,13 @@ function mapRequest(raw: any): any {
     const currentStepData = steps[currentStep];
     return {
         ...raw,
-        employeeName: raw.employeeName ?? raw.requesterName ?? raw.data?.employeeId ?? "Employee",
+        employeeName: extractEmployeeName(raw),
         requestType: ENTITY_LABELS[raw.entityType] ?? raw.entityType ?? "",
         description: raw.description ?? buildSummary(raw.entityType, raw.data),
         steps,
         currentStep,
         currentStepLabel: currentStepData?.approverRole ? `Step ${currentStep + 1}: ${currentStepData.approverRole}` : `Step ${currentStep + 1}`,
-        currentApprover: currentStepData?.approverRole ?? "—",
+        currentApprover: extractApproverName(currentStepData),
         totalSteps: steps.length,
     };
 }

@@ -126,6 +126,9 @@ const DEFAULTS: CompanySettings = {
     razorpayEnabled: false,
     emailNotifications: true,
     whatsappNotifications: false,
+    pushNotifications: true,
+    smsNotifications: false,
+    inAppNotifications: true,
     biometricIntegration: false,
     eSignIntegration: false,
 };
@@ -247,6 +250,8 @@ export function CompanySettingsScreen() {
                         <Toggle label="Bank Integration" description="Enable bank account integration" checked={settings.bankIntegration} onChange={(v) => updateField("bankIntegration", v)} />
                         <Toggle label="RazorpayX Payout" description="Enable RazorpayX for payroll disbursement" checked={settings.razorpayEnabled} onChange={(v) => updateField("razorpayEnabled", v)} />
                         <Toggle label="Email Notifications" description="Send email alerts for key events" checked={settings.emailNotifications} onChange={(v) => updateField("emailNotifications", v)} />
+                        <Toggle label="Push Notifications" description="Deliver notifications to users' devices" checked={settings.pushNotifications} onChange={(v) => updateField("pushNotifications", v)} />
+                        <Toggle label="SMS Notifications" description="Send SMS alerts (requires SMS provider)" checked={settings.smsNotifications} onChange={(v) => updateField("smsNotifications", v)} />
                         <Toggle label="WhatsApp Notifications" description="Send WhatsApp alerts" checked={settings.whatsappNotifications} onChange={(v) => updateField("whatsappNotifications", v)} />
                         <Toggle label="Biometric Integration" description="Enable biometric device integration" checked={settings.biometricIntegration} onChange={(v) => updateField("biometricIntegration", v)} />
                         <Toggle label="E-Sign Integration" description="Enable electronic signature workflows" checked={settings.eSignIntegration} onChange={(v) => updateField("eSignIntegration", v)} />

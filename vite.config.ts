@@ -4,6 +4,12 @@ import path from 'node:path'
 import react from '@vitejs/plugin-react'
 import electron from 'vite-plugin-electron/simple'
 
+// Expose the package version at build time via import.meta.env.VITE_APP_VERSION
+// (used by notification device registration payload).
+const pkgJson = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8'),
+) as { version: string }
+
 const spaFallbackPlugin = () => ({
   name: 'spa-fallback-404',
   apply: 'build' as const,
@@ -19,6 +25,9 @@ const spaFallbackPlugin = () => ({
 // https://vite.dev/config/
 export default defineConfig({
   base: '/',
+  define: {
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(pkgJson.version),
+  },
   plugins: [
     react(),
     electron({

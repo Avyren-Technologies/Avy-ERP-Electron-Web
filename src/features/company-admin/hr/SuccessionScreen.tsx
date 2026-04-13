@@ -37,7 +37,7 @@ const READINESS_LEVELS = [
     { value: "NOT_READY", label: "Not Ready", color: "bg-neutral-400", textColor: "text-neutral-600 dark:text-neutral-400", bgColor: "bg-neutral-100 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700" },
 ];
 
-const STATUS_FILTERS = ["All", "Active", "Draft", "Completed"];
+const READINESS_FILTERS = ["All", "READY_NOW", "ONE_YEAR", "TWO_YEARS", "NOT_READY"];
 
 const NINE_BOX_LABELS: Record<string, { label: string; color: string; desc: string }> = {
     "3-3": { label: "Star", color: "bg-success-500", desc: "High potential, high performance" },
@@ -54,22 +54,10 @@ const NINE_BOX_LABELS: Record<string, { label: string; color: string; desc: stri
 const EMPTY_FORM = {
     position: "",
     role: "",
-    currentHolderId: "",
-    status: "ACTIVE",
     successors: [{ employeeId: "", readiness: "ONE_YEAR", notes: "" }],
 };
 
 /* ── Helpers ── */
-
-function StatusBadge({ status }: { status: string }) {
-    const s = status?.toLowerCase();
-    const map: Record<string, string> = {
-        active: "bg-success-50 text-success-700 border-success-200 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50",
-        draft: "bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700",
-        completed: "bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50",
-    };
-    return <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize", map[s] ?? map.draft)}>{status}</span>;
-}
 
 function ReadinessBadge({ readiness }: { readiness: string }) {
     const config = READINESS_LEVELS.find((r) => r.value === readiness) ?? READINESS_LEVELS[3];
@@ -89,7 +77,7 @@ function SectionLabel({ title }: { title: string }) {
 
 export function SuccessionScreen() {
     const [search, setSearch] = useState("");
-    const [statusFilter, setStatusFilter] = useState("All");
+    const [readinessFilter, setReadinessFilter] = useState("All");
     const [viewMode, setViewMode] = useState<"table" | "ninebox" | "bench">("table");
     const [modalOpen, setModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -97,7 +85,7 @@ export function SuccessionScreen() {
     const [form, setForm] = useState<any>({ ...EMPTY_FORM });
 
     const params: Record<string, unknown> = {};
-    if (statusFilter !== "All") params.status = statusFilter.toLowerCase();
+    if (readinessFilter !== "All") params.readiness = readinessFilter;
 
     const { data, isLoading, isError } = useSuccessionPlans(Object.keys(params).length ? params : undefined);
     const nineBoxQuery = useNineBoxData();
@@ -120,10 +108,44 @@ export function SuccessionScreen() {
         return `${emp.firstName ?? ''} ${emp.lastName ?? ''}`.trim() || emp.fullName || emp.employeeCode || emp.email || id || '—';
     };
 
-    const filtered = plans.filter((p: any) => {
+    /** Extract the successor employee name from the backend nested `successor` relation */
+    const successorName = (plan: any) => {
+        const s = plan.successor;
+        if (s?.firstName || s?.lastName) return `${s.firstName ?? ''} ${s.lastName ?? ''}`.trim();
+        return employeeName(plan.successorId ?? plan, 'successor', 'successorId');
+    };
+
+    /** Get position/role title — backend uses criticalRoleTitle + criticalRoleDesignation */
+    const getPosition = (p: any) => p.position || p.criticalRoleTitle || '—';
+    const getRole = (p: any) => p.role || p.criticalRoleDesignation?.name || '';
+
+    // Group plans by criticalRoleTitle for the table view (multiple successors per role)
+    const groupedPlans = plans.reduce((acc: Record<string, any>, p: any) => {
+        const key = getPosition(p);
+        if (!acc[key]) {
+            acc[key] = {
+                id: p.id,
+                criticalRoleTitle: p.criticalRoleTitle,
+                criticalRoleDesignation: p.criticalRoleDesignation,
+                position: getPosition(p),
+                role: getRole(p),
+                successors: [],
+            };
+        }
+        acc[key].successors.push({
+            employeeId: p.successorId,
+            employee: p.successor,
+            readiness: p.readiness,
+            notes: p.developmentPlan,
+        });
+        return acc;
+    }, {});
+    const groupedPlanList: any[] = Object.values(groupedPlans);
+
+    const filtered = groupedPlanList.filter((p: any) => {
         if (!search) return true;
         const s = search.toLowerCase();
-        return p.position?.toLowerCase().includes(s) || p.role?.toLowerCase().includes(s) || employeeName(p, 'currentHolder', 'currentHolderId')?.toLowerCase().includes(s);
+        return p.position?.toLowerCase().includes(s) || p.role?.toLowerCase().includes(s);
     });
 
     const openCreate = () => {
@@ -135,10 +157,8 @@ export function SuccessionScreen() {
     const openEdit = (p: any) => {
         setEditingId(p.id);
         setForm({
-            position: p.position ?? "",
-            role: p.role ?? "",
-            currentHolderId: p.currentHolderId ?? "",
-            status: p.status ?? "ACTIVE",
+            position: p.position ?? p.criticalRoleTitle ?? "",
+            role: p.role ?? p.criticalRoleDesignation?.name ?? "",
             successors: p.successors?.length ? p.successors.map((s: any) => ({
                 employeeId: s.employeeId ?? "",
                 readiness: s.readiness ?? "ONE_YEAR",
@@ -165,15 +185,42 @@ export function SuccessionScreen() {
 
     const handleSave = async () => {
         try {
-            const payload = {
-                ...form,
-                successors: form.successors.filter((s: any) => s.employeeId),
-            };
+            const validSuccessors = form.successors.filter((s: any) => s.employeeId);
+            if (validSuccessors.length === 0) {
+                showApiError(new Error("At least one successor is required"));
+                return;
+            }
             if (editingId) {
-                await updateMutation.mutateAsync({ id: editingId, data: payload });
+                // Update first successor's plan record, create additional ones
+                const [first, ...rest] = validSuccessors;
+                await updateMutation.mutateAsync({
+                    id: editingId,
+                    data: {
+                        criticalRoleTitle: form.position,
+                        successorId: first.employeeId,
+                        readiness: first.readiness,
+                        developmentPlan: first.notes || undefined,
+                    },
+                });
+                for (const s of rest) {
+                    await createMutation.mutateAsync({
+                        criticalRoleTitle: form.position,
+                        successorId: s.employeeId,
+                        readiness: s.readiness,
+                        developmentPlan: s.notes || undefined,
+                    });
+                }
                 showSuccess("Plan Updated", `Succession plan for "${form.position}" has been updated.`);
             } else {
-                await createMutation.mutateAsync(payload);
+                // Create one record per successor
+                for (const s of validSuccessors) {
+                    await createMutation.mutateAsync({
+                        criticalRoleTitle: form.position,
+                        successorId: s.employeeId,
+                        readiness: s.readiness,
+                        developmentPlan: s.notes || undefined,
+                    });
+                }
                 showSuccess("Plan Created", `Succession plan for "${form.position}" has been created.`);
             }
             setModalOpen(false);
@@ -237,11 +284,14 @@ export function SuccessionScreen() {
                     </div>
                     {viewMode === "table" && (
                         <div className="flex items-center gap-1">
-                            {STATUS_FILTERS.map((f) => (
-                                <button key={f} onClick={() => setStatusFilter(f)} className={cn("px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all", statusFilter === f ? "bg-primary-50 text-primary-700 border-primary-300 dark:bg-primary-900/30 dark:text-primary-400 dark:border-primary-700" : "bg-neutral-50 text-neutral-500 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700")}>
-                                    {f}
-                                </button>
-                            ))}
+                            {READINESS_FILTERS.map((f) => {
+                                const label = f === "All" ? "All" : READINESS_LEVELS.find((r) => r.value === f)?.label ?? f;
+                                return (
+                                    <button key={f} onClick={() => setReadinessFilter(f)} className={cn("px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all", readinessFilter === f ? "bg-primary-50 text-primary-700 border-primary-300 dark:bg-primary-900/30 dark:text-primary-400 dark:border-primary-700" : "bg-neutral-50 text-neutral-500 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700")}>
+                                        {label}
+                                    </button>
+                                );
+                            })}
                         </div>
                     )}
                 </div>
@@ -260,10 +310,9 @@ export function SuccessionScreen() {
                                 <thead>
                                     <tr className="bg-neutral-50/50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
                                         <th className="py-4 px-6 font-bold">Position / Role</th>
-                                        <th className="py-4 px-6 font-bold">Current Holder</th>
                                         <th className="py-4 px-6 font-bold">Successors</th>
                                         <th className="py-4 px-6 font-bold text-center">Bench Depth</th>
-                                        <th className="py-4 px-6 font-bold text-center">Status</th>
+                                        <th className="py-4 px-6 font-bold text-center">Readiness</th>
                                         <th className="py-4 px-6 font-bold text-right">Actions</th>
                                     </tr>
                                 </thead>
@@ -279,29 +328,26 @@ export function SuccessionScreen() {
                                                             <Shield className="w-4 h-4 text-accent-600 dark:text-accent-400" />
                                                         </div>
                                                         <div>
-                                                            <span className="font-bold text-primary-950 dark:text-white">{p.position || "—"}</span>
+                                                            <span className="font-bold text-primary-950 dark:text-white">{p.position}</span>
                                                             {p.role && <p className="text-[10px] text-neutral-400">{p.role}</p>}
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td className="py-4 px-6">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-[10px] font-bold text-primary-700 dark:text-primary-400">
-                                                            {employeeName(p, 'currentHolder', 'currentHolderId').charAt(0).toUpperCase()}
-                                                        </div>
-                                                        <span className="text-neutral-700 dark:text-neutral-300">{employeeName(p, 'currentHolder', 'currentHolderId')}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="py-4 px-6">
                                                     <div className="flex flex-wrap gap-1">
-                                                        {successors.slice(0, 3).map((s: any, i: number) => (
-                                                            <div key={i} className="flex items-center gap-1">
-                                                                <span className="text-xs text-neutral-600 dark:text-neutral-400">{employeeName(s.employeeId)}</span>
-                                                                <ReadinessBadge readiness={s.readiness} />
-                                                            </div>
-                                                        ))}
+                                                        {successors.slice(0, 3).map((s: any, i: number) => {
+                                                            const name = s.employee?.firstName
+                                                                ? `${s.employee.firstName ?? ''} ${s.employee.lastName ?? ''}`.trim()
+                                                                : employeeName(s.employeeId);
+                                                            return (
+                                                                <div key={i} className="flex items-center gap-1">
+                                                                    <span className="text-xs text-neutral-600 dark:text-neutral-400">{name}</span>
+                                                                    <ReadinessBadge readiness={s.readiness} />
+                                                                </div>
+                                                            );
+                                                        })}
                                                         {successors.length > 3 && <span className="text-[10px] text-neutral-400">+{successors.length - 3} more</span>}
-                                                        {successors.length === 0 && <span className="text-xs text-neutral-400">—</span>}
+                                                        {successors.length === 0 && <span className="text-xs text-neutral-400">No successors</span>}
                                                     </div>
                                                 </td>
                                                 <td className="py-4 px-6 text-center">
@@ -321,7 +367,16 @@ export function SuccessionScreen() {
                                                         )}
                                                     </div>
                                                 </td>
-                                                <td className="py-4 px-6 text-center"><StatusBadge status={p.status ?? "Draft"} /></td>
+                                                <td className="py-4 px-6 text-center">
+                                                    {(() => {
+                                                        const bestReadiness = successors.reduce((best: string | null, s: any) => {
+                                                            const order = ['READY_NOW', 'ONE_YEAR', 'TWO_YEARS', 'NOT_READY'];
+                                                            if (!best) return s.readiness;
+                                                            return order.indexOf(s.readiness) < order.indexOf(best) ? s.readiness : best;
+                                                        }, null);
+                                                        return bestReadiness ? <ReadinessBadge readiness={bestReadiness} /> : <span className="text-xs text-neutral-400">—</span>;
+                                                    })()}
+                                                </td>
                                                 <td className="py-4 px-6 text-right">
                                                     <div className="flex items-center justify-end gap-1">
                                                         <button onClick={() => openEdit(p)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit"><Edit3 size={15} /></button>
@@ -332,7 +387,7 @@ export function SuccessionScreen() {
                                         );
                                     })}
                                     {filtered.length === 0 && !isLoading && (
-                                        <tr><td colSpan={6}><EmptyState icon="list" title="No succession plans found" message="Create a succession plan to start building your leadership pipeline." action={{ label: "New Plan", onClick: openCreate }} /></td></tr>
+                                        <tr><td colSpan={5}><EmptyState icon="list" title="No succession plans found" message="Create a succession plan to start building your leadership pipeline." action={{ label: "New Plan", onClick: openCreate }} /></td></tr>
                                     )}
                                 </tbody>
                             </table>
@@ -499,14 +554,6 @@ export function SuccessionScreen() {
                                     <input type="text" value={form.role} onChange={(e) => setForm((p: any) => ({ ...p, role: e.target.value }))} placeholder="e.g., Engineering Leadership" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
                                 </div>
                             </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Current Holder</label>
-                                <select value={form.currentHolderId} onChange={(e) => setForm((p: any) => ({ ...p, currentHolderId: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
-                                    <option value="">Select employee...</option>
-                                    {employees.map((e: any) => <option key={e.id} value={e.id}>{[e.firstName, e.lastName].filter(Boolean).join(" ") || e.fullName || e.email}</option>)}
-                                </select>
-                            </div>
-
                             <SectionLabel title="Potential Successors" />
                             <div className="space-y-3">
                                 {form.successors.map((s: any, index: number) => (

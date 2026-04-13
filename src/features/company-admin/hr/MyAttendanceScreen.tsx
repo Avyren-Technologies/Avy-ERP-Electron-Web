@@ -31,9 +31,13 @@ const STATUS_COLORS: Record<string, string> = {
     HALF_DAY: "bg-warning-500",
     ON_LEAVE: "bg-primary-500",
     LATE: "bg-warning-400",
+    EARLY_EXIT: "bg-orange-400",
+    INCOMPLETE: "bg-amber-500",
     HOLIDAY: "bg-accent-500",
+    WEEK_OFF: "bg-neutral-300 dark:bg-neutral-700",
     WEEKEND: "bg-neutral-300 dark:bg-neutral-700",
     REGULARIZED: "bg-success-300",
+    LOP: "bg-rose-500",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -42,15 +46,16 @@ const STATUS_LABELS: Record<string, string> = {
     HALF_DAY: "Half Day",
     ON_LEAVE: "On Leave",
     LATE: "Late",
+    EARLY_EXIT: "Early Exit",
+    INCOMPLETE: "Incomplete",
     HOLIDAY: "Holiday",
+    WEEK_OFF: "Week Off",
     WEEKEND: "Weekend",
     REGULARIZED: "Regularized",
+    LOP: "Loss of Pay",
 };
 
-const formatTime = (t: string | null | undefined) => {
-    if (!t) return "—";
-    return t;
-};
+// formatTime is now defined inside the component to use company formatter
 
 /* ── Calendar Helpers ── */
 
@@ -98,6 +103,10 @@ function CardHeader({ title, subtitle, icon: Icon, iconClass }: { title: string;
 
 export function MyAttendanceScreen() {
     const fmt = useCompanyFormatter();
+    const formatTime = (t: string | null | undefined) => {
+        if (!t) return "—";
+        return fmt.time(t);
+    };
     const today = new Date();
     const [currentMonth, setCurrentMonth] = useState(today.getMonth());
     const [currentYear, setCurrentYear] = useState(today.getFullYear());
@@ -203,9 +212,10 @@ export function MyAttendanceScreen() {
 
     // Summary stats
     const records: any[] = (data?.data as any) ?? [];
-    const presentCount = records.filter((r: any) => r.status === "PRESENT" || r.status === "LATE" || r.status === "REGULARIZED").length;
-    const absentCount = records.filter((r: any) => r.status === "ABSENT").length;
+    const presentCount = records.filter((r: any) => ["PRESENT", "LATE", "EARLY_EXIT", "REGULARIZED"].includes(r.status)).length;
+    const absentCount = records.filter((r: any) => ["ABSENT", "LOP"].includes(r.status)).length;
     const leaveCount = records.filter((r: any) => r.status === "ON_LEAVE").length;
+    const lateCount = records.filter((r: any) => r.status === "LATE" || r.isLate).length;
     const avgHours = records.length > 0
         ? (records.reduce((sum: number, r: any) => sum + (Number(r.workedHours) || 0), 0) / Math.max(presentCount, 1)).toFixed(1)
         : "0.0";
@@ -214,7 +224,8 @@ export function MyAttendanceScreen() {
         { key: "present", label: "Present", value: presentCount.toString(), icon: CheckCircle2 },
         { key: "absent", label: "Absent", value: absentCount.toString(), icon: XCircle },
         { key: "leave", label: "On Leave", value: leaveCount.toString(), icon: CalendarDays },
-        { key: "avg", label: "Avg Hours", value: avgHours, icon: Timer },
+        { key: "late", label: "Late", value: lateCount.toString(), icon: Timer },
+        { key: "avg", label: "Avg Hours", value: avgHours, icon: TrendingUp },
     ];
 
     return (
@@ -231,7 +242,7 @@ export function MyAttendanceScreen() {
                     <SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard />
                 </div>
             ) : (
-                <KPIGrid kpis={kpis} />
+                <KPIGrid kpis={kpis} gridClassName="lg:grid-cols-5" />
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

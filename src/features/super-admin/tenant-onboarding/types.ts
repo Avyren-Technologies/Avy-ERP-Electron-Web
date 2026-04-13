@@ -226,6 +226,9 @@ export interface Step5Form {
     razorpayAutoDisbursement: boolean;
     razorpayTestMode: boolean;
     emailNotif: boolean;
+    pushNotif: boolean;
+    smsNotif: boolean;
+    inAppNotif: boolean;
     whatsapp: boolean;
 }
 

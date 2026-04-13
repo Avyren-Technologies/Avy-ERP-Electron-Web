@@ -19,10 +19,16 @@ const PageLoader = () => (
 
 // ─── Helper: named-export lazy wrapper ───
 // React.lazy expects default export, so we re-export named exports as default
+// Module type is Record<string, unknown> so files may export query keys / constants alongside the screen.
 const lazyNamed = <T extends React.ComponentType<Record<string, unknown>>>(
-  factory: () => Promise<{ [key: string]: T }>,
+  factory: () => Promise<Record<string, unknown>>,
   name: string,
-) => lazy(() => factory().then((m) => ({ default: (m as Record<string, T>)[name] })));
+) =>
+  lazy(() =>
+    factory().then((m) => ({
+      default: m[name] as T,
+    })),
+  );
 
 // ─── Auth Screens (lazy) ───
 const ProductShowcaseScreen = lazyNamed(() => import("./features/auth/ProductShowcaseScreen"), "ProductShowcaseScreen");
@@ -60,7 +66,7 @@ const AdminAttendanceScreen = lazyNamed(() => import("./features/company-admin/h
 
 // ─── Employee Screens ───
 const DynamicDashboardScreen = lazyNamed(() => import("./features/employee/DynamicDashboardScreen"), "DynamicDashboardScreen");
-const AnnouncementsScreen = lazyNamed(() => import("./features/employee/AnnouncementsScreen"), "AnnouncementsScreen");
+const EmployeeAnnouncementsScreen = lazyNamed(() => import("./features/employee/AnnouncementsScreen"), "AnnouncementsScreen");
 
 // ─── Company Admin Screens ───
 const CompanyProfileScreen = lazyNamed(() => import("./features/company-admin/CompanyProfileScreen"), "CompanyProfileScreen");
@@ -124,10 +130,13 @@ const ApprovalWorkflowScreen = lazyNamed(() => import("./features/company-admin/
 const ApprovalRequestScreen = lazyNamed(() => import("./features/company-admin/hr/ApprovalRequestScreen"), "ApprovalRequestScreen");
 const NotificationTemplateScreen = lazyNamed(() => import("./features/company-admin/hr/NotificationTemplateScreen"), "NotificationTemplateScreen");
 const NotificationRuleScreen = lazyNamed(() => import("./features/company-admin/hr/NotificationRuleScreen"), "NotificationRuleScreen");
+const NotificationAnalyticsScreen = lazyNamed(() => import("./features/company-admin/hr/NotificationAnalyticsScreen"), "NotificationAnalyticsScreen");
+const AnnouncementsScreen = lazyNamed(() => import("./features/company-admin/hr/AnnouncementsScreen"), "AnnouncementsScreen");
 const ITDeclarationScreen = lazyNamed(() => import("./features/company-admin/hr/ITDeclarationScreen"), "ITDeclarationScreen");
 
 // ─── Notifications ───
 const NotificationListScreen = lazyNamed(() => import("./features/notifications/NotificationListScreen"), "NotificationListScreen");
+const NotificationPreferencesScreen = lazyNamed(() => import("./features/settings/NotificationPreferencesScreen"), "NotificationPreferencesScreen");
 
 // ─── Help & Support ───
 const HelpSupportScreen = lazyNamed(() => import("./features/help/HelpSupportScreen"), "HelpSupportScreen");
@@ -403,6 +412,8 @@ function App() {
         <Route path="company/hr/approval-requests" element={<RequirePermission permission="hr:read"><ApprovalRequestScreen /></RequirePermission>} />
         <Route path="company/hr/notification-templates" element={<RequirePermission permission="hr:configure"><NotificationTemplateScreen /></RequirePermission>} />
         <Route path="company/hr/notification-rules" element={<RequirePermission permission="hr:configure"><NotificationRuleScreen /></RequirePermission>} />
+        <Route path="company/hr/notification-analytics" element={<RequirePermission permission="hr:configure"><NotificationAnalyticsScreen /></RequirePermission>} />
+        <Route path="company/hr/announcements" element={<RequirePermission permission="hr:configure"><AnnouncementsScreen /></RequirePermission>} />
         <Route path="company/hr/it-declarations" element={<RequirePermission permission={['hr:read', 'ess:it-declaration']}><ITDeclarationScreen /></RequirePermission>} />
         {/* Self-Service routes (accessible to all users with ESS permissions) */}
         <Route path="company/hr/my-profile" element={<RequirePermission permission="ess:view-profile"><MyProfileScreen /></RequirePermission>} />
@@ -488,10 +499,12 @@ function App() {
         <Route path="modules" element={<RequirePermission permission={['platform:admin', 'company:read']}><ModuleCatalogueScreen /></RequirePermission>} />
         <Route path="monitor" element={<RequirePermission permission={['platform:admin', 'company:read']}><PlatformMonitorScreen /></RequirePermission>} />
         {/* All authenticated users */}
-        <Route path="announcements" element={<AnnouncementsScreen />} />
+        <Route path="announcements" element={<EmployeeAnnouncementsScreen />} />
+        <Route path="employee/announcements" element={<EmployeeAnnouncementsScreen />} />
         <Route path="help/ticket/:id" element={<TicketChatScreen />} />
         <Route path="help" element={<HelpSupportScreen />} />
         <Route path="notifications" element={<NotificationListScreen />} />
+        <Route path="settings/notifications" element={<NotificationPreferencesScreen />} />
         <Route path="settings" element={<Placeholder name="Settings" />} />
       </Route>
 

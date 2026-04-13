@@ -261,7 +261,7 @@ export function LeaveBalanceScreen() {
 
     const handleAdjust = async () => {
         try {
-            await adjustMutation.mutateAsync(adjustForm);
+            await adjustMutation.mutateAsync({ ...adjustForm, year: Number(year) });
             showSuccess(
                 "Balance Adjusted",
                 `${adjustForm.days} day(s) ${adjustForm.action === "credit" ? "credited to" : "debited from"} ${employeeName(adjustForm.employeeId)}.`

@@ -248,11 +248,12 @@ function NotificationsPanel() {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
 
-    // Poll for unread count every 30 seconds
+    // Socket.io drives real-time updates via notification:new. We keep
+    // a long-interval fallback poll (5 min) to recover if sockets drop.
     const { data: unreadData } = useQuery({
         queryKey: notificationKeys.unreadCount(),
         queryFn: () => notificationApi.getUnreadCount(),
-        refetchInterval: 30000,
+        refetchInterval: 300000,
     });
 
     // Fetch notification list only when dropdown is open
@@ -714,11 +715,11 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
                                 <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
                                     {group}
                                 </p>
-                                {items.map((item) => {
+                                {items.map((item, i) => {
                                     const idx = globalIndex++;
                                     return (
                                         <button
-                                            key={item.path}
+                                            key={`${item.path}-${i}`}
                                             data-active={idx === activeIndex}
                                             onClick={() => { navigate(item.path); onClose(); }}
                                             onMouseEnter={() => setActiveIndex(idx)}
