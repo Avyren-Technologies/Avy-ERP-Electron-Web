@@ -27,13 +27,6 @@ import { showSuccess, showApiError } from '@/lib/toast';
 
 type RecipientType = 'COMPANY_WIDE' | 'DEPARTMENT' | 'DESIGNATION' | 'EMPLOYEES';
 type Priority = 'LOW' | 'MEDIUM' | 'HIGH';
-import { useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { Send, Users, Building2, Briefcase } from 'lucide-react';
-import { client } from '@/lib/api/client';
-import { showSuccess, showApiError } from '@/lib/toast';
-
-type RecipientType = 'COMPANY_WIDE' | 'DEPARTMENT' | 'DESIGNATION' | 'EMPLOYEES';
 
 interface Department { id: string; name: string }
 interface Designation { id: string; name: string }
