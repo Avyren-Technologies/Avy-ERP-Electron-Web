@@ -1,3 +1,32 @@
+import { useState, useMemo } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import {
+    Send,
+    Users,
+    Building2,
+    Briefcase,
+    Megaphone,
+    Bell,
+    Smartphone,
+    Mail,
+    AlertTriangle,
+    Info,
+    Flame,
+    Image as ImageIcon,
+    Type,
+    AlignLeft,
+    ChevronDown,
+    CheckCircle2,
+    Loader2,
+    Sparkles,
+} from 'lucide-react';
+import { client } from '@/lib/api/client';
+import { showSuccess, showApiError } from '@/lib/toast';
+
+// ── Types ────────────────────────────────────────────────────────────
+
+type RecipientType = 'COMPANY_WIDE' | 'DEPARTMENT' | 'DESIGNATION' | 'EMPLOYEES';
+type Priority = 'LOW' | 'MEDIUM' | 'HIGH';
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Send, Users, Building2, Briefcase } from 'lucide-react';
@@ -8,6 +37,114 @@ type RecipientType = 'COMPANY_WIDE' | 'DEPARTMENT' | 'DESIGNATION' | 'EMPLOYEES'
 
 interface Department { id: string; name: string }
 interface Designation { id: string; name: string }
+
+// ── Constants ────────────────────────────────────────────────────────
+
+const CHANNELS = [
+    { key: 'IN_APP', label: 'In-App', icon: Bell, desc: 'Notification center' },
+    { key: 'PUSH', label: 'Push', icon: Smartphone, desc: 'Mobile devices' },
+    { key: 'EMAIL', label: 'Email', icon: Mail, desc: 'Employee inbox' },
+] as const;
+
+const RECIPIENT_OPTIONS = [
+    { type: 'COMPANY_WIDE' as const, label: 'Everyone', desc: 'All employees', icon: Users },
+    { type: 'DEPARTMENT' as const, label: 'Department', desc: 'Specific team', icon: Building2 },
+    { type: 'DESIGNATION' as const, label: 'Designation', desc: 'By job title', icon: Briefcase },
+];
+
+const PRIORITY_CONFIG: Record<Priority, { label: string; color: string; bg: string; border: string; ring: string; icon: typeof Info; desc: string }> = {
+    LOW: { label: 'Low', color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30', border: 'border-emerald-200 dark:border-emerald-800', ring: 'ring-emerald-500/20', icon: Info, desc: 'General info' },
+    MEDIUM: { label: 'Medium', color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30', border: 'border-amber-200 dark:border-amber-800', ring: 'ring-amber-500/20', icon: AlertTriangle, desc: 'Important' },
+    HIGH: { label: 'High', color: 'text-rose-700 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-950/30', border: 'border-rose-200 dark:border-rose-800', ring: 'ring-rose-500/20', icon: Flame, desc: 'Urgent' },
+};
+
+// ── Subcomponents ────────────────────────────────────────────────────
+
+function SectionHeader({ icon: Icon, title, subtitle }: { icon: typeof Type; title: string; subtitle: string }) {
+    return (
+        <div className="flex items-center gap-3 mb-5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 shadow-md shadow-indigo-500/20">
+                <Icon size={16} className="text-white" />
+            </div>
+            <div>
+                <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 leading-none">{title}</h2>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{subtitle}</p>
+            </div>
+        </div>
+    );
+}
+
+function LivePreview({ title, body, priority, channels, recipientType }: {
+    title: string; body: string; priority: Priority; channels: string[]; recipientType: RecipientType;
+}) {
+    const pc = PRIORITY_CONFIG[priority];
+    const PIcon = pc.icon;
+    const hasContent = title.trim() || body.trim();
+
+    return (
+        <div className="rounded-2xl border border-neutral-200/80 dark:border-neutral-700/50 bg-gradient-to-br from-white via-white to-indigo-50/40 dark:from-neutral-900 dark:via-neutral-900 dark:to-indigo-950/20 p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+                <Sparkles size={14} className="text-indigo-500" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Live Preview</span>
+            </div>
+
+            {hasContent ? (
+                <div className="space-y-3">
+                    {/* Mock notification card */}
+                    <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/80 p-4 shadow-sm">
+                        <div className="flex items-start gap-3">
+                            <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${pc.bg}`}>
+                                <PIcon size={14} className={pc.color} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 truncate">
+                                    {title || 'Untitled announcement'}
+                                </p>
+                                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-2">
+                                    {body || 'Your message will appear here…'}
+                                </p>
+                                <div className="flex items-center gap-2 mt-2.5">
+                                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${pc.bg} ${pc.color}`}>
+                                        {pc.label}
+                                    </span>
+                                    <span className="text-[10px] text-neutral-400">just now</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Delivery meta */}
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-neutral-400">
+                        <span className="font-medium text-neutral-500 dark:text-neutral-400">Delivering via</span>
+                        {channels.map(ch => {
+                            const cfg = CHANNELS.find(c => c.key === ch);
+                            if (!cfg) return null;
+                            const CIcon = cfg.icon;
+                            return (
+                                <span key={ch} className="inline-flex items-center gap-1 rounded-full bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5">
+                                    <CIcon size={10} /> {cfg.label}
+                                </span>
+                            );
+                        })}
+                        <span className="mx-1">to</span>
+                        <span className="font-medium text-indigo-600 dark:text-indigo-400">
+                            {recipientType === 'COMPANY_WIDE' ? 'All Employees' : recipientType === 'DEPARTMENT' ? 'Department' : 'Designation'}
+                        </span>
+                    </div>
+                </div>
+            ) : (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <div className="h-12 w-12 rounded-2xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mb-3">
+                        <Megaphone size={20} className="text-neutral-400" />
+                    </div>
+                    <p className="text-sm text-neutral-400 dark:text-neutral-500">Start typing to see a preview</p>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ── Main Screen ──────────────────────────────────────────────────────
 
 const CHANNELS = [
     { key: 'IN_APP', label: 'In-App' },

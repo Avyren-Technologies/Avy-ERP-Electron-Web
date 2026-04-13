@@ -142,14 +142,29 @@ const TABS = [
 type TabId = typeof TABS[number]["id"];
 
 const DATA_CATEGORIES = [
-    { value: "PERSONAL_INFO", label: "Personal Information" },
+    { value: "EMPLOYEE_MASTER", label: "Employee Master" },
+    { value: "PAYROLL", label: "Payroll" },
+    { value: "STATUTORY", label: "Statutory" },
+    { value: "ATTENDANCE", label: "Attendance" },
+    { value: "LEAVE", label: "Leave" },
+    { value: "RECRUITMENT", label: "Recruitment" },
+    { value: "TRAINING", label: "Training" },
+    { value: "DISCIPLINE", label: "Discipline" },
+    { value: "DOCUMENTS", label: "Documents" },
+    { value: "AUDIT_LOG", label: "Audit Log" },
     { value: "FINANCIAL_DATA", label: "Financial Data" },
+    { value: "PERSONAL_INFO", label: "Personal Information" },
     { value: "MEDICAL_RECORDS", label: "Medical Records" },
     { value: "ATTENDANCE_DATA", label: "Attendance Data" },
     { value: "PERFORMANCE_DATA", label: "Performance Data" },
     { value: "COMMUNICATION_LOGS", label: "Communication Logs" },
     { value: "EXIT_DATA", label: "Exit Data" },
 ];
+
+/** Map category enum to human-readable label */
+const CATEGORY_LABEL_MAP: Record<string, string> = Object.fromEntries(
+    DATA_CATEGORIES.map((c) => [c.value, c.label])
+);
 
 const REQUEST_TYPES = [
     { value: "ACCESS", label: "Data Access" },
@@ -202,7 +217,9 @@ export function DataRetentionScreen() {
     // Filtered
     const filteredPolicies = policies.filter((p: any) => {
         if (!search) return true;
-        return p.category?.toLowerCase().includes(search.toLowerCase());
+        const s = search.toLowerCase();
+        const label = CATEGORY_LABEL_MAP[p.dataCategory] ?? CATEGORY_LABEL_MAP[p.category] ?? '';
+        return p.category?.toLowerCase().includes(s) || p.dataCategory?.toLowerCase().includes(s) || label.toLowerCase().includes(s);
     });
     const filteredRequests = requests.filter((r: any) => {
         if (!search) return true;
@@ -222,9 +239,9 @@ export function DataRetentionScreen() {
 
     const openEditPolicy = (p: any) => {
         setEditingPolicy(p);
-        setPCategory(p.category ?? "");
+        setPCategory(p.dataCategory ?? p.category ?? "");
         setPYears(String(p.retentionYears ?? ""));
-        setPAction(p.action ?? "");
+        setPAction((p.actionAfter ?? p.action ?? "").replace('ANONYMISE', 'ANONYMIZE'));
         setPDescription(p.description ?? "");
         setPolicyModalOpen(true);
     };
@@ -247,7 +264,7 @@ export function DataRetentionScreen() {
         if (!deleteTarget) return;
         try {
             await deletePolicy.mutateAsync(deleteTarget.id);
-            showSuccess("Policy Deleted", `${deleteTarget.category} policy removed.`);
+            showSuccess("Policy Deleted", `${CATEGORY_LABEL_MAP[deleteTarget.dataCategory] ?? CATEGORY_LABEL_MAP[deleteTarget.category] ?? deleteTarget.dataCategory ?? deleteTarget.category ?? 'Policy'} removed.`);
             setDeleteTarget(null);
         } catch (err) {
             showApiError(err);
@@ -367,13 +384,13 @@ export function DataRetentionScreen() {
                                                     <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
                                                         <Shield className="w-4 h-4 text-primary-600 dark:text-primary-400" />
                                                     </div>
-                                                    <span className="font-bold text-primary-950 dark:text-white">{p.category?.replace(/_/g, " ")}</span>
+                                                    <span className="font-bold text-primary-950 dark:text-white">{CATEGORY_LABEL_MAP[p.dataCategory] ?? CATEGORY_LABEL_MAP[p.category] ?? p.dataCategory?.replace(/_/g, " ") ?? p.category?.replace(/_/g, " ") ?? "—"}</span>
                                                 </div>
                                             </td>
                                             <td className="py-4 px-6 text-center font-mono text-xs font-bold text-neutral-700 dark:text-neutral-300">{p.retentionYears ?? "—"}</td>
                                             <td className="py-4 px-6 text-center">
                                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700 uppercase">
-                                                    {p.action}
+                                                    {(p.actionAfter ?? p.action)?.replace('ANONYMISE', 'ANONYMIZE')}
                                                 </span>
                                             </td>
                                             <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{p.description || "—"}</td>
@@ -522,7 +539,7 @@ export function DataRetentionScreen() {
                     <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200">
                         <h2 className="text-lg font-bold text-danger-700 dark:text-danger-400 mb-2">Delete Policy?</h2>
                         <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                            This will permanently delete the <strong>{deleteTarget.category?.replace(/_/g, " ")}</strong> retention policy.
+                            This will permanently delete the <strong>{CATEGORY_LABEL_MAP[deleteTarget.dataCategory] ?? CATEGORY_LABEL_MAP[deleteTarget.category] ?? (deleteTarget.dataCategory ?? deleteTarget.category ?? '').replace(/_/g, " ")}</strong> retention policy.
                         </p>
                         <div className="flex gap-3 mt-6">
                             <button onClick={() => setDeleteTarget(null)} className="flex-1 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
@@ -558,8 +575,8 @@ export function DataRetentionScreen() {
                                     {dueItems.map((d: any, idx: number) => (
                                         <div key={idx} className="flex items-center justify-between p-4 bg-warning-50 dark:bg-warning-900/20 rounded-xl border border-warning-200 dark:border-warning-800/50">
                                             <div>
-                                                <p className="font-bold text-sm text-warning-800 dark:text-warning-300">{d.category?.replace(/_/g, " ")}</p>
-                                                <p className="text-xs text-warning-600 dark:text-warning-400 mt-0.5">Action: {d.action}</p>
+                                                <p className="font-bold text-sm text-warning-800 dark:text-warning-300">{CATEGORY_LABEL_MAP[d.dataCategory] ?? CATEGORY_LABEL_MAP[d.category] ?? (d.dataCategory ?? d.category ?? '').replace(/_/g, " ")}</p>
+                                                <p className="text-xs text-warning-600 dark:text-warning-400 mt-0.5">Action: {(d.actionAfter ?? d.action ?? '').replace('ANONYMISE', 'ANONYMIZE')}</p>
                                             </div>
                                             <div className="bg-warning-100 dark:bg-warning-900/40 px-3 py-1 rounded-full">
                                                 <span className="font-bold text-sm text-warning-700 dark:text-warning-300">{d.overdueCount ?? 0}</span>

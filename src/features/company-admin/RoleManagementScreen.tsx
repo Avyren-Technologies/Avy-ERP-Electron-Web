@@ -234,7 +234,7 @@ export function RoleManagementScreen() {
                                                 <span className="text-[10px] font-bold bg-accent-50 text-accent-700 border border-accent-200 px-2 py-0.5 rounded-full dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50">Custom</span>
                                             )}
                                         </td>
-                                        <td className="py-4 px-6 text-center font-semibold text-primary-950 dark:text-white">{role.userCount ?? 0}</td>
+                                        <td className="py-4 px-6 text-center font-semibold text-primary-950 dark:text-white">{role.userCount ?? (role as any)._count?.users ?? 0}</td>
                                         <td className="py-4 px-6 text-right">
                                             {!role.isSystem && (
                                                 <div className="flex items-center justify-end gap-1">

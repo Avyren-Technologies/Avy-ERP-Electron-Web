@@ -109,7 +109,9 @@ function SelectField({
                 onChange={(e) => onChange(e.target.value)}
                 className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
             >
-                <option value="">{placeholder ?? "Select..."}</option>
+                {!options.some((o) => o.value === "") && (
+                    <option value="">{placeholder ?? "Select..."}</option>
+                )}
                 {options.map((o) => (
                     <option key={o.value} value={o.value}>
                         {o.label}
