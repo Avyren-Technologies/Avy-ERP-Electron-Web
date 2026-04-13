@@ -197,6 +197,26 @@ const ShiftRotationScreen = lazyNamed(() => import("./features/company-admin/hr/
 const ProductionIncentiveScreen = lazyNamed(() => import("./features/company-admin/hr/ProductionIncentiveScreen"), "ProductionIncentiveScreen");
 const TravelAdvanceScreen = lazyNamed(() => import("./features/company-admin/hr/TravelAdvanceScreen"), "TravelAdvanceScreen");
 
+// ─── Visitor Management ───
+const VisitorDashboardScreen = lazyNamed(() => import("./features/company-admin/visitors/VisitorDashboardScreen"), "VisitorDashboardScreen");
+const VisitorListScreen = lazyNamed(() => import("./features/company-admin/visitors/VisitorListScreen"), "VisitorListScreen");
+const PreRegisterVisitorScreen = lazyNamed(() => import("./features/company-admin/visitors/PreRegisterVisitorScreen"), "PreRegisterVisitorScreen");
+const GateCheckInScreen = lazyNamed(() => import("./features/company-admin/visitors/GateCheckInScreen"), "GateCheckInScreen");
+const VisitorDetailScreen = lazyNamed(() => import("./features/company-admin/visitors/VisitorDetailScreen"), "VisitorDetailScreen");
+const VisitorTypeScreen = lazyNamed(() => import("./features/company-admin/visitors/VisitorTypeScreen"), "VisitorTypeScreen");
+const GateScreen = lazyNamed(() => import("./features/company-admin/visitors/GateScreen"), "GateScreen");
+const WatchlistScreen = lazyNamed(() => import("./features/company-admin/visitors/WatchlistScreen"), "WatchlistScreen");
+const RecurringPassScreen = lazyNamed(() => import("./features/company-admin/visitors/RecurringPassScreen"), "RecurringPassScreen");
+const VMSSettingsScreen = lazyNamed(() => import("./features/company-admin/visitors/VMSSettingsScreen"), "VMSSettingsScreen");
+const VisitHistoryScreen = lazyNamed(() => import("./features/company-admin/visitors/VisitHistoryScreen"), "VisitHistoryScreen");
+const VehiclePassScreen = lazyNamed(() => import("./features/company-admin/visitors/VehiclePassScreen"), "VehiclePassScreen");
+const MaterialPassScreen = lazyNamed(() => import("./features/company-admin/visitors/MaterialPassScreen"), "MaterialPassScreen");
+const GroupVisitScreen = lazyNamed(() => import("./features/company-admin/visitors/GroupVisitScreen"), "GroupVisitScreen");
+const SafetyInductionScreen = lazyNamed(() => import("./features/company-admin/visitors/SafetyInductionScreen"), "SafetyInductionScreen");
+const EmergencyMusterScreen = lazyNamed(() => import("./features/company-admin/visitors/EmergencyMusterScreen"), "EmergencyMusterScreen");
+const VisitorReportsScreen = lazyNamed(() => import("./features/company-admin/visitors/VisitorReportsScreen"), "VisitorReportsScreen");
+const DeniedEntriesScreen = lazyNamed(() => import("./features/company-admin/visitors/DeniedEntriesScreen"), "DeniedEntriesScreen");
+
 // ─── HR Analytics Dashboards ───
 const ExecAnalyticsScreen = lazyNamed(() => import("./features/company-admin/hr/analytics/ExecutiveDashboardScreen"), "ExecutiveDashboardScreen");
 const WorkforceDashboardScreen = lazyNamed(() => import("./features/company-admin/hr/analytics/WorkforceDashboardScreen"), "WorkforceDashboardScreen");
@@ -489,6 +509,25 @@ function App() {
         <Route path="company/hr/analytics/recruitment" element={<RequirePermission permission="analytics:read"><RecruitmentDashboardScreen /></RequirePermission>} />
         <Route path="company/hr/analytics/attrition" element={<RequirePermission permission="analytics:read"><AttritionDashboardScreen /></RequirePermission>} />
         <Route path="company/hr/analytics/training" element={<RequirePermission permission="analytics:read"><TrainingDashboardScreen /></RequirePermission>} />
+        {/* Visitor Management routes */}
+        <Route path="company/visitors/dashboard" element={<RequirePermission permission="visitors:read"><VisitorDashboardScreen /></RequirePermission>} />
+        <Route path="company/visitors/list" element={<RequirePermission permission="visitors:read"><VisitorListScreen /></RequirePermission>} />
+        <Route path="company/visitors/pre-register" element={<RequirePermission permission="visitors:create"><PreRegisterVisitorScreen /></RequirePermission>} />
+        <Route path="company/visitors/gate-check-in" element={<RequirePermission permission="visitors:create"><GateCheckInScreen /></RequirePermission>} />
+        <Route path="company/visitors/detail/:id" element={<RequirePermission permission="visitors:read"><VisitorDetailScreen /></RequirePermission>} />
+        <Route path="company/visitors/settings/types" element={<RequirePermission permission="visitors:configure"><VisitorTypeScreen /></RequirePermission>} />
+        <Route path="company/visitors/settings/gates" element={<RequirePermission permission="visitors:configure"><GateScreen /></RequirePermission>} />
+        <Route path="company/visitors/watchlist" element={<RequirePermission permission="visitors:configure"><WatchlistScreen /></RequirePermission>} />
+        <Route path="company/visitors/recurring-passes" element={<RequirePermission permission="visitors:read"><RecurringPassScreen /></RequirePermission>} />
+        <Route path="company/visitors/settings" element={<RequirePermission permission="visitors:configure"><VMSSettingsScreen /></RequirePermission>} />
+        <Route path="company/visitors/history" element={<RequirePermission permission="visitors:read"><VisitHistoryScreen /></RequirePermission>} />
+        <Route path="company/visitors/vehicle-passes" element={<RequirePermission permission="visitors:read"><VehiclePassScreen /></RequirePermission>} />
+        <Route path="company/visitors/material-passes" element={<RequirePermission permission="visitors:read"><MaterialPassScreen /></RequirePermission>} />
+        <Route path="company/visitors/group-visits" element={<RequirePermission permission="visitors:read"><GroupVisitScreen /></RequirePermission>} />
+        <Route path="company/visitors/settings/inductions" element={<RequirePermission permission="visitors:configure"><SafetyInductionScreen /></RequirePermission>} />
+        <Route path="company/visitors/denied-entries" element={<RequirePermission permission="visitors:read"><DeniedEntriesScreen /></RequirePermission>} />
+        <Route path="company/visitors/emergency" element={<RequirePermission permission="visitors:read"><EmergencyMusterScreen /></RequirePermission>} />
+        <Route path="company/visitors/reports" element={<RequirePermission permission="visitors:export"><VisitorReportsScreen /></RequirePermission>} />
         {/* Operations module routes */}
         <Route path="inventory" element={<RequireRole roles={['super-admin', 'company-admin']}><InventoryScreen /></RequireRole>} />
         <Route path="production" element={<RequireRole roles={['super-admin', 'company-admin']}><ProductionScreen /></RequireRole>} />
