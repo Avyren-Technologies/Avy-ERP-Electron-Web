@@ -139,12 +139,6 @@ function LivePreview({ title, body, priority, channels, recipientType }: {
 
 // ── Main Screen ──────────────────────────────────────────────────────
 
-const CHANNELS = [
-    { key: 'IN_APP', label: 'In-App' },
-    { key: 'PUSH', label: 'Push' },
-    { key: 'EMAIL', label: 'Email' },
-] as const;
-
 export function AnnouncementsScreen() {
     const [title, setTitle] = useState('');
     const [body, setBody] = useState('');
@@ -236,8 +230,6 @@ export function AnnouncementsScreen() {
             prev.includes(ch) ? prev.filter((c) => c !== ch) : [...prev, ch],
         );
     };
-
-    const canSend = title.trim() && body.trim() && channels.length > 0;
 
     return (
         <div className="max-w-3xl space-y-6 p-1">
