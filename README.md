@@ -13,6 +13,11 @@ This fixes hard refresh / direct access on protected routes.
 
 ## VPS (Nginx)
 
+
+
+
+
+
 Use the sample config in `deploy/nginx-spa.conf` and make sure this line is present in the `/` location:
 
 - `try_files $uri $uri/ /index.html;`
