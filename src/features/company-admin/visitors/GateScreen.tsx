@@ -113,6 +113,10 @@ export function GateScreen() {
                 operatingHoursEnd: form.operatingHoursEnd || undefined,
                 isActive: form.isActive,
                 enableQR: form.enableQR,
+                allowedVisitorTypeIds: (form.allowedVisitorTypeIds || "")
+                    .split(",")
+                    .map((id) => id.trim())
+                    .filter(Boolean),
                 description: form.description || undefined,
             };
             if (editingId) {
