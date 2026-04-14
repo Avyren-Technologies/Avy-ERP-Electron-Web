@@ -59,6 +59,7 @@ const InvoiceListScreen = lazyNamed(() => import("./features/super-admin/Invoice
 const InvoiceDetailScreen = lazyNamed(() => import("./features/super-admin/InvoiceDetailScreen"), "InvoiceDetailScreen");
 const SubscriptionDetailScreen = lazyNamed(() => import("./features/super-admin/SubscriptionDetailScreen"), "SubscriptionDetailScreen");
 const AppVersionConfigScreen = lazyNamed(() => import("./features/super-admin/AppVersionConfigScreen"), "AppVersionConfigScreen");
+const CompanyAdminPermissionsScreen = lazyNamed(() => import("./features/super-admin/CompanyAdminPermissionsScreen"), "CompanyAdminPermissionsScreen");
 
 // ─── Super Admin Support ───
 const SupportDashboardScreen = lazyNamed(() => import("./features/super-admin/support/SupportDashboardScreen"), "SupportDashboardScreen");
@@ -376,6 +377,7 @@ function App() {
         <Route path="support" element={<RequireRole roles={['super-admin']}><SupportDashboardScreen /></RequireRole>} />
         <Route path="support/ticket/:id" element={<RequireRole roles={['super-admin']}><SupportTicketDetailScreen /></RequireRole>} />
         <Route path="app-versions" element={<RequireRole roles={['super-admin']}><AppVersionConfigScreen /></RequireRole>} />
+        <Route path="admin/company-admin-permissions" element={<RequireRole roles={['super-admin']}><CompanyAdminPermissionsScreen /></RequireRole>} />
         {/* Company-admin-only routes */}
         <Route path="company/profile" element={<RequirePermission permission="company:read"><CompanyProfileScreen /></RequirePermission>} />
         <Route path="company/locations" element={<RequirePermission permission="company:read"><LocationManagementScreen /></RequirePermission>} />
