@@ -20,7 +20,7 @@ export function VisitStatusBadge({ status }: { status: string }) {
     if (config) {
         return (
             <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize", config.color, config.bg)}>
-                {config.label.toLowerCase()}
+                {config.label}
             </span>
         );
     }
