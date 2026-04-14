@@ -184,7 +184,10 @@ export function PreRegisterVisitorScreen() {
                 visitorTypeId: form.visitorTypeId || undefined,
                 purpose: form.purpose || undefined,
                 visitDate: form.visitDate || undefined,
-                expectedArrival: form.expectedArrival ? `${form.visitDate}T${form.expectedArrival}:00` : undefined,
+                expectedArrival:
+                    form.visitDate && form.expectedArrival
+                        ? `${form.visitDate}T${form.expectedArrival}:00`
+                        : undefined,
                 expectedDuration: form.expectedDuration ? Number(form.expectedDuration) : undefined,
                 hostEmployeeId: form.hostEmployeeId || undefined,
                 hostName: form.hostName || undefined,
