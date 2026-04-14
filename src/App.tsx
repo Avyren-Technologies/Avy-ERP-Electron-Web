@@ -41,6 +41,8 @@ const MfaVerifyScreen = lazyNamed(() => import("./features/auth/MfaVerifyScreen"
 const MfaSetupScreen = lazyNamed(() => import("./features/auth/MfaSetupScreen"), "MfaSetupScreen");
 const RegisterCompanyScreen = lazyNamed(() => import("@/features/auth/RegisterCompanyScreen"), "RegisterCompanyScreen");
 const TenantNotFoundScreen = lazyNamed(() => import("@/features/auth/TenantNotFoundScreen"), "TenantNotFoundScreen");
+const PrivacyPolicyScreen = lazyNamed(() => import("@/features/auth/PrivacyPolicyScreen"), "PrivacyPolicyScreen");
+const TermsOfServiceScreen = lazyNamed(() => import("@/features/auth/TermsOfServiceScreen"), "TermsOfServiceScreen");
 
 // ─── Super Admin Screens ───
 const DashboardScreen = lazyNamed(() => import("./features/super-admin/DashboardScreen"), "DashboardScreen");
@@ -348,6 +350,8 @@ function App() {
         {tenantContext.mode === 'main' && (
           <Route path="/register" element={<RegisterCompanyScreen />} />
         )}
+        <Route path="/privacy-policy" element={<PrivacyPolicyScreen />} />
+        <Route path="/terms-of-service" element={<TermsOfServiceScreen />} />
       </Route>
 
       {/* Protected App Routes */}
