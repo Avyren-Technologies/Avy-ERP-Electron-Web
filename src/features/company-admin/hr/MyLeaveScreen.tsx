@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     CalendarOff,
@@ -84,6 +85,7 @@ const EMPTY_FORM = {
 export function MyLeaveScreen() {
     const fmt = useCompanyFormatter();
     const formatDate = (d: string | null | undefined) => d ? fmt.date(d) : "—";
+    const location = useLocation();
     const [modalOpen, setModalOpen] = useState(false);
     const [form, setForm] = useState({ ...EMPTY_FORM });
 
@@ -93,6 +95,15 @@ export function MyLeaveScreen() {
     const requestsQuery = useLeaveRequests({ employeeId: "me" });
     const applyMutation = useApplyLeave();
     const cancelMutation = useCancelLeave();
+
+    // Auto-open apply modal when navigated with comp-off deep link state
+    useEffect(() => {
+        const state = location.state as { preselectedLeaveType?: string } | null;
+        if (state?.preselectedLeaveType) {
+            setForm((p) => ({ ...p, leaveTypeId: state.preselectedLeaveType! }));
+            setModalOpen(true);
+        }
+    }, [location.state]);
 
     const balances: any[] = (balanceQuery.data?.data as any) ?? [];
     const leaveTypes: any[] = leaveTypesQuery.data?.data ?? [];
