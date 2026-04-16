@@ -444,6 +444,91 @@ async function getTeamLeaveCalendar(): Promise<ApiResponse<any>> {
     return response.data;
 }
 
+// ── Overtime Types ──
+
+export type OvertimeRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'PAID' | 'COMP_OFF_ACCRUED';
+export type OTMultiplierSource = 'WEEKDAY' | 'WEEKEND' | 'HOLIDAY' | 'NIGHT_SHIFT';
+export type OvertimeRequestSource = 'AUTO' | 'MANUAL';
+
+export interface OvertimeRequestListItem {
+    id: string;
+    date: string;
+    source: OvertimeRequestSource;
+    requestedHours: number;
+    appliedMultiplier: number;
+    multiplierSource: OTMultiplierSource;
+    calculatedAmount: number | null;
+    status: OvertimeRequestStatus;
+    reason: string | null;
+    attachments: string[] | null;
+    compOffGranted: boolean;
+    approvalNotes: string | null;
+    approvedAt: string | null;
+    createdAt: string;
+}
+
+export interface OvertimeRequestDetail extends OvertimeRequestListItem {
+    attendanceRecord: {
+        date: string;
+        punchIn: string | null;
+        punchOut: string | null;
+        workedHours: number | null;
+        status: string;
+        shiftName: string | null;
+    } | null;
+    approvedByName: string | null;
+    requestedByName: string | null;
+}
+
+export interface OvertimeSummary {
+    totalOtHours: number;
+    pendingCount: number;
+    approvedAmount: number;
+    totalRequests: number;
+    compOff: {
+        balance: number;
+        expiresAt: string | null;
+        leaveTypeId: string | null;
+    } | null;
+}
+
+export interface ClaimOvertimePayload {
+    date: string;
+    hours: number;
+    reason: string;
+    attachments?: string[];
+}
+
+export interface OvertimeListParams {
+    status?: OvertimeRequestStatus;
+    source?: OvertimeRequestSource;
+    dateFrom?: string;
+    dateTo?: string;
+    page?: number;
+    limit?: number;
+}
+
+// ── Overtime API ──
+
+export const essOvertimeApi = {
+    getMyOvertimeRequests: async (params?: OvertimeListParams) => {
+        const r = await client.get('/hr/ess/my-overtime-requests', { params });
+        return r.data;
+    },
+    getMyOvertimeDetail: async (id: string) => {
+        const r = await client.get(`/hr/ess/my-overtime-requests/${id}`);
+        return r.data;
+    },
+    getMyOvertimeSummary: async (params?: { month?: number; year?: number }) => {
+        const r = await client.get('/hr/ess/my-overtime-summary', { params });
+        return r.data;
+    },
+    claimOvertime: async (data: ClaimOvertimePayload) => {
+        const r = await client.post('/hr/ess/claim-overtime', data);
+        return r.data;
+    },
+};
+
 export const essApi = {
     // Dashboard
     getDashboard,
