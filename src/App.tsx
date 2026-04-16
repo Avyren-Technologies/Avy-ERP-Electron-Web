@@ -248,6 +248,7 @@ const MyHolidaysScreen = lazyNamed(() => import("./features/ess/MyHolidaysScreen
 const MyExpenseClaimsScreen = lazyNamed(() => import("./features/ess/MyExpenseClaimsScreen"), "MyExpenseClaimsScreen");
 const MyLoanScreen = lazyNamed(() => import("./features/ess/MyLoanScreen"), "MyLoanScreen");
 const MyAppraisalScreen = lazyNamed(() => import("./features/ess/MyAppraisalScreen"), "MyAppraisalScreen");
+const MyOvertimeScreen = lazyNamed(() => import("./features/ess/MyOvertimeScreen"), "MyOvertimeScreen");
 
 // ─── Operations Modules ───
 const InventoryScreen = lazyNamed(() => import("./features/inventory/InventoryScreen"), "InventoryScreen");
@@ -463,6 +464,7 @@ function App() {
         <Route path="company/hr/my-holidays" element={<RequirePermission permission="ess:view-holidays"><MyHolidaysScreen /></RequirePermission>} />
         <Route path="company/hr/my-expense-claims" element={<RequirePermission permission={['hr:read', 'ess:claim-expense']}><MyExpenseClaimsScreen /></RequirePermission>} />
         <Route path="company/hr/my-loans" element={<RequirePermission permission={['hr:read', 'ess:apply-loan']}><MyLoanScreen /></RequirePermission>} />
+        <Route path="company/hr/my-overtime" element={<RequirePermission permission="ess:view-overtime"><MyOvertimeScreen /></RequirePermission>} />
         {/* Company-admin Recruitment & Training routes */}
         <Route path="company/hr/requisitions" element={<RequirePermission permission="hr:read"><RequisitionScreen /></RequirePermission>} />
         <Route path="company/hr/candidates/:id" element={<RequirePermission permission="hr:read"><CandidateDetailScreen /></RequirePermission>} />
