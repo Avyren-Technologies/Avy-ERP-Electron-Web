@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BarChart3, FileText, AlertTriangle, TrendingUp } from "lucide-react";
+import { BarChart3, FileText, AlertTriangle, TrendingUp, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDailyLog, useReportSummary, useOverstayReport, useVisitorAnalytics } from "@/features/company-admin/api/use-visitor-queries";
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
@@ -7,6 +7,28 @@ import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 type TabKey = "daily" | "summary" | "overstay" | "analytics";
+
+function exportToCSV(data: any[], filename: string) {
+    if (!data || data.length === 0) return;
+    const headers = Object.keys(data[0]);
+    const csvRows = [
+        headers.join(','),
+        ...data.map(row =>
+            headers.map(h => {
+                const val = row[h] ?? '';
+                const str = String(val).replace(/[\r\n]+/g, ' ').replace(/"/g, '""');
+                return `"${str}"`;
+            }).join(',')
+        ),
+    ];
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
 
 export function VisitorReportsScreen() {
     const fmt = useCompanyFormatter();
@@ -80,6 +102,24 @@ export function VisitorReportsScreen() {
                             </div>
                         </>
                     )}
+                    <div className="ml-auto self-end">
+                        <button
+                            onClick={() => {
+                                const dataMap: Record<TabKey, { data: any; name: string }> = {
+                                    daily: { data: dailyQuery.data?.data, name: `visitor-daily-log-${selectedDate}` },
+                                    summary: { data: summaryQuery.data?.data, name: 'visitor-summary' },
+                                    overstay: { data: overstayQuery.data?.data, name: 'visitor-overstay' },
+                                    analytics: { data: analyticsQuery.data?.data ? [analyticsQuery.data.data] : [], name: 'visitor-analytics' },
+                                };
+                                const { data, name } = dataMap[tab];
+                                if (data) exportToCSV(Array.isArray(data) ? data : [data], name);
+                            }}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 text-sm font-bold transition-all shadow-sm"
+                        >
+                            <Download className="w-4 h-4" />
+                            Export CSV
+                        </button>
+                    </div>
                 </div>
             </div>
 

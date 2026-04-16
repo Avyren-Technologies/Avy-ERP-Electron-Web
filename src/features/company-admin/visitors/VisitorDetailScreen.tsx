@@ -17,10 +17,14 @@ import {
     Loader2,
     Car,
     Timer,
+    Trash2,
+    Pencil,
+    BookCheck,
 } from "lucide-react";
+import QRCode from "react-qr-code";
 import { cn } from "@/lib/utils";
 import { useVisit } from "@/features/company-admin/api/use-visitor-queries";
-import { useCheckInVisit, useCheckOutVisit, useApproveVisit, useRejectVisit, useExtendVisit } from "@/features/company-admin/api/use-visitor-mutations";
+import { useCheckInVisit, useCheckOutVisit, useApproveVisit, useRejectVisit, useExtendVisit, useDeleteVisit, useCompleteInduction, useUpdateVisit } from "@/features/company-admin/api/use-visitor-mutations";
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
 import { useCanPerform } from "@/hooks/useCanPerform";
 import { showSuccess, showApiError } from "@/lib/toast";
@@ -52,11 +56,17 @@ export function VisitorDetailScreen() {
     const approveMutation = useApproveVisit();
     const rejectMutation = useRejectVisit();
     const extendMutation = useExtendVisit();
+    const cancelMutation = useDeleteVisit();
+    const inductionMutation = useCompleteInduction();
+    const updateMutation = useUpdateVisit();
 
     const [showExtend, setShowExtend] = useState(false);
     const [extendMinutes, setExtendMinutes] = useState("60");
     const [rejectReason, setRejectReason] = useState("");
     const [showReject, setShowReject] = useState(false);
+    const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+    const [showEdit, setShowEdit] = useState(false);
+    const [editForm, setEditForm] = useState({ visitorName: "", visitorMobile: "", expectedDate: "", purpose: "" });
 
     const visit = data?.data;
 
@@ -116,6 +126,47 @@ export function VisitorDetailScreen() {
             await extendMutation.mutateAsync({ id: visit.id, data: { additionalMinutes: Number(extendMinutes) } });
             showSuccess("Extended", `Visit has been extended by ${extendMinutes} minutes.`);
             setShowExtend(false);
+        } catch (err) { showApiError(err); }
+    };
+
+    const handleCancel = async () => {
+        try {
+            await cancelMutation.mutateAsync(visit.id);
+            showSuccess("Cancelled", `Visit for ${visit.visitorName} has been cancelled.`);
+            setShowCancelConfirm(false);
+        } catch (err) { showApiError(err); }
+    };
+
+    const handleCompleteInduction = async () => {
+        try {
+            await inductionMutation.mutateAsync({ id: visit.id, data: { passed: true } });
+            showSuccess("Induction Complete", `Safety induction marked as complete for ${visit.visitorName}.`);
+        } catch (err) { showApiError(err); }
+    };
+
+    const openEditModal = () => {
+        setEditForm({
+            visitorName: visit.visitorName || "",
+            visitorMobile: visit.visitorMobile || "",
+            expectedDate: visit.expectedArrival ? visit.expectedArrival.slice(0, 16) : "",
+            purpose: visit.purpose || "",
+        });
+        setShowEdit(true);
+    };
+
+    const handleUpdate = async () => {
+        try {
+            await updateMutation.mutateAsync({
+                id: visit.id,
+                data: {
+                    visitorName: editForm.visitorName,
+                    visitorMobile: editForm.visitorMobile,
+                    expectedArrival: editForm.expectedDate || undefined,
+                    purpose: editForm.purpose,
+                },
+            });
+            showSuccess("Updated", `Visit for ${editForm.visitorName} has been updated.`);
+            setShowEdit(false);
         } catch (err) { showApiError(err); }
     };
 
@@ -195,6 +246,34 @@ export function VisitorDetailScreen() {
                                 <Timer size={14} /> Extend
                             </button>
                         </>
+                    )}
+                    {visit.safetyInductionStatus === "PENDING" && canCreate && (
+                        <button
+                            onClick={handleCompleteInduction}
+                            disabled={inductionMutation.isPending}
+                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-info-600 hover:bg-info-700 text-white text-sm font-bold transition-colors disabled:opacity-50"
+                        >
+                            {inductionMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <BookCheck size={14} />}
+                            Mark Induction Complete
+                        </button>
+                    )}
+                    {(visit.status === "EXPECTED" || visit.status === "PRE_REGISTERED" || visit.status === "APPROVED" || visit.status === "ARRIVED") && canCreate && (
+                        <button
+                            onClick={openEditModal}
+                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-primary-300 dark:border-primary-700 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 text-sm font-bold transition-colors hover:bg-primary-100 dark:hover:bg-primary-900/30"
+                        >
+                            <Pencil size={14} /> Edit
+                        </button>
+                    )}
+                    {(visit.status === "EXPECTED" || visit.status === "PRE_REGISTERED" || visit.status === "APPROVED" || visit.status === "ARRIVED" || visit.status === "PENDING_APPROVAL") && canCreate && (
+                        <button
+                            onClick={() => setShowCancelConfirm(true)}
+                            disabled={cancelMutation.isPending}
+                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-danger-600 hover:bg-danger-700 text-white text-sm font-bold transition-colors disabled:opacity-50"
+                        >
+                            {cancelMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                            Cancel Visit
+                        </button>
                     )}
                 </div>
             </div>
@@ -298,6 +377,19 @@ export function VisitorDetailScreen() {
                         )}
                     </div>
 
+                    {/* Visit QR Code */}
+                    {visit?.visitCode && (
+                        <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-xl shadow-neutral-900/5 p-6">
+                            <h2 className="text-sm font-bold text-primary-950 dark:text-white uppercase tracking-wider mb-4">Visit QR Code</h2>
+                            <div className="flex flex-col items-center gap-3">
+                                <div className="bg-white p-4 rounded-xl">
+                                    <QRCode value={visit.visitCode} size={180} />
+                                </div>
+                                <p className="text-sm font-mono text-neutral-600 dark:text-neutral-300">{visit.visitCode}</p>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Approval Trail */}
                     {visit.approvalTrail && visit.approvalTrail.length > 0 && (
                         <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-xl shadow-neutral-900/5 p-6">
@@ -365,6 +457,83 @@ export function VisitorDetailScreen() {
                             <button onClick={() => setShowReject(false)} className="flex-1 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
                             <button onClick={handleReject} disabled={rejectMutation.isPending} className="flex-1 py-3 rounded-xl bg-danger-600 hover:bg-danger-700 text-white text-sm font-bold transition-colors disabled:opacity-50">
                                 {rejectMutation.isPending ? "Rejecting..." : "Reject"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Cancel Visit Confirm Modal */}
+            {showCancelConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200">
+                        <h2 className="text-lg font-bold text-danger-700 dark:text-danger-400 mb-2">Cancel Visit</h2>
+                        <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-6">
+                            Are you sure you want to cancel the visit for <span className="font-bold text-primary-950 dark:text-white">{visit.visitorName}</span>? This action cannot be undone.
+                        </p>
+                        <div className="flex gap-3">
+                            <button onClick={() => setShowCancelConfirm(false)} className="flex-1 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Keep Visit</button>
+                            <button onClick={handleCancel} disabled={cancelMutation.isPending} className="flex-1 py-3 rounded-xl bg-danger-600 hover:bg-danger-700 text-white text-sm font-bold transition-colors disabled:opacity-50">
+                                {cancelMutation.isPending ? "Cancelling..." : "Cancel Visit"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Visit Modal */}
+            {showEdit && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-lg animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
+                            <h2 className="text-lg font-bold text-primary-950 dark:text-white">Edit Visit</h2>
+                            <button onClick={() => setShowEdit(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
+                                <XCircle size={18} />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Visitor Name</label>
+                                <input
+                                    type="text"
+                                    value={editForm.visitorName}
+                                    onChange={(e) => setEditForm((p) => ({ ...p, visitorName: e.target.value }))}
+                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Mobile</label>
+                                <input
+                                    type="text"
+                                    value={editForm.visitorMobile}
+                                    onChange={(e) => setEditForm((p) => ({ ...p, visitorMobile: e.target.value }))}
+                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Expected Arrival</label>
+                                <input
+                                    type="datetime-local"
+                                    value={editForm.expectedDate}
+                                    onChange={(e) => setEditForm((p) => ({ ...p, expectedDate: e.target.value }))}
+                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Purpose</label>
+                                <input
+                                    type="text"
+                                    value={editForm.purpose}
+                                    onChange={(e) => setEditForm((p) => ({ ...p, purpose: e.target.value }))}
+                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
+                            <button onClick={() => setShowEdit(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
+                            <button onClick={handleUpdate} disabled={updateMutation.isPending || !editForm.visitorName} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                                {updateMutation.isPending && <Loader2 size={14} className="animate-spin" />}
+                                {updateMutation.isPending ? "Saving..." : "Save Changes"}
                             </button>
                         </div>
                     </div>

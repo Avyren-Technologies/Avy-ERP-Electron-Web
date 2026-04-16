@@ -201,6 +201,13 @@ const ShiftRotationScreen = lazyNamed(() => import("./features/company-admin/hr/
 const ProductionIncentiveScreen = lazyNamed(() => import("./features/company-admin/hr/ProductionIncentiveScreen"), "ProductionIncentiveScreen");
 const TravelAdvanceScreen = lazyNamed(() => import("./features/company-admin/hr/TravelAdvanceScreen"), "TravelAdvanceScreen");
 
+// ─── Public Visitor Pages ───
+const PreArrivalFormPage = lazyNamed(() => import("@/features/public/visitors/PreArrivalFormPage"), "PreArrivalFormPage");
+const SelfRegistrationPage = lazyNamed(() => import("@/features/public/visitors/SelfRegistrationPage"), "SelfRegistrationPage");
+const VisitStatusPage = lazyNamed(() => import("@/features/public/visitors/VisitStatusPage"), "VisitStatusPage");
+const DigitalBadgePage = lazyNamed(() => import("@/features/public/visitors/DigitalBadgePage"), "DigitalBadgePage");
+const SelfCheckOutPage = lazyNamed(() => import("@/features/public/visitors/SelfCheckOutPage"), "SelfCheckOutPage");
+
 // ─── Visitor Management ───
 const VisitorDashboardScreen = lazyNamed(() => import("./features/company-admin/visitors/VisitorDashboardScreen"), "VisitorDashboardScreen");
 const VisitorListScreen = lazyNamed(() => import("./features/company-admin/visitors/VisitorListScreen"), "VisitorListScreen");
@@ -354,6 +361,13 @@ function App() {
         <Route path="/privacy-policy" element={<PrivacyPolicyScreen />} />
         <Route path="/terms-of-service" element={<TermsOfServiceScreen />} />
       </Route>
+
+      {/* Public Visitor Pages (no auth required) */}
+      <Route path="visit/:visitCode" element={<PreArrivalFormPage />} />
+      <Route path="visit/register/:plantCode" element={<SelfRegistrationPage />} />
+      <Route path="visit/status/:visitCode" element={<VisitStatusPage />} />
+      <Route path="visit/badge/:visitCode" element={<DigitalBadgePage />} />
+      <Route path="visit/checkout/:visitCode" element={<SelfCheckOutPage />} />
 
       {/* Protected App Routes */}
       <Route

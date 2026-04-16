@@ -13,12 +13,13 @@ import {
     Phone,
     Building2,
     X,
+    Camera,
 } from "lucide-react";
 import { useDashboardToday, useDashboardOnSite, useVisitByCode } from "@/features/company-admin/api/use-visitor-queries";
-import { useCheckInVisit, useCheckOutVisit, useCreateVisit } from "@/features/company-admin/api/use-visitor-mutations";
+import { useCheckInVisit, useCheckOutVisit, useCreateVisit, useCheckWatchlist } from "@/features/company-admin/api/use-visitor-mutations";
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
 import { SkeletonTable } from "@/components/ui/Skeleton";
-import { showSuccess, showApiError } from "@/lib/toast";
+import { showSuccess, showApiError, showWarning, showError } from "@/lib/toast";
 import { VisitStatusBadge } from "@/features/company-admin/visitors/components/VisitStatusBadge";
 
 /* ── Screen ── */
@@ -28,10 +29,12 @@ export function GateCheckInScreen() {
     const checkInMutation = useCheckInVisit();
     const checkOutMutation = useCheckOutVisit();
     const createMutation = useCreateVisit();
+    const checkWatchlist = useCheckWatchlist();
 
     const [visitCode, setVisitCode] = useState("");
     const [searchCode, setSearchCode] = useState("");
     const [actionId, setActionId] = useState<string | null>(null);
+    const [visitorPhoto, setVisitorPhoto] = useState<string | null>(null);
     const [showWalkIn, setShowWalkIn] = useState(false);
     const [walkInForm, setWalkInForm] = useState({
         visitorName: "",
@@ -52,6 +55,14 @@ export function GateCheckInScreen() {
     const onSiteVisitors: any[] = onSiteQuery.data?.data ?? [];
     const foundVisit = codeQuery.data?.data;
 
+    const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onloadend = () => setVisitorPhoto(reader.result as string);
+        reader.readAsDataURL(file);
+    };
+
     const handleLookupCode = () => {
         if (visitCode.trim()) {
             setSearchCode(visitCode.trim());
@@ -61,10 +72,14 @@ export function GateCheckInScreen() {
     const handleCheckIn = async (id: string) => {
         try {
             setActionId(id);
-            await checkInMutation.mutateAsync({ id });
+            await checkInMutation.mutateAsync({
+                id,
+                data: visitorPhoto ? { visitorPhoto } : undefined,
+            });
             showSuccess("Checked In", "Visitor has been checked in successfully.");
             setSearchCode("");
             setVisitCode("");
+            setVisitorPhoto(null);
         } catch (err) {
             showApiError(err);
         } finally {
@@ -86,6 +101,23 @@ export function GateCheckInScreen() {
 
     const handleWalkIn = async () => {
         try {
+            // Watchlist check (non-blocking on network error)
+            if (walkInForm.visitorMobile) {
+                try {
+                    const watchlistResult = await checkWatchlist.mutateAsync({ mobile: walkInForm.visitorMobile });
+                    const match = watchlistResult?.data;
+                    if (match?.type === "BLOCKLIST" || match?.listType === "BLOCKLIST") {
+                        showError("Blocked Visitor", `${walkInForm.visitorName} is on the blocklist: ${match.reason || "entry denied"}.`);
+                        return;
+                    }
+                    if (match?.type === "WATCHLIST" || match?.listType === "WATCHLIST") {
+                        showWarning("Watchlist Match", `${walkInForm.visitorName} is on the watchlist: ${match.reason || "proceed with caution"}.`);
+                    }
+                } catch {
+                    // Network error — proceed with registration anyway
+                }
+            }
+
             await createMutation.mutateAsync({
                 ...walkInForm,
                 isWalkIn: true,
@@ -167,14 +199,24 @@ export function GateCheckInScreen() {
                                 <p className="text-neutral-500 dark:text-neutral-400">Host: {foundVisit.hostName || "---"}</p>
                             </div>
                             {(foundVisit.status === "PRE_REGISTERED" || foundVisit.status === "APPROVED") && (
-                                <button
-                                    onClick={() => handleCheckIn(foundVisit.id)}
-                                    disabled={actionId === foundVisit.id}
-                                    className="w-full py-2.5 rounded-xl bg-success-600 hover:bg-success-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                                >
-                                    {actionId === foundVisit.id ? <Loader2 size={14} className="animate-spin" /> : <LogIn size={14} />}
-                                    Check In Now
-                                </button>
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-3">
+                                        <label className="flex items-center gap-2 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-700 text-sm text-neutral-700 dark:text-neutral-300 transition-colors">
+                                            <Camera className="w-4 h-4" />
+                                            <span>Visitor Photo</span>
+                                            <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} />
+                                        </label>
+                                        {visitorPhoto && <span className="text-xs text-success-600 dark:text-success-400 font-medium">Photo captured</span>}
+                                    </div>
+                                    <button
+                                        onClick={() => handleCheckIn(foundVisit.id)}
+                                        disabled={actionId === foundVisit.id}
+                                        className="w-full py-2.5 rounded-xl bg-success-600 hover:bg-success-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                    >
+                                        {actionId === foundVisit.id ? <Loader2 size={14} className="animate-spin" /> : <LogIn size={14} />}
+                                        Check In Now
+                                    </button>
+                                </div>
                             )}
                             {foundVisit.status === "CHECKED_IN" && (
                                 <button
@@ -214,6 +256,14 @@ export function GateCheckInScreen() {
                             <Users size={16} className="text-primary-600 dark:text-primary-400" />
                             Expected Visitors Today ({expectedVisitors.length})
                         </h2>
+                        <div className="flex items-center gap-3">
+                            <label className="flex items-center gap-2 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-700 text-sm text-neutral-700 dark:text-neutral-300 transition-colors">
+                                <Camera className="w-4 h-4" />
+                                <span>Visitor Photo</span>
+                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} />
+                            </label>
+                            {visitorPhoto && <span className="text-xs text-success-600 dark:text-success-400 font-medium">Photo captured</span>}
+                        </div>
                     </div>
                     {todayQuery.isLoading ? (
                         <SkeletonTable rows={5} cols={5} />

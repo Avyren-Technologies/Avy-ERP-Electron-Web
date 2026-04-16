@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Users, Plus, Loader2, X, Search, LogIn, LogOut } from "lucide-react";
+import { Users, Plus, Loader2, X, Search, LogIn, LogOut, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useGroupVisits } from "@/features/company-admin/api/use-visitor-queries";
-import { useCreateGroupVisit, useBatchCheckInGroupVisit, useBatchCheckOutGroupVisit } from "@/features/company-admin/api/use-visitor-mutations";
+import { useCreateGroupVisit, useBatchCheckInGroupVisit, useBatchCheckOutGroupVisit, useUpdateGroupVisit } from "@/features/company-admin/api/use-visitor-mutations";
 import { useCanPerform } from "@/hooks/useCanPerform";
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
 import { SkeletonTable } from "@/components/ui/Skeleton";
@@ -18,9 +18,13 @@ export function GroupVisitScreen() {
     const createMutation = useCreateGroupVisit();
     const batchCheckInMutation = useBatchCheckInGroupVisit();
     const batchCheckOutMutation = useBatchCheckOutGroupVisit();
+    const updateGroupMutation = useUpdateGroupVisit();
 
     const [search, setSearch] = useState("");
     const [modalOpen, setModalOpen] = useState(false);
+    const [editModalOpen, setEditModalOpen] = useState(false);
+    const [editId, setEditId] = useState<string | null>(null);
+    const [editForm, setEditForm] = useState({ groupName: "", purpose: "", visitDate: "" });
     const [form, setForm] = useState({ ...EMPTY_FORM });
     const [actionId, setActionId] = useState<string | null>(null);
 
@@ -46,6 +50,26 @@ export function GroupVisitScreen() {
 
     const handleBatchCheckOut = async (id: string) => {
         try { setActionId(id); await batchCheckOutMutation.mutateAsync({ id }); showSuccess("Batch Check-Out", "All group visitors checked out."); } catch (err) { showApiError(err); } finally { setActionId(null); }
+    };
+
+    const openEditGroup = (g: any) => {
+        setEditId(g.id);
+        setEditForm({
+            groupName: g.groupName || "",
+            purpose: g.purpose || "",
+            visitDate: g.visitDate ? g.visitDate.slice(0, 10) : "",
+        });
+        setEditModalOpen(true);
+    };
+
+    const handleEditSave = async () => {
+        if (!editId) return;
+        try {
+            await updateGroupMutation.mutateAsync({ id: editId, data: { ...editForm } });
+            showSuccess("Group Updated", `${editForm.groupName} has been updated.`);
+            setEditModalOpen(false);
+            setEditId(null);
+        } catch (err) { showApiError(err); }
     };
 
     const updateField = (key: string, value: string) => setForm((p) => ({ ...p, [key]: value }));
@@ -107,9 +131,14 @@ export function GroupVisitScreen() {
                                         <td className="py-4 px-6 text-right">
                                             <div className="flex items-center justify-end gap-1">
                                                 {g.status !== "CHECKED_IN" && g.status !== "CHECKED_OUT" && canCreate && (
-                                                    <button onClick={() => handleBatchCheckIn(g.id)} disabled={actionId === g.id} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-success-50 text-success-700 border border-success-200 hover:bg-success-100 transition-colors disabled:opacity-50">
-                                                        {actionId === g.id ? <Loader2 size={12} className="animate-spin" /> : <LogIn size={12} />} All In
-                                                    </button>
+                                                    <>
+                                                        <button onClick={() => openEditGroup(g)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-primary-50 text-primary-700 border border-primary-200 hover:bg-primary-100 transition-colors">
+                                                            <Pencil size={12} /> Edit
+                                                        </button>
+                                                        <button onClick={() => handleBatchCheckIn(g.id)} disabled={actionId === g.id} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-success-50 text-success-700 border border-success-200 hover:bg-success-100 transition-colors disabled:opacity-50">
+                                                            {actionId === g.id ? <Loader2 size={12} className="animate-spin" /> : <LogIn size={12} />} All In
+                                                        </button>
+                                                    </>
                                                 )}
                                                 {g.status === "CHECKED_IN" && canCreate && (
                                                     <button onClick={() => handleBatchCheckOut(g.id)} disabled={actionId === g.id} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-neutral-100 text-neutral-700 border border-neutral-200 hover:bg-neutral-200 transition-colors disabled:opacity-50">
@@ -153,6 +182,39 @@ export function GroupVisitScreen() {
                             <button onClick={handleSave} disabled={createMutation.isPending || !form.groupName} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                                 {createMutation.isPending && <Loader2 size={14} className="animate-spin" />}
                                 {createMutation.isPending ? "Creating..." : "Create Group"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Group Visit Modal */}
+            {editModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-lg animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
+                            <h2 className="text-lg font-bold text-primary-950 dark:text-white">Edit Group Visit</h2>
+                            <button onClick={() => setEditModalOpen(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"><X size={18} /></button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">Group Name *</label>
+                                <input type="text" value={editForm.groupName} onChange={(e) => setEditForm((p) => ({ ...p, groupName: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm dark:text-white transition-all" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">Purpose</label>
+                                <input type="text" value={editForm.purpose} onChange={(e) => setEditForm((p) => ({ ...p, purpose: e.target.value }))} placeholder="Factory tour, audit, etc." className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm dark:text-white placeholder:text-neutral-400 transition-all" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">Visit Date</label>
+                                <input type="date" value={editForm.visitDate} onChange={(e) => setEditForm((p) => ({ ...p, visitDate: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm dark:text-white transition-all" />
+                            </div>
+                        </div>
+                        <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
+                            <button onClick={() => setEditModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 transition-colors">Cancel</button>
+                            <button onClick={handleEditSave} disabled={updateGroupMutation.isPending || !editForm.groupName} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                                {updateGroupMutation.isPending && <Loader2 size={14} className="animate-spin" />}
+                                {updateGroupMutation.isPending ? "Saving..." : "Save Changes"}
                             </button>
                         </div>
                     </div>
