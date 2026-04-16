@@ -89,10 +89,11 @@ function SummaryCards({
 }) {
     if (!summary) return null;
 
+    const fmt = useCompanyFormatter();
     const compOff = summary.compOff;
-    const compOffLabel = compOff?.expiresAt
-        ? `exp: ${new Date(compOff.expiresAt).toLocaleDateString("en-IN", { month: "short" })}`
-        : "balance";
+    const compOffLabel = compOff
+        ? (compOff.expiresAt ? `exp: ${fmt.date(compOff.expiresAt)}` : "balance")
+        : "Not enabled";
 
     const cards = [
         {
@@ -119,7 +120,7 @@ function SummaryCards({
         {
             label: "Comp-Off",
             sublabel: compOffLabel,
-            value: compOff ? `${compOff.balance} days` : "0 days",
+            value: compOff ? `${compOff.balance} days` : "—",
             cls: "text-accent-600 dark:text-accent-400 bg-accent-50 dark:bg-accent-900/20 border-accent-200 dark:border-accent-800/50",
             icon: Gift,
             clickable: !!compOff?.leaveTypeId,
