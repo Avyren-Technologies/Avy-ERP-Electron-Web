@@ -210,9 +210,9 @@ export function DifferenceViewer({ jobId, onGenerateReport }: Props) {
         </div>
       </div>
 
-      {/* Bottom: difference detail */}
+      {/* Bottom: difference detail - ALWAYS VISIBLE */}
       {nav.activeDifference && (
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 border-t-2 border-indigo-200 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
           <DifferenceDetail
             difference={nav.activeDifference}
             jobId={jobId}

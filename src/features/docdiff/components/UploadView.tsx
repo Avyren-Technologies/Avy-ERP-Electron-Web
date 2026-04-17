@@ -3,6 +3,7 @@ import { FileText, Play, Upload, X } from "lucide-react";
 import { showApiError } from "@/lib/toast";
 import { useCreateJob, useStartJob } from "../api/use-docdiff-mutations";
 import { ModelSelector } from "./ModelSelector";
+import { DEFAULT_MODEL_NAME, DEFAULT_MODEL_PROVIDER } from "../types/docdiff.types";
 
 interface Props {
   onJobCreated: (jobId: string) => void;
@@ -113,8 +114,8 @@ export function UploadView({ onJobCreated }: Props) {
   const [fileB, setFileB] = useState<File | null>(null);
   const [labelA, setLabelA] = useState("Version A");
   const [labelB, setLabelB] = useState("Version B");
-  const [provider, setProvider] = useState("anthropic");
-  const [modelName, setModelName] = useState("claude-sonnet-4-6");
+  const [provider, setProvider] = useState(DEFAULT_MODEL_PROVIDER);
+  const [modelName, setModelName] = useState(DEFAULT_MODEL_NAME);
   const [autoConfirmThreshold, setAutoConfirmThreshold] = useState(0.95);
 
   const createJob = useCreateJob();

@@ -3,7 +3,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Flag,
-  MessageSquare,
   MinusCircle,
   Pencil,
 } from "lucide-react";
@@ -87,58 +86,43 @@ export function DifferenceDetail({
   const confidencePct = Math.round(difference.confidence * 100);
 
   return (
-    <div className="bg-white border-t border-neutral-200 px-4 py-3 flex flex-col gap-3">
-      {/* Top row: info + nav */}
-      <div className="flex items-start gap-4">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <span className="text-xs font-semibold text-neutral-500">
-              #{difference.difference_number}
-            </span>
-            <span
-              className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${sig.bg} ${sig.text} ${sig.border} border`}
-            >
-              {sig.label}
-            </span>
-            <span className="text-xs text-neutral-500">
-              {formatDifferenceType(difference.difference_type)}
-            </span>
-            <span className="text-xs text-neutral-400 ml-auto">
-              Confidence:{" "}
-              <span className="font-semibold">{confidencePct}%</span>
-            </span>
-          </div>
+    <div className="bg-white px-4 py-2">
+      {/* Single row: nav + info + actions */}
+      <div className="flex items-center gap-3">
+        {/* Navigation */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button type="button" onClick={onPrevious} disabled={!hasPrevious}
+            className="p-1 rounded border border-neutral-200 hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed">
+            <ChevronLeft className="h-4 w-4 text-neutral-600" />
+          </button>
+          <button type="button" onClick={onNext} disabled={!hasNext}
+            className="p-1 rounded border border-neutral-200 hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed">
+            <ChevronRight className="h-4 w-4 text-neutral-600" />
+          </button>
+        </div>
 
-          {/* Confidence bar */}
-          <div className="w-48 bg-neutral-100 rounded-full h-1 mb-1.5">
-            <div
-              className={`h-1 rounded-full ${
-                confidencePct >= 80
-                  ? "bg-green-400"
-                  : confidencePct >= 50
-                    ? "bg-amber-400"
-                    : "bg-red-400"
-              }`}
-              style={{ width: `${confidencePct}%` }}
-            />
-          </div>
+        {/* Difference info */}
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <span className="text-xs font-bold text-neutral-500">#{difference.difference_number}</span>
+          <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold ${sig.bg} ${sig.text} border ${sig.border}`}>
+            {sig.label}
+          </span>
+          <span className="text-xs text-neutral-500">{formatDifferenceType(difference.difference_type)}</span>
+          <span className="text-xs text-neutral-400">({confidencePct}%)</span>
 
-          <p className="text-sm text-neutral-700 leading-snug">
-            {difference.summary}
-          </p>
-
+          {/* Before / After inline */}
           {(difference.value_before || difference.value_after) && (
-            <div className="mt-1.5 flex items-center gap-2 text-xs text-neutral-600">
+            <div className="flex items-center gap-1 text-xs min-w-0 flex-shrink">
               {difference.value_before && (
-                <span className="bg-red-50 text-red-700 px-2 py-0.5 rounded line-through max-w-[200px] truncate">
+                <span className="bg-red-50 text-red-700 px-1.5 py-0.5 rounded line-through truncate max-w-[150px]">
                   {difference.value_before}
                 </span>
               )}
               {difference.value_before && difference.value_after && (
-                <span className="text-neutral-400">→</span>
+                <span className="text-neutral-400">&rarr;</span>
               )}
               {difference.value_after && (
-                <span className="bg-green-50 text-green-700 px-2 py-0.5 rounded max-w-[200px] truncate">
+                <span className="bg-green-50 text-green-700 px-1.5 py-0.5 rounded truncate max-w-[150px]">
                   {difference.value_after}
                 </span>
               )}
@@ -146,141 +130,55 @@ export function DifferenceDetail({
           )}
         </div>
 
-        {/* Navigation */}
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <button
-            type="button"
-            onClick={onPrevious}
-            disabled={!hasPrevious}
-            className="p-1.5 rounded border border-neutral-200 hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            title="Previous difference"
-          >
-            <ChevronLeft className="h-4 w-4 text-neutral-600" />
+        {/* Action buttons - ALWAYS VISIBLE */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <button type="button" onClick={handleConfirm}
+            className="flex items-center gap-1 rounded-lg bg-green-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-green-700">
+            <CheckCircle className="h-3.5 w-3.5" /> Confirm <kbd className="text-green-200 text-[9px] ml-0.5">C</kbd>
           </button>
-          <button
-            type="button"
-            onClick={onNext}
-            disabled={!hasNext}
-            className="p-1.5 rounded border border-neutral-200 hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            title="Next difference"
-          >
-            <ChevronRight className="h-4 w-4 text-neutral-600" />
+          <button type="button" onClick={handleDismiss}
+            className="flex items-center gap-1 rounded-lg bg-neutral-200 px-2.5 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-300">
+            <MinusCircle className="h-3.5 w-3.5" /> Dismiss <kbd className="text-neutral-400 text-[9px] ml-0.5">D</kbd>
+          </button>
+          <button type="button" onClick={handleCorrect}
+            className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold ${
+              correctMode ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-blue-100 text-blue-700 hover:bg-blue-200"
+            }`}>
+            <Pencil className="h-3.5 w-3.5" /> {correctMode ? "Submit" : "Correct"} {!correctMode && <kbd className="text-blue-400 text-[9px] ml-0.5">E</kbd>}
+          </button>
+          <button type="button" onClick={handleFlag}
+            className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold ${
+              flagMode ? "bg-amber-500 text-white hover:bg-amber-600" : "bg-amber-50 text-amber-700 hover:bg-amber-100"
+            }`}>
+            <Flag className="h-3.5 w-3.5" /> {flagMode ? "Submit" : "Flag"} {!flagMode && <kbd className="text-amber-400 text-[9px] ml-0.5">F</kbd>}
           </button>
         </div>
       </div>
 
-      {/* Inline correct editor */}
+      {/* Inline editors (only shown when needed) */}
       {correctMode && (
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={correctedDescription}
-            onChange={(e) => setCorrectedDescription(e.target.value)}
+        <div className="flex gap-2 mt-2">
+          <input type="text" value={correctedDescription} onChange={(e) => setCorrectedDescription(e.target.value)}
             className="flex-1 rounded-lg border border-blue-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            placeholder="Enter corrected description..."
-            autoFocus
-          />
-          <button
-            type="button"
-            onClick={() => setCorrectMode(false)}
-            className="px-3 py-1.5 rounded-lg border border-neutral-300 text-xs font-medium text-neutral-600 hover:bg-neutral-50"
-          >
-            Cancel
-          </button>
+            placeholder="Enter corrected description..." autoFocus />
+          <button type="button" onClick={() => setCorrectMode(false)}
+            className="px-3 py-1.5 rounded-lg border border-neutral-300 text-xs font-medium text-neutral-600 hover:bg-neutral-50">Cancel</button>
         </div>
       )}
-
-      {/* Flag comment */}
       {flagMode && (
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={flagComment}
-            onChange={(e) => setFlagComment(e.target.value)}
+        <div className="flex gap-2 mt-2">
+          <input type="text" value={flagComment} onChange={(e) => setFlagComment(e.target.value)}
             className="flex-1 rounded-lg border border-amber-300 px-3 py-1.5 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
-            placeholder="Add comment for flag (optional)..."
-            autoFocus
-          />
-          <button
-            type="button"
-            onClick={() => setFlagMode(false)}
-            className="px-3 py-1.5 rounded-lg border border-neutral-300 text-xs font-medium text-neutral-600 hover:bg-neutral-50"
-          >
-            Cancel
-          </button>
+            placeholder="Add comment for flag (optional)..." autoFocus />
+          <button type="button" onClick={() => setFlagMode(false)}
+            className="px-3 py-1.5 rounded-lg border border-neutral-300 text-xs font-medium text-neutral-600 hover:bg-neutral-50">Cancel</button>
         </div>
       )}
 
-      {/* Handwriting review for annotation differences needing verification */}
+      {/* Handwriting review for annotation differences */}
       {difference.difference_type.includes("annotation") && difference.needs_verification && (
         <HandwritingReview difference={difference} jobId={jobId} onVerify={onVerify} />
       )}
-
-      {/* Action buttons */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <button
-          type="button"
-          onClick={handleConfirm}
-          className="flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700 transition-colors"
-          title="Confirm (C)"
-        >
-          <CheckCircle className="h-3.5 w-3.5" />
-          Confirm
-          <span className="text-green-200 text-[10px]">[C]</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={handleDismiss}
-          className="flex items-center gap-1.5 rounded-lg bg-neutral-200 px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-300 transition-colors"
-          title="Dismiss (D)"
-        >
-          <MinusCircle className="h-3.5 w-3.5" />
-          Dismiss
-          <span className="text-neutral-400 text-[10px]">[D]</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={handleCorrect}
-          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-            correctMode
-              ? "bg-blue-600 text-white hover:bg-blue-700"
-              : "bg-blue-100 text-blue-700 hover:bg-blue-200"
-          }`}
-          title="Correct (E)"
-        >
-          <Pencil className="h-3.5 w-3.5" />
-          {correctMode ? "Submit Correction" : "Correct"}
-          {!correctMode && (
-            <span className="text-blue-400 text-[10px]">[E]</span>
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={handleFlag}
-          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-            flagMode
-              ? "bg-amber-500 text-white hover:bg-amber-600"
-              : "bg-amber-50 text-amber-700 hover:bg-amber-100"
-          }`}
-          title="Flag (F)"
-        >
-          <Flag className="h-3.5 w-3.5" />
-          {flagMode ? "Submit Flag" : "Flag"}
-          {!flagMode && (
-            <span className="text-amber-400 text-[10px]">[F]</span>
-          )}
-        </button>
-
-        {difference.verifier_comment && !flagMode && (
-          <span className="flex items-center gap-1 text-xs text-neutral-500 ml-auto">
-            <MessageSquare className="h-3 w-3" />
-            {difference.verifier_comment}
-          </span>
-        )}
-      </div>
     </div>
   );
 }
