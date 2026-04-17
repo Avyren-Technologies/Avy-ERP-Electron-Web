@@ -70,6 +70,15 @@ export const docdiffApi = {
   getPageImageUrl: (jobId: string, role: string, pageNum: number) =>
     `${docdiffClient.defaults.baseURL}/jobs/${jobId}/documents/${role}/pages/${pageNum}/image`,
 
+  getPageImageBlob: async (jobId: string, role: string, pageNum: number): Promise<string> => {
+    const response = await docdiffClient.get(
+      `/jobs/${jobId}/documents/${role}/pages/${pageNum}/image`,
+      { responseType: "blob" },
+    );
+    const blob = response instanceof Blob ? response : new Blob([response as BlobPart]);
+    return URL.createObjectURL(blob);
+  },
+
   getPageContent: (jobId: string, role: string, pageNum: number) =>
     docdiffClient.get(
       `/jobs/${jobId}/documents/${role}/pages/${pageNum}/content`,

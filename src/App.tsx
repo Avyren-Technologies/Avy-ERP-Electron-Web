@@ -556,7 +556,7 @@ function App() {
         <Route path="company/visitors/emergency" element={<RequirePermission permission="visitors:read"><EmergencyMusterScreen /></RequirePermission>} />
         <Route path="company/visitors/reports" element={<RequirePermission permission="visitors:export"><VisitorReportsScreen /></RequirePermission>} />
         {/* DocDiff Pro */}
-        <Route path="docdiff" element={<DocDiffScreen />} />
+        <Route path="docdiff" element={<RequirePermission permission="docdiff:read"><DocDiffScreen /></RequirePermission>} />
         {/* Operations module routes */}
         <Route path="inventory" element={<RequireRole roles={['super-admin', 'company-admin']}><InventoryScreen /></RequireRole>} />
         <Route path="production" element={<RequireRole roles={['super-admin', 'company-admin']}><ProductionScreen /></RequireRole>} />

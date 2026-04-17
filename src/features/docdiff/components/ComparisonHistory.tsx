@@ -6,7 +6,8 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useJobs } from "../api/use-docdiff-queries";
-import { docdiffApi } from "../api/docdiff-api";
+import { docdiffClient } from "../api/docdiff-client";
+import { showApiError } from "@/lib/toast";
 import type { JobStatus } from "../types/docdiff.types";
 
 interface Props {
@@ -33,10 +34,13 @@ const STATUS_BADGE: Record<
 };
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  const d = new Date(iso);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  return `${day}/${month}/${year} ${hours}:${minutes}`;
 }
 
 export function ComparisonHistory({ onSelectJob, onNewComparison }: Props) {
@@ -148,7 +152,6 @@ export function ComparisonHistory({ onSelectJob, onNewComparison }: Props) {
                     "verification_in_progress",
                     "completed",
                   ].includes(job.status);
-                  const pdfUrl = docdiffApi.getReportPdfUrl(job.id);
 
                   return (
                     <tr
@@ -214,15 +217,28 @@ export function ComparisonHistory({ onSelectJob, onNewComparison }: Props) {
                             </button>
                           )}
                           {job.status === "completed" && (
-                            <a
-                              href={pdfUrl}
-                              download
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  const response = await docdiffClient.get(`/jobs/${job.id}/report/pdf`, { responseType: "blob" });
+                                  const blob = response instanceof Blob ? response : new Blob([response as BlobPart], { type: "application/pdf" });
+                                  const url = URL.createObjectURL(blob);
+                                  const a = document.createElement("a");
+                                  a.href = url;
+                                  a.download = "docdiff-report.pdf";
+                                  a.click();
+                                  URL.revokeObjectURL(url);
+                                } catch (err) {
+                                  showApiError(err);
+                                }
+                              }}
                               className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-100 transition-colors"
                               title="Download report PDF"
                             >
                               <Download className="h-3.5 w-3.5" />
                               PDF
-                            </a>
+                            </button>
                           )}
                         </div>
                       </td>

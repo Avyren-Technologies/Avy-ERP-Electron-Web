@@ -14,9 +14,11 @@ import type {
 } from "../types/docdiff.types";
 import { SIGNIFICANCE_COLORS } from "../utils/significance-colors";
 import { formatDifferenceType } from "../utils/difference-filters";
+import { HandwritingReview } from "./HandwritingReview";
 
 interface Props {
   difference: DetectedDifference;
+  jobId: string;
   onVerify: (diffId: string, action: VerificationActionPayload) => void;
   onPrevious: () => void;
   onNext: () => void;
@@ -26,6 +28,7 @@ interface Props {
 
 export function DifferenceDetail({
   difference,
+  jobId,
   onVerify,
   onPrevious,
   onNext,
@@ -206,6 +209,11 @@ export function DifferenceDetail({
             Cancel
           </button>
         </div>
+      )}
+
+      {/* Handwriting review for annotation differences needing verification */}
+      {difference.difference_type.includes("annotation") && difference.needs_verification && (
+        <HandwritingReview difference={difference} jobId={jobId} onVerify={onVerify} />
       )}
 
       {/* Action buttons */}
