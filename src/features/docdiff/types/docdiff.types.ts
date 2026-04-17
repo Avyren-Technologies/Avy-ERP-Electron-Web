@@ -120,37 +120,74 @@ export interface ModelOption {
   description: string;
 }
 
+export const DEFAULT_MODEL_PROVIDER = "google";
+export const DEFAULT_MODEL_NAME = "gemini-2.5-flash";
+
 export const MODEL_OPTIONS: ModelOption[] = [
+  // ── Google Gemini (Primary Provider) ─────────────────────────────────
+  {
+    provider: "google",
+    model: "gemini-2.5-flash",
+    label: "Gemini 2.5 Flash",
+    description: "Best balance — fast, smart, 1M context (default)",
+  },
+  {
+    provider: "google",
+    model: "gemini-2.5-pro",
+    label: "Gemini 2.5 Pro",
+    description: "Highest accuracy, thinking model, higher cost",
+  },
+  {
+    provider: "google",
+    model: "gemini-2.5-flash-lite",
+    label: "Gemini 2.5 Flash-Lite",
+    description: "Lightest 2.5 model — fastest and cheapest",
+  },
+  {
+    provider: "google",
+    model: "gemini-2.0-flash",
+    label: "Gemini 2.0 Flash",
+    description: "Stable multimodal, 1M context, generous free tier",
+  },
+  {
+    provider: "google",
+    model: "gemini-2.0-flash-001",
+    label: "Gemini 2.0 Flash 001",
+    description: "Pinned stable release of Gemini 2.0 Flash",
+  },
+  {
+    provider: "google",
+    model: "gemini-2.0-flash-lite",
+    label: "Gemini 2.0 Flash-Lite",
+    description: "Lightweight 2.0 model — lowest latency",
+  },
+  {
+    provider: "google",
+    model: "gemini-2.0-flash-lite-001",
+    label: "Gemini 2.0 Flash-Lite 001",
+    description: "Pinned stable release of Gemini 2.0 Flash-Lite",
+  },
+  // ── Anthropic (Secondary) ─────────────────────────────────────────────
   {
     provider: "anthropic",
-    model: "claude-sonnet-4-6",
-    label: "Claude Sonnet 4.6",
+    model: "claude-3-7-sonnet-20250219",
+    label: "Claude 3.7 Sonnet",
     description: "Fast, strong reasoning",
   },
   {
     provider: "anthropic",
-    model: "claude-opus-4-6",
-    label: "Claude Opus 4.6",
-    description: "Most capable, higher cost",
+    model: "claude-3-opus-20240229",
+    label: "Claude 3 Opus",
+    description: "Most capable Claude, higher cost",
   },
-  {
-    provider: "google",
-    model: "gemini-3.1-pro",
-    label: "Gemini 3.1 Pro",
-    description: "Strong vision + tables",
-  },
-  {
-    provider: "google",
-    model: "gemini-3-flash",
-    label: "Gemini 3 Flash",
-    description: "Fast, cost-effective",
-  },
+  // ── OpenRouter (Secondary) ────────────────────────────────────────────
   {
     provider: "openrouter",
-    model: "google/gemini-2.5-pro-preview",
-    label: "OpenRouter Best VLM",
-    description: "Best available via OpenRouter",
+    model: "google/gemma-4-31b-it:free",
+    label: "Gemma 4 31B (Free)",
+    description: "Best free vision-capable model via OpenRouter",
   },
+  // ── Local (Self-hosted) ───────────────────────────────────────────────
   {
     provider: "qwen_local",
     model: "qwen3-vl-8b",

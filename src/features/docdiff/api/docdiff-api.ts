@@ -1,3 +1,4 @@
+import axios from "axios";
 import { docdiffClient } from "./docdiff-client";
 import type {
   BulkVerificationPayload,
@@ -71,12 +72,18 @@ export const docdiffApi = {
     `${docdiffClient.defaults.baseURL}/jobs/${jobId}/documents/${role}/pages/${pageNum}/image`,
 
   getPageImageBlob: async (jobId: string, role: string, pageNum: number): Promise<string> => {
-    const response = await docdiffClient.get(
-      `/jobs/${jobId}/documents/${role}/pages/${pageNum}/image`,
-      { responseType: "blob" },
+    const tokensRaw = localStorage.getItem("auth_tokens");
+    const token = tokensRaw ? JSON.parse(tokensRaw).accessToken : null;
+    const baseUrl = import.meta.env.VITE_DOCDIFF_API_URL || "http://localhost:8000/api/v1";
+
+    const response = await axios.get(
+      `${baseUrl}/jobs/${jobId}/documents/${role}/pages/${pageNum}/image`,
+      {
+        responseType: "blob",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      },
     );
-    const blob = response instanceof Blob ? response : new Blob([response as BlobPart]);
-    return URL.createObjectURL(blob);
+    return URL.createObjectURL(response.data);
   },
 
   getPageContent: (jobId: string, role: string, pageNum: number) =>

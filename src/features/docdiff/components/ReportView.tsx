@@ -4,9 +4,10 @@ import {
   Download,
   FileText,
   PlusCircle,
+  Printer,
 } from "lucide-react";
+import axios from "axios";
 import { useReport } from "../api/use-docdiff-queries";
-import { docdiffClient } from "../api/docdiff-client";
 import { showApiError } from "@/lib/toast";
 
 interface Props {
@@ -62,13 +63,23 @@ export function ReportView({ jobId, onBackToViewer, onNewComparison }: Props) {
 
   const handleDownloadPdf = async () => {
     try {
-      const response = await docdiffClient.get(`/jobs/${jobId}/report/pdf`, { responseType: "blob" });
-      const blob = response instanceof Blob ? response : new Blob([response as BlobPart], { type: "application/pdf" });
+      const tokensRaw = localStorage.getItem("auth_tokens");
+      const token = tokensRaw ? JSON.parse(tokensRaw).accessToken : null;
+      const baseUrl = import.meta.env.VITE_DOCDIFF_API_URL || "http://localhost:8000/api/v1";
+
+      const response = await axios.get(`${baseUrl}/jobs/${jobId}/report/pdf`, {
+        responseType: "blob",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      const blob = new Blob([response.data], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = "docdiff-report.pdf";
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
       showApiError(err);
@@ -115,6 +126,23 @@ export function ReportView({ jobId, onBackToViewer, onNewComparison }: Props) {
             <PlusCircle className="h-3.5 w-3.5" />
             New Comparison
           </button>
+          {report.report_html && (
+            <button
+              type="button"
+              onClick={() => {
+                const printWindow = window.open("", "_blank");
+                if (printWindow && report.report_html) {
+                  printWindow.document.write(report.report_html);
+                  printWindow.document.close();
+                  printWindow.print();
+                }
+              }}
+              className="flex items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
+            >
+              <Printer className="h-3.5 w-3.5" />
+              Print
+            </button>
+          )}
           {report.report_pdf_path && (
             <button
               type="button"

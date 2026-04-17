@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { docdiffApi } from "../api/docdiff-api";
 import type { DetectedDifference } from "../types/docdiff.types";
 import {
@@ -20,33 +20,42 @@ interface BBoxOverlayProps {
   diff: DetectedDifference;
   role: "version_a" | "version_b";
   isActive: boolean;
+  imgNaturalWidth: number;
+  imgNaturalHeight: number;
 }
 
-function BBoxOverlay({ diff, role, isActive }: BBoxOverlayProps) {
+function BBoxOverlay({ diff, role, isActive, imgNaturalWidth, imgNaturalHeight }: BBoxOverlayProps) {
   const bbox =
     role === "version_a" ? diff.bbox_version_a : diff.bbox_version_b;
-  if (!bbox) return null;
+  if (!bbox || imgNaturalWidth === 0 || imgNaturalHeight === 0) return null;
 
   const color = SIGNIFICANCE_OVERLAY_COLORS[diff.significance];
+
+  // Convert pixel coordinates to percentages of the image
+  const left = (bbox.x / imgNaturalWidth) * 100;
+  const top = (bbox.y / imgNaturalHeight) * 100;
+  const width = (bbox.width / imgNaturalWidth) * 100;
+  const height = (bbox.height / imgNaturalHeight) * 100;
 
   return (
     <div
       title={`#${diff.difference_number}: ${diff.summary}`}
       style={{
         position: "absolute",
-        left: `${bbox.x * 100}%`,
-        top: `${bbox.y * 100}%`,
-        width: `${bbox.width * 100}%`,
-        height: `${bbox.height * 100}%`,
+        left: `${left}%`,
+        top: `${top}%`,
+        width: `${width}%`,
+        height: `${height}%`,
         backgroundColor: color,
         border: isActive
-          ? `2px solid ${color.replace("0.2", "0.9")}`
+          ? `3px solid ${color.replace("0.2", "0.9")}`
           : `1px solid ${color.replace("0.2", "0.5")}`,
-        boxShadow: isActive ? `0 0 0 2px ${color.replace("0.2", "0.4")}` : undefined,
-        borderRadius: 2,
+        boxShadow: isActive ? `0 0 8px 2px ${color.replace("0.2", "0.5")}` : undefined,
+        borderRadius: 3,
         cursor: "pointer",
         transition: "all 0.15s ease",
         pointerEvents: "all",
+        zIndex: isActive ? 10 : 1,
       }}
     />
   );
@@ -62,6 +71,8 @@ export function DocumentViewer({
   totalPages,
 }: Props) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [imgDimensions, setImgDimensions] = useState<{natural: {w: number, h: number}, display: {w: number, h: number}} | null>(null);
 
   useEffect(() => {
     let blobUrl: string | null = null;
@@ -85,6 +96,22 @@ export function DocumentViewer({
       if (blobUrl) URL.revokeObjectURL(blobUrl);
     };
   }, [jobId, role, pageNumber]);
+
+  // Update display dimensions on resize
+  useEffect(() => {
+    if (!imgRef.current) return;
+    const observer = new ResizeObserver(() => {
+      const img = imgRef.current;
+      if (img && img.naturalWidth > 0) {
+        setImgDimensions({
+          natural: { w: img.naturalWidth, h: img.naturalHeight },
+          display: { w: img.clientWidth, h: img.clientHeight },
+        });
+      }
+    });
+    observer.observe(imgRef.current);
+    return () => observer.disconnect();
+  }, [imageUrl]);
 
   const pageDiffs = useMemo(() => {
     return differences.filter((d) => {
@@ -131,10 +158,18 @@ export function DocumentViewer({
         <div className="relative inline-block shadow-md">
           {imageUrl ? (
             <img
+              ref={imgRef}
               src={imageUrl}
               alt={`${label} page ${pageNumber}`}
               className="block max-w-full"
               draggable={false}
+              onLoad={(e) => {
+                const img = e.target as HTMLImageElement;
+                setImgDimensions({
+                  natural: { w: img.naturalWidth, h: img.naturalHeight },
+                  display: { w: img.clientWidth, h: img.clientHeight },
+                });
+              }}
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = "none";
               }}
@@ -146,12 +181,14 @@ export function DocumentViewer({
           )}
           {/* Bounding box overlays */}
           <div className="absolute inset-0 pointer-events-none">
-            {pageDiffs.map((diff) => (
+            {imgDimensions && pageDiffs.map((diff) => (
               <BBoxOverlay
                 key={diff.id}
                 diff={diff}
                 role={role}
                 isActive={diff.id === activeDiffId}
+                imgNaturalWidth={imgDimensions.natural.w}
+                imgNaturalHeight={imgDimensions.natural.h}
               />
             ))}
           </div>
