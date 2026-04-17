@@ -11,7 +11,18 @@ export function useProcessingSSE(jobId: string | null) {
   useEffect(() => {
     if (!jobId) return;
 
-    const source = new EventSource(`${DOCDIFF_API_URL}/jobs/${jobId}/progress`);
+    const token = (() => {
+      try {
+        const raw = localStorage.getItem("auth_tokens");
+        return raw ? JSON.parse(raw).accessToken : null;
+      } catch { return null; }
+    })();
+
+    const url = token
+      ? `${DOCDIFF_API_URL}/jobs/${jobId}/progress?token=${encodeURIComponent(token)}`
+      : `${DOCDIFF_API_URL}/jobs/${jobId}/progress`;
+
+    const source = new EventSource(url);
 
     source.onmessage = (event) => {
       try {

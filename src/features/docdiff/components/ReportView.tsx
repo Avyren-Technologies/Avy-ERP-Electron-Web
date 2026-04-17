@@ -6,7 +6,8 @@ import {
   PlusCircle,
 } from "lucide-react";
 import { useReport } from "../api/use-docdiff-queries";
-import { docdiffApi } from "../api/docdiff-api";
+import { docdiffClient } from "../api/docdiff-client";
+import { showApiError } from "@/lib/toast";
 
 interface Props {
   jobId: string;
@@ -59,7 +60,20 @@ export function ReportView({ jobId, onBackToViewer, onNewComparison }: Props) {
     );
   }
 
-  const pdfUrl = docdiffApi.getReportPdfUrl(jobId);
+  const handleDownloadPdf = async () => {
+    try {
+      const response = await docdiffClient.get(`/jobs/${jobId}/report/pdf`, { responseType: "blob" });
+      const blob = response instanceof Blob ? response : new Blob([response as BlobPart], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "docdiff-report.pdf";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      showApiError(err);
+    }
+  };
 
   const summaryStats = report.summary_stats ?? {};
   const statEntries = Object.entries(summaryStats);
@@ -102,14 +116,14 @@ export function ReportView({ jobId, onBackToViewer, onNewComparison }: Props) {
             New Comparison
           </button>
           {report.report_pdf_path && (
-            <a
-              href={pdfUrl}
-              download
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
               className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 transition-colors"
             >
               <Download className="h-3.5 w-3.5" />
               Download PDF
-            </a>
+            </button>
           )}
         </div>
       </div>
@@ -142,13 +156,13 @@ export function ReportView({ jobId, onBackToViewer, onNewComparison }: Props) {
             <FileText className="h-8 w-8" />
             <p className="text-sm">Report HTML not available</p>
             {report.report_pdf_path && (
-              <a
-                href={pdfUrl}
-                download
+              <button
+                type="button"
+                onClick={handleDownloadPdf}
                 className="text-sm text-indigo-600 hover:text-indigo-800 underline"
               >
                 Download PDF instead
-              </a>
+              </button>
             )}
           </div>
         )}

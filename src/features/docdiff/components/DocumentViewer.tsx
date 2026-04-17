@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { docdiffApi } from "../api/docdiff-api";
 import type { DetectedDifference } from "../types/docdiff.types";
 import {
@@ -61,10 +61,30 @@ export function DocumentViewer({
   onPageChange,
   totalPages,
 }: Props) {
-  const imageUrl = useMemo(
-    () => docdiffApi.getPageImageUrl(jobId, role, pageNumber),
-    [jobId, role, pageNumber],
-  );
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let blobUrl: string | null = null;
+    let cancelled = false;
+    const fetchImage = async () => {
+      try {
+        const url = await docdiffApi.getPageImageBlob(jobId, role, pageNumber);
+        if (!cancelled) {
+          blobUrl = url;
+          setImageUrl(url);
+        } else {
+          URL.revokeObjectURL(url);
+        }
+      } catch {
+        if (!cancelled) setImageUrl(null);
+      }
+    };
+    fetchImage();
+    return () => {
+      cancelled = true;
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+  }, [jobId, role, pageNumber]);
 
   const pageDiffs = useMemo(() => {
     return differences.filter((d) => {
@@ -109,15 +129,21 @@ export function DocumentViewer({
       {/* Page image + overlays */}
       <div className="flex-1 overflow-auto flex items-start justify-center p-3">
         <div className="relative inline-block shadow-md">
-          <img
-            src={imageUrl}
-            alt={`${label} page ${pageNumber}`}
-            className="block max-w-full"
-            draggable={false}
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = "none";
-            }}
-          />
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt={`${label} page ${pageNumber}`}
+              className="block max-w-full"
+              draggable={false}
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-64 w-96 bg-neutral-50 text-neutral-400 text-sm">
+              Loading page...
+            </div>
+          )}
           {/* Bounding box overlays */}
           <div className="absolute inset-0 pointer-events-none">
             {pageDiffs.map((diff) => (

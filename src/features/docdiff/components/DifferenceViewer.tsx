@@ -28,7 +28,7 @@ export function DifferenceViewer({ jobId, onGenerateReport }: Props) {
   const [pageA, setPageA] = useState(1);
   const [pageB, setPageB] = useState(1);
 
-  const { syncEnabled, setSyncEnabled } = useSyncScroll();
+  const { leftRef, rightRef, syncEnabled, setSyncEnabled, handleScroll } = useSyncScroll();
 
   const filters = showCosmetic ? {} : filtersToParams({ significance: undefined });
   const diffsQuery = useDifferences(jobId, filters);
@@ -91,7 +91,11 @@ export function DifferenceViewer({ jobId, onGenerateReport }: Props) {
     onGenerateReport();
   };
 
-  const totalPages = job?.total_differences ?? 0;
+  // Compute actual page counts from differences (not total_differences which is the diff count)
+  const maxPageA = Math.max(1, ...((allDiffs ?? []).map(d => d.page_version_a).filter(Boolean) as number[]));
+  const maxPageB = Math.max(1, ...((allDiffs ?? []).map(d => d.page_version_b).filter(Boolean) as number[]));
+  const totalPagesA = allDiffs.length > 0 ? maxPageA : 1;
+  const totalPagesB = allDiffs.length > 0 ? maxPageB : 1;
   const activeDiffId = nav.activeDifference?.id ?? null;
 
   return (
@@ -181,7 +185,7 @@ export function DifferenceViewer({ jobId, onGenerateReport }: Props) {
 
         {/* Center: dual document viewers */}
         <div className="flex flex-1 min-w-0">
-          <div className="flex-1 overflow-hidden border-l border-neutral-200">
+          <div ref={leftRef} onScroll={() => handleScroll("left")} className="flex-1 overflow-auto border-l border-neutral-200">
             <DocumentViewer
               jobId={jobId}
               role="version_a"
@@ -189,10 +193,10 @@ export function DifferenceViewer({ jobId, onGenerateReport }: Props) {
               differences={allDiffs}
               activeDiffId={activeDiffId}
               onPageChange={setPageA}
-              totalPages={totalPages}
+              totalPages={totalPagesA}
             />
           </div>
-          <div className="flex-1 overflow-hidden border-l border-neutral-200">
+          <div ref={rightRef} onScroll={() => handleScroll("right")} className="flex-1 overflow-auto border-l border-neutral-200">
             <DocumentViewer
               jobId={jobId}
               role="version_b"
@@ -200,7 +204,7 @@ export function DifferenceViewer({ jobId, onGenerateReport }: Props) {
               differences={allDiffs}
               activeDiffId={activeDiffId}
               onPageChange={setPageB}
-              totalPages={totalPages}
+              totalPages={totalPagesB}
             />
           </div>
         </div>
@@ -211,6 +215,7 @@ export function DifferenceViewer({ jobId, onGenerateReport }: Props) {
         <div className="flex-shrink-0">
           <DifferenceDetail
             difference={nav.activeDifference}
+            jobId={jobId}
             onVerify={handleVerify}
             onPrevious={nav.goPrevious}
             onNext={nav.goNext}

@@ -1,5 +1,6 @@
 import { CheckCircle, Plus, ZoomIn } from "lucide-react";
 import { useState } from "react";
+import { showSuccess } from "@/lib/toast";
 import { docdiffApi } from "../api/docdiff-api";
 
 interface Props {
@@ -18,7 +19,7 @@ export function UnresolvedRegion({ jobId, pageVersionA, pageVersionB }: Props) {
   const handleAddDifference = () => {
     // Placeholder — in a full implementation this would open a form
     // to manually specify difference details
-    alert(
+    showSuccess(
       "Manual difference creation: open a form to describe the difference for this region.",
     );
   };
