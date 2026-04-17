@@ -29,14 +29,18 @@ function BBoxOverlay({ diff, role, isActive }: BBoxOverlayProps) {
 
   const color = SIGNIFICANCE_OVERLAY_COLORS[diff.significance];
 
-  // Bboxes are stored as normalized 0-1 fractions of page dimensions
+  // Bboxes should be normalized 0-1 fractions. If any value > 1, they're
+  // still in pixel/point coords — skip rendering (legacy data).
+  const isNormalized = bbox.x <= 1 && bbox.y <= 1 && bbox.width <= 1 && bbox.height <= 1;
+  if (!isNormalized) return null;
+
   const left = bbox.x * 100;
   const top = bbox.y * 100;
   const width = bbox.width * 100;
   const height = bbox.height * 100;
 
   // Skip bboxes that are all zeros (no position data)
-  if (width < 0.1 && height < 0.1) return null;
+  if (width < 0.5 && height < 0.5) return null;
 
   return (
     <div
