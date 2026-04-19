@@ -87,8 +87,12 @@ export function DifferenceViewer({ jobId, onGenerateReport }: Props) {
   }, []);
 
   const handleGenerateReport = async () => {
-    await generateReport.mutateAsync();
-    onGenerateReport();
+    try {
+      await generateReport.mutateAsync();
+      onGenerateReport();
+    } catch {
+      // Error handling is performed by the mutation's onError callback.
+    }
   };
 
   // Compute actual page counts from differences (not total_differences which is the diff count)
