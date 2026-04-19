@@ -202,8 +202,20 @@ export function MyLeaveScreen() {
                                 </div>
                                 <p className="text-xs font-bold text-neutral-700 dark:text-neutral-300">{leaveLabel}</p>
                                 <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">
-                                    {b.used ?? 0} used / {b.total ?? b.entitled ?? 0} entitled
+                                    {(b.openingBalance ?? 0) > 0 && `CF: ${b.openingBalance} · `}
+                                    Accrued: {b.accrued ?? 0} · Used: {b.taken ?? b.used ?? 0}
+                                    {(b.adjusted ?? 0) !== 0 && ` · Adj: ${b.adjusted}`}
                                 </p>
+                                {b.accrualFrequency && (
+                                    <p className="text-[9px] text-neutral-400 dark:text-neutral-600 mt-0.5">
+                                        Accrual: {b.accrualFrequency.charAt(0) + b.accrualFrequency.slice(1).toLowerCase()}
+                                    </p>
+                                )}
+                                {b.encashmentAllowed && (
+                                    <p className="text-[9px] text-accent-500 mt-0.5">
+                                        Encashable{b.maxEncashableDays ? ` (max ${b.maxEncashableDays} days)` : ''}
+                                    </p>
+                                )}
                             </div>
                         );
                     })}
