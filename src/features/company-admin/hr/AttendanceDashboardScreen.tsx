@@ -755,6 +755,45 @@ export function AttendanceDashboardScreen() {
                                 </div>
                             )}
 
+                            {/* Geofence Status */}
+                            {detailRecord.geoStatus && (
+                                <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-xs text-neutral-500 dark:text-neutral-400">Geofence:</span>
+                                    <span className={cn(
+                                        "text-xs font-bold px-2 py-0.5 rounded-full",
+                                        detailRecord.geoStatus === 'INSIDE_GEOFENCE' && "bg-success-50 text-success-700",
+                                        detailRecord.geoStatus === 'OUTSIDE_GEOFENCE' && "bg-danger-50 text-danger-700",
+                                        detailRecord.geoStatus === 'NO_LOCATION' && "bg-neutral-100 text-neutral-500",
+                                    )}>
+                                        {detailRecord.geoStatus === 'INSIDE_GEOFENCE' ? 'Inside Geofence' :
+                                         detailRecord.geoStatus === 'OUTSIDE_GEOFENCE' ? 'Outside Geofence' : 'No Location'}
+                                    </span>
+                                </div>
+                            )}
+
+                            {/* Break Deduction */}
+                            {detailRecord.appliedBreakDeductionMinutes > 0 && (
+                                <div className="flex justify-between text-xs mt-1">
+                                    <span className="text-neutral-500 dark:text-neutral-400">Break Deduction</span>
+                                    <span className="font-semibold text-primary-950 dark:text-white">{detailRecord.appliedBreakDeductionMinutes} min</span>
+                                </div>
+                            )}
+
+                            {/* Resolution Trace (admin) */}
+                            {detailRecord.resolutionTrace && (
+                                <details className="mt-3 border-t border-neutral-100 dark:border-neutral-800 pt-2">
+                                    <summary className="text-xs font-medium text-neutral-500 dark:text-neutral-400 cursor-pointer">Policy Applied</summary>
+                                    <div className="mt-1 text-xs text-neutral-400 dark:text-neutral-500 space-y-1">
+                                        {Object.entries(typeof detailRecord.resolutionTrace === 'string' ? JSON.parse(detailRecord.resolutionTrace) : detailRecord.resolutionTrace).map(([key, value]) => (
+                                            <div key={key} className="flex justify-between">
+                                                <span className="capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                                                <span className="font-mono">{String(value)}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </details>
+                            )}
+
                             {/* Remarks / Reason */}
                             {detailRecord.remarks && (
                                 <div className="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-3">

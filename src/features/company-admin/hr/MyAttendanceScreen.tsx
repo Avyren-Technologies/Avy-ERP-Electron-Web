@@ -368,6 +368,24 @@ export function MyAttendanceScreen() {
                                         <span className="font-semibold text-warning-600 dark:text-warning-400">{selectedRecord.lateMinutes} min</span>
                                     </div>
                                 )}
+                                {selectedRecord?.geoStatus && (
+                                    <div className="flex justify-between">
+                                        <span className="text-neutral-500 dark:text-neutral-400">Geofence</span>
+                                        <span className={cn("font-bold",
+                                            selectedRecord.geoStatus === 'INSIDE_GEOFENCE' ? 'text-success-600' :
+                                            selectedRecord.geoStatus === 'OUTSIDE_GEOFENCE' ? 'text-danger-600' : 'text-neutral-400'
+                                        )}>
+                                            {selectedRecord.geoStatus === 'INSIDE_GEOFENCE' ? 'Inside' :
+                                             selectedRecord.geoStatus === 'OUTSIDE_GEOFENCE' ? 'Outside' : 'N/A'}
+                                        </span>
+                                    </div>
+                                )}
+                                {selectedRecord?.appliedBreakDeductionMinutes > 0 && (
+                                    <div className="flex justify-between">
+                                        <span className="text-neutral-500 dark:text-neutral-400">Break Deducted</span>
+                                        <span className="font-semibold text-primary-950 dark:text-white">{selectedRecord.appliedBreakDeductionMinutes} min</span>
+                                    </div>
+                                )}
                             </div>
                             {(selectedRecord.status === "ABSENT" || selectedRecord.status === "HALF_DAY" || !selectedRecord.punchIn || !selectedRecord.punchOut || selectedRecord.isLate) && (
                                 <button
