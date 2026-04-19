@@ -159,7 +159,7 @@ export function DocumentViewer({
             </div>
           )}
           {/* Bounding box overlays */}
-          <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute inset-0">
             {pageDiffs.map((diff) => (
               <BBoxOverlay
                 key={diff.id}
