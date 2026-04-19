@@ -241,6 +241,9 @@ const AttritionDashboardScreen = lazyNamed(() => import("./features/company-admi
 const TrainingDashboardScreen = lazyNamed(() => import("./features/company-admin/hr/analytics/TrainingDashboardScreen"), "TrainingDashboardScreen");
 const ReportsHubScreen = lazyNamed(() => import("./features/company-admin/hr/analytics/ReportsHubScreen"), "ReportsHubScreen");
 
+// ─── DocDiff Pro ───
+const DocDiffScreen = lazyNamed(() => import("./features/docdiff/DocDiffScreen"), "DocDiffScreen");
+
 // ─── ESS Self-Service ───
 const MyGoalsScreen = lazyNamed(() => import("./features/ess/MyGoalsScreen"), "MyGoalsScreen");
 const MyForm16Screen = lazyNamed(() => import("./features/ess/MyForm16Screen"), "MyForm16Screen");
@@ -552,6 +555,8 @@ function App() {
         <Route path="company/visitors/denied-entries" element={<RequirePermission permission="visitors:read"><DeniedEntriesScreen /></RequirePermission>} />
         <Route path="company/visitors/emergency" element={<RequirePermission permission="visitors:read"><EmergencyMusterScreen /></RequirePermission>} />
         <Route path="company/visitors/reports" element={<RequirePermission permission="visitors:export"><VisitorReportsScreen /></RequirePermission>} />
+        {/* DocDiff Pro */}
+        <Route path="docdiff" element={<RequirePermission permission="docdiff:read"><DocDiffScreen /></RequirePermission>} />
         {/* Operations module routes */}
         <Route path="inventory" element={<RequireRole roles={['super-admin', 'company-admin']}><InventoryScreen /></RequireRole>} />
         <Route path="production" element={<RequireRole roles={['super-admin', 'company-admin']}><ProductionScreen /></RequireRole>} />
