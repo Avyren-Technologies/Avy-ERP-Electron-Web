@@ -10,7 +10,7 @@ import {
     ArrowDownRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useMyPayslips } from "@/features/company-admin/api/use-ess-queries";
+import { useMyPayslips, useMyPayslipDetail } from "@/features/company-admin/api/use-ess-queries";
 import { useDownloadPayslipPdf } from "@/features/company-admin/api/use-ess-mutations";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -27,6 +27,13 @@ const MONTHS = ["January", "February", "March", "April", "May", "June", "July", 
 const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 4 }, (_, i) => String(currentYear - i));
 
+const COMPONENT_LABELS: Record<string, string> = {
+    PF_EMPLOYER: 'Provident Fund (Employer)',
+    ESI_EMPLOYER: 'ESI (Employer)',
+    LWF_EMPLOYER: 'LWF (Employer)',
+    GRATUITY_PROVISION: 'Gratuity Provision',
+};
+
 /* ── Screen ── */
 
 export function MyPayslipsScreen() {
@@ -37,6 +44,10 @@ export function MyPayslipsScreen() {
     const { data, isLoading, isError } = useMyPayslips();
     const downloadPdf = useDownloadPayslipPdf();
     const payslips: any[] = (data?.data as any) ?? [];
+
+    // Fetch detail data (YTD, leave balance, etc.) when a payslip is selected
+    const { data: detailData } = useMyPayslipDetail(detailTarget?.id ?? null);
+    const detail: any = detailData?.data ? { ...detailTarget, ...detailData.data } : detailTarget;
 
     const filtered = payslips.filter((p: any) => {
         if (monthFilter && String(p.month) !== monthFilter) return false;
@@ -62,7 +73,7 @@ export function MyPayslipsScreen() {
     };
 
     // Normalise earnings — API may return an array, a keyed object, or nothing
-    const earningsRaw = detailTarget?.earnings;
+    const earningsRaw = detail?.earnings;
     const earnings: Array<{ label: string; amount: number }> = Array.isArray(earningsRaw)
         ? earningsRaw
         : earningsRaw && typeof earningsRaw === 'object'
@@ -70,15 +81,15 @@ export function MyPayslipsScreen() {
                 .map(([label, amount]) => ({ label, amount: Number(amount) }))
                 .filter((e) => e.amount > 0)
             : [
-                { label: "Basic Salary", amount: detailTarget?.basic ?? 0 },
-                { label: "HRA", amount: detailTarget?.hra ?? 0 },
-                { label: "Special Allowance", amount: detailTarget?.specialAllowance ?? 0 },
-                { label: "Conveyance", amount: detailTarget?.conveyance ?? 0 },
-                { label: "Medical Allowance", amount: detailTarget?.medicalAllowance ?? 0 },
+                { label: "Basic Salary", amount: detail?.basic ?? 0 },
+                { label: "HRA", amount: detail?.hra ?? 0 },
+                { label: "Special Allowance", amount: detail?.specialAllowance ?? 0 },
+                { label: "Conveyance", amount: detail?.conveyance ?? 0 },
+                { label: "Medical Allowance", amount: detail?.medicalAllowance ?? 0 },
               ].filter((e) => e.amount > 0);
 
     // Normalise deductions — same shape handling
-    const deductionsRaw = detailTarget?.deductions;
+    const deductionsRaw = detail?.deductions;
     const deductions: Array<{ label: string; amount: number }> = Array.isArray(deductionsRaw)
         ? deductionsRaw
         : deductionsRaw && typeof deductionsRaw === 'object'
@@ -86,11 +97,11 @@ export function MyPayslipsScreen() {
                 .map(([label, amount]) => ({ label, amount: Number(amount) }))
                 .filter((d) => d.amount > 0)
             : [
-                { label: "PF (Employee)", amount: detailTarget?.pfEmployee ?? 0 },
-                { label: "ESI (Employee)", amount: detailTarget?.esiEmployee ?? 0 },
-                { label: "Professional Tax", amount: detailTarget?.professionalTax ?? 0 },
-                { label: "TDS", amount: detailTarget?.tds ?? 0 },
-                { label: "Loan EMI", amount: detailTarget?.loanEmi ?? 0 },
+                { label: "PF (Employee)", amount: detail?.pfEmployee ?? 0 },
+                { label: "ESI (Employee)", amount: detail?.esiEmployee ?? 0 },
+                { label: "Professional Tax", amount: detail?.professionalTax ?? 0 },
+                { label: "TDS", amount: detail?.tds ?? 0 },
+                { label: "Loan EMI", amount: detail?.loanEmi ?? 0 },
               ].filter((d) => d.amount > 0);
 
     return (
@@ -224,16 +235,29 @@ export function MyPayslipsScreen() {
                                             <span className="font-mono font-semibold text-primary-950 dark:text-white">{formatCurrency(e.amount)}</span>
                                         </div>
                                     ))}
-                                    {detailTarget.arrearsAmount && Number(detailTarget.arrearsAmount) > 0 && (
+                                    {detail.arrearsAmount && Number(detail.arrearsAmount) > 0 && (
                                         <div className="flex items-center justify-between text-sm py-1 text-accent-600 font-medium">
                                             <span>Arrears</span>
-                                            <span>{formatCurrency(Number(detailTarget.arrearsAmount))}</span>
+                                            <span>{formatCurrency(Number(detail.arrearsAmount))}</span>
+                                        </div>
+                                    )}
+                                    {/* OT Breakdown (E6) */}
+                                    {detail.overtimeAmount && Number(detail.overtimeAmount) > 0 && (
+                                        <div className="flex justify-between text-sm py-1 text-primary-600">
+                                            <span>Overtime ({detail.overtimeHours ?? 0} hrs)</span>
+                                            <span className="font-mono">{formatCurrency(Number(detail.overtimeAmount))}</span>
                                         </div>
                                     )}
                                     <div className="flex items-center justify-between text-sm pt-2 border-t border-neutral-200 dark:border-neutral-700">
                                         <span className="font-bold text-primary-950 dark:text-white">Gross Earnings</span>
-                                        <span className="font-mono font-bold text-success-700 dark:text-success-400">{formatCurrency(detailTarget.grossEarnings ?? detailTarget.gross)}</span>
+                                        <span className="font-mono font-bold text-success-700 dark:text-success-400">{formatCurrency(detail.grossEarnings ?? detail.gross)}</span>
                                     </div>
+                                    {/* LOP Detail (E7-E8) */}
+                                    {Number(detail.lopDays ?? 0) > 0 && (
+                                        <p className="text-xs text-neutral-400 mt-1">
+                                            LOP: {Number(detail.lopDays)} days (Working: {detail.workingDays}, Present: {Number(detail.presentDays)})
+                                        </p>
+                                    )}
                                 </div>
                             </div>
 
@@ -251,10 +275,29 @@ export function MyPayslipsScreen() {
                                     ))}
                                     <div className="flex items-center justify-between text-sm pt-2 border-t border-neutral-200 dark:border-neutral-700">
                                         <span className="font-bold text-primary-950 dark:text-white">Total Deductions</span>
-                                        <span className="font-mono font-bold text-danger-600 dark:text-danger-400">{formatCurrency(detailTarget.totalDeductions ?? detailTarget.deductionsTotal)}</span>
+                                        <span className="font-mono font-bold text-danger-600 dark:text-danger-400">{formatCurrency(detail.totalDeductions ?? detail.deductionsTotal)}</span>
                                     </div>
+                                    {/* TDS Provisional note (E9) */}
+                                    {detail.tdsProvisional && (
+                                        <p className="text-xs text-warning-500 mt-1 italic">* TDS amount is provisional</p>
+                                    )}
                                 </div>
                             </div>
+
+                            {/* Employer Contributions (E5) */}
+                            {detail.employerContributions && Object.keys(detail.employerContributions).length > 0 && (
+                                <div>
+                                    <h4 className="text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-3">Employer Contributions</h4>
+                                    <div className="space-y-2">
+                                        {Object.entries(detail.employerContributions as Record<string, number>).map(([code, amount]) => (
+                                            <div key={code} className="flex justify-between text-sm py-1">
+                                                <span className="text-neutral-500">{COMPONENT_LABELS[code] ?? code.replace(/_/g, ' ')}</span>
+                                                <span className="font-mono">{formatCurrency(Number(amount))}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Net Pay */}
                             <div className="bg-primary-50 dark:bg-primary-900/20 rounded-xl p-4 border border-primary-200 dark:border-primary-800/50 flex items-center justify-between">
@@ -262,8 +305,36 @@ export function MyPayslipsScreen() {
                                     <IndianRupee size={16} className="text-primary-600 dark:text-primary-400" />
                                     <span className="text-sm font-bold text-primary-700 dark:text-primary-400">Net Pay</span>
                                 </div>
-                                <span className="text-xl font-bold text-primary-700 dark:text-primary-300 font-mono">{formatCurrency(detailTarget.netPay ?? detailTarget.net)}</span>
+                                <span className="text-xl font-bold text-primary-700 dark:text-primary-300 font-mono">{formatCurrency(detail.netPay ?? detail.net)}</span>
                             </div>
+
+                            {/* Year-to-Date (E10) */}
+                            {detail.ytd && (
+                                <div className="mt-4 pt-3 border-t">
+                                    <h4 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-2">Year-to-Date (FY {detail.ytd.fyLabel})</h4>
+                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                        <div><span className="text-neutral-500">Gross: </span><span className="font-mono">{formatCurrency(detail.ytd.grossEarnings)}</span></div>
+                                        <div><span className="text-neutral-500">Deductions: </span><span className="font-mono">{formatCurrency(detail.ytd.totalDeductions)}</span></div>
+                                        <div><span className="text-neutral-500">TDS: </span><span className="font-mono">{formatCurrency(detail.ytd.tdsAmount)}</span></div>
+                                        <div><span className="text-neutral-500">Net: </span><span className="font-mono font-bold">{formatCurrency(detail.ytd.netPay)}</span></div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Leave Balance (E11) */}
+                            {detail.leaveBalance && detail.leaveBalance.length > 0 && (
+                                <div className="mt-3 pt-2 border-t">
+                                    <h4 className="text-xs font-semibold text-neutral-500 mb-1">Leave Balance</h4>
+                                    <div className="flex flex-wrap gap-3">
+                                        {detail.leaveBalance.map((l: any) => (
+                                            <span key={l.code} className="text-xs">
+                                                <span className="text-neutral-400">{l.code}:</span>{' '}
+                                                <span className="font-mono">{l.balance}/{l.total}</span>
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
                             <button onClick={() => setDetailTarget(null)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Close</button>

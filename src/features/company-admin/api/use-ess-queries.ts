@@ -49,6 +49,8 @@ export const essKeys = {
         [...essKeys.all, 'my-profile'] as const,
     myPayslips: () =>
         [...essKeys.all, 'my-payslips'] as const,
+    myPayslipDetail: (id: string) =>
+        [...essKeys.all, 'my-payslip-detail', id] as const,
     myLeaveBalance: () =>
         [...essKeys.all, 'my-leave-balance'] as const,
     myAttendance: (params?: Record<string, unknown>) =>
@@ -203,6 +205,14 @@ export function useMyPayslips() {
     return useQuery({
         queryKey: essKeys.myPayslips(),
         queryFn: () => essApi.getMyPayslips(),
+    });
+}
+
+export function useMyPayslipDetail(id: string | null) {
+    return useQuery({
+        queryKey: essKeys.myPayslipDetail(id ?? ''),
+        queryFn: () => essApi.getMyPayslipDetail(id!),
+        enabled: !!id,
     });
 }
 

@@ -577,6 +577,7 @@ export const essApi = {
     regularizeAttendance,
     // ESS Self-Service — additional
     updateMyProfile: async (data: any) => { const r = await client.patch('/hr/ess/my-profile', data); return r.data; },
+    getMyPayslipDetail: async (payslipId: string) => { const r = await client.get(`/hr/ess/my-payslips/${payslipId}/detail`); return r.data; },
     downloadPayslipPdf: async (payslipId: string) => { const r = await client.get(`/hr/ess/my-payslips/${payslipId}/pdf`, { responseType: 'blob' }); return r.data; },
     cancelLeave: async (id: string) => { const r = await client.patch(`/hr/leave-requests/${id}/cancel`); return r.data; },
     // Shift Swap
