@@ -80,7 +80,11 @@ export function TeamViewScreen() {
     const approveMutation = useApproveRequest();
     const rejectMutation = useRejectRequest();
 
-    const teamMembers: any[] = (teamQuery.data?.data as any) ?? [];
+    // Backend returns { reportees: [...], total, page, limit } — extract the array
+    const teamMembersRaw = (teamQuery.data?.data as any);
+    const teamMembers: any[] = Array.isArray(teamMembersRaw)
+        ? teamMembersRaw
+        : (teamMembersRaw?.reportees ?? []);
     const pendingApprovalsRaw = pendingQuery.data?.data as any;
     const pendingApprovals: any[] = (() => {
         if (Array.isArray(pendingApprovalsRaw)) return pendingApprovalsRaw;
@@ -114,8 +118,41 @@ export function TeamViewScreen() {
         }
         return items;
     })();
-    const teamAttendance: any[] = (attendanceQuery.data?.data as any) ?? [];
-    const leaveCalendar: any[] = (leaveCalendarQuery.data?.data as any) ?? [];
+    // Backend returns AttendanceRecord[] with employee relation — normalise field names
+    const teamAttendanceRaw: any[] = (() => {
+        const raw = (attendanceQuery.data?.data as any);
+        return Array.isArray(raw) ? raw : [];
+    })();
+    const teamAttendance: any[] = teamAttendanceRaw.map((r: any) => {
+        const statusMap: Record<string, string> = {
+            PRESENT: "present", ABSENT: "absent", ON_LEAVE: "leave",
+            HALF_DAY: "half_day", LATE: "present", EARLY_EXIT: "present",
+            INCOMPLETE: "not_checked_in", HOLIDAY: "present", WEEK_OFF: "present",
+            REGULARIZED: "present",
+        };
+        return {
+            id: r.id,
+            employeeId: r.employeeId ?? r.employee?.id,
+            employeeName: r.employeeName ?? [r.employee?.firstName, r.employee?.lastName].filter(Boolean).join(" ") || "Employee",
+            status: statusMap[(r.status ?? "").toUpperCase()] ?? r.status?.toLowerCase() ?? "not_checked_in",
+            checkIn: r.checkIn ?? (r.punchIn ? fmt.time(r.punchIn) : null),
+            checkOut: r.checkOut ?? (r.punchOut ? fmt.time(r.punchOut) : null),
+        };
+    });
+    // Backend returns LeaveRequest[] with employee/leaveType relations — normalise field names
+    const leaveCalendarRaw: any[] = (() => {
+        const raw = (leaveCalendarQuery.data?.data as any);
+        return Array.isArray(raw) ? raw : [];
+    })();
+    const leaveCalendar: any[] = leaveCalendarRaw.map((lr: any) => ({
+        id: lr.id,
+        employeeName: lr.employeeName ?? [lr.employee?.firstName, lr.employee?.lastName].filter(Boolean).join(" ") || "Employee",
+        startDate: lr.startDate ?? lr.fromDate,
+        endDate: lr.endDate ?? lr.toDate,
+        leaveType: lr.leaveType?.name ?? lr.leaveTypeName ?? lr.leaveType ?? "Leave",
+        days: lr.days ?? 1,
+        status: lr.status ?? "Approved",
+    }));
 
     const handleApprove = async (req: any) => {
         try {
@@ -311,7 +348,7 @@ export function TeamViewScreen() {
                     ) : (
                         <div className="max-h-[400px] overflow-y-auto divide-y divide-neutral-100 dark:divide-neutral-800/50">
                             {leaveCalendar.map((entry: any, i: number) => (
-                                <div key={i} className="flex items-center gap-4 px-6 py-3 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
+                                <div key={entry.id ?? `cal-${entry.employeeName}-${entry.startDate}-${i}`} className="flex items-center gap-4 px-6 py-3 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
                                     <div className="w-10 h-10 rounded-xl bg-accent-50 dark:bg-accent-900/20 flex flex-col items-center justify-center shrink-0">
                                         <span className="text-[10px] font-bold text-accent-600 dark:text-accent-400 uppercase leading-none">
                                             {entry.startDate ? fmt.date(entry.startDate) : ""}

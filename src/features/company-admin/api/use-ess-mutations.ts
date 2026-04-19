@@ -60,6 +60,9 @@ export function useApproveRequest() {
             queryClient.invalidateQueries({ queryKey: essKeys.requests() });
             queryClient.invalidateQueries({ queryKey: essKeys.request(id) });
             queryClient.invalidateQueries({ queryKey: essKeys.pendingApprovals() });
+            queryClient.invalidateQueries({ queryKey: essKeys.pendingMssApprovals() });
+            queryClient.invalidateQueries({ queryKey: essKeys.teamAttendance() });
+            queryClient.invalidateQueries({ queryKey: essKeys.teamLeaveCalendar() });
         },
     });
 }
@@ -73,6 +76,9 @@ export function useRejectRequest() {
             queryClient.invalidateQueries({ queryKey: essKeys.requests() });
             queryClient.invalidateQueries({ queryKey: essKeys.request(id) });
             queryClient.invalidateQueries({ queryKey: essKeys.pendingApprovals() });
+            queryClient.invalidateQueries({ queryKey: essKeys.pendingMssApprovals() });
+            queryClient.invalidateQueries({ queryKey: essKeys.teamAttendance() });
+            queryClient.invalidateQueries({ queryKey: essKeys.teamLeaveCalendar() });
         },
     });
 }
