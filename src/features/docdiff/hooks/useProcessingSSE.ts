@@ -9,6 +9,8 @@ export function useProcessingSSE(jobId: string | null) {
   const [isComplete, setIsComplete] = useState(false);
 
   useEffect(() => {
+    setProgress(null);
+    setIsComplete(false);
     if (!jobId) return;
 
     const token = (() => {
