@@ -45,187 +45,195 @@ interface ReportDef {
 }
 
 const REPORT_DEFINITIONS: Record<string, ReportDef> = {
+  // ── Workforce Reports ──
   'employee-master': {
     key: 'employee-master',
     title: 'Employee Master Report',
-    description: 'Complete employee directory with personal, employment, and statutory details.',
+    description: 'Complete employee directory with personal, professional, and compensation details.',
     category: 'Workforce',
-    sheets: ['Employee Details', 'Contact Info'],
+    sheets: ['Summary', 'Employee Details'],
   },
   'headcount-movement': {
     key: 'headcount-movement',
-    title: 'Headcount & Movement',
-    description: 'Monthly joiners, leavers, and net headcount change analysis.',
+    title: 'Headcount Movement Report',
+    description: 'Monthly joiners, leavers, transfers, and promotions with net headcount change.',
     category: 'Workforce',
-    sheets: ['Summary', 'Joiners', 'Leavers', 'Transfers', 'Department-wise'],
+    sheets: ['Summary', 'Joiners', 'Leavers', 'Transfers', 'Promotions'],
   },
-  'demographics': {
+  demographics: {
     key: 'demographics',
     title: 'Demographics Report',
-    description: 'Gender, age, tenure distribution and diversity metrics.',
+    description: 'Workforce distribution by gender, age band, and tenure.',
     category: 'Workforce',
-    sheets: ['Gender', 'Age Groups', 'Tenure'],
+    sheets: ['Gender', 'Age Distribution', 'Tenure Distribution'],
   },
-  'org-hierarchy': {
-    key: 'org-hierarchy',
-    title: 'Org Hierarchy Report',
-    description: 'Reporting relationships, spans of control, and org depth analysis.',
-    category: 'Workforce',
-    sheets: ['Hierarchy Tree', 'Span of Control'],
-  },
-  'daily-attendance': {
-    key: 'daily-attendance',
-    title: 'Daily Attendance Report',
-    description: 'Day-by-day attendance status for all employees with shift details.',
+
+  // ── Attendance Reports ──
+  'attendance-register': {
+    key: 'attendance-register',
+    title: 'Attendance Register',
+    description: 'Day-wise attendance grid for all employees with status codes.',
     category: 'Attendance',
-    sheets: ['Attendance Log', 'Summary', 'Exceptions'],
+    sheets: ['Summary', 'Day-wise Grid'],
   },
-  'monthly-attendance': {
-    key: 'monthly-attendance',
-    title: 'Monthly Attendance Summary',
-    description: 'Monthly attendance consolidation with present, absent, leave, and OT days.',
+  'late-coming': {
+    key: 'late-coming',
+    title: 'Late Coming Report',
+    description: 'Late arrival analysis with frequency tracking and department breakdown.',
     category: 'Attendance',
-    sheets: ['Summary', 'Department-wise', 'Employee-wise', 'Late Arrivals'],
+    sheets: ['Summary', 'Detail', 'Frequency'],
   },
-  'overtime-report': {
-    key: 'overtime-report',
+  overtime: {
+    key: 'overtime',
     title: 'Overtime Report',
-    description: 'Overtime hours, eligible employees, and cost analysis.',
+    description: 'Overtime hours and cost analysis by employee, department, and shift.',
     category: 'Attendance',
-    sheets: ['OT Summary', 'Employee Details'],
+    sheets: ['Summary', 'Detail', 'Cost Analysis'],
   },
-  'shift-roster': {
-    key: 'shift-roster',
-    title: 'Shift Roster Report',
-    description: 'Shift assignments and rotation schedules across departments.',
+  absenteeism: {
+    key: 'absenteeism',
+    title: 'Absenteeism Report',
+    description: 'Absence patterns, frequent absentees, and trend analysis.',
     category: 'Attendance',
-    sheets: ['Roster', 'Shift Coverage'],
+    sheets: ['Summary', 'Detail', 'Frequent Absentees'],
   },
+
+  // ── Leave Reports ──
   'leave-balance': {
     key: 'leave-balance',
     title: 'Leave Balance Report',
-    description: 'Current leave balances for all employees across all leave types.',
+    description: 'Current leave balances by type and employee with carry-forward details.',
     category: 'Leave',
-    sheets: ['Balances', 'Type-wise Summary'],
+    sheets: ['Summary by Type', 'By Employee'],
   },
   'leave-utilization': {
     key: 'leave-utilization',
     title: 'Leave Utilization Report',
-    description: 'Leave consumption patterns, trends, and encashment analysis.',
+    description: 'Leave consumption patterns by type, department, and month.',
     category: 'Leave',
-    sheets: ['Utilization', 'Trends', 'Encashment'],
+    sheets: ['Summary', 'Monthly Trend', 'By Department'],
   },
-  'leave-request-log': {
-    key: 'leave-request-log',
-    title: 'Leave Request Log',
-    description: 'Complete log of leave requests with approval status and comments.',
+  'leave-encashment': {
+    key: 'leave-encashment',
+    title: 'Leave Encashment Report',
+    description: 'Leave encashment liability calculation per eligible employee.',
     category: 'Leave',
-    sheets: ['Requests', 'Approvals'],
+    sheets: ['Summary', 'Employee Detail'],
   },
+
+  // ── Payroll Reports ──
   'salary-register': {
     key: 'salary-register',
     title: 'Salary Register',
-    description: 'Monthly salary register with all earnings, deductions, and net pay.',
+    description: 'Complete payroll breakup — earnings, deductions, net pay, and employer cost.',
     category: 'Payroll',
-    sheets: ['Register', 'Earnings', 'Deductions', 'Bank Transfer', 'Summary'],
+    sheets: ['Summary', 'Earnings', 'Deductions', 'Net Pay', 'Employer Cost'],
   },
-  'payslip-batch': {
-    key: 'payslip-batch',
-    title: 'Payslip Batch Report',
-    description: 'Batch payslip data for bulk printing and distribution.',
+  'bank-transfer': {
+    key: 'bank-transfer',
+    title: 'Bank Transfer File',
+    description: 'Bank-ready NEFT/RTGS file with account details and net pay amounts.',
     category: 'Payroll',
-    sheets: ['Payslips', 'Summary'],
+    sheets: ['NEFT Transfer'],
   },
-  'ctc-report': {
-    key: 'ctc-report',
-    title: 'CTC Report',
-    description: 'Cost-to-company analysis with monthly and annual breakdowns.',
+  'ctc-distribution': {
+    key: 'ctc-distribution',
+    title: 'CTC Distribution Report',
+    description: 'CTC analysis by grade, department, and salary bands.',
     category: 'Payroll',
-    sheets: ['CTC Breakup', 'Department-wise', 'Grade-wise'],
+    sheets: ['Summary', 'By Grade', 'By Department', 'CTC Bands'],
   },
-  'bank-advice': {
-    key: 'bank-advice',
-    title: 'Bank Advice Statement',
-    description: 'Bank transfer file for salary disbursement with account details.',
+  'salary-revision': {
+    key: 'salary-revision',
+    title: 'Salary Revision Report',
+    description: 'Salary revision history with old/new CTC and increment percentages.',
     category: 'Payroll',
-    sheets: ['Bank Advice'],
+    sheets: ['Summary', 'Detail'],
   },
+  'loan-outstanding': {
+    key: 'loan-outstanding',
+    title: 'Loan Outstanding Report',
+    description: 'Active employee loans with EMI schedule and outstanding amounts.',
+    category: 'Payroll',
+    sheets: ['Summary', 'Active Loans', 'EMI Schedule'],
+  },
+
+  // ── Statutory Reports ──
   'pf-ecr': {
     key: 'pf-ecr',
     title: 'PF ECR Report',
-    description: 'EPFO Electronic Challan cum Return for PF contributions.',
+    description: 'EPFO Electronic Challan cum Return with UAN-wise contributions.',
     category: 'Statutory',
-    sheets: ['ECR Data', 'Summary'],
+    sheets: ['ECR Format', 'Summary'],
   },
-  'esi-return': {
-    key: 'esi-return',
-    title: 'ESI Return Report',
-    description: 'Employee State Insurance monthly contribution return.',
+  'esi-challan': {
+    key: 'esi-challan',
+    title: 'ESI Challan Report',
+    description: 'ESI contribution challan with IP number and wage details.',
     category: 'Statutory',
-    sheets: ['ESI Data', 'Summary'],
+    sheets: ['Challan Format', 'Summary'],
   },
-  'pt-report': {
-    key: 'pt-report',
+  'professional-tax': {
+    key: 'professional-tax',
     title: 'Professional Tax Report',
-    description: 'State-wise professional tax deduction and remittance report.',
+    description: 'State-wise professional tax deductions and slab compliance.',
     category: 'Statutory',
-    sheets: ['PT Deductions', 'State Summary'],
+    sheets: ['State-wise', 'Detail'],
   },
-  'form-16': {
-    key: 'form-16',
-    title: 'Form 16 Data Report',
-    description: 'Annual income tax computation data for Form 16 generation.',
+  'tds-summary': {
+    key: 'tds-summary',
+    title: 'TDS Summary Report',
+    description: 'Quarterly TDS summary with regime-wise breakdown and declarations.',
     category: 'Statutory',
-    sheets: ['Part A', 'Part B', 'Tax Computation'],
+    sheets: ['Quarterly Summary', 'Detail'],
   },
+  'gratuity-liability': {
+    key: 'gratuity-liability',
+    title: 'Gratuity Liability Report',
+    description: 'Projected gratuity liability for eligible employees (4+ years).',
+    category: 'Statutory',
+    sheets: ['Summary', 'Detail'],
+  },
+
+  // ── Performance Reports ──
   'appraisal-summary': {
     key: 'appraisal-summary',
     title: 'Appraisal Summary Report',
-    description: 'Performance appraisal scores, ratings distribution, and bell curve.',
+    description: 'Appraisal cycle results — ratings, bell curve, and department averages.',
     category: 'Performance',
-    sheets: ['Scores', 'Ratings', 'Bell Curve'],
+    sheets: ['Summary', 'Bell Curve', 'Detail'],
   },
-  'goal-tracker': {
-    key: 'goal-tracker',
-    title: 'Goal Tracker Report',
-    description: 'Goal setting status, progress tracking, and completion rates.',
+  'skill-gap': {
+    key: 'skill-gap',
+    title: 'Skill Gap Report',
+    description: 'Required vs actual skill levels with gap analysis by department.',
     category: 'Performance',
-    sheets: ['Goals', 'Progress', 'Completion'],
+    sheets: ['Summary', 'Heatmap', 'Detail'],
   },
-  'attrition-analysis': {
-    key: 'attrition-analysis',
-    title: 'Attrition Analysis Report',
-    description: 'Employee turnover rates, exit reasons, and retention metrics.',
+
+  // ── Attrition Reports ──
+  attrition: {
+    key: 'attrition',
+    title: 'Attrition Report',
+    description: 'Attrition analysis — rates, reasons, department trends, and early exits.',
     category: 'Attrition',
-    sheets: ['Attrition Rate', 'Exit Reasons', 'Department-wise', 'Tenure-wise'],
+    sheets: ['Summary', 'By Department', 'By Reason', 'Detail'],
   },
-  'exit-fnf': {
-    key: 'exit-fnf',
-    title: 'Exit & F&F Report',
-    description: 'Full and final settlement details for separated employees.',
+  'fnf-settlement': {
+    key: 'fnf-settlement',
+    title: 'Full & Final Settlement Report',
+    description: 'Full & final settlement status — pending and completed with breakdowns.',
     category: 'Attrition',
-    sheets: ['Exit List', 'F&F Details'],
+    sheets: ['Summary', 'Pending', 'Completed'],
   },
-  'compliance-checklist': {
-    key: 'compliance-checklist',
-    title: 'Compliance Checklist Report',
-    description: 'HR compliance status across statutory requirements and deadlines.',
+
+  // ── Compliance Reports ──
+  'compliance-summary': {
+    key: 'compliance-summary',
+    title: 'Compliance Summary Report',
+    description: 'Overall compliance health — filing status, grievances, and document gaps.',
     category: 'Compliance',
-    sheets: ['Checklist', 'Overdue Items'],
-  },
-  'document-expiry': {
-    key: 'document-expiry',
-    title: 'Document Expiry Report',
-    description: 'Employee document validity tracking and renewal reminders.',
-    category: 'Compliance',
-    sheets: ['Expiring Soon', 'Expired', 'All Documents'],
-  },
-  'training-report': {
-    key: 'training-report',
-    title: 'Training Report',
-    description: 'Training programs, nominations, completion status, and feedback.',
-    category: 'Compliance',
-    sheets: ['Programs', 'Nominations', 'Completion'],
+    sheets: ['Score', 'Filings', 'Grievances', 'Document Status'],
   },
 };
 
