@@ -247,6 +247,12 @@ export function StatutoryConfigScreen() {
                     <NumRow label="Employer Contribution Rate" value={pf.employerRate ?? 12} onChange={(v) => setPF((p) => ({ ...p, employerRate: v }))} suffix="%" min={0} max={100} />
                     <NumRow label="PF Wage Ceiling (₹)" value={pf.wageCeiling ?? 15000} onChange={(v) => setPF((p) => ({ ...p, wageCeiling: v }))} suffix="₹" min={0} />
                     <ToggleSwitch label="Allow Voluntary PF (VPF)" checked={pf.vpfEnabled ?? false} onChange={(v) => setPF((p) => ({ ...p, vpfEnabled: v }))} />
+                    {pf.vpfEnabled && (
+                        <div className="space-y-1">
+                            <NumRow label="Maximum VPF Rate (%)" value={pf.vpfMaxRate ?? 0} onChange={(v) => setPF((p) => ({ ...p, vpfMaxRate: v }))} suffix="%" min={0} max={100} />
+                            <p className="text-[10px] text-neutral-400 dark:text-neutral-500 pl-1">Leave at 0 for no cap</p>
+                        </div>
+                    )}
                     <div className="pt-2 flex justify-end">
                         <SaveButton onClick={savePF} loading={updatePF.isPending} />
                     </div>

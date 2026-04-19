@@ -224,6 +224,12 @@ export function MyPayslipsScreen() {
                                             <span className="font-mono font-semibold text-primary-950 dark:text-white">{formatCurrency(e.amount)}</span>
                                         </div>
                                     ))}
+                                    {detailTarget.arrearsAmount && Number(detailTarget.arrearsAmount) > 0 && (
+                                        <div className="flex items-center justify-between text-sm py-1 text-accent-600 font-medium">
+                                            <span>Arrears</span>
+                                            <span>{formatCurrency(Number(detailTarget.arrearsAmount))}</span>
+                                        </div>
+                                    )}
                                     <div className="flex items-center justify-between text-sm pt-2 border-t border-neutral-200 dark:border-neutral-700">
                                         <span className="font-bold text-primary-950 dark:text-white">Gross Earnings</span>
                                         <span className="font-mono font-bold text-success-700 dark:text-success-400">{formatCurrency(detailTarget.grossEarnings ?? detailTarget.gross)}</span>

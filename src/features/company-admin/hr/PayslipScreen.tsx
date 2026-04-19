@@ -277,6 +277,12 @@ export function PayslipScreen() {
                                                     </div>
                                                 ))}
                                                 {detailEarnings.length === 0 && <p className="text-xs text-neutral-400 py-2">No earnings data</p>}
+                                                {detail.arrearsAmount && num(detail.arrearsAmount) > 0 && (
+                                                    <div className="flex justify-between py-2 border-b border-neutral-100 dark:border-neutral-800/50 last:border-0">
+                                                        <span className="text-xs text-accent-600 dark:text-accent-400 font-medium">Arrears</span>
+                                                        <span className="text-xs font-mono font-semibold text-accent-600 dark:text-accent-400">{inr(detail.arrearsAmount)}</span>
+                                                    </div>
+                                                )}
                                                 <div className="flex justify-between py-2.5 mt-1 border-t-2 border-success-200 dark:border-success-800/50">
                                                     <span className="text-xs font-bold text-success-700 dark:text-success-400">Total Earnings</span>
                                                     <span className="text-xs font-mono font-bold text-success-700 dark:text-success-400">{inr(detail.grossEarnings ?? detail.grossPay)}</span>
