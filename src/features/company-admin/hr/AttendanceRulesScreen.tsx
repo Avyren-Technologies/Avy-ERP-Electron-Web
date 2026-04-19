@@ -155,6 +155,12 @@ const PUNCH_MODE_OPTIONS = [
     { value: "SHIFT_BASED", label: "Shift Based" },
 ];
 
+const GEOFENCE_MODE_OPTIONS = [
+    { value: "OFF", label: "Off — Record silently" },
+    { value: "WARN", label: "Warn — Allow + Notify Manager" },
+    { value: "STRICT", label: "Strict — Block if outside" },
+];
+
 const ROUNDING_STRATEGY_OPTIONS = [
     { value: "NONE", label: "None" },
     { value: "NEAREST_15", label: "Nearest 15 min" },
@@ -203,6 +209,7 @@ const DEFAULTS: AttendanceRule = {
     ignoreLateOnWeekOff: true,
     selfieRequired: false,
     gpsRequired: false,
+    geofenceEnforcementMode: "OFF",
     missingPunchAlert: true,
 };
 
@@ -352,6 +359,7 @@ export function AttendanceRulesScreen() {
                 <SectionCard title="Capture" icon={Camera} sectionDescription="Configure what evidence is required when employees punch in or out.">
                     <Toggle label="Selfie Required" description="Require selfie for attendance punch" checked={rules.selfieRequired} onChange={(v) => updateRule("selfieRequired", v)} />
                     <Toggle label="GPS Required" description="Require GPS location for attendance punch" checked={rules.gpsRequired} onChange={(v) => updateRule("gpsRequired", v)} />
+                    <SelectRow label="Geofence Enforcement" description="Controls whether employees are blocked from checking in outside the geofence area" value={rules.geofenceEnforcementMode} onChange={(v) => updateRule("geofenceEnforcementMode", v as AttendanceRule["geofenceEnforcementMode"])} options={GEOFENCE_MODE_OPTIONS} tooltip="OFF: Location recorded but no restriction. WARN: Allow check-in but notify the manager. STRICT: Block check-in if outside the geofence." />
                     <Toggle label="Missing Punch Alert" description="Alert when employee has incomplete punches" checked={rules.missingPunchAlert} onChange={(v) => updateRule("missingPunchAlert", v)} />
                 </SectionCard>
             </div>
