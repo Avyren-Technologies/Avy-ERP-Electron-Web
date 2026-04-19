@@ -71,6 +71,19 @@ interface ResolvedPolicy {
     [key: string]: unknown;
 }
 
+interface RecentAttendanceRecord {
+    id: string;
+    date: string;
+    punchIn: string | null;
+    punchOut: string | null;
+    workedHours: number | null;
+    status: string;
+    overtimeHours: number | null;
+    geoStatus: string | null;
+    source: string | null;
+    shiftName: string | null;
+}
+
 interface StatusResponse {
     status: "NOT_CHECKED_IN" | "CHECKED_IN" | "CHECKED_OUT" | "NOT_LINKED";
     record: AttendanceRecord | null;
@@ -79,6 +92,7 @@ interface StatusResponse {
     resolvedPolicy?: ResolvedPolicy | null;
     location?: LocationInfo | null;
     assignedGeofence?: GeofenceInfo | null;
+    recentAttendance?: RecentAttendanceRecord[];
 }
 
 /* ── Helpers ── */
@@ -145,6 +159,29 @@ function AttendanceStatusBadge({ status }: { status: string }) {
             {status === "NOT_CHECKED_IN" && <Clock size={12} />}
             {status === "NOT_LINKED" && <XCircle size={12} />}
             {cfg.label}
+        </span>
+    );
+}
+
+/* ── Record Status Badge (for attendance record statuses like PRESENT, ABSENT, LATE, etc.) ── */
+
+function RecordStatusBadge({ status }: { status: string }) {
+    const map: Record<string, { bg: string; text: string }> = {
+        PRESENT: { bg: "bg-success-50 dark:bg-success-900/20 border-success-200 dark:border-success-800/50", text: "text-success-700 dark:text-success-400" },
+        ABSENT: { bg: "bg-danger-50 dark:bg-danger-900/20 border-danger-200 dark:border-danger-800/50", text: "text-danger-700 dark:text-danger-400" },
+        LATE: { bg: "bg-warning-50 dark:bg-warning-900/20 border-warning-200 dark:border-warning-800/50", text: "text-warning-700 dark:text-warning-400" },
+        HALF_DAY: { bg: "bg-warning-50 dark:bg-warning-900/20 border-warning-200 dark:border-warning-800/50", text: "text-warning-600 dark:text-warning-400" },
+        EARLY_EXIT: { bg: "bg-warning-50 dark:bg-warning-900/20 border-warning-200 dark:border-warning-800/50", text: "text-warning-700 dark:text-warning-400" },
+        ON_LEAVE: { bg: "bg-primary-50 dark:bg-primary-900/20 border-primary-200 dark:border-primary-800/50", text: "text-primary-700 dark:text-primary-400" },
+        HOLIDAY: { bg: "bg-accent-50 dark:bg-accent-900/20 border-accent-200 dark:border-accent-800/50", text: "text-accent-700 dark:text-accent-400" },
+        WEEK_OFF: { bg: "bg-neutral-100 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700", text: "text-neutral-600 dark:text-neutral-400" },
+        INCOMPLETE: { bg: "bg-danger-50 dark:bg-danger-900/20 border-danger-200 dark:border-danger-800/50", text: "text-danger-600 dark:text-danger-400" },
+        LOP: { bg: "bg-danger-50 dark:bg-danger-900/20 border-danger-200 dark:border-danger-800/50", text: "text-danger-700 dark:text-danger-400" },
+    };
+    const cfg = map[status] ?? { bg: "bg-neutral-100 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700", text: "text-neutral-600 dark:text-neutral-400" };
+    return (
+        <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border", cfg.bg, cfg.text)}>
+            {status?.replace(/_/g, " ")}
         </span>
     );
 }
@@ -583,7 +620,7 @@ export function ShiftCheckInScreen() {
                         </div>
                         <div>
                             <h2 className="text-lg font-bold text-primary-950 dark:text-white">Recent Attendance</h2>
-                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Last 5 working days</p>
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Last 7 days</p>
                         </div>
                     </div>
                 </div>
@@ -617,30 +654,33 @@ export function ShiftCheckInScreen() {
                                     <AttendanceStatusBadge status={attendanceStatus} />
                                 </td>
                             </tr>
-                            {/* Placeholder rows for past days — will be populated when history API is available */}
-                            {[1, 2, 3, 4].map((daysAgo) => {
-                                const date = new Date();
-                                date.setDate(date.getDate() - daysAgo);
-                                // Skip weekends
-                                if (date.getDay() === 0 || date.getDay() === 6) {
-                                    date.setDate(date.getDate() - (date.getDay() === 0 ? 2 : 1));
-                                }
-                                return (
-                                    <tr key={daysAgo} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
-                                        <td className="py-4 px-6">
-                                            <span className="font-medium text-neutral-700 dark:text-neutral-300">{fmt.date(date.toISOString())}</span>
-                                        </td>
-                                        <td className="py-4 px-6 text-neutral-400 dark:text-neutral-500 font-mono text-xs">--:--</td>
-                                        <td className="py-4 px-6 text-neutral-400 dark:text-neutral-500 font-mono text-xs">--:--</td>
-                                        <td className="py-4 px-6 text-right text-neutral-400 dark:text-neutral-500 font-mono text-xs">--</td>
-                                        <td className="py-4 px-6 text-right">
-                                            <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 px-2 py-0.5 rounded-full border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800">
-                                                --
-                                            </span>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
+                            {/* Recent Days */}
+                            {(statusData?.recentAttendance ?? []).map((rec) => (
+                                <tr key={rec.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
+                                    <td className="py-4 px-6">
+                                        <span className="font-medium text-neutral-700 dark:text-neutral-300">{fmt.date(rec.date)}</span>
+                                    </td>
+                                    <td className="py-4 px-6 text-neutral-600 dark:text-neutral-300 font-mono text-xs">
+                                        {rec.punchIn ? fmt.time(rec.punchIn) : '--:--'}
+                                    </td>
+                                    <td className="py-4 px-6 text-neutral-600 dark:text-neutral-300 font-mono text-xs">
+                                        {rec.punchOut ? fmt.time(rec.punchOut) : '--:--'}
+                                    </td>
+                                    <td className="py-4 px-6 text-right text-neutral-600 dark:text-neutral-300 font-mono text-xs">
+                                        {rec.workedHours != null ? `${rec.workedHours.toFixed(1)}h` : '--'}
+                                    </td>
+                                    <td className="py-4 px-6 text-right">
+                                        <RecordStatusBadge status={rec.status} />
+                                    </td>
+                                </tr>
+                            ))}
+                            {(!statusData?.recentAttendance || statusData.recentAttendance.length === 0) && (
+                                <tr>
+                                    <td colSpan={5} className="py-6 text-center text-sm text-neutral-400 dark:text-neutral-500">
+                                        No recent attendance records
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
