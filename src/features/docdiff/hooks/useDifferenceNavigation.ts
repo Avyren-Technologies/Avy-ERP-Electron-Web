@@ -15,6 +15,12 @@ export function useDifferenceNavigation(
   const [activeIndex, setActiveIndex] = useState(0);
   const activeDifference = differences[activeIndex] ?? null;
 
+  useEffect(() => {
+    setActiveIndex((i) => {
+      if (differences.length === 0) return 0;
+      return Math.min(i, differences.length - 1);
+    });
+  }, [differences.length]);
   const goNext = useCallback(
     () =>
       setActiveIndex((i) => Math.min(i + 1, differences.length - 1)),
