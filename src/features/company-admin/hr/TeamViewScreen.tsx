@@ -133,7 +133,7 @@ export function TeamViewScreen() {
         return {
             id: r.id,
             employeeId: r.employeeId ?? r.employee?.id,
-            employeeName: r.employeeName ?? [r.employee?.firstName, r.employee?.lastName].filter(Boolean).join(" ") || "Employee",
+            employeeName: r.employeeName ?? ([r.employee?.firstName, r.employee?.lastName].filter(Boolean).join(" ") || "Employee"),
             status: statusMap[(r.status ?? "").toUpperCase()] ?? r.status?.toLowerCase() ?? "not_checked_in",
             checkIn: r.checkIn ?? (r.punchIn ? fmt.time(r.punchIn) : null),
             checkOut: r.checkOut ?? (r.punchOut ? fmt.time(r.punchOut) : null),
@@ -146,7 +146,7 @@ export function TeamViewScreen() {
     })();
     const leaveCalendar: any[] = leaveCalendarRaw.map((lr: any) => ({
         id: lr.id,
-        employeeName: lr.employeeName ?? [lr.employee?.firstName, lr.employee?.lastName].filter(Boolean).join(" ") || "Employee",
+        employeeName: lr.employeeName ?? ([lr.employee?.firstName, lr.employee?.lastName].filter(Boolean).join(" ") || "Employee"),
         startDate: lr.startDate ?? lr.fromDate,
         endDate: lr.endDate ?? lr.toDate,
         leaveType: lr.leaveType?.name ?? lr.leaveTypeName ?? lr.leaveType ?? "Leave",
