@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { attendanceApi } from '@/lib/api/attendance';
+import { attendanceApi, getWeeklyReview, getWeeklyReviewSummary } from '@/lib/api/attendance';
 
 export const attendanceKeys = {
     all: ['attendance'] as const,
@@ -12,6 +12,8 @@ export const attendanceKeys = {
     rosters: (params?: Record<string, unknown>) => [...attendanceKeys.all, 'rosters', params] as const,
     overtimeRules: () => [...attendanceKeys.all, 'overtime-rules'] as const,
     overtimeRequests: (params?: Record<string, unknown>) => [...attendanceKeys.all, 'overtime-requests', params] as const,
+    weeklyReview: (params: Record<string, unknown>) => [...attendanceKeys.all, 'weekly-review', params] as const,
+    weeklyReviewSummary: (params: Record<string, unknown>) => [...attendanceKeys.all, 'weekly-review-summary', params] as const,
 };
 
 // ── Attendance Records ──
@@ -91,5 +93,23 @@ export function useOvertimeRequests(params?: { page?: number; limit?: number; st
     return useQuery({
         queryKey: attendanceKeys.overtimeRequests(params as Record<string, unknown>),
         queryFn: () => attendanceApi.getOvertimeRequests(params),
+    });
+}
+
+// ── Weekly Review ──
+
+export function useWeeklyReview(params: { weekStart: string; weekEnd: string; departmentId?: string; flag?: string; page?: number; limit?: number }) {
+    return useQuery({
+        queryKey: attendanceKeys.weeklyReview(params as Record<string, unknown>),
+        queryFn: () => getWeeklyReview(params as any),
+        enabled: !!params.weekStart && !!params.weekEnd,
+    });
+}
+
+export function useWeeklyReviewSummary(params: { weekStart: string; weekEnd: string }) {
+    return useQuery({
+        queryKey: attendanceKeys.weeklyReviewSummary(params as Record<string, unknown>),
+        queryFn: () => getWeeklyReviewSummary(params),
+        enabled: !!params.weekStart && !!params.weekEnd,
     });
 }

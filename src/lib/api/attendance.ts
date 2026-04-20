@@ -12,6 +12,10 @@ export type OTCalculationBasis = 'AFTER_SHIFT' | 'TOTAL_HOURS';
 export type OvertimeRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'PAID' | 'COMP_OFF_ACCRUED';
 export type GeofenceEnforcementMode = 'OFF' | 'WARN' | 'STRICT';
 export type OTMultiplierSource = 'WEEKDAY' | 'WEEKEND' | 'HOLIDAY' | 'NIGHT_SHIFT';
+export type AttendanceMode = 'SHIFT_STRICT' | 'SHIFT_RELAXED' | 'FULLY_FLEXIBLE';
+export type LeaveCheckInMode = 'STRICT' | 'ALLOW_WITHIN_WINDOW' | 'ALLOW_TILL_SHIFT_END' | 'FULLY_FLEXIBLE';
+export type ShiftMappingStrategy = 'BEST_FIT_HOURS';
+export type ReviewFlag = 'MISSING_PUNCH' | 'AUTO_MAPPED' | 'WORKED_ON_LEAVE' | 'LATE_BEYOND_THRESHOLD' | 'MULTIPLE_SHIFT_ANOMALY' | 'OT_ANOMALY';
 
 export interface AttendanceRule {
     id?: string;
@@ -52,6 +56,21 @@ export interface AttendanceRule {
     gpsRequired: boolean;
     geofenceEnforcementMode: GeofenceEnforcementMode;
     missingPunchAlert: boolean;
+    // Attendance Mode & Flexibility
+    attendanceMode: AttendanceMode;
+    leaveCheckInMode: LeaveCheckInMode;
+    leaveAutoAdjustmentEnabled: boolean;
+    // Multiple Shifts
+    multipleShiftsPerDayEnabled: boolean;
+    minGapBetweenShiftsMinutes: number | null;
+    maxShiftsPerDay: number | null;
+    // Auto Shift Mapping
+    autoShiftMappingEnabled: boolean;
+    shiftMappingStrategy: ShiftMappingStrategy;
+    minShiftMatchPercentage: number;
+    // Weekly Review
+    weeklyReviewEnabled: boolean;
+    weeklyReviewRemindersEnabled: boolean;
 }
 
 export interface OvertimeRule {
@@ -264,6 +283,21 @@ async function rejectOvertimeRequest(id: string, data?: { approvalNotes?: string
     const response = await client.patch(`/hr/overtime-requests/${id}/reject`, data);
     return response.data;
 }
+
+export const getWeeklyReview = (params: { weekStart: string; weekEnd: string; departmentId?: string; flag?: ReviewFlag; page?: number; limit?: number }) =>
+  client.get('/hr/attendance/weekly-review', { params }).then(r => r.data);
+
+export const getWeeklyReviewSummary = (params: { weekStart: string; weekEnd: string }) =>
+  client.get('/hr/attendance/weekly-review/summary', { params }).then(r => r.data);
+
+export const remapShift = (id: string, data: { shiftId: string }) =>
+  client.patch(`/hr/attendance/weekly-review/${id}/remap-shift`, data).then(r => r.data);
+
+export const editPunches = (id: string, data: { punchIn?: string; punchOut?: string; reason: string }) =>
+  client.patch(`/hr/attendance/weekly-review/${id}/edit-punches`, data).then(r => r.data);
+
+export const markReviewed = (data: { recordIds: string[] }) =>
+  client.patch('/hr/attendance/weekly-review/mark-reviewed', data).then(r => r.data);
 
 export const attendanceApi = {
     // Records

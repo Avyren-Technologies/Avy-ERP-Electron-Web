@@ -120,6 +120,8 @@ export function MyAttendanceScreen() {
         reason: '',
     });
 
+    const todayStr = today.toISOString().split('T')[0];
+
     const { data, isLoading } = useMyAttendance({ month: currentMonth + 1, year: currentYear });
     const regularizeMutation = useRegularizeAttendance();
 
@@ -387,7 +389,7 @@ export function MyAttendanceScreen() {
                                     </div>
                                 )}
                             </div>
-                            {(selectedRecord.status === "ABSENT" || selectedRecord.status === "HALF_DAY" || !selectedRecord.punchIn || !selectedRecord.punchOut || selectedRecord.isLate) && (
+                            {(selectedRecord.status === "ABSENT" || selectedRecord.status === "HALF_DAY" || !selectedRecord.punchIn || !selectedRecord.punchOut || selectedRecord.isLate) && selectedDate < todayStr && (
                                 <button
                                     onClick={() => openRegularize(selectedRecord)}
                                     className="w-full mt-4 py-2.5 rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 hover:from-primary-700 hover:to-indigo-700 text-white text-sm font-bold shadow-sm hover:shadow transition-all flex items-center justify-center gap-2"
@@ -400,13 +402,15 @@ export function MyAttendanceScreen() {
                     ) : (
                         <div className="text-center py-8 flex-1 flex flex-col justify-center">
                             <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">No attendance record for this date.</p>
-                            <button
-                                onClick={() => openRegularize()}
-                                className="mt-4 mx-auto inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-xs font-bold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 hover:text-neutral-800 transition-colors"
-                            >
-                                <AlertTriangle size={12} />
-                                Request Regularization
-                            </button>
+                            {selectedDate < todayStr && (
+                                <button
+                                    onClick={() => openRegularize()}
+                                    className="mt-4 mx-auto inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-xs font-bold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 hover:text-neutral-800 transition-colors"
+                                >
+                                    <AlertTriangle size={12} />
+                                    Request Regularization
+                                </button>
+                            )}
                         </div>
                     )}
                 </PremiumCard>

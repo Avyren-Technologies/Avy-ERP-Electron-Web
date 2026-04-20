@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { attendanceApi } from '@/lib/api/attendance';
+import { attendanceApi, remapShift, editPunches, markReviewed } from '@/lib/api/attendance';
 import { attendanceKeys } from './use-attendance-queries';
 
 // ── Attendance Records ──
@@ -173,5 +173,31 @@ export function useRejectOvertimeRequest() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: attendanceKeys.overtimeRequests() });
         },
+    });
+}
+
+// ── Weekly Review ──
+
+export function useRemapShift() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, shiftId }: { id: string; shiftId: string }) => remapShift(id, { shiftId }),
+        onSuccess: () => { qc.invalidateQueries({ queryKey: attendanceKeys.all }); },
+    });
+}
+
+export function useEditPunches() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, ...data }: { id: string; punchIn?: string; punchOut?: string; reason: string }) => editPunches(id, data),
+        onSuccess: () => { qc.invalidateQueries({ queryKey: attendanceKeys.all }); },
+    });
+}
+
+export function useMarkReviewed() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (data: { recordIds: string[] }) => markReviewed(data),
+        onSuccess: () => { qc.invalidateQueries({ queryKey: attendanceKeys.all }); },
     });
 }

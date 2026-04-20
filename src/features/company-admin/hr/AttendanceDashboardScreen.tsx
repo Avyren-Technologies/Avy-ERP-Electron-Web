@@ -20,10 +20,13 @@ import {
     Eye,
     MapPin,
     Camera,
+    CalendarRange,
+    Flag,
+    ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAttendanceRecords, useAttendanceSummary, useAttendanceOverrides } from "@/features/company-admin/api/use-attendance-queries";
-import { useUpdateAttendanceOverride, useCreateAttendanceOverride } from "@/features/company-admin/api/use-attendance-mutations";
+import { useAttendanceRecords, useAttendanceSummary, useAttendanceOverrides, useWeeklyReview, useWeeklyReviewSummary } from "@/features/company-admin/api/use-attendance-queries";
+import { useUpdateAttendanceOverride, useCreateAttendanceOverride, useMarkReviewed } from "@/features/company-admin/api/use-attendance-mutations";
 import { SkeletonTable, SkeletonKPIGrid } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
@@ -240,10 +243,59 @@ function DepartmentBreakdown({ departments }: { departments: any[] }) {
     );
 }
 
+/* ── Review Flag Helpers ── */
+
+const FLAG_LABELS: Record<string, string> = {
+    MISSING_PUNCH: 'Missing Punch',
+    AUTO_MAPPED: 'Auto-Mapped',
+    WORKED_ON_LEAVE: 'Worked on Leave',
+    LATE_BEYOND_THRESHOLD: 'Late Anomaly',
+    MULTIPLE_SHIFT_ANOMALY: 'Multi-Shift',
+    OT_ANOMALY: 'OT Anomaly',
+};
+
+const FLAG_STYLES: Record<string, string> = {
+    MISSING_PUNCH: 'bg-danger-50 text-danger-700 border-danger-200 dark:bg-danger-900/20 dark:text-danger-400 dark:border-danger-800/50',
+    AUTO_MAPPED: 'bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50',
+    WORKED_ON_LEAVE: 'bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50',
+    LATE_BEYOND_THRESHOLD: 'bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50',
+    MULTIPLE_SHIFT_ANOMALY: 'bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50',
+    OT_ANOMALY: 'bg-danger-50 text-danger-700 border-danger-200 dark:bg-danger-900/20 dark:text-danger-400 dark:border-danger-800/50',
+};
+
+function ReviewFlagBadge({ flag }: { flag: string }) {
+    const cls = FLAG_STYLES[flag] ?? 'bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700';
+    return (
+        <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full border', cls)}>
+            {FLAG_LABELS[flag] ?? flag}
+        </span>
+    );
+}
+
+/** Get the Monday of the current ISO week */
+function getCurrentWeekStart(): string {
+    const now = new Date();
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(now.setDate(diff));
+    return monday.toISOString().split('T')[0]!;
+}
+
+/** Get the Sunday of the current ISO week */
+function getCurrentWeekEnd(): string {
+    const start = getCurrentWeekStart();
+    const d = new Date(start);
+    d.setDate(d.getDate() + 6);
+    return d.toISOString().split('T')[0]!;
+}
+
 /* ── Screen ── */
 
 export function AttendanceDashboardScreen() {
     const fmt = useCompanyFormatter();
+    const [activeTab, setActiveTab] = useState<'daily' | 'weekly'>('daily');
+
+    // ── Daily tab state ──
     const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
     const [department, setDepartment] = useState("");
     const [search, setSearch] = useState("");
@@ -286,6 +338,62 @@ export function AttendanceDashboardScreen() {
     });
 
     const isLoading = summaryQuery.isLoading || recordsQuery.isLoading;
+
+    // ── Weekly Review tab state ──
+    const [weekStart, setWeekStart] = useState(getCurrentWeekStart);
+    const [weekEnd, setWeekEnd] = useState(getCurrentWeekEnd);
+    const [weeklyFlag, setWeeklyFlag] = useState<string>('');
+    const [weeklyPage, setWeeklyPage] = useState(1);
+    const [selectedReviewIds, setSelectedReviewIds] = useState<Set<string>>(new Set());
+
+    const weeklyReviewQuery = useWeeklyReview({ weekStart, weekEnd, flag: weeklyFlag || undefined, page: weeklyPage, limit: 25 });
+    const weeklyReviewSummaryQuery = useWeeklyReviewSummary({ weekStart, weekEnd });
+    const markReviewedMutation = useMarkReviewed();
+
+    const weeklySummaryRaw = (weeklyReviewSummaryQuery.data as any)?.data ?? {};
+    const weeklySummary = { ...weeklySummaryRaw, ...(weeklySummaryRaw.flagCounts ?? {}) };
+    const weeklyResponse = weeklyReviewQuery.data as any;
+    const weeklyRecords: any[] = weeklyResponse?.data?.records ?? [];
+    const weeklyMeta = weeklyResponse?.data?.meta ?? { page: 1, limit: 25, total: 0, totalPages: 1 };
+    const weeklyNormalized = weeklyRecords.map((r: any) => normalizeRecord(r, fmt));
+
+    const FLAG_OPTIONS: { value: string; label: string }[] = [
+        { value: '', label: 'All Flags' },
+        { value: 'MISSING_PUNCH', label: 'Missing Punch' },
+        { value: 'AUTO_MAPPED', label: 'Auto-Mapped' },
+        { value: 'WORKED_ON_LEAVE', label: 'Worked on Leave' },
+        { value: 'LATE_BEYOND_THRESHOLD', label: 'Late Anomaly' },
+        { value: 'MULTIPLE_SHIFT_ANOMALY', label: 'Multi-Shift' },
+        { value: 'OT_ANOMALY', label: 'OT Anomaly' },
+    ];
+
+    const toggleReviewId = (id: string) => {
+        setSelectedReviewIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const toggleAllReviewIds = () => {
+        if (selectedReviewIds.size === weeklyNormalized.filter((r: any) => !r.isReviewed).length) {
+            setSelectedReviewIds(new Set());
+        } else {
+            setSelectedReviewIds(new Set(weeklyNormalized.filter((r: any) => !r.isReviewed).map((r: any) => r.id)));
+        }
+    };
+
+    const handleMarkReviewed = async () => {
+        if (selectedReviewIds.size === 0) return;
+        try {
+            await markReviewedMutation.mutateAsync({ recordIds: Array.from(selectedReviewIds) });
+            showSuccess('Marked Reviewed', `${selectedReviewIds.size} record(s) marked as reviewed.`);
+            setSelectedReviewIds(new Set());
+        } catch (err) {
+            showApiError(err);
+        }
+    };
 
     const ISSUE_TYPES = [
         { value: 'MISSING_PUNCH_IN', label: 'Missing Punch In' },
@@ -358,9 +466,42 @@ export function AttendanceDashboardScreen() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Attendance</h1>
-                    <p className="text-neutral-500 dark:text-neutral-400 mt-1">Daily attendance dashboard and records</p>
+                    <p className="text-neutral-500 dark:text-neutral-400 mt-1">
+                        {activeTab === 'daily' ? 'Daily attendance dashboard and records' : 'Weekly review of flagged attendance records'}
+                    </p>
                 </div>
             </div>
+
+            {/* Tab Switcher */}
+            <div className="flex gap-1 p-1 bg-neutral-100 dark:bg-neutral-800 rounded-xl w-fit">
+                <button
+                    onClick={() => setActiveTab('daily')}
+                    className={cn(
+                        'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all',
+                        activeTab === 'daily'
+                            ? 'bg-white dark:bg-neutral-700 text-primary-700 dark:text-primary-400 shadow-sm'
+                            : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200'
+                    )}
+                >
+                    <Clock size={15} />
+                    Daily View
+                </button>
+                <button
+                    onClick={() => setActiveTab('weekly')}
+                    className={cn(
+                        'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all',
+                        activeTab === 'weekly'
+                            ? 'bg-white dark:bg-neutral-700 text-primary-700 dark:text-primary-400 shadow-sm'
+                            : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200'
+                    )}
+                >
+                    <CalendarRange size={15} />
+                    Weekly Review
+                </button>
+            </div>
+
+            {/* ══════════ DAILY TAB ══════════ */}
+            {activeTab === 'daily' && (<>
 
             {/* KPI Row */}
             {summaryQuery.isLoading ? (
@@ -664,6 +805,239 @@ export function AttendanceDashboardScreen() {
                     </div>
                 )}
             </div>
+
+            </>)}
+
+            {/* ══════════ WEEKLY REVIEW TAB ══════════ */}
+            {activeTab === 'weekly' && (<>
+
+            {/* Week Picker + Filters */}
+            <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm">
+                <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
+                    <div>
+                        <label className="block text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">Week Start</label>
+                        <input
+                            type="date"
+                            value={weekStart}
+                            onChange={(e) => { setWeekStart(e.target.value); setWeeklyPage(1); setSelectedReviewIds(new Set()); }}
+                            className="px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">Week End</label>
+                        <input
+                            type="date"
+                            value={weekEnd}
+                            onChange={(e) => { setWeekEnd(e.target.value); setWeeklyPage(1); setSelectedReviewIds(new Set()); }}
+                            className="px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                        />
+                    </div>
+                </div>
+                {/* Flag Filter Chips */}
+                <div className="flex flex-wrap gap-2 mt-3">
+                    {FLAG_OPTIONS.map(opt => (
+                        <button
+                            key={opt.value}
+                            onClick={() => { setWeeklyFlag(opt.value); setWeeklyPage(1); setSelectedReviewIds(new Set()); }}
+                            className={cn(
+                                'text-xs font-bold px-3 py-1.5 rounded-full border transition-colors',
+                                weeklyFlag === opt.value
+                                    ? 'bg-primary-600 text-white border-primary-600'
+                                    : 'bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border-neutral-200 dark:border-neutral-700 hover:border-primary-300 dark:hover:border-primary-700'
+                            )}
+                        >
+                            {opt.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Weekly Review Summary KPI Cards */}
+            {weeklyReviewSummaryQuery.isLoading ? (
+                <SkeletonKPIGrid count={6} />
+            ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                    <KpiCard label="Total Flagged" value={weeklySummary.totalRecords ?? 0} icon={Flag} color="primary" />
+                    <KpiCard label="Missing Punch" value={weeklySummary.MISSING_PUNCH ?? 0} icon={AlertTriangle} color="danger" />
+                    <KpiCard label="Auto-Mapped" value={weeklySummary.AUTO_MAPPED ?? 0} icon={ClipboardCheck} color="primary" />
+                    <KpiCard label="Worked on Leave" value={weeklySummary.WORKED_ON_LEAVE ?? 0} icon={CalendarOff} color="warning" />
+                    <KpiCard label="Late Anomaly" value={weeklySummary.LATE_BEYOND_THRESHOLD ?? 0} icon={Clock} color="warning" />
+                    <KpiCard label="OT Anomaly" value={weeklySummary.OT_ANOMALY ?? 0} icon={BarChart3} color="danger" />
+                </div>
+            )}
+
+            {/* Bulk Action Bar */}
+            {selectedReviewIds.size > 0 && (
+                <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800/50 rounded-2xl p-4 flex items-center justify-between">
+                    <span className="text-sm font-bold text-primary-700 dark:text-primary-400">
+                        {selectedReviewIds.size} record(s) selected
+                    </span>
+                    <button
+                        onClick={handleMarkReviewed}
+                        disabled={markReviewedMutation.isPending}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50"
+                    >
+                        {markReviewedMutation.isPending && <Loader2 size={14} className="animate-spin" />}
+                        {markReviewedMutation.isPending ? 'Processing...' : 'Mark Selected as Reviewed'}
+                    </button>
+                </div>
+            )}
+
+            {/* Weekly Review Records Table */}
+            <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-xl shadow-neutral-900/5 overflow-hidden">
+                {weeklyReviewQuery.isLoading ? (
+                    <SkeletonTable rows={8} cols={8} />
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse min-w-[1100px]">
+                            <thead>
+                                <tr className="bg-neutral-50/50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
+                                    <th className="py-4 px-4 font-bold w-10">
+                                        <input
+                                            type="checkbox"
+                                            checked={weeklyNormalized.filter((r: any) => !r.isReviewed).length > 0 && selectedReviewIds.size === weeklyNormalized.filter((r: any) => !r.isReviewed).length}
+                                            onChange={toggleAllReviewIds}
+                                            className="w-4 h-4 rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500"
+                                        />
+                                    </th>
+                                    <th className="py-4 px-4 font-bold">Employee</th>
+                                    <th className="py-4 px-4 font-bold">Date</th>
+                                    <th className="py-4 px-4 font-bold">Shift</th>
+                                    <th className="py-4 px-4 font-bold">Punch In</th>
+                                    <th className="py-4 px-4 font-bold">Punch Out</th>
+                                    <th className="py-4 px-4 font-bold text-center">Status</th>
+                                    <th className="py-4 px-4 font-bold">Flags</th>
+                                    <th className="py-4 px-4 font-bold text-center">Reviewed</th>
+                                </tr>
+                            </thead>
+                            <tbody className="text-sm">
+                                {weeklyNormalized.map((rec: any) => (
+                                    <tr
+                                        key={rec.id}
+                                        className={cn(
+                                            'border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors',
+                                            rec.isReviewed && 'opacity-60'
+                                        )}
+                                    >
+                                        <td className="py-3 px-4">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedReviewIds.has(rec.id)}
+                                                onChange={() => toggleReviewId(rec.id)}
+                                                disabled={rec.isReviewed}
+                                                className="w-4 h-4 rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500 disabled:opacity-40"
+                                            />
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            <div>
+                                                <span className="font-bold text-primary-950 dark:text-white">{rec.employeeName}</span>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    {rec.employeeCode && <span className="text-[11px] font-mono text-neutral-400 dark:text-neutral-500">{rec.employeeCode}</span>}
+                                                    {rec.department && <span className="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500">. {rec.department}</span>}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="py-3 px-4 font-mono text-xs text-neutral-600 dark:text-neutral-400">
+                                            {rec.date ? fmt.date(rec.date) : '--'}
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            {rec.shiftName ? (
+                                                <div>
+                                                    <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">{rec.shiftName}</span>
+                                                    <span className="block text-[10px] text-neutral-400 dark:text-neutral-500 font-mono mt-0.5">{rec.shiftTime}</span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-neutral-400">--</span>
+                                            )}
+                                        </td>
+                                        <td className="py-3 px-4 font-mono text-xs text-neutral-600 dark:text-neutral-400">{formatPunchTime(rec.punchIn, fmt)}</td>
+                                        <td className="py-3 px-4 font-mono text-xs text-neutral-600 dark:text-neutral-400">{formatPunchTime(rec.punchOut, fmt)}</td>
+                                        <td className="py-3 px-4 text-center">
+                                            <StatusBadge status={rec.status ?? 'Unknown'} />
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            <div className="flex flex-wrap gap-1">
+                                                {(rec.reviewFlags ?? []).map((f: string) => (
+                                                    <ReviewFlagBadge key={f} flag={f} />
+                                                ))}
+                                                {(!rec.reviewFlags || rec.reviewFlags.length === 0) && (
+                                                    <span className="text-xs text-neutral-400">--</span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="py-3 px-4 text-center">
+                                            {rec.isReviewed ? (
+                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-success-50 text-success-700 border border-success-200 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50">
+                                                    <CheckCircle2 size={12} />
+                                                    Yes
+                                                </span>
+                                            ) : (
+                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-500 border border-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700">
+                                                    Pending
+                                                </span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                                {weeklyNormalized.length === 0 && !weeklyReviewQuery.isLoading && (
+                                    <tr>
+                                        <td colSpan={9}>
+                                            <EmptyState icon="list" title="No flagged records" message="No records requiring review for this week." />
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+                {/* Pagination */}
+                {weeklyMeta.totalPages > 1 && (
+                    <div className="flex items-center justify-between px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                            Showing <span className="font-bold text-neutral-700 dark:text-neutral-300">{(weeklyPage - 1) * weeklyMeta.limit + 1}--{Math.min(weeklyPage * weeklyMeta.limit, weeklyMeta.total)}</span> of <span className="font-bold text-neutral-700 dark:text-neutral-300">{weeklyMeta.total}</span>
+                        </p>
+                        <div className="flex items-center gap-1">
+                            <button
+                                onClick={() => setWeeklyPage((p) => Math.max(1, p - 1))}
+                                disabled={weeklyPage <= 1}
+                                className="p-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 transition-colors"
+                            >
+                                <ChevronLeft size={16} />
+                            </button>
+                            {Array.from({ length: Math.min(5, weeklyMeta.totalPages) }, (_, i) => {
+                                let p: number;
+                                if (weeklyMeta.totalPages <= 5) p = i + 1;
+                                else if (weeklyPage <= 3) p = i + 1;
+                                else if (weeklyPage >= weeklyMeta.totalPages - 2) p = weeklyMeta.totalPages - 4 + i;
+                                else p = weeklyPage - 2 + i;
+                                return (
+                                    <button
+                                        key={p}
+                                        onClick={() => setWeeklyPage(p)}
+                                        className={cn(
+                                            'w-8 h-8 rounded-lg text-xs font-bold transition-colors',
+                                            p === weeklyPage
+                                                ? 'bg-primary-600 text-white'
+                                                : 'text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800'
+                                        )}
+                                    >
+                                        {p}
+                                    </button>
+                                );
+                            })}
+                            <button
+                                onClick={() => setWeeklyPage((p) => Math.min(weeklyMeta.totalPages, p + 1))}
+                                disabled={weeklyPage >= weeklyMeta.totalPages}
+                                className="p-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 transition-colors"
+                            >
+                                <ChevronRight size={16} />
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            </>)}
 
             {/* ── Attendance Detail Modal ── */}
             {detailRecord && (
