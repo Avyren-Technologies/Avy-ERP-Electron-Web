@@ -121,18 +121,18 @@ function SelectRow({ label, value, onChange, options, description, tooltip }: {
     label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; description?: string; tooltip?: string;
 }) {
     return (
-        <div className="flex items-center justify-between px-5 py-4 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 gap-4 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 transition-all">
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                     <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</p>
                     {tooltip && <InfoTooltip content={tooltip} />}
                 </div>
-                {description && <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{description}</p>}
+                {description && <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5 leading-relaxed">{description}</p>}
             </div>
             <select
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                className="ml-4 px-3 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm font-semibold text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                className="w-full sm:w-auto sm:min-w-[180px] sm:max-w-[280px] px-3 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm font-semibold text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all cursor-pointer"
             >
                 {options.map((o) => (
                     <option key={o.value} value={o.value}>{o.label}</option>
@@ -141,6 +141,7 @@ function SelectRow({ label, value, onChange, options, description, tooltip }: {
         </div>
     );
 }
+
 
 /* ── Options ── */
 

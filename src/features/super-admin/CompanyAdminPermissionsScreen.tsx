@@ -26,7 +26,7 @@ import type { CompanyAdminRole } from '@/lib/api/company-admin-roles';
 const SYSTEM_MODULES = ['company', 'user', 'role', 'reports', 'audit', 'billing', 'analytics'];
 const BUSINESS_MODULES = [
   'hr', 'ess', 'attendance', 'production', 'inventory', 'sales',
-  'finance', 'maintenance', 'vendor', 'security', 'visitors', 'masters',
+  'finance', 'maintenance', 'vendor', 'security', 'visitors', 'masters', 'docdiff',
 ];
 const ALL_MODULES = [...SYSTEM_MODULES, ...BUSINESS_MODULES];
 

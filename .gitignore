@@ -71,7 +71,6 @@ dist
 
 # Gatsby files
 .cache/
-public
 
 # Storybook build outputs
 .out
@@ -140,7 +139,6 @@ packages/
 
 # Gatsby files
 .cache/
-public
 
 # vuepress build output
 .vuepress/dist
