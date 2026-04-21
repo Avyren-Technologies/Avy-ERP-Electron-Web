@@ -327,9 +327,11 @@ export function ShiftCheckInScreen() {
         onError: (err: any) => showApiError(err),
     });
 
-    const isCheckIn = attendanceStatus === "NOT_CHECKED_IN";
+    const canStartNewShift = (statusData as any)?.canStartNewShift === true;
+    const completedShifts = (statusData as any)?.completedShifts ?? 0;
+    const isCheckIn = attendanceStatus === "NOT_CHECKED_IN" || (attendanceStatus === "CHECKED_OUT" && canStartNewShift);
     const isCheckedIn = attendanceStatus === "CHECKED_IN";
-    const isDone = attendanceStatus === "CHECKED_OUT";
+    const isDone = attendanceStatus === "CHECKED_OUT" && !canStartNewShift;
     const isMutating = checkInMutation.isPending || checkOutMutation.isPending;
 
     const handleAction = useCallback(() => {
@@ -430,26 +432,36 @@ export function ShiftCheckInScreen() {
                         {/* Action Button */}
                         <div className="flex flex-col items-center gap-3">
                             {isCheckIn && (
-                                <button
-                                    onClick={handleAction}
-                                    disabled={isMutating}
-                                    className={cn(
-                                        "group relative w-48 h-48 rounded-full flex flex-col items-center justify-center gap-2 transition-all duration-300",
-                                        "bg-white/20 backdrop-blur-sm border-4 border-white/30",
-                                        "hover:bg-success-500 hover:border-success-400 hover:shadow-2xl hover:shadow-success-500/30 hover:scale-105",
-                                        "active:scale-95",
-                                        isMutating && "opacity-70 cursor-wait"
+                                <div className="flex flex-col items-center gap-3">
+                                    {completedShifts > 0 && (
+                                        <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-sm">
+                                            <CheckCircle2 className="w-4 h-4 text-primary-200" />
+                                            <span className="text-sm font-semibold text-primary-200">
+                                                {completedShifts} shift{completedShifts > 1 ? "s" : ""} completed
+                                            </span>
+                                        </div>
                                     )}
-                                >
-                                    {isMutating ? (
-                                        <Loader2 className="w-10 h-10 animate-spin" />
-                                    ) : (
-                                        <>
-                                            <LogIn className="w-10 h-10 group-hover:scale-110 transition-transform" />
-                                            <span className="text-lg font-bold">Check In</span>
-                                        </>
-                                    )}
-                                </button>
+                                    <button
+                                        onClick={handleAction}
+                                        disabled={isMutating}
+                                        className={cn(
+                                            "group relative w-48 h-48 rounded-full flex flex-col items-center justify-center gap-2 transition-all duration-300",
+                                            "bg-white/20 backdrop-blur-sm border-4 border-white/30",
+                                            "hover:bg-success-500 hover:border-success-400 hover:shadow-2xl hover:shadow-success-500/30 hover:scale-105",
+                                            "active:scale-95",
+                                            isMutating && "opacity-70 cursor-wait"
+                                        )}
+                                    >
+                                        {isMutating ? (
+                                            <Loader2 className="w-10 h-10 animate-spin" />
+                                        ) : (
+                                            <>
+                                                <LogIn className="w-10 h-10 group-hover:scale-110 transition-transform" />
+                                                <span className="text-lg font-bold">{completedShifts > 0 ? "Start New Shift" : "Check In"}</span>
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
                             )}
 
                             {isCheckedIn && (

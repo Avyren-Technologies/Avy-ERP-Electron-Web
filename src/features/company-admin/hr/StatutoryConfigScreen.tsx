@@ -174,13 +174,13 @@ export function StatutoryConfigScreen() {
 
     // PT state (array)
     const ptConfigs: any[] = ptQuery.data?.data ?? [];
-    const [ptForm, setPTForm] = useState({ state: "", slabs: [{ from: 0, to: 0, rate: 0 }], financialYear: "", monthlyOverrides: {} as Record<string, number> });
+    const [ptForm, setPTForm] = useState({ state: "", slabs: [{ fromAmount: 0, toAmount: 0, taxAmount: 0 }], financialYear: "", monthlyOverrides: {} as Record<string, number> });
     const [ptModalOpen, setPTModalOpen] = useState(false);
     const [ptEditId, setPTEditId] = useState<string | null>(null);
 
     // LWF state (array)
     const lwfConfigs: any[] = lwfQuery.data?.data ?? [];
-    const [lwfForm, setLWFForm] = useState({ state: "", employeeAmount: 0, employerAmount: 0, frequency: "half-yearly" });
+    const [lwfForm, setLWFForm] = useState({ state: "", employeeAmount: 0, employerAmount: 0, frequency: "MONTHLY" });
     const [lwfModalOpen, setLWFModalOpen] = useState(false);
     const [lwfEditId, setLWFEditId] = useState<string | null>(null);
 
@@ -210,8 +210,8 @@ export function StatutoryConfigScreen() {
     const saveGratuity = async () => { try { await updateGratuity.mutateAsync(gratuity); showSuccess("Gratuity Config Saved", "Gratuity settings updated."); } catch (err) { showApiError(err); } };
     const saveBonus = async () => { try { await updateBonus.mutateAsync(bonus); showSuccess("Bonus Config Saved", "Bonus settings updated."); } catch (err) { showApiError(err); } };
 
-    const openPTCreate = () => { setPTEditId(null); setPTForm({ state: "", slabs: [{ from: 0, to: 0, rate: 0 }], financialYear: "", monthlyOverrides: {} }); setPTModalOpen(true); };
-    const openPTEdit = (pt: any) => { setPTEditId(pt.id); setPTForm({ state: pt.state ?? "", slabs: pt.slabs ?? [{ from: 0, to: 0, rate: 0 }], financialYear: pt.financialYear ?? "", monthlyOverrides: pt.monthlyOverrides ?? {} }); setPTModalOpen(true); };
+    const openPTCreate = () => { setPTEditId(null); setPTForm({ state: "", slabs: [{ fromAmount: 0, toAmount: 0, taxAmount: 0 }], financialYear: "", monthlyOverrides: {} }); setPTModalOpen(true); };
+    const openPTEdit = (pt: any) => { setPTEditId(pt.id); setPTForm({ state: pt.state ?? "", slabs: pt.slabs ?? [{ fromAmount: 0, toAmount: 0, taxAmount: 0 }], financialYear: pt.financialYear ?? "", monthlyOverrides: pt.monthlyOverrides ?? {} }); setPTModalOpen(true); };
     const savePT = async () => {
         try {
             if (ptEditId) { await updatePT.mutateAsync({ id: ptEditId, data: ptForm }); showSuccess("PT Config Updated", `${ptForm.state} PT updated.`); }
@@ -221,8 +221,8 @@ export function StatutoryConfigScreen() {
     };
     const handleDeletePT = async (id: string) => { try { await deletePT.mutateAsync(id); showSuccess("PT Config Deleted", "State PT config removed."); } catch (err) { showApiError(err); } };
 
-    const openLWFCreate = () => { setLWFEditId(null); setLWFForm({ state: "", employeeAmount: 0, employerAmount: 0, frequency: "half-yearly" }); setLWFModalOpen(true); };
-    const openLWFEdit = (lwf: any) => { setLWFEditId(lwf.id); setLWFForm({ state: lwf.state ?? "", employeeAmount: lwf.employeeAmount ?? 0, employerAmount: lwf.employerAmount ?? 0, frequency: lwf.frequency ?? "half-yearly" }); setLWFModalOpen(true); };
+    const openLWFCreate = () => { setLWFEditId(null); setLWFForm({ state: "", employeeAmount: 0, employerAmount: 0, frequency: "MONTHLY" }); setLWFModalOpen(true); };
+    const openLWFEdit = (lwf: any) => { setLWFEditId(lwf.id); setLWFForm({ state: lwf.state ?? "", employeeAmount: lwf.employeeAmount ?? 0, employerAmount: lwf.employerAmount ?? 0, frequency: lwf.frequency ?? "MONTHLY" }); setLWFModalOpen(true); };
     const saveLWF = async () => {
         try {
             if (lwfEditId) { await updateLWF.mutateAsync({ id: lwfEditId, data: lwfForm }); showSuccess("LWF Config Updated", `${lwfForm.state} LWF updated.`); }
@@ -244,7 +244,10 @@ export function StatutoryConfigScreen() {
                 {/* PF Section */}
                 <SectionCard title="Provident Fund (PF)" icon={Shield}>
                     <NumRow label="Employee Contribution Rate" value={pf.employeeRate ?? 12} onChange={(v) => setPF((p) => ({ ...p, employeeRate: v }))} suffix="%" min={0} max={100} />
-                    <NumRow label="Employer Contribution Rate" value={pf.employerRate ?? 12} onChange={(v) => setPF((p) => ({ ...p, employerRate: v }))} suffix="%" min={0} max={100} />
+                    <NumRow label="Employer EPF Rate" value={pf.employerEpfRate ?? 3.67} onChange={(v) => setPF((p) => ({ ...p, employerEpfRate: v }))} suffix="%" min={0} max={100} />
+                    <NumRow label="Employer EPS Rate" value={pf.employerEpsRate ?? 8.33} onChange={(v) => setPF((p) => ({ ...p, employerEpsRate: v }))} suffix="%" min={0} max={100} />
+                    <NumRow label="Employer EDLI Rate" value={pf.employerEdliRate ?? 0.5} onChange={(v) => setPF((p) => ({ ...p, employerEdliRate: v }))} suffix="%" min={0} max={100} />
+                    <NumRow label="Admin Charge Rate" value={pf.adminChargeRate ?? 0.5} onChange={(v) => setPF((p) => ({ ...p, adminChargeRate: v }))} suffix="%" min={0} max={100} />
                     <NumRow label="PF Wage Ceiling (₹)" value={pf.wageCeiling ?? 15000} onChange={(v) => setPF((p) => ({ ...p, wageCeiling: v }))} suffix="₹" min={0} />
                     <ToggleSwitch label="Allow Voluntary PF (VPF)" checked={pf.vpfEnabled ?? false} onChange={(v) => setPF((p) => ({ ...p, vpfEnabled: v }))} />
                     {pf.vpfEnabled && (
@@ -270,11 +273,11 @@ export function StatutoryConfigScreen() {
 
                 {/* Gratuity Section */}
                 <SectionCard title="Gratuity" icon={Shield}>
-                    <SelectField label="Formula" value={gratuity.formula ?? "standard"} onChange={(v) => setGratuity((p) => ({ ...p, formula: v }))} options={[{ value: "standard", label: "Standard (15/26 * Last Drawn * Years)" }, { value: "custom", label: "Custom" }]} />
-                    <SelectField label="Basis" value={gratuity.basis ?? "basic_da"} onChange={(v) => setGratuity((p) => ({ ...p, basis: v }))} options={[{ value: "basic_da", label: "Basic + DA" }, { value: "basic", label: "Basic Only" }, { value: "gross", label: "Gross" }]} />
+                    <SelectField label="Formula" value={gratuity.formula ?? "(lastBasic * 15 * yearsOfService) / 26"} onChange={(v) => setGratuity((p) => ({ ...p, formula: v }))} options={[{ value: "(lastBasic * 15 * yearsOfService) / 26", label: "Standard (15/26 * Last Drawn * Years)" }, { value: "custom", label: "Custom" }]} />
+                    <SelectField label="Basis" value={gratuity.baseSalary ?? "Basic"} onChange={(v) => setGratuity((p) => ({ ...p, baseSalary: v }))} options={[{ value: "Basic + DA", label: "Basic + DA" }, { value: "Basic", label: "Basic Only" }, { value: "Gross", label: "Gross" }]} />
                     <NumRow label="Max Gratuity (₹)" value={gratuity.maxAmount ?? 2000000} onChange={(v) => setGratuity((p) => ({ ...p, maxAmount: v }))} suffix="₹" min={0} />
-                    <SelectField label="Provision Method" value={gratuity.provisionMethod ?? "monthly"} onChange={(v) => setGratuity((p) => ({ ...p, provisionMethod: v }))} options={[{ value: "monthly", label: "Monthly Provision" }, { value: "yearly", label: "Yearly Provision" }, { value: "on_exit", label: "On Exit Only" }]} />
-                    <ToggleSwitch label="Gratuity Trust" checked={gratuity.trustEnabled ?? false} onChange={(v) => setGratuity((p) => ({ ...p, trustEnabled: v }))} />
+                    <SelectField label="Provision Method" value={gratuity.provisionMethod ?? "MONTHLY"} onChange={(v) => setGratuity((p) => ({ ...p, provisionMethod: v }))} options={[{ value: "MONTHLY", label: "Monthly Provision" }, { value: "ACTUAL_AT_EXIT", label: "Actual at Exit" }]} />
+                    <ToggleSwitch label="Gratuity Trust exists" checked={gratuity.trustExists ?? false} onChange={(v) => setGratuity((p) => ({ ...p, trustExists: v }))} />
                     <div className="pt-2 flex justify-end">
                         <SaveButton onClick={saveGratuity} loading={updateGratuity.isPending} />
                     </div>
@@ -282,11 +285,11 @@ export function StatutoryConfigScreen() {
 
                 {/* Bonus Section */}
                 <SectionCard title="Bonus" icon={Shield}>
-                    <NumRow label="Bonus Wage Ceiling (₹)" value={bonus.wageCeiling ?? 21000} onChange={(v) => setBonus((p) => ({ ...p, wageCeiling: v }))} suffix="₹" min={0} />
-                    <NumRow label="Minimum Bonus (%)" value={bonus.minPercentage ?? 8.33} onChange={(v) => setBonus((p) => ({ ...p, minPercentage: v }))} suffix="%" min={0} max={100} />
-                    <NumRow label="Maximum Bonus (%)" value={bonus.maxPercentage ?? 20} onChange={(v) => setBonus((p) => ({ ...p, maxPercentage: v }))} suffix="%" min={0} max={100} />
-                    <NumRow label="Eligibility After (months)" value={bonus.eligibilityMonths ?? 0} onChange={(v) => setBonus((p) => ({ ...p, eligibilityMonths: v }))} suffix="mo" min={0} />
-                    <SelectField label="Bonus Period" value={bonus.period ?? "financial-year"} onChange={(v) => setBonus((p) => ({ ...p, period: v }))} options={[{ value: "financial-year", label: "Financial Year" }, { value: "calendar-year", label: "Calendar Year" }]} />
+                    <NumRow label="Bonus Wage Ceiling (₹)" value={bonus.wageCeiling ?? 7000} onChange={(v) => setBonus((p) => ({ ...p, wageCeiling: v }))} suffix="₹" min={0} />
+                    <NumRow label="Minimum Bonus (%)" value={bonus.minBonusPercent ?? 8.33} onChange={(v) => setBonus((p) => ({ ...p, minBonusPercent: v }))} suffix="%" min={0} max={100} />
+                    <NumRow label="Maximum Bonus (%)" value={bonus.maxBonusPercent ?? 20} onChange={(v) => setBonus((p) => ({ ...p, maxBonusPercent: v }))} suffix="%" min={0} max={100} />
+                    <NumRow label="Eligibility (days)" value={bonus.eligibilityDays ?? 30} onChange={(v) => setBonus((p) => ({ ...p, eligibilityDays: v }))} suffix="days" min={0} />
+                    <SelectField label="Bonus Period" value={bonus.calculationPeriod ?? "APR_MAR"} onChange={(v) => setBonus((p) => ({ ...p, calculationPeriod: v }))} options={[{ value: "APR_MAR", label: "Financial Year (Apr-Mar)" }, { value: "JAN_DEC", label: "Calendar Year (Jan-Dec)" }]} />
                     <div className="pt-2 flex justify-end">
                         <SaveButton onClick={saveBonus} loading={updateBonus.isPending} />
                     </div>
@@ -330,8 +333,8 @@ export function StatutoryConfigScreen() {
                                             <td className="py-3 px-4 text-center text-neutral-600 dark:text-neutral-400">{Object.keys(pt.monthlyOverrides ?? {}).length || "—"}</td>
                                             <td className="py-3 px-4 text-right">
                                                 <div className="flex items-center justify-end gap-1">
-                                                    <button onClick={() => openPTEdit(pt)} className="p-1.5 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors"><Pencil size={14} /></button>
-                                                    <button onClick={() => handleDeletePT(pt.id)} className="p-1.5 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                                                     <button onClick={() => openPTEdit(pt)} className="p-1.5 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors"><Pencil size={14} /></button>
+                                                     <button onClick={() => handleDeletePT(pt.id)} className="p-1.5 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors"><Trash2 size={14} /></button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -377,7 +380,7 @@ export function StatutoryConfigScreen() {
                                             <td className="py-3 px-4 font-semibold text-primary-950 dark:text-white">{lwf.state}</td>
                                             <td className="py-3 px-4 text-right font-mono text-neutral-600 dark:text-neutral-400">₹{lwf.employeeAmount ?? 0}</td>
                                             <td className="py-3 px-4 text-right font-mono text-neutral-600 dark:text-neutral-400">₹{lwf.employerAmount ?? 0}</td>
-                                            <td className="py-3 px-4 text-xs capitalize text-neutral-600 dark:text-neutral-400">{(lwf.frequency ?? "").replace(/-/g, " ")}</td>
+                                            <td className="py-3 px-4 text-xs capitalize text-neutral-600 dark:text-neutral-400">{lwf.frequency?.toLowerCase()?.replace(/_/g, " ")}</td>
                                             <td className="py-3 px-4 text-right">
                                                 <div className="flex items-center justify-end gap-1">
                                                     <button onClick={() => openLWFEdit(lwf)} className="p-1.5 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors"><Pencil size={14} /></button>
@@ -414,20 +417,20 @@ export function StatutoryConfigScreen() {
                                 <div key={i} className="grid grid-cols-4 gap-2 items-end">
                                     <div>
                                         <label className="block text-[10px] text-neutral-400 mb-1">From (₹)</label>
-                                        <input type="number" value={slab.from} onChange={(e) => { const s = [...ptForm.slabs]; s[i] = { ...s[i], from: Number(e.target.value) }; setPTForm((p) => ({ ...p, slabs: s })); }} className="w-full px-2 py-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm font-mono focus:outline-none dark:text-white" />
+                                        <input type="number" value={slab.fromAmount} onChange={(e) => { const s = [...ptForm.slabs]; s[i] = { ...s[i], fromAmount: Number(e.target.value) }; setPTForm((p) => ({ ...p, slabs: s })); }} className="w-full px-2 py-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm font-mono focus:outline-none dark:text-white" />
                                     </div>
                                     <div>
                                         <label className="block text-[10px] text-neutral-400 mb-1">To (₹)</label>
-                                        <input type="number" value={slab.to} onChange={(e) => { const s = [...ptForm.slabs]; s[i] = { ...s[i], to: Number(e.target.value) }; setPTForm((p) => ({ ...p, slabs: s })); }} className="w-full px-2 py-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm font-mono focus:outline-none dark:text-white" />
+                                        <input type="number" value={slab.toAmount} onChange={(e) => { const s = [...ptForm.slabs]; s[i] = { ...s[i], toAmount: Number(e.target.value) }; setPTForm((p) => ({ ...p, slabs: s })); }} className="w-full px-2 py-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm font-mono focus:outline-none dark:text-white" />
                                     </div>
                                     <div>
                                         <label className="block text-[10px] text-neutral-400 mb-1">Tax (₹)</label>
-                                        <input type="number" value={slab.rate} onChange={(e) => { const s = [...ptForm.slabs]; s[i] = { ...s[i], rate: Number(e.target.value) }; setPTForm((p) => ({ ...p, slabs: s })); }} className="w-full px-2 py-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm font-mono focus:outline-none dark:text-white" />
+                                        <input type="number" value={slab.taxAmount} onChange={(e) => { const s = [...ptForm.slabs]; s[i] = { ...s[i], taxAmount: Number(e.target.value) }; setPTForm((p) => ({ ...p, slabs: s })); }} className="w-full px-2 py-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm font-mono focus:outline-none dark:text-white" />
                                     </div>
                                     <button onClick={() => setPTForm((p) => ({ ...p, slabs: p.slabs.filter((_, idx) => idx !== i) }))} className="p-1.5 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors h-fit"><Trash2 size={14} /></button>
                                 </div>
                             ))}
-                            <button onClick={() => setPTForm((p) => ({ ...p, slabs: [...p.slabs, { from: 0, to: 0, rate: 0 }] }))} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 transition-colors">
+                            <button onClick={() => setPTForm((p) => ({ ...p, slabs: [...p.slabs, { fromAmount: 0, toAmount: 0, taxAmount: 0 }] }))} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 transition-colors">
                                 <Plus size={14} /> Add Slab
                             </button>
                             <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mt-2">Monthly Overrides</label>
@@ -475,7 +478,7 @@ export function StatutoryConfigScreen() {
                             <SelectField label="State" value={lwfForm.state} onChange={(v) => setLWFForm((p) => ({ ...p, state: v }))} options={INDIAN_STATES.map((s) => ({ value: s, label: s }))} />
                             <NumRow label="Employee Amount (₹)" value={lwfForm.employeeAmount} onChange={(v) => setLWFForm((p) => ({ ...p, employeeAmount: v }))} suffix="₹" min={0} />
                             <NumRow label="Employer Amount (₹)" value={lwfForm.employerAmount} onChange={(v) => setLWFForm((p) => ({ ...p, employerAmount: v }))} suffix="₹" min={0} />
-                            <SelectField label="Frequency" value={lwfForm.frequency} onChange={(v) => setLWFForm((p) => ({ ...p, frequency: v }))} options={[{ value: "monthly", label: "Monthly" }, { value: "half-yearly", label: "Half-Yearly" }, { value: "yearly", label: "Yearly" }]} />
+                            <SelectField label="Frequency" value={lwfForm.frequency} onChange={(v) => setLWFForm((p) => ({ ...p, frequency: v }))} options={[{ value: "MONTHLY", label: "Monthly" }, { value: "SEMI_ANNUAL", label: "Half-Yearly" }, { value: "ANNUAL", label: "Yearly" }]} />
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
                             <button onClick={() => setLWFModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
