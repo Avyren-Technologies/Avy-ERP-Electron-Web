@@ -222,7 +222,8 @@ export function ComparisonHistory({ onSelectJob, onNewComparison }: Props) {
                               onClick={async () => {
                                 try {
                                   const response = await docdiffClient.get(`/jobs/${job.id}/report/pdf`, { responseType: "blob" });
-                                  const blob = response instanceof Blob ? response : new Blob([response as BlobPart], { type: "application/pdf" });
+                                  const rawData = response.data as unknown;
+                                  const blob = rawData instanceof Blob ? rawData : new Blob([rawData as BlobPart], { type: "application/pdf" });
                                   const url = URL.createObjectURL(blob);
                                   const a = document.createElement("a");
                                   a.href = url;
