@@ -413,6 +413,8 @@ async function listEmployees(params?: {
     department?: string;
     designation?: string;
     status?: string;
+    sortBy?: string;
+    sortOrder?: string;
 }): Promise<ApiResponse<Employee[]>> {
     const response = await client.get('/hr/employees', { params });
     return response.data;

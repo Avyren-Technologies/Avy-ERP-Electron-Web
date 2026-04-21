@@ -90,9 +90,6 @@ import type {
     DashboardMonthlyTrendItem,
 } from "@/lib/api/ess";
 
-/* ================================================================
-   Helpers
-   ================================================================ */
 
 function getGreeting(): string {
     const hour = new Date().getHours();
@@ -152,23 +149,47 @@ function normalizeDashboardData(raw: Record<string, unknown>): DashboardData {
     // Backend returns `attendanceStatus` + `currentShift` separately;
     // frontend expects a combined `shift: DashboardShiftInfo`.
     let shift: DashboardShiftInfo | null = data.shift ?? null;
-    if (!shift && data.attendanceStatus) {
-        const att = data.attendanceStatus as Record<string, any>;
+    if (!shift) {
+        const att = data.attendanceStatus as Record<string, any> | null;
         const cs = data.currentShift as Record<string, any> | null;
-        shift = {
-            shiftName: cs?.name ?? "Unknown Shift",
-            startTime: cs?.startTime ?? "--:--",
-            endTime: cs?.endTime ?? "--:--",
-            status: att.status ?? "NOT_CHECKED_IN",
-            attendanceRecordId: att.record?.id ?? null,
-            punchIn: att.record?.punchIn ?? null,
-            punchOut: att.record?.punchOut ?? null,
-            elapsedSeconds: att.elapsedSeconds ?? 0,
-            workedHours: att.record?.workedHours ?? null,
-            locationName: att.record?.location?.name ?? cs?.location?.name ?? null,
-            geofences: cs?.location?.geofences ?? [],
-            assignedGeofence: cs?.assignedGeofence ?? null,
-        };
+        // Build shift from attendanceStatus (if available) + currentShift
+        if (att) {
+            shift = {
+                shiftName: att.record?.shift?.name ?? cs?.name ?? "Unknown Shift",
+                startTime: att.record?.shift?.startTime ?? cs?.startTime ?? "--:--",
+                endTime: att.record?.shift?.endTime ?? cs?.endTime ?? "--:--",
+                status: att.status ?? "NOT_CHECKED_IN",
+                attendanceRecordId: att.record?.id ?? null,
+                punchIn: att.record?.punchIn ?? null,
+                punchOut: att.record?.punchOut ?? null,
+                elapsedSeconds: att.elapsedSeconds ?? 0,
+                workedHours: att.record?.workedHours ?? null,
+                locationName: att.record?.location?.name ?? cs?.location?.name ?? null,
+                geofences: cs?.location?.geofences ?? [],
+                assignedGeofence: cs?.assignedGeofence ?? null,
+                canStartNewShift: att.canStartNewShift ?? false,
+                completedShifts: att.completedShifts ?? 0,
+            };
+        } else if (cs) {
+            // attendanceStatus is null (backend error) but currentShift exists — show shift info with NOT_CHECKED_IN
+            shift = {
+                shiftName: cs.name ?? "Unknown Shift",
+                startTime: cs.startTime ?? "--:--",
+                endTime: cs.endTime ?? "--:--",
+                status: "NOT_CHECKED_IN",
+                attendanceRecordId: null,
+                punchIn: null,
+                punchOut: null,
+                elapsedSeconds: 0,
+                workedHours: null,
+                locationName: cs.location?.name ?? null,
+                geofences: cs.location?.geofences ?? [],
+                assignedGeofence: cs.assignedGeofence ?? null,
+                canStartNewShift: false,
+                completedShifts: 0,
+            };
+        }
+        // else: both null — shift stays null → "No shift assigned"
     }
 
     // Map backend `leaveBalance` → frontend `leaveBalances`
@@ -248,6 +269,8 @@ function normalizeDashboardData(raw: Record<string, unknown>): DashboardData {
         weeklyChart: data.weeklyChart ?? null,
         leaveDonut: data.leaveDonut ?? null,
         monthlyTrend: data.monthlyTrend ?? null,
+        attendanceMode: (data.attendanceStatus as Record<string, any>)?.attendanceMode ?? data.attendanceMode ?? '',
+        companyShifts: (data.attendanceStatus as Record<string, any>)?.companyShifts ?? data.companyShifts ?? [],
     };
 }
 
@@ -555,7 +578,7 @@ function AnnouncementTicker({ announcements }: { announcements: DashboardAnnounc
    SECTION: Shift Check-In Hero — Glassmorphic Mesh Gradient
    ================================================================ */
 
-function ShiftCheckInHero({ shift }: { shift: DashboardShiftInfo | null }) {
+function ShiftCheckInHero({ shift, attendanceMode, companyShifts }: { shift: DashboardShiftInfo | null; attendanceMode: string; companyShifts: DashboardData["companyShifts"] }) {
     const fmt = useCompanyFormatter();
     const queryClient = useQueryClient();
 
@@ -570,10 +593,23 @@ function ShiftCheckInHero({ shift }: { shift: DashboardShiftInfo | null }) {
         if (!navigator.geolocation) return;
         navigator.geolocation.getCurrentPosition(
             (pos) => setGeo({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-            () => {},
+            () => { },
             { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
         );
     }, []);
+
+    // EMPLOYEE_CHOICE mode: shift selection
+    const [selectedShiftId, setSelectedShiftId] = useState<string>("");
+    useEffect(() => {
+        if (attendanceMode === 'EMPLOYEE_CHOICE' && companyShifts.length > 0 && !selectedShiftId) {
+            // Pre-select the employee's assigned shift if available
+            const currentShiftName = shift?.shiftName;
+            if (currentShiftName) {
+                const match = companyShifts.find((s) => s.name === currentShiftName);
+                if (match) setSelectedShiftId(match.id);
+            }
+        }
+    }, [attendanceMode, companyShifts, shift?.shiftName]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const status = shift?.status ?? "NOT_CHECKED_IN";
     const startRef = useRef(Date.now());
@@ -597,8 +633,11 @@ function ShiftCheckInHero({ shift }: { shift: DashboardShiftInfo | null }) {
 
     const checkInMutation = useMutation({
         mutationFn: async () => {
-            const body: Record<string, number> = {};
+            const body: Record<string, any> = {};
             if (geo) { body.latitude = geo.lat; body.longitude = geo.lng; }
+            if (attendanceMode === 'EMPLOYEE_CHOICE' && selectedShiftId) {
+                body.selectedShiftId = selectedShiftId;
+            }
             const res = await client.post("/hr/attendance/check-in", body);
             return res.data;
         },
@@ -626,9 +665,11 @@ function ShiftCheckInHero({ shift }: { shift: DashboardShiftInfo | null }) {
     });
 
     const isMutating = checkInMutation.isPending || checkOutMutation.isPending;
+    const canStartNewShift = shift?.canStartNewShift === true;
+    const completedShifts = shift?.completedShifts ?? 0;
     const isCheckedIn = status === "CHECKED_IN";
-    const isCheckedOut = status === "CHECKED_OUT";
-    const isNotCheckedIn = status === "NOT_CHECKED_IN";
+    const isCheckedOut = status === "CHECKED_OUT" && !canStartNewShift;
+    const isNotCheckedIn = status === "NOT_CHECKED_IN" || (status === "CHECKED_OUT" && canStartNewShift);
     const workedHrs = parseWorkedHours(shift?.workedHours);
 
     const handleAction = useCallback(() => {
@@ -747,15 +788,36 @@ function ShiftCheckInHero({ shift }: { shift: DashboardShiftInfo | null }) {
                         )}
 
                         {isNotCheckedIn && (
-                            <button
-                                onClick={handleAction}
-                                disabled={isMutating}
-                                className="px-8 py-3 rounded-xl font-bold text-sm sm:text-base bg-white/15 backdrop-blur-md border-2 border-white/25 hover:bg-success-500/80 hover:border-success-400 hover:shadow-[0_0_30px_rgba(16,185,129,0.3)] hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-60"
-                            >
-                                {isMutating ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : (
-                                    <span className="flex items-center gap-2"><LogIn className="w-5 h-5" /> Check In</span>
+                            <div className="flex flex-col items-center gap-2">
+                                {completedShifts > 0 && (
+                                    <span className="text-xs font-semibold text-white/70">{completedShifts} shift{completedShifts > 1 ? "s" : ""} completed</span>
                                 )}
-                            </button>
+                                {attendanceMode === 'EMPLOYEE_CHOICE' && companyShifts.length > 0 && (
+                                    <div className="w-full max-w-xs mb-3">
+                                        <select
+                                            value={selectedShiftId}
+                                            onChange={(e) => setSelectedShiftId(e.target.value)}
+                                            className="w-full px-4 py-2.5 rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 text-white text-center text-sm font-semibold appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/30"
+                                        >
+                                            {!selectedShiftId && <option value="" className="text-neutral-900">-- Select Shift --</option>}
+                                            {companyShifts.map((s) => (
+                                                <option key={s.id} value={s.id} className="text-neutral-900">
+                                                    {s.name} ({fmt.shiftTime(s.startTime)} – {fmt.shiftTime(s.endTime)})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                                <button
+                                    onClick={handleAction}
+                                    disabled={isMutating || (attendanceMode === 'EMPLOYEE_CHOICE' && !selectedShiftId)}
+                                    className="px-8 py-3 rounded-xl font-bold text-sm sm:text-base bg-white/15 backdrop-blur-md border-2 border-white/25 hover:bg-success-500/80 hover:border-success-400 hover:shadow-[0_0_30px_rgba(16,185,129,0.3)] hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-60"
+                                >
+                                    {isMutating ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : (
+                                        <span className="flex items-center gap-2"><LogIn className="w-5 h-5" /> {completedShifts > 0 ? "Start New Shift" : "Check In"}</span>
+                                    )}
+                                </button>
+                            </div>
                         )}
 
                         {isCheckedOut && (
@@ -1763,7 +1825,7 @@ export function DynamicDashboardScreen() {
             <AnnouncementTicker announcements={data.announcements} />
 
             {/* ── ROW 3: Shift Check-In Hero ── */}
-            <ShiftCheckInHero shift={data.shift} />
+            <ShiftCheckInHero shift={data.shift} attendanceMode={data.attendanceMode} companyShifts={data.companyShifts} />
 
             {/* ── ROW 4: KPI Stats ── */}
             <QuickStatsRow data={data} />

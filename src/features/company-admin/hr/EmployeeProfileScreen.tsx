@@ -768,7 +768,7 @@ export function EmployeeProfileScreen() {
         if (professional.probationEndDate) payload.probationEndDate = professional.probationEndDate;
 
         // Initial status (for new employees)
-        if (isNew && initialStatus) payload.status = initialStatus;
+        if (isNew && initialStatus) payload.initialStatus = initialStatus;
 
         // Document proof uploads (R2 keys)
         if (Object.keys(docUploads).length > 0) {

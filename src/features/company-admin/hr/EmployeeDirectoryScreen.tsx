@@ -13,6 +13,8 @@ import {
     Calendar,
     Trash2,
     Upload,
+    ArrowUp,
+    ArrowDown,
 } from "lucide-react";
 import BulkEmployeeImportModal from './BulkEmployeeImportModal';
 import { cn } from "@/lib/utils";
@@ -71,6 +73,7 @@ export function EmployeeDirectoryScreen() {
     const [statusFilter, setStatusFilter] = useState("All");
     const [departmentFilter, setDepartmentFilter] = useState("All");
     const [page, setPage] = useState(1);
+    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
     const limit = 25;
 
     // Delete (deactivate) employee
@@ -95,6 +98,8 @@ export function EmployeeDirectoryScreen() {
         departmentId: departmentFilter === "All" ? undefined : departmentFilter,
         page,
         limit,
+        sortBy: "employeeId",
+        sortOrder,
     });
 
     const departmentsQuery = useDepartments();
@@ -190,7 +195,19 @@ export function EmployeeDirectoryScreen() {
                             <thead>
                                 <tr className="bg-neutral-50/50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
                                     <th className="py-4 px-6 font-bold">Employee</th>
-                                    <th className="py-4 px-6 font-bold">Employee ID</th>
+                                    <th className="py-4 px-6 font-bold">
+                                        <button
+                                            onClick={() => { setSortOrder((o) => o === "asc" ? "desc" : "asc"); setPage(1); }}
+                                            className="inline-flex items-center gap-1.5 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                                        >
+                                            Employee ID
+                                            {sortOrder === "asc" ? (
+                                                <ArrowUp className="w-3.5 h-3.5 text-primary-500" />
+                                            ) : (
+                                                <ArrowDown className="w-3.5 h-3.5 text-primary-500" />
+                                            )}
+                                        </button>
+                                    </th>
                                     <th className="py-4 px-6 font-bold">Department</th>
                                     <th className="py-4 px-6 font-bold">Designation</th>
                                     <th className="py-4 px-6 font-bold">Location</th>

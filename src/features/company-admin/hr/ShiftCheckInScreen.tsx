@@ -87,12 +87,16 @@ interface RecentAttendanceRecord {
 interface StatusResponse {
     status: "NOT_CHECKED_IN" | "CHECKED_IN" | "CHECKED_OUT" | "NOT_LINKED";
     record: AttendanceRecord | null;
-    currentShift?: { name: string; startTime: string; endTime: string; breaks?: ShiftBreakInfo[] } | null;
+    currentShift?: { id?: string; name: string; startTime: string; endTime: string; breaks?: ShiftBreakInfo[] } | null;
     elapsedSeconds?: number;
     resolvedPolicy?: ResolvedPolicy | null;
     location?: LocationInfo | null;
     assignedGeofence?: GeofenceInfo | null;
     recentAttendance?: RecentAttendanceRecord[];
+    attendanceMode?: string;
+    companyShifts?: Array<{ id: string; name: string; startTime: string; endTime: string; shiftType: string }>;
+    canStartNewShift?: boolean;
+    completedShifts?: number;
 }
 
 /* ── Helpers ── */
@@ -273,6 +277,20 @@ export function ShiftCheckInScreen() {
     // Shift info: from attendance record if checked in, or from currentShift if not yet checked in
     const shiftInfo = record?.shift ?? statusData?.currentShift ?? null;
 
+    // EMPLOYEE_CHOICE mode: shift selection
+    const [selectedShiftId, setSelectedShiftId] = useState<string>("");
+    const attendanceMode = statusData?.attendanceMode ?? '';
+    const companyShifts = statusData?.companyShifts ?? [];
+
+    useEffect(() => {
+        if (attendanceMode === 'EMPLOYEE_CHOICE' && companyShifts.length > 0 && !selectedShiftId) {
+            const currentShiftId = statusData?.currentShift?.id;
+            if (currentShiftId) {
+                setSelectedShiftId(currentShiftId);
+            }
+        }
+    }, [attendanceMode, companyShifts, statusData]);
+
     // Live elapsed
     const [elapsed, setElapsed] = useState(statusData?.elapsedSeconds ?? 0);
     useEffect(() => {
@@ -296,6 +314,9 @@ export function ShiftCheckInScreen() {
             if (geo) {
                 body.latitude = geo.lat;
                 body.longitude = geo.lng;
+            }
+            if (attendanceMode === 'EMPLOYEE_CHOICE' && selectedShiftId) {
+                body.selectedShiftId = selectedShiftId;
             }
             const res = await client.post("/hr/attendance/check-in", body);
             return res.data;
@@ -327,8 +348,8 @@ export function ShiftCheckInScreen() {
         onError: (err: any) => showApiError(err),
     });
 
-    const canStartNewShift = (statusData as any)?.canStartNewShift === true;
-    const completedShifts = (statusData as any)?.completedShifts ?? 0;
+    const canStartNewShift = statusData?.canStartNewShift === true;
+    const completedShifts = statusData?.completedShifts ?? 0;
     const isCheckIn = attendanceStatus === "NOT_CHECKED_IN" || (attendanceStatus === "CHECKED_OUT" && canStartNewShift);
     const isCheckedIn = attendanceStatus === "CHECKED_IN";
     const isDone = attendanceStatus === "CHECKED_OUT" && !canStartNewShift;
@@ -439,6 +460,23 @@ export function ShiftCheckInScreen() {
                                             <span className="text-sm font-semibold text-primary-200">
                                                 {completedShifts} shift{completedShifts > 1 ? "s" : ""} completed
                                             </span>
+                                        </div>
+                                    )}
+                                    {attendanceMode === 'EMPLOYEE_CHOICE' && companyShifts.length > 0 && (
+                                        <div className="w-full max-w-xs mb-1">
+                                            <label className="block text-sm font-semibold text-white/80 mb-2 text-center">Select Your Shift</label>
+                                            <select
+                                                value={selectedShiftId}
+                                                onChange={(e) => setSelectedShiftId(e.target.value)}
+                                                className="w-full px-4 py-3 rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 text-white text-center font-semibold appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/30"
+                                            >
+                                                {!selectedShiftId && !statusData?.currentShift?.id && <option value="" className="text-neutral-900">-- No shift selected (auto-map) --</option>}
+                                                {companyShifts.map((s) => (
+                                                    <option key={s.id} value={s.id} className="text-neutral-900">
+                                                        {s.name} ({s.startTime} – {s.endTime})
+                                                    </option>
+                                                ))}
+                                            </select>
                                         </div>
                                     )}
                                     <button

@@ -187,6 +187,7 @@ const ATTENDANCE_MODE_OPTIONS = [
     { value: "SHIFT_STRICT", label: "Shift Strict — Enforce shift time window" },
     { value: "SHIFT_RELAXED", label: "Shift Relaxed — Only verify shift exists" },
     { value: "FULLY_FLEXIBLE", label: "Fully Flexible — No time restrictions" },
+    { value: "EMPLOYEE_CHOICE", label: "Employee Choice — Employee selects shift at check-in" },
 ];
 
 const LEAVE_CHECKIN_MODE_OPTIONS = [
