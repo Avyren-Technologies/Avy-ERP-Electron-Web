@@ -102,6 +102,11 @@ const SOURCE_LABELS: Record<string, string> = {
     BIOMETRIC: "Biometric",
     MANUAL: "Manual",
     SYSTEM: "System",
+    HR_BOOK: "HR Book",
+    WEB_PORTAL: "Web Portal",
+    FACE_RECOGNITION: "Face",
+    IOT: "IoT",
+    SMART_CARD: "Smart Card",
 };
 
 /* ── Status Badge ── */

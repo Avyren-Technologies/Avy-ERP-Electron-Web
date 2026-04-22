@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
 import { R2Image } from '@/components/R2Image';
 import { useCanPerform } from "@/hooks/useCanPerform";
@@ -20,13 +20,19 @@ import {
     ChevronLeft,
     ChevronRight,
     X,
+    BookOpen,
+    Calendar,
+    Lock,
+    Check,
+    Save,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { client } from "@/lib/api/client";
 import { adminAttendanceApi, adminAttendanceKeys } from "@/lib/api/admin-attendance";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { showSuccess, showApiError } from "@/lib/toast";
 import { useDepartments, useDesignations } from "@/features/company-admin/api/use-hr-queries";
+import { useCompanyShifts } from "@/features/company-admin/api/use-company-admin-queries";
 import { Skeleton, SkeletonTable } from "@/components/ui/Skeleton";
 
 /* ── Types ── */
@@ -113,6 +119,86 @@ interface BulkMarkResult {
     details: Array<{ employeeId: string; employeeName: string; success: boolean; error?: string }>;
 }
 
+/* ── Book Types ── */
+
+type HalfDayStatus = 'PRESENT' | 'ABSENT' | 'ON_LEAVE';
+
+interface BookEmployeeHalf {
+    id: string;
+    half: 'FIRST_HALF' | 'SECOND_HALF';
+    status: HalfDayStatus;
+    leaveTypeId: string | null;
+    leaveTypeName: string | null;
+    leaveRequestId: string | null;
+}
+
+interface BookEmployee {
+    employeeId: string;
+    employeeName: string;
+    employeeCode: string;
+    profilePhotoUrl: string | null;
+    department: { id: string; name: string } | null;
+    designation: { id: string; name: string } | null;
+    shift: { id: string; name: string; startTime: string; endTime: string } | null;
+    existingRecord: {
+        id: string; status: string; source: string;
+        punchIn: string | null; punchOut: string | null;
+        workedHours: number | null; isLate: boolean; lateMinutes: number | null;
+        isOverridden: boolean;
+        halves: BookEmployeeHalf[];
+        isLocked: boolean;
+        updatedAt: string;
+    } | null;
+    existingLeave: {
+        id: string; leaveTypeName: string; leaveTypeId: string; status: string;
+        isHalfDay: boolean; halfDayType: string | null; days: number;
+    } | null;
+    leaveBalances: Array<{ leaveTypeId: string; leaveTypeName: string; balance: number; allowHalfDay: boolean }>;
+}
+
+interface BookRowState {
+    firstHalf: HalfDayStatus;
+    firstHalfLeaveTypeId?: string;
+    secondHalf: HalfDayStatus;
+    secondHalfLeaveTypeId?: string;
+    punchInOverride: string;
+    punchOutOverride: string;
+    remarks: string;
+    forceOverride: boolean;
+    dirty: boolean;
+    saving: boolean;
+    saved: boolean;
+    error: string | null;
+    existingRecordUpdatedAt?: string;
+}
+
+function deriveBookStatus(firstHalf: HalfDayStatus, secondHalf: HalfDayStatus): { label: string; color: string; tooltip: string } {
+    if (firstHalf === 'PRESENT' && secondHalf === 'PRESENT') {
+        return { label: 'Present', color: 'bg-success-100 text-success-700 dark:bg-success-900/20 dark:text-success-400 border-success-200 dark:border-success-800/50', tooltip: 'Both halves present' };
+    }
+    if (firstHalf === 'ABSENT' && secondHalf === 'ABSENT') {
+        return { label: 'Absent', color: 'bg-danger-100 text-danger-700 dark:bg-danger-900/20 dark:text-danger-400 border-danger-200 dark:border-danger-800/50', tooltip: 'Both halves absent' };
+    }
+    if (firstHalf === 'ON_LEAVE' && secondHalf === 'ON_LEAVE') {
+        return { label: 'On Leave', color: 'bg-primary-100 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400 border-primary-200 dark:border-primary-800/50', tooltip: 'Full day leave' };
+    }
+    if ((firstHalf === 'PRESENT' || secondHalf === 'PRESENT') && (firstHalf !== 'PRESENT' || secondHalf !== 'PRESENT')) {
+        const presentHalf = firstHalf === 'PRESENT' ? '1st' : '2nd';
+        const otherHalf = firstHalf === 'PRESENT' ? secondHalf : firstHalf;
+        return { label: 'Half Day', color: 'bg-warning-100 text-warning-700 dark:bg-warning-900/20 dark:text-warning-400 border-warning-200 dark:border-warning-800/50', tooltip: `${presentHalf} half present, other half ${otherHalf.toLowerCase().replace('_', ' ')}` };
+    }
+    // Mixed absent + on_leave
+    return { label: 'Mixed', color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700', tooltip: `1st: ${firstHalf.toLowerCase().replace('_', ' ')}, 2nd: ${secondHalf.toLowerCase().replace('_', ' ')}` };
+}
+
+function getTodayDateString(): string {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
 /* ── Helpers ── */
 
 function isImageSrc(url: string | undefined | null): url is string {
@@ -169,7 +255,7 @@ export function AdminAttendanceScreen() {
     const isAdminMode = useCanPerform("hr:create");
 
     // Mode state
-    const [bulkMode, setBulkMode] = useState(false);
+    const [mode, setMode] = useState<'single' | 'bulk' | 'book'>('single');
 
     // Single mode state
     const [searchTerm, setSearchTerm] = useState("");
@@ -190,6 +276,21 @@ export function AdminAttendanceScreen() {
     const [bulkAction, setBulkAction] = useState<"CHECK_IN" | "CHECK_OUT">("CHECK_IN");
     const [bulkRemarks, setBulkRemarks] = useState("");
     const [bulkResults, setBulkResults] = useState<BulkMarkResult | null>(null);
+
+    // Book mode state
+    const [bookDate, setBookDate] = useState(getTodayDateString);
+    const [bookShiftFilter, setBookShiftFilter] = useState("All");
+    const [bookDeptFilter, setBookDeptFilter] = useState("All");
+    const [bookDesigFilter, setBookDesigFilter] = useState("All");
+    const [bookSearch, setBookSearch] = useState("");
+    const [debouncedBookSearch, setDebouncedBookSearch] = useState("");
+    const [bookPage, setBookPage] = useState(1);
+    const [bookRowStates, setBookRowStates] = useState<Record<string, BookRowState>>({});
+    const [bookSelectedIds, setBookSelectedIds] = useState<Set<string>>(new Set());
+    const [bulkApplyFirstHalf, setBulkApplyFirstHalf] = useState<HalfDayStatus>('PRESENT');
+    const [bulkApplySecondHalf, setBulkApplySecondHalf] = useState<HalfDayStatus>('PRESENT');
+    const autoSaveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+    const savedTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
     // Today log state
     const [logPage, setLogPage] = useState(1);
@@ -216,6 +317,22 @@ export function AdminAttendanceScreen() {
         const timer = setTimeout(() => setDebouncedBulkSearch(bulkSearch), 300);
         return () => clearTimeout(timer);
     }, [bulkSearch]);
+
+    // Debounce book search
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedBookSearch(bookSearch), 300);
+        return () => clearTimeout(timer);
+    }, [bookSearch]);
+
+    // Cleanup auto-save timers on unmount
+    useEffect(() => {
+        const timers = autoSaveTimers.current;
+        const saved = savedTimers.current;
+        return () => {
+            Object.values(timers).forEach(clearTimeout);
+            Object.values(saved).forEach(clearTimeout);
+        };
+    }, []);
 
     // Close dropdown on outside click
     useEffect(() => {
@@ -269,7 +386,7 @@ export function AdminAttendanceScreen() {
                 status: "ACTIVE,PROBATION,CONFIRMED,ON_NOTICE",
             }
         }).then(r => r.data),
-        enabled: bulkMode,
+        enabled: mode === 'bulk',
     });
     const bulkEmployees: EmployeeSearchResult[] = bulkEmployeesData?.data ?? [];
     const bulkMeta = bulkEmployeesData?.meta;
@@ -281,6 +398,111 @@ export function AdminAttendanceScreen() {
     });
     const todayLog: TodayLogEntry[] = todayLogData?.data ?? [];
     const logMeta = todayLogData?.meta;
+
+    // Company shifts for book mode filter
+    const shiftsQuery = useCompanyShifts();
+    const companyShifts: Array<{ id: string; name: string; startTime: string; endTime: string }> = shiftsQuery.data?.data ?? [];
+
+    // Book data query
+    const bookQueryParams = useMemo(() => ({
+        date: bookDate,
+        shiftId: bookShiftFilter !== "All" ? bookShiftFilter : undefined,
+        departmentId: bookDeptFilter !== "All" ? bookDeptFilter : undefined,
+        designationId: bookDesigFilter !== "All" ? bookDesigFilter : undefined,
+        search: debouncedBookSearch || undefined,
+        page: bookPage,
+        limit: 25,
+    }), [bookDate, bookShiftFilter, bookDeptFilter, bookDesigFilter, debouncedBookSearch, bookPage]);
+
+    const { data: bookData, isPending: isBookLoading } = useQuery({
+        queryKey: adminAttendanceKeys.book(bookQueryParams as unknown as Record<string, unknown>),
+        queryFn: () => adminAttendanceApi.fetchBook(bookQueryParams),
+        enabled: mode === 'book',
+        placeholderData: keepPreviousData,
+    });
+    const bookEmployees: BookEmployee[] = bookData?.data ?? [];
+    const bookMeta = bookData?.meta;
+
+    // Initialize row states from fetched book employees
+    useEffect(() => {
+        if (mode !== 'book' || !bookEmployees.length) return;
+        setBookRowStates(prev => {
+            const next = { ...prev };
+            for (const emp of bookEmployees) {
+                // Only initialize if not already set (or not dirty)
+                if (next[emp.employeeId] && next[emp.employeeId].dirty) continue;
+                const firstHalfRecord = emp.existingRecord?.halves?.find(h => h.half === 'FIRST_HALF');
+                const secondHalfRecord = emp.existingRecord?.halves?.find(h => h.half === 'SECOND_HALF');
+                next[emp.employeeId] = {
+                    firstHalf: (firstHalfRecord?.status as HalfDayStatus) ?? 'PRESENT',
+                    firstHalfLeaveTypeId: firstHalfRecord?.leaveTypeId ?? undefined,
+                    secondHalf: (secondHalfRecord?.status as HalfDayStatus) ?? 'PRESENT',
+                    secondHalfLeaveTypeId: secondHalfRecord?.leaveTypeId ?? undefined,
+                    punchInOverride: '',
+                    punchOutOverride: '',
+                    remarks: '',
+                    forceOverride: false,
+                    dirty: false,
+                    saving: false,
+                    saved: false,
+                    error: null,
+                    existingRecordUpdatedAt: emp.existingRecord?.updatedAt,
+                };
+            }
+            return next;
+        });
+    }, [bookEmployees, mode]);
+
+    // Book mark mutation (single row auto-save)
+    const bookMarkMutation = useMutation({
+        mutationFn: (data: Parameters<typeof adminAttendanceApi.bookMark>[0]) =>
+            adminAttendanceApi.bookMark(data),
+        onSuccess: (_res, variables) => {
+            const empId = variables.employeeId;
+            setBookRowStates(prev => ({
+                ...prev,
+                [empId]: { ...prev[empId], saving: false, saved: true, dirty: false, error: null },
+            }));
+            // Clear saved indicator after 3 seconds
+            if (savedTimers.current[empId]) clearTimeout(savedTimers.current[empId]);
+            savedTimers.current[empId] = setTimeout(() => {
+                setBookRowStates(prev => prev[empId] ? ({
+                    ...prev,
+                    [empId]: { ...prev[empId], saved: false },
+                }) : prev);
+            }, 3000);
+            queryClient.invalidateQueries({ queryKey: adminAttendanceKeys.book() });
+        },
+        onError: (err, variables) => {
+            const empId = variables.employeeId;
+            const message = (err as Error).message || 'Save failed';
+            setBookRowStates(prev => ({
+                ...prev,
+                [empId]: { ...prev[empId], saving: false, error: message },
+            }));
+        },
+    });
+
+    // Book save all mutation
+    const bookSaveAllMutation = useMutation({
+        mutationFn: (data: Parameters<typeof adminAttendanceApi.bookSaveAll>[0]) =>
+            adminAttendanceApi.bookSaveAll(data),
+        onSuccess: () => {
+            showSuccess("All unsaved entries saved successfully!");
+            // Clear dirty states
+            setBookRowStates(prev => {
+                const next = { ...prev };
+                for (const key of Object.keys(next)) {
+                    if (next[key].dirty) {
+                        next[key] = { ...next[key], dirty: false, saved: true, saving: false, error: null };
+                    }
+                }
+                return next;
+            });
+            queryClient.invalidateQueries({ queryKey: adminAttendanceKeys.book() });
+        },
+        onError: (err) => showApiError(err),
+    });
 
     // Mark mutation
     const markMutation = useMutation({
@@ -381,6 +603,114 @@ export function AdminAttendanceScreen() {
         });
     }, []);
 
+    // Book mode handlers
+    const updateBookRow = useCallback((employeeId: string, updates: Partial<BookRowState>) => {
+        setBookRowStates(prev => {
+            const current = prev[employeeId];
+            if (!current) return prev;
+            return { ...prev, [employeeId]: { ...current, ...updates, dirty: true, saved: false, error: null } };
+        });
+
+        // Auto-save with 500ms debounce
+        if (autoSaveTimers.current[employeeId]) {
+            clearTimeout(autoSaveTimers.current[employeeId]);
+        }
+        autoSaveTimers.current[employeeId] = setTimeout(() => {
+            setBookRowStates(prev => {
+                const row = prev[employeeId];
+                if (!row || !row.dirty) return prev;
+                // Trigger save
+                const merged = { ...row, ...updates };
+                const saveData: Parameters<typeof adminAttendanceApi.bookMark>[0] = {
+                    employeeId,
+                    date: bookDate,
+                    firstHalf: { status: merged.firstHalf, leaveTypeId: merged.firstHalf === 'ON_LEAVE' ? merged.firstHalfLeaveTypeId : undefined },
+                    secondHalf: { status: merged.secondHalf, leaveTypeId: merged.secondHalf === 'ON_LEAVE' ? merged.secondHalfLeaveTypeId : undefined },
+                    punchInOverride: merged.punchInOverride || undefined,
+                    punchOutOverride: merged.punchOutOverride || undefined,
+                    remarks: merged.remarks || undefined,
+                    forceOverride: merged.forceOverride || undefined,
+                    existingRecordUpdatedAt: merged.existingRecordUpdatedAt,
+                };
+                bookMarkMutation.mutate(saveData);
+                return { ...prev, [employeeId]: { ...row, saving: true } };
+            });
+        }, 500);
+    }, [bookDate, bookMarkMutation]);
+
+    const retryBookSave = useCallback((employeeId: string) => {
+        const row = bookRowStates[employeeId];
+        if (!row) return;
+        setBookRowStates(prev => ({ ...prev, [employeeId]: { ...prev[employeeId], saving: true, error: null } }));
+        bookMarkMutation.mutate({
+            employeeId,
+            date: bookDate,
+            firstHalf: { status: row.firstHalf, leaveTypeId: row.firstHalf === 'ON_LEAVE' ? row.firstHalfLeaveTypeId : undefined },
+            secondHalf: { status: row.secondHalf, leaveTypeId: row.secondHalf === 'ON_LEAVE' ? row.secondHalfLeaveTypeId : undefined },
+            punchInOverride: row.punchInOverride || undefined,
+            punchOutOverride: row.punchOutOverride || undefined,
+            remarks: row.remarks || undefined,
+            forceOverride: row.forceOverride || undefined,
+            existingRecordUpdatedAt: row.existingRecordUpdatedAt,
+        });
+    }, [bookRowStates, bookDate, bookMarkMutation]);
+
+    const handleBookOverride = useCallback((employeeId: string) => {
+        updateBookRow(employeeId, { forceOverride: true });
+    }, [updateBookRow]);
+
+    const toggleBookSelect = useCallback((id: string) => {
+        setBookSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    }, []);
+
+    const toggleBookSelectAll = useCallback(() => {
+        if (bookEmployees.every(e => bookSelectedIds.has(e.employeeId))) {
+            const next = new Set(bookSelectedIds);
+            bookEmployees.forEach(e => next.delete(e.employeeId));
+            setBookSelectedIds(next);
+        } else {
+            const next = new Set(bookSelectedIds);
+            bookEmployees.forEach(e => next.add(e.employeeId));
+            setBookSelectedIds(next);
+        }
+    }, [bookEmployees, bookSelectedIds]);
+
+    const handleBulkApply = useCallback(() => {
+        bookSelectedIds.forEach(empId => {
+            updateBookRow(empId, {
+                firstHalf: bulkApplyFirstHalf,
+                secondHalf: bulkApplySecondHalf,
+                firstHalfLeaveTypeId: undefined,
+                secondHalfLeaveTypeId: undefined,
+            });
+        });
+        setBookSelectedIds(new Set());
+    }, [bookSelectedIds, bulkApplyFirstHalf, bulkApplySecondHalf, updateBookRow]);
+
+    const handleSaveAllUnsaved = useCallback(() => {
+        const dirtyEntries = Object.entries(bookRowStates)
+            .filter(([, row]) => row.dirty && !row.saving)
+            .map(([empId, row]) => ({
+                employeeId: empId,
+                firstHalf: { status: row.firstHalf, leaveTypeId: row.firstHalf === 'ON_LEAVE' ? row.firstHalfLeaveTypeId : undefined },
+                secondHalf: { status: row.secondHalf, leaveTypeId: row.secondHalf === 'ON_LEAVE' ? row.secondHalfLeaveTypeId : undefined },
+                punchInOverride: row.punchInOverride || undefined,
+                punchOutOverride: row.punchOutOverride || undefined,
+                remarks: row.remarks || undefined,
+                forceOverride: row.forceOverride || undefined,
+                existingRecordUpdatedAt: row.existingRecordUpdatedAt,
+            }));
+        if (dirtyEntries.length === 0) return;
+        bookSaveAllMutation.mutate({ date: bookDate, entries: dirtyEntries });
+    }, [bookRowStates, bookDate, bookSaveAllMutation]);
+
+    const dirtyCount = useMemo(() => Object.values(bookRowStates).filter(r => r.dirty && !r.saving).length, [bookRowStates]);
+
     // Derived
     const attendanceStatus = empStatus?.status ?? "NOT_CHECKED_IN";
     const shiftInfo = empStatus?.shift ?? null;
@@ -412,29 +742,29 @@ export function AdminAttendanceScreen() {
                 </div>
 
                 {isAdminMode && (
-                    <label className="flex items-center gap-3 cursor-pointer select-none">
-                        <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">Bulk Mode</span>
-                        <div
-                            role="switch"
-                            aria-checked={bulkMode}
-                            onClick={() => { setBulkMode(!bulkMode); setBulkResults(null); }}
-                            className={cn(
-                                "relative w-11 h-6 rounded-full transition-colors cursor-pointer",
-                                bulkMode ? "bg-primary-600" : "bg-neutral-300 dark:bg-neutral-600"
-                            )}
-                        >
-                            <div className={cn(
-                                "absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform",
-                                bulkMode && "translate-x-5"
-                            )} />
-                        </div>
-                        <Users size={18} className={cn(bulkMode ? "text-primary-600" : "text-neutral-400")} />
-                    </label>
+                    <div className="flex items-center gap-1 p-1 rounded-xl bg-neutral-100 dark:bg-neutral-800">
+                        {([
+                            { key: 'single' as const, label: 'Single', icon: UserCheck },
+                            { key: 'bulk' as const, label: 'Bulk', icon: Users },
+                            { key: 'book' as const, label: 'Book', icon: BookOpen },
+                        ]).map(({ key, label, icon: Icon }) => (
+                            <button key={key} onClick={() => { setMode(key); setBulkResults(null); }}
+                                className={cn(
+                                    "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all",
+                                    mode === key
+                                        ? "bg-white dark:bg-neutral-700 text-primary-700 dark:text-primary-400 shadow-sm"
+                                        : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300"
+                                )}>
+                                <Icon size={16} />
+                                {label}
+                            </button>
+                        ))}
+                    </div>
                 )}
             </div>
 
             {/* Single Employee Mode */}
-            {!bulkMode && (
+            {mode === 'single' && (
                 <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                     {/* Left: Search + Employee Card (3/5 width) */}
                     <div className="lg:col-span-3 space-y-6">
@@ -731,7 +1061,7 @@ export function AdminAttendanceScreen() {
             )}
 
             {/* Bulk Mode */}
-            {bulkMode && isAdminMode && (
+            {mode === 'bulk' && isAdminMode && (
                 <div className="space-y-6">
                     {/* Filters + select */}
                     <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm overflow-hidden">
@@ -1006,6 +1336,449 @@ export function AdminAttendanceScreen() {
                             )}
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* Book Mode */}
+            {mode === 'book' && isAdminMode && (
+                <div className="space-y-6">
+                    {/* Filters */}
+                    <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm p-6">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-wrap">
+                            {/* Date picker */}
+                            <div className="relative">
+                                <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+                                <input
+                                    type="date"
+                                    value={bookDate}
+                                    max={getTodayDateString()}
+                                    onChange={(e) => { setBookDate(e.target.value); setBookPage(1); }}
+                                    className="pl-10 pr-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm font-medium text-primary-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/30 transition-all"
+                                />
+                            </div>
+
+                            {/* Shift filter */}
+                            <div className="relative">
+                                <select
+                                    value={bookShiftFilter}
+                                    onChange={(e) => { setBookShiftFilter(e.target.value); setBookPage(1); }}
+                                    className="appearance-none pl-4 pr-10 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm font-medium text-primary-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+                                >
+                                    <option value="All">All Shifts</option>
+                                    {companyShifts.map(s => (
+                                        <option key={s.id} value={s.id}>{s.name}</option>
+                                    ))}
+                                </select>
+                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+                            </div>
+
+                            {/* Department filter */}
+                            <div className="relative">
+                                <select
+                                    value={bookDeptFilter}
+                                    onChange={(e) => { setBookDeptFilter(e.target.value); setBookPage(1); }}
+                                    className="appearance-none pl-4 pr-10 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm font-medium text-primary-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+                                >
+                                    <option value="All">All Departments</option>
+                                    {departments.map(d => (
+                                        <option key={d.id} value={d.id}>{d.name}</option>
+                                    ))}
+                                </select>
+                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+                            </div>
+
+                            {/* Designation filter */}
+                            <div className="relative">
+                                <select
+                                    value={bookDesigFilter}
+                                    onChange={(e) => { setBookDesigFilter(e.target.value); setBookPage(1); }}
+                                    className="appearance-none pl-4 pr-10 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm font-medium text-primary-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+                                >
+                                    <option value="All">All Designations</option>
+                                    {designations.map(d => (
+                                        <option key={d.id} value={d.id}>{d.name}</option>
+                                    ))}
+                                </select>
+                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+                            </div>
+
+                            {/* Search */}
+                            <div className="relative flex-1 min-w-[200px]">
+                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                                <input
+                                    type="text"
+                                    value={bookSearch}
+                                    onChange={(e) => { setBookSearch(e.target.value); setBookPage(1); }}
+                                    placeholder="Search by name or code..."
+                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm text-primary-950 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-500/30 transition-all"
+                                />
+                                {bookSearch && (
+                                    <button onClick={() => { setBookSearch(""); setBookPage(1); }} className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-700">
+                                        <X className="w-3.5 h-3.5 text-neutral-400" />
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Clear filters */}
+                            {(bookShiftFilter !== "All" || bookDeptFilter !== "All" || bookDesigFilter !== "All" || bookSearch) && (
+                                <button
+                                    onClick={() => { setBookShiftFilter("All"); setBookDeptFilter("All"); setBookDesigFilter("All"); setBookSearch(""); setBookPage(1); }}
+                                    className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
+                                >
+                                    Clear filters
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Bulk apply bar */}
+                    {bookSelectedIds.size >= 2 && (
+                        <div className="rounded-2xl border border-primary-200 dark:border-primary-800/50 bg-primary-50 dark:bg-primary-900/20 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                            <span className="text-sm font-semibold text-primary-700 dark:text-primary-400 flex items-center gap-1.5">
+                                <Users size={14} />
+                                {bookSelectedIds.size} selected
+                            </span>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <label className="text-xs font-medium text-primary-600 dark:text-primary-400">1st Half:</label>
+                                <select
+                                    value={bulkApplyFirstHalf}
+                                    onChange={(e) => setBulkApplyFirstHalf(e.target.value as HalfDayStatus)}
+                                    className="appearance-none px-3 py-1.5 rounded-lg border border-primary-200 dark:border-primary-700 bg-white dark:bg-neutral-800 text-xs font-medium text-primary-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+                                >
+                                    <option value="PRESENT">Present</option>
+                                    <option value="ABSENT">Absent</option>
+                                </select>
+                                <label className="text-xs font-medium text-primary-600 dark:text-primary-400">2nd Half:</label>
+                                <select
+                                    value={bulkApplySecondHalf}
+                                    onChange={(e) => setBulkApplySecondHalf(e.target.value as HalfDayStatus)}
+                                    className="appearance-none px-3 py-1.5 rounded-lg border border-primary-200 dark:border-primary-700 bg-white dark:bg-neutral-800 text-xs font-medium text-primary-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+                                >
+                                    <option value="PRESENT">Present</option>
+                                    <option value="ABSENT">Absent</option>
+                                </select>
+                                <button
+                                    onClick={handleBulkApply}
+                                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold transition-colors"
+                                >
+                                    <Check size={12} />
+                                    Apply
+                                </button>
+                                <button
+                                    onClick={() => setBookSelectedIds(new Set())}
+                                    className="text-xs font-semibold text-primary-500 hover:text-primary-700 transition-colors"
+                                >
+                                    Clear
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Spreadsheet table */}
+                    <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm overflow-hidden">
+                        <div className="overflow-x-auto">
+                            {isBookLoading && !bookData ? (
+                                <div className="p-6"><SkeletonTable rows={8} cols={9} /></div>
+                            ) : bookEmployees.length === 0 ? (
+                                <div className="p-12 text-center">
+                                    <BookOpen className="w-10 h-10 text-neutral-300 mx-auto mb-2" />
+                                    <p className="text-sm text-neutral-500">No employees found for the selected filters</p>
+                                </div>
+                            ) : (
+                                <table className="w-full text-left border-collapse min-w-[1000px]">
+                                    <thead>
+                                        <tr className="bg-neutral-50/50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
+                                            <th className="py-3 px-4 w-10">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={bookEmployees.length > 0 && bookEmployees.every(e => bookSelectedIds.has(e.employeeId))}
+                                                    onChange={toggleBookSelectAll}
+                                                    className="w-4 h-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                                                />
+                                            </th>
+                                            <th className="py-3 px-4 font-bold">Employee</th>
+                                            <th className="py-3 px-4 font-bold">Shift</th>
+                                            <th className="py-3 px-4 font-bold">1st Half</th>
+                                            <th className="py-3 px-4 font-bold">2nd Half</th>
+                                            <th className="py-3 px-4 font-bold">Punch In</th>
+                                            <th className="py-3 px-4 font-bold">Punch Out</th>
+                                            <th className="py-3 px-4 font-bold">Status</th>
+                                            <th className="py-3 px-4 font-bold w-12"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="text-sm">
+                                        {bookEmployees.map((emp) => {
+                                            const row = bookRowStates[emp.employeeId];
+                                            const isLocked = emp.existingRecord?.isLocked && !row?.forceOverride;
+                                            const firstHalf = row?.firstHalf ?? 'PRESENT';
+                                            const secondHalf = row?.secondHalf ?? 'PRESENT';
+                                            const status = deriveBookStatus(firstHalf, secondHalf);
+                                            const anyPresent = firstHalf === 'PRESENT' || secondHalf === 'PRESENT';
+
+                                            return (
+                                                <tr
+                                                    key={emp.employeeId}
+                                                    className={cn(
+                                                        "border-b border-neutral-100 dark:border-neutral-800/50 transition-colors",
+                                                        bookSelectedIds.has(emp.employeeId)
+                                                            ? "bg-primary-50/50 dark:bg-primary-900/10"
+                                                            : "hover:bg-neutral-50/30 dark:hover:bg-neutral-800/30",
+                                                        isLocked && "opacity-60"
+                                                    )}
+                                                >
+                                                    {/* Checkbox */}
+                                                    <td className="py-3 px-4">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={bookSelectedIds.has(emp.employeeId)}
+                                                            onChange={() => toggleBookSelect(emp.employeeId)}
+                                                            className="w-4 h-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                                                        />
+                                                    </td>
+
+                                                    {/* Employee */}
+                                                    <td className="py-3 px-4">
+                                                        <div className="flex items-center gap-2.5">
+                                                            <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                                                <R2Image fileKey={emp.profilePhotoUrl} alt="" className="w-full h-full rounded-full object-cover" fallback={
+                                                                    <span className="text-xs font-bold text-primary-600 dark:text-primary-400">
+                                                                        {getInitials(emp.employeeName.split(' ')[0], emp.employeeName.split(' ').slice(1).join(' '))}
+                                                                    </span>
+                                                                } />
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <p className="text-sm font-semibold text-primary-950 dark:text-white truncate">{emp.employeeName}</p>
+                                                                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 font-mono">{emp.employeeCode}</p>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+
+                                                    {/* Shift */}
+                                                    <td className="py-3 px-4">
+                                                        <span className="text-xs text-neutral-600 dark:text-neutral-300">
+                                                            {emp.shift ? `${emp.shift.name}` : '—'}
+                                                        </span>
+                                                        {emp.shift && (
+                                                            <p className="text-[10px] text-neutral-400 mt-0.5">
+                                                                {fmt.shiftTime(emp.shift.startTime)} - {fmt.shiftTime(emp.shift.endTime)}
+                                                            </p>
+                                                        )}
+                                                    </td>
+
+                                                    {/* First Half */}
+                                                    <td className="py-3 px-4">
+                                                        <div className="space-y-1">
+                                                            <select
+                                                                value={firstHalf}
+                                                                disabled={isLocked}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value as HalfDayStatus;
+                                                                    updateBookRow(emp.employeeId, { firstHalf: val, firstHalfLeaveTypeId: undefined });
+                                                                }}
+                                                                className={cn(
+                                                                    "appearance-none w-full px-2.5 py-1.5 rounded-lg border text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary-500/30 transition-all",
+                                                                    firstHalf === 'PRESENT' && "border-success-200 bg-success-50 text-success-700 dark:border-success-800/50 dark:bg-success-900/20 dark:text-success-400",
+                                                                    firstHalf === 'ABSENT' && "border-danger-200 bg-danger-50 text-danger-700 dark:border-danger-800/50 dark:bg-danger-900/20 dark:text-danger-400",
+                                                                    firstHalf === 'ON_LEAVE' && "border-primary-200 bg-primary-50 text-primary-700 dark:border-primary-800/50 dark:bg-primary-900/20 dark:text-primary-400",
+                                                                    isLocked && "cursor-not-allowed"
+                                                                )}
+                                                            >
+                                                                <option value="PRESENT">Present</option>
+                                                                <option value="ABSENT">Absent</option>
+                                                                <option value="ON_LEAVE">On Leave</option>
+                                                            </select>
+                                                            {firstHalf === 'ON_LEAVE' && (
+                                                                <select
+                                                                    value={row?.firstHalfLeaveTypeId ?? ''}
+                                                                    disabled={isLocked}
+                                                                    onChange={(e) => updateBookRow(emp.employeeId, { firstHalfLeaveTypeId: e.target.value || undefined })}
+                                                                    className="appearance-none w-full px-2 py-1 rounded-lg border border-primary-200 dark:border-primary-700 bg-white dark:bg-neutral-800 text-[11px] text-primary-950 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary-500/30"
+                                                                >
+                                                                    <option value="">Select leave...</option>
+                                                                    {emp.leaveBalances.map(lb => (
+                                                                        <option key={lb.leaveTypeId} value={lb.leaveTypeId} disabled={lb.balance < 0.5}>
+                                                                            {lb.leaveTypeName} ({lb.balance})
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
+                                                            )}
+                                                        </div>
+                                                    </td>
+
+                                                    {/* Second Half */}
+                                                    <td className="py-3 px-4">
+                                                        <div className="space-y-1">
+                                                            <select
+                                                                value={secondHalf}
+                                                                disabled={isLocked}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value as HalfDayStatus;
+                                                                    updateBookRow(emp.employeeId, { secondHalf: val, secondHalfLeaveTypeId: undefined });
+                                                                }}
+                                                                className={cn(
+                                                                    "appearance-none w-full px-2.5 py-1.5 rounded-lg border text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary-500/30 transition-all",
+                                                                    secondHalf === 'PRESENT' && "border-success-200 bg-success-50 text-success-700 dark:border-success-800/50 dark:bg-success-900/20 dark:text-success-400",
+                                                                    secondHalf === 'ABSENT' && "border-danger-200 bg-danger-50 text-danger-700 dark:border-danger-800/50 dark:bg-danger-900/20 dark:text-danger-400",
+                                                                    secondHalf === 'ON_LEAVE' && "border-primary-200 bg-primary-50 text-primary-700 dark:border-primary-800/50 dark:bg-primary-900/20 dark:text-primary-400",
+                                                                    isLocked && "cursor-not-allowed"
+                                                                )}
+                                                            >
+                                                                <option value="PRESENT">Present</option>
+                                                                <option value="ABSENT">Absent</option>
+                                                                <option value="ON_LEAVE">On Leave</option>
+                                                            </select>
+                                                            {secondHalf === 'ON_LEAVE' && (
+                                                                <select
+                                                                    value={row?.secondHalfLeaveTypeId ?? ''}
+                                                                    disabled={isLocked}
+                                                                    onChange={(e) => updateBookRow(emp.employeeId, { secondHalfLeaveTypeId: e.target.value || undefined })}
+                                                                    className="appearance-none w-full px-2 py-1 rounded-lg border border-primary-200 dark:border-primary-700 bg-white dark:bg-neutral-800 text-[11px] text-primary-950 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary-500/30"
+                                                                >
+                                                                    <option value="">Select leave...</option>
+                                                                    {emp.leaveBalances.map(lb => (
+                                                                        <option key={lb.leaveTypeId} value={lb.leaveTypeId} disabled={lb.balance < 0.5}>
+                                                                            {lb.leaveTypeName} ({lb.balance})
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
+                                                            )}
+                                                        </div>
+                                                    </td>
+
+                                                    {/* Punch In */}
+                                                    <td className="py-3 px-4">
+                                                        {anyPresent ? (
+                                                            <input
+                                                                type="time"
+                                                                value={row?.punchInOverride ?? ''}
+                                                                disabled={isLocked}
+                                                                onChange={(e) => updateBookRow(emp.employeeId, { punchInOverride: e.target.value })}
+                                                                placeholder={emp.existingRecord?.punchIn ? fmt.time(emp.existingRecord.punchIn) : '—'}
+                                                                className={cn(
+                                                                    "w-full px-2 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-xs text-primary-950 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary-500/30",
+                                                                    isLocked && "cursor-not-allowed opacity-50"
+                                                                )}
+                                                            />
+                                                        ) : (
+                                                            <span className="text-xs text-neutral-400">—</span>
+                                                        )}
+                                                    </td>
+
+                                                    {/* Punch Out */}
+                                                    <td className="py-3 px-4">
+                                                        {anyPresent ? (
+                                                            <input
+                                                                type="time"
+                                                                value={row?.punchOutOverride ?? ''}
+                                                                disabled={isLocked}
+                                                                onChange={(e) => updateBookRow(emp.employeeId, { punchOutOverride: e.target.value })}
+                                                                placeholder={emp.existingRecord?.punchOut ? fmt.time(emp.existingRecord.punchOut) : '—'}
+                                                                className={cn(
+                                                                    "w-full px-2 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-xs text-primary-950 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary-500/30",
+                                                                    isLocked && "cursor-not-allowed opacity-50"
+                                                                )}
+                                                            />
+                                                        ) : (
+                                                            <span className="text-xs text-neutral-400">—</span>
+                                                        )}
+                                                    </td>
+
+                                                    {/* Status */}
+                                                    <td className="py-3 px-4">
+                                                        <span
+                                                            title={status.tooltip}
+                                                            className={cn("inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold border", status.color)}
+                                                        >
+                                                            {status.label}
+                                                        </span>
+                                                    </td>
+
+                                                    {/* Indicator */}
+                                                    <td className="py-3 px-4">
+                                                        <div className="flex items-center gap-1.5">
+                                                            {row?.saving && (
+                                                                <Loader2 className="w-4 h-4 animate-spin text-primary-500" />
+                                                            )}
+                                                            {row?.saved && !row?.saving && (
+                                                                <Check className="w-4 h-4 text-success-500" />
+                                                            )}
+                                                            {row?.dirty && !row?.saving && !row?.saved && (
+                                                                <div className="w-2.5 h-2.5 rounded-full bg-warning-400" title="Unsaved changes" />
+                                                            )}
+                                                            {row?.error && !row?.saving && (
+                                                                <button
+                                                                    onClick={() => retryBookSave(emp.employeeId)}
+                                                                    title={`Error: ${row.error}. Click to retry.`}
+                                                                    className="text-danger-500 hover:text-danger-700 transition-colors"
+                                                                >
+                                                                    <AlertTriangle className="w-4 h-4" />
+                                                                </button>
+                                                            )}
+                                                            {isLocked && (
+                                                                <button
+                                                                    onClick={() => handleBookOverride(emp.employeeId)}
+                                                                    title="Record is locked. Click to override."
+                                                                    className="flex items-center gap-1 text-[10px] font-semibold text-warning-600 hover:text-warning-700 dark:text-warning-400 transition-colors"
+                                                                >
+                                                                    <Lock className="w-3.5 h-3.5" />
+                                                                    <span className="hidden xl:inline">Override</span>
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+
+                        {/* Footer: pagination + Save All */}
+                        <div className="flex items-center justify-between px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
+                            <div className="flex items-center gap-4">
+                                {bookMeta && (
+                                    <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                                        Page {bookMeta.page} of {bookMeta.totalPages} ({bookMeta.total} employees)
+                                    </p>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-3">
+                                {dirtyCount > 0 && (
+                                    <button
+                                        onClick={handleSaveAllUnsaved}
+                                        disabled={bookSaveAllMutation.isPending}
+                                        className={cn(
+                                            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-white transition-all",
+                                            "bg-primary-600 hover:bg-primary-700 active:bg-primary-800",
+                                            "disabled:opacity-50 disabled:cursor-not-allowed"
+                                        )}
+                                    >
+                                        {bookSaveAllMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                        Save All Unsaved ({dirtyCount})
+                                    </button>
+                                )}
+                                {bookMeta && bookMeta.totalPages > 1 && (
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setBookPage(p => Math.max(1, p - 1))}
+                                            disabled={bookPage <= 1}
+                                            className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-30 transition-colors"
+                                        >
+                                            <ChevronLeft size={16} />
+                                        </button>
+                                        <button
+                                            onClick={() => setBookPage(p => Math.min(bookMeta.totalPages, p + 1))}
+                                            disabled={bookPage >= bookMeta.totalPages}
+                                            className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-30 transition-colors"
+                                        >
+                                            <ChevronRight size={16} />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
 
