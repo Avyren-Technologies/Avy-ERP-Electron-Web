@@ -266,7 +266,7 @@ export function AdminAttendanceScreen() {
                 search: debouncedBulkSearch || undefined,
                 page: bulkPage,
                 limit: 20,
-                status: "ACTIVE",
+                status: "ACTIVE,PROBATION,CONFIRMED,ON_NOTICE",
             }
         }).then(r => r.data),
         enabled: bulkMode,
