@@ -21,7 +21,7 @@ import { useAttendanceRules } from "@/features/company-admin/api/use-attendance-
 import { useUpdateAttendanceRules } from "@/features/company-admin/api/use-attendance-mutations";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { showSuccess, showApiError } from "@/lib/toast";
-import type { AttendanceRule, AttendanceMode, LeaveCheckInMode, ShiftMappingStrategy } from "@/lib/api/attendance";
+import type { AttendanceRule, AttendanceMode, CheckInUIMode, LeaveCheckInMode, ShiftMappingStrategy } from "@/lib/api/attendance";
 
 /* ── Toggle ── */
 
@@ -201,6 +201,11 @@ const SHIFT_MAPPING_STRATEGY_OPTIONS = [
     { value: "BEST_FIT_HOURS", label: "Best Fit Hours — Maximum overlap" },
 ];
 
+const CHECK_IN_UI_MODE_OPTIONS = [
+    { value: "SLIDE", label: "Slide to Check In — Swipe gesture" },
+    { value: "BUTTON", label: "Tap Button — Single tap" },
+];
+
 /* ── Defaults ── */
 
 const DEFAULTS: AttendanceRule = {
@@ -231,6 +236,7 @@ const DEFAULTS: AttendanceRule = {
     gpsRequired: false,
     geofenceEnforcementMode: "OFF",
     missingPunchAlert: true,
+    checkInUIMode: "SLIDE" as CheckInUIMode,
     attendanceMode: "SHIFT_STRICT" as AttendanceMode,
     leaveCheckInMode: "STRICT" as LeaveCheckInMode,
     leaveAutoAdjustmentEnabled: true,
@@ -395,7 +401,8 @@ export function AttendanceRulesScreen() {
                 </SectionCard>
 
                 {/* Attendance Mode */}
-                <SectionCard title="Attendance Mode" icon={Settings2} sectionDescription="Control how strictly shift timing is enforced and how leave affects check-in windows.">
+                <SectionCard title="Attendance Mode" icon={Settings2} sectionDescription="Control how strictly shift timing is enforced, check-in interaction style, and how leave affects check-in windows.">
+                    <SelectRow label="Check-In UI Mode" description="Slide: employees swipe to check in/out. Tap Button: employees tap a button. Applies company-wide on mobile." value={rules.checkInUIMode} onChange={(v) => updateRule("checkInUIMode", v as CheckInUIMode)} options={CHECK_IN_UI_MODE_OPTIONS} tooltip="Controls how employees interact with the check-in/check-out action on mobile devices. Slide requires a swipe gesture, Button is a single tap." />
                     <SelectRow label="Attendance Mode" description="Controls overall shift time window enforcement" value={rules.attendanceMode} onChange={(v) => updateRule("attendanceMode", v as AttendanceMode)} options={ATTENDANCE_MODE_OPTIONS} />
                     <SelectRow label="Leave Check-In Mode" description="How approved leave affects the check-in time window" value={rules.leaveCheckInMode} onChange={(v) => updateRule("leaveCheckInMode", v as LeaveCheckInMode)} options={LEAVE_CHECKIN_MODE_OPTIONS} />
                     <Toggle label="Leave Auto-Adjustment" description="Automatically adjust leave based on actual hours worked (cancel/convert)" checked={rules.leaveAutoAdjustmentEnabled} onChange={(v) => updateRule("leaveAutoAdjustmentEnabled", v)} />
