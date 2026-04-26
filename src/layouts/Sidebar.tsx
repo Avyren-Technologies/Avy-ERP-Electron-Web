@@ -1,7 +1,7 @@
 // ============================================================
 // Sidebar — Manifest-driven, collapsible, sub-modules with dotted connector lines
 // ============================================================
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -229,6 +229,17 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
     const [hoveredLabel, setHoveredLabel] = useState<string | null>(null);
     const [hoveredRect, setHoveredRect] = useState<DOMRect | null>(null);
 
+    const navRef = useRef<HTMLElement>(null);
+
+    // Scroll the active sidebar item into view on route change or data load
+    useEffect(() => {
+        if (collapsed || !manifestSections) return;
+        requestAnimationFrame(() => {
+            const activeEl = navRef.current?.querySelector('[data-active="true"]');
+            activeEl?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        });
+    }, [location.pathname, collapsed, manifestSections]);
+
     const handleMouseEnter = (e: React.MouseEvent<HTMLElement>, label: string) => {
         if (collapsed) {
             setHoveredLabel(label);
@@ -296,7 +307,7 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
             )}
 
             {/* ---- Navigation ---- */}
-            <nav className="flex-1 py-3 overflow-y-auto overflow-x-hidden custom-scrollbar">
+            <nav ref={navRef} className="flex-1 py-3 overflow-y-auto overflow-x-hidden custom-scrollbar">
                 {visibleSections.map((section) => {
                     const isOverview = section.group === 'Overview';
                     const hasOnlyChildItems = section.items.every(item => item.children && item.children.length > 0);
@@ -396,6 +407,7 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
                                                     <NavLink
                                                         key={`${section.group}::${item.path}`}
                                                         to={item.path}
+                                                        data-active={active ? "true" : undefined}
                                                         className={cn(
                                                             'flex items-center gap-2.5 pl-[48px] pr-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 group/sub relative',
                                                             active
@@ -443,6 +455,7 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
                                             }
                                         }}
                                         title={undefined}
+                                        data-active={active && !hasChildren ? "true" : undefined}
                                         className={cn(
                                             'w-full flex items-center gap-3 rounded-xl transition-all duration-150 group relative',
                                             collapsed ? 'px-2.5 py-2.5 justify-center' : 'px-3 py-2.5',
@@ -502,6 +515,7 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
                                                         <NavLink
                                                             key={`${section.group}::${item.path}::${child.path}::${ci}`}
                                                             to={child.path}
+                                                            data-active={childActive ? "true" : undefined}
                                                             className={cn(
                                                                 'flex items-center gap-2.5 pl-[48px] pr-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 group/sub relative',
                                                                 childActive

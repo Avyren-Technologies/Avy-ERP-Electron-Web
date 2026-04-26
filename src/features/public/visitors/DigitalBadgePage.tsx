@@ -1,22 +1,31 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import QRCode from 'react-qr-code';
 import axios from 'axios';
 import { publicApi } from '@/lib/api/public-client';
 
 interface BadgeData {
   visitorName: string;
-  company?: string;
+  visitorCompany?: string;
   badgeNumber?: string;
-  visitorType: {
+  visitorType?: {
     name: string;
-    color?: string;
+    code?: string;
+    badgeColour?: string;
+    requireEscort?: boolean;
+  };
+  company?: {
+    name: string;
+    displayName?: string;
+    logoUrl?: string;
   };
   checkInTime?: string;
+  expectedDurationMinutes?: number;
+  qrCodeData?: string;
   status: string;
-  visitCode: string;
-  hostName?: string;
-  location?: string;
+  message?: string;
+  visitDate?: string;
+  safetyInductionStatus?: string;
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -112,9 +121,11 @@ export function DigitalBadgePage() {
   }
 
   // Active badge
-  const typeColor = badge.visitorType?.color
-    ? TYPE_COLORS[badge.visitorType.color] || 'bg-indigo-500'
+  const typeColor = badge.visitorType?.badgeColour
+    ? TYPE_COLORS[badge.visitorType.badgeColour] || 'bg-indigo-500'
     : 'bg-indigo-500';
+
+  const companyDisplayName = badge.company?.displayName || badge.company?.name;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4 py-8">
@@ -124,16 +135,59 @@ export function DigitalBadgePage() {
           {/* Color strip */}
           <div className={`h-2 ${typeColor}`} />
 
+          {/* Safety Induction Banner */}
+          {badge.safetyInductionStatus === 'PENDING' && (
+            <Link
+              to={`/visit/${visitCode}/induction`}
+              className="block bg-amber-50 border-b border-amber-200 px-4 py-3 hover:bg-amber-100 transition"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-amber-800">Safety Induction Required</p>
+                  <p className="text-xs text-amber-600">Please complete your safety induction</p>
+                </div>
+                <svg className="w-5 h-5 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </Link>
+          )}
+
+          {/* Escort Required Banner */}
+          {badge.visitorType?.requireEscort && (
+            <div className="bg-red-50 border-b border-red-200 px-4 py-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-red-800">Escort Required</p>
+                  <p className="text-xs text-red-600">This visitor requires an escort at all times</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Badge header */}
           <div className="px-6 pt-6 pb-4 text-center border-b border-gray-100">
+            {badge.company?.logoUrl && (
+              <img src={badge.company.logoUrl} alt={companyDisplayName} className="h-8 mx-auto mb-3 object-contain" />
+            )}
             <div className="w-20 h-20 mx-auto rounded-full bg-indigo-100 flex items-center justify-center mb-3">
               <span className="text-3xl font-bold text-indigo-600">
                 {badge.visitorName?.charAt(0)?.toUpperCase()}
               </span>
             </div>
             <h2 className="text-xl font-bold text-gray-800">{badge.visitorName}</h2>
-            {badge.company && (
-              <p className="text-sm text-gray-500 mt-1">{badge.company}</p>
+            {badge.visitorCompany && (
+              <p className="text-sm text-gray-500 mt-1">{badge.visitorCompany}</p>
             )}
           </div>
 
@@ -145,28 +199,26 @@ export function DigitalBadgePage() {
                 <span className="font-mono font-semibold text-gray-800">{badge.badgeNumber}</span>
               </div>
             )}
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Visitor Type</span>
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${typeColor} text-white`}>
-                {badge.visitorType?.name}
-              </span>
-            </div>
+            {badge.visitorType && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Visitor Type</span>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${typeColor} text-white`}>
+                  {badge.visitorType.name}
+                </span>
+              </div>
+            )}
             {badge.checkInTime && (
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Check-In</span>
-                <span className="font-medium text-gray-800">{badge.checkInTime}</span>
+                <span className="font-medium text-gray-800">
+                  {new Date(badge.checkInTime).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                </span>
               </div>
             )}
-            {badge.hostName && (
+            {companyDisplayName && (
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Host</span>
-                <span className="font-medium text-gray-800">{badge.hostName}</span>
-              </div>
-            )}
-            {badge.location && (
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Location</span>
-                <span className="font-medium text-gray-800">{badge.location}</span>
+                <span className="text-gray-500">Facility</span>
+                <span className="font-medium text-gray-800">{companyDisplayName}</span>
               </div>
             )}
           </div>
@@ -174,9 +226,9 @@ export function DigitalBadgePage() {
           {/* QR section */}
           <div className="px-6 py-4 bg-gray-50 text-center border-t border-gray-100">
             <div className="bg-white p-4 rounded-lg inline-block">
-              <QRCode value={badge.visitCode || badge.badgeNumber || ''} size={160} />
+              <QRCode value={badge.qrCodeData || visitCode || ''} size={160} />
             </div>
-            <p className="text-xs font-mono text-gray-500 mt-2">{badge.visitCode || visitCode}</p>
+            <p className="text-xs font-mono text-gray-500 mt-2">{badge.qrCodeData || visitCode}</p>
             <p className="text-xs text-gray-400 mt-1">Visit Code</p>
           </div>
 

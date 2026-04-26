@@ -181,13 +181,13 @@ export function VisitorDashboardScreen() {
 
             {/* Stats Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4">
-                <StatCard title="Expected Today" value={stats.expectedToday ?? todayData.expectedCount ?? 0} icon={Users} color="primary" />
-                <StatCard title="Checked In" value={stats.checkedInToday ?? todayData.checkedInCount ?? 0} icon={LogIn} color="success" />
-                <StatCard title="On-Site Now" value={onSiteVisitors.length ?? stats.onSiteNow ?? 0} icon={UserCheck} color="info" />
-                <StatCard title="Checked Out" value={stats.checkedOutToday ?? todayData.checkedOutCount ?? 0} icon={LogOut} color="neutral" />
-                <StatCard title="Pending Approval" value={stats.pendingApproval ?? todayData.pendingCount ?? 0} icon={Clock} color="warning" />
-                <StatCard title="Overstay" value={stats.overstayCount ?? 0} icon={AlertTriangle} color="danger" />
-                <StatCard title="Denied" value={stats.deniedToday ?? 0} icon={Shield} color="danger" subtitle="Today" />
+                <StatCard title="Expected Today" value={todayData.stats?.totalExpected ?? 0} icon={Users} color="primary" />
+                <StatCard title="Checked In" value={todayData.stats?.checkedIn ?? 0} icon={LogIn} color="success" />
+                <StatCard title="On-Site Now" value={todayData.stats?.onSiteNow ?? onSiteVisitors.length ?? 0} icon={UserCheck} color="info" />
+                <StatCard title="Checked Out" value={todayData.stats?.checkedOut ?? 0} icon={LogOut} color="neutral" />
+                <StatCard title="Walk-Ins" value={todayData.stats?.walkIns ?? 0} icon={Clock} color="warning" />
+                <StatCard title="Overstaying" value={todayData.stats?.overstaying ?? 0} icon={AlertTriangle} color="danger" />
+                <StatCard title="No Shows" value={todayData.stats?.noShows ?? 0} icon={Shield} color="danger" subtitle="Today" />
             </div>
 
             {/* On-Site Visitors Quick View */}
@@ -293,9 +293,9 @@ export function VisitorDashboardScreen() {
                                                 {v.visitorType?.name || v.visitorTypeName || "Visitor"}
                                             </span>
                                         </td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{v.hostEmployee?.name || v.hostName || "---"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{v.hostEmployeeName ?? v.hostEmployee?.name ?? v.hostName ?? "---"}</td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">
-                                            {v.expectedArrival ? fmt.time(v.expectedArrival) : "---"}
+                                            {v.expectedDate ? fmt.date(v.expectedDate) : "---"}
                                         </td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">
                                             {v.checkInTime ? fmt.time(v.checkInTime) : "---"}

@@ -19,8 +19,8 @@ export function VisitHistoryScreen() {
     const params: Record<string, unknown> = { page, limit: 25 };
     if (search) params.search = search;
     if (status) params.status = status;
-    if (dateFrom) params.dateFrom = dateFrom;
-    if (dateTo) params.dateTo = dateTo;
+    if (dateFrom) params.fromDate = dateFrom;
+    if (dateTo) params.toDate = dateTo;
 
     const { data, isLoading, isError } = useVisits(params);
     const visits: any[] = data?.data ?? [];
@@ -44,8 +44,10 @@ export function VisitHistoryScreen() {
                     <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none dark:text-white">
                         <option value="">All Statuses</option>
                         <option value="CHECKED_OUT">Checked Out</option>
+                        <option value="AUTO_CHECKED_OUT">Auto Checked Out</option>
                         <option value="CANCELLED">Cancelled</option>
                         <option value="REJECTED">Rejected</option>
+                        <option value="NO_SHOW">No Show</option>
                     </select>
                     <button onClick={() => setShowFilters(!showFilters)} className={cn("p-2.5 rounded-xl border transition-colors", showFilters ? "bg-primary-50 text-primary-600 border-primary-200" : "border-neutral-200 text-neutral-500 hover:bg-neutral-50")}><Filter size={16} /></button>
                 </div>
@@ -79,9 +81,8 @@ export function VisitHistoryScreen() {
                             <tbody className="text-sm">
                                 {visits.map((v: any) => {
                                     let duration = "---";
-                                    if (v.checkInTime && v.checkOutTime) {
-                                        const ms = new Date(v.checkOutTime).getTime() - new Date(v.checkInTime).getTime();
-                                        const mins = Math.round(ms / 60000);
+                                    const mins = v.visitDurationMinutes ?? (v.checkInTime && v.checkOutTime ? Math.round((new Date(v.checkOutTime).getTime() - new Date(v.checkInTime).getTime()) / 60000) : null);
+                                    if (mins != null) {
                                         duration = mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
                                     }
                                     return (
@@ -96,8 +97,8 @@ export function VisitHistoryScreen() {
                                                 </div>
                                             </td>
                                             <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{v.visitorCompany || "---"}</td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{v.hostName || v.hostEmployee?.name || "---"}</td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{v.visitDate ? fmt.date(v.visitDate) : v.createdAt ? fmt.date(v.createdAt) : "---"}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{v.hostEmployeeName ?? v.hostEmployeeId ?? "---"}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{v.expectedDate ? fmt.date(v.expectedDate) : v.createdAt ? fmt.date(v.createdAt) : "---"}</td>
                                             <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{v.checkInTime ? fmt.time(v.checkInTime) : "---"}</td>
                                             <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{v.checkOutTime ? fmt.time(v.checkOutTime) : "---"}</td>
                                             <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs font-mono">{duration}</td>

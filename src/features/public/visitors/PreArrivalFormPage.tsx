@@ -7,14 +7,42 @@ interface VisitDetails {
   visitorName: string;
   expectedDate: string;
   purpose: string;
+  status: string;
   visitorType: {
     name: string;
-    requiresPhoto: boolean;
-    requiresId: boolean;
-    requiresNda: boolean;
+    requirePhoto: boolean;
+    requireIdVerification: boolean;
+    requireNda: boolean;
   };
-  preArrivalCompleted: boolean;
-  companyName?: string;
+  company?: { name: string; displayName?: string };
+  ndaTemplateContent?: string | null;
+}
+
+/** Simple markdown-to-HTML for NDA preview */
+function renderNdaMarkdown(md: string): string {
+  return md
+    .split("\n\n")
+    .map((block) => {
+      const trimmed = block.trim();
+      if (!trimmed) return "";
+      if (trimmed.startsWith("## ")) return `<h2 style="font-size:1.1rem;font-weight:700;margin:0.75rem 0 0.4rem">${ndaInline(trimmed.slice(3))}</h2>`;
+      if (trimmed.startsWith("# ")) return `<h1 style="font-size:1.25rem;font-weight:700;margin:0.75rem 0 0.4rem">${ndaInline(trimmed.slice(2))}</h1>`;
+      const lines = trimmed.split("\n");
+      if (/^\d+\.\s/.test(lines[0] ?? "")) {
+        const items = lines.map((l) => `<li style="margin-bottom:0.2rem">${ndaInline(l.replace(/^\d+\.\s*/, ""))}</li>`).join("");
+        return `<ol style="list-style:decimal;padding-left:1.5rem;margin:0.4rem 0">${items}</ol>`;
+      }
+      if (lines[0]?.startsWith("- ")) {
+        const items = lines.map((l) => `<li style="margin-bottom:0.2rem">${ndaInline(l.replace(/^-\s*/, ""))}</li>`).join("");
+        return `<ul style="list-style:disc;padding-left:1.5rem;margin:0.4rem 0">${items}</ul>`;
+      }
+      return `<p style="margin:0.4rem 0">${ndaInline(trimmed)}</p>`;
+    })
+    .join("");
+}
+
+function ndaInline(text: string): string {
+  return text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>");
 }
 
 export function PreArrivalFormPage() {
@@ -25,10 +53,10 @@ export function PreArrivalFormPage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [vehicleNumber, setVehicleNumber] = useState('');
+  const [vehicleRegNumber, setVehicleRegNumber] = useState('');
+  const [vehicleType, setVehicleType] = useState('');
   const [emergencyContact, setEmergencyContact] = useState('');
-  const [materialCarriedIn, setMaterialCarriedIn] = useState('');
-  const [ndaAccepted, setNdaAccepted] = useState(false);
+  const [ndaSigned, setNdaSigned] = useState(false);
 
   useEffect(() => {
     if (!visitCode) return;
@@ -37,7 +65,7 @@ export function PreArrivalFormPage() {
       .then((res) => {
         const data = res.data?.data;
         setVisit(data);
-        if (data?.preArrivalCompleted) setSubmitted(true);
+        if (data?.status !== 'EXPECTED') setSubmitted(true);
       })
       .catch((err) => {
         setError(err.response?.data?.message || 'Visit not found or link has expired.');
@@ -49,7 +77,7 @@ export function PreArrivalFormPage() {
     e.preventDefault();
     if (!visitCode) return;
 
-    if (visit?.visitorType?.requiresNda && !ndaAccepted) {
+    if (visit?.visitorType?.requireNda && !ndaSigned) {
       showApiError({ response: { data: { message: 'Please accept the NDA to continue.' } } });
       return;
     }
@@ -57,10 +85,10 @@ export function PreArrivalFormPage() {
     setSubmitting(true);
     try {
       await publicApi.post(`/public/visit/${visitCode}/pre-arrival`, {
-        vehicleNumber: vehicleNumber || undefined,
+        vehicleRegNumber: vehicleRegNumber || undefined,
+        vehicleType: vehicleType || undefined,
         emergencyContact: emergencyContact || undefined,
-        materialCarriedIn: materialCarriedIn || undefined,
-        ndaAccepted: visit?.visitorType?.requiresNda ? ndaAccepted : undefined,
+        ndaSigned: visit?.visitorType?.requireNda ? ndaSigned : undefined,
       });
       showSuccess('Pre-arrival form submitted successfully.');
       setSubmitted(true);
@@ -119,8 +147,8 @@ export function PreArrivalFormPage() {
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-600 to-violet-600 rounded-t-2xl px-6 py-8 text-white">
           <h1 className="text-2xl font-bold">Pre-Arrival Form</h1>
-          {visit.companyName && (
-            <p className="text-indigo-100 mt-1">{visit.companyName}</p>
+          {visit.company && (
+            <p className="text-indigo-100 mt-1">{visit.company.displayName || visit.company.name}</p>
           )}
         </div>
 
@@ -147,17 +175,17 @@ export function PreArrivalFormPage() {
 
           {/* Requirements */}
           <div className="mt-4 flex flex-wrap gap-2">
-            {visit.visitorType?.requiresPhoto && (
+            {visit.visitorType?.requirePhoto && (
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
                 Photo Required
               </span>
             )}
-            {visit.visitorType?.requiresId && (
+            {visit.visitorType?.requireIdVerification && (
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
                 ID Required
               </span>
             )}
-            {visit.visitorType?.requiresNda && (
+            {visit.visitorType?.requireNda && (
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
                 NDA Required
               </span>
@@ -168,15 +196,30 @@ export function PreArrivalFormPage() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-b-2xl shadow-lg px-6 py-6 space-y-5">
           <div>
-            <label htmlFor="vehicleNumber" className="block text-sm font-medium text-gray-700 mb-1">
-              Vehicle Number
+            <label htmlFor="vehicleRegNumber" className="block text-sm font-medium text-gray-700 mb-1">
+              Vehicle Registration Number
             </label>
             <input
-              id="vehicleNumber"
+              id="vehicleRegNumber"
               type="text"
-              value={vehicleNumber}
-              onChange={(e) => setVehicleNumber(e.target.value)}
+              value={vehicleRegNumber}
+              onChange={(e) => setVehicleRegNumber(e.target.value)}
               placeholder="e.g. KA-01-AB-1234"
+              maxLength={20}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="vehicleType" className="block text-sm font-medium text-gray-700 mb-1">
+              Vehicle Type
+            </label>
+            <input
+              id="vehicleType"
+              type="text"
+              value={vehicleType}
+              onChange={(e) => setVehicleType(e.target.value)}
+              placeholder="e.g. Car, Bike, Truck"
               className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition"
             />
           </div>
@@ -195,32 +238,33 @@ export function PreArrivalFormPage() {
             />
           </div>
 
-          <div>
-            <label htmlFor="materialCarriedIn" className="block text-sm font-medium text-gray-700 mb-1">
-              Material Carried In
-            </label>
-            <textarea
-              id="materialCarriedIn"
-              value={materialCarriedIn}
-              onChange={(e) => setMaterialCarriedIn(e.target.value)}
-              placeholder="Describe any materials you are bringing..."
-              rows={3}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition resize-none"
-            />
-          </div>
-
-          {visit.visitorType?.requiresNda && (
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={ndaAccepted}
-                onChange={(e) => setNdaAccepted(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span className="text-sm text-gray-600">
-                I agree to the Non-Disclosure Agreement terms and conditions for this visit.
-              </span>
-            </label>
+          {visit.visitorType?.requireNda && (
+            <div className="space-y-3">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-800 mb-2">Non-Disclosure Agreement</h3>
+                {visit.ndaTemplateContent ? (
+                  <div
+                    className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-700 max-h-64 overflow-y-auto"
+                    dangerouslySetInnerHTML={{ __html: renderNdaMarkdown(visit.ndaTemplateContent) }}
+                  />
+                ) : (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-600">
+                    By entering the premises, you acknowledge and agree to maintain confidentiality of any information accessed during your visit. You agree not to disclose, photograph, or record any confidential information without prior written consent.
+                  </div>
+                )}
+              </div>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={ndaSigned}
+                  onChange={(e) => setNdaSigned(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="text-sm text-gray-600">
+                  I have read, understood, and agree to the Non-Disclosure Agreement terms above.
+                </span>
+              </label>
+            </div>
           )}
 
           <button

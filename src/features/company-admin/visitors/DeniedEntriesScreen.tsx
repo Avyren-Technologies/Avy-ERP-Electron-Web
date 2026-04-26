@@ -53,8 +53,8 @@ export function DeniedEntriesScreen() {
     const params: Record<string, unknown> = { page, limit: 25 };
     if (search) params.search = search;
     if (denialReason) params.denialReason = denialReason;
-    if (dateFrom) params.dateFrom = dateFrom;
-    if (dateTo) params.dateTo = dateTo;
+    if (dateFrom) params.fromDate = dateFrom;
+    if (dateTo) params.toDate = dateTo;
 
     const { data, isLoading, isError } = useDeniedEntries(params);
     const entries: any[] = data?.data ?? [];
@@ -119,11 +119,11 @@ export function DeniedEntriesScreen() {
                                         </td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{e.visitorMobile || "---"}</td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{e.visitorCompany || "---"}</td>
-                                        <td className="py-4 px-6 text-center"><DenialReasonBadge reason={e.denialReason || e.reason} /></td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{e.gate?.name || e.gateName || "---"}</td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{e.deniedByName || e.deniedBy?.name || "---"}</td>
+                                        <td className="py-4 px-6 text-center"><DenialReasonBadge reason={e.denialReason} /></td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{e.gateId || "---"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{e.deniedBy || "---"}</td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{e.deniedAt ? fmt.dateTime(e.deniedAt) : e.createdAt ? fmt.dateTime(e.createdAt) : "---"}</td>
-                                        <td className="py-4 px-6 text-neutral-500 dark:text-neutral-400 text-xs max-w-[200px] truncate">{e.details || e.notes || "---"}</td>
+                                        <td className="py-4 px-6 text-neutral-500 dark:text-neutral-400 text-xs max-w-[200px] truncate">{e.denialDetails || "---"}</td>
                                     </tr>
                                 ))}
                                 {entries.length === 0 && !isLoading && (

@@ -12,8 +12,9 @@ async function listVisits(params?: {
     hostEmployeeId?: string;
     plantId?: string;
     gateId?: string;
-    dateFrom?: string;
-    dateTo?: string;
+    registrationMethod?: string;
+    fromDate?: string;
+    toDate?: string;
 }): Promise<ApiResponse<any>> {
     const response = await client.get('/visitors/visits', { params });
     return response.data;
@@ -97,6 +98,16 @@ async function createVisitorType(data: any): Promise<ApiResponse<any>> {
 
 async function updateVisitorType(id: string, data: any): Promise<ApiResponse<any>> {
     const response = await client.put(`/visitors/types/${id}`, data);
+    return response.data;
+}
+
+async function deactivateVisitorType(id: string): Promise<ApiResponse<any>> {
+    const response = await client.patch(`/visitors/types/${id}/deactivate`);
+    return response.data;
+}
+
+async function activateVisitorType(id: string): Promise<ApiResponse<any>> {
+    const response = await client.patch(`/visitors/types/${id}/activate`);
     return response.data;
 }
 
@@ -246,8 +257,8 @@ async function updateRecurringPass(id: string, data: any): Promise<ApiResponse<a
     return response.data;
 }
 
-async function revokeRecurringPass(id: string): Promise<ApiResponse<any>> {
-    const response = await client.post(`/visitors/recurring-passes/${id}/revoke`);
+async function revokeRecurringPass(id: string, data: { reason: string }): Promise<ApiResponse<any>> {
+    const response = await client.post(`/visitors/recurring-passes/${id}/revoke`, data);
     return response.data;
 }
 
@@ -347,8 +358,7 @@ async function getDashboardOnSite(params?: {
 }
 
 async function getDashboardStats(params?: {
-    dateFrom?: string;
-    dateTo?: string;
+    plantId?: string;
 }): Promise<ApiResponse<any>> {
     const response = await client.get('/visitors/dashboard/stats', { params });
     return response.data;
@@ -366,25 +376,27 @@ async function getDailyLog(params?: {
 }
 
 async function getReportSummary(params?: {
-    dateFrom?: string;
-    dateTo?: string;
-    groupBy?: string;
+    fromDate?: string;
+    toDate?: string;
+    plantId?: string;
 }): Promise<ApiResponse<any>> {
     const response = await client.get('/visitors/reports/summary', { params });
     return response.data;
 }
 
 async function getOverstayReport(params?: {
-    dateFrom?: string;
-    dateTo?: string;
+    fromDate?: string;
+    toDate?: string;
+    plantId?: string;
 }): Promise<ApiResponse<any>> {
     const response = await client.get('/visitors/reports/overstay', { params });
     return response.data;
 }
 
 async function getAnalytics(params?: {
-    dateFrom?: string;
-    dateTo?: string;
+    fromDate?: string;
+    toDate?: string;
+    plantId?: string;
 }): Promise<ApiResponse<any>> {
     const response = await client.get('/visitors/reports/analytics', { params });
     return response.data;
@@ -431,6 +443,8 @@ export const visitorsApi = {
     getVisitorType,
     createVisitorType,
     updateVisitorType,
+    deactivateVisitorType,
+    activateVisitorType,
     deleteVisitorType,
     // Gates
     listGates,

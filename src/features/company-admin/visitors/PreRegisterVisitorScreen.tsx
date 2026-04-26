@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
     Loader2,
     ArrowLeft,
@@ -6,14 +6,20 @@ import {
     Clock,
     Building2,
     User,
-    Phone,
     Mail,
     FileText,
     Car,
+    MapPin,
+    Briefcase,
+    Camera,
 } from "lucide-react";
 import { useCreateVisit } from "@/features/company-admin/api/use-visitor-mutations";
 import { useVisitorTypes, useGates } from "@/features/company-admin/api/use-visitor-queries";
 import { showSuccess, showApiError } from "@/lib/toast";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { PhoneInput } from "@/components/ui/PhoneInput";
+import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
+import { useCompanyLocations } from "@/features/company-admin/api/use-company-admin-queries";
 
 /* ── Form atoms ── */
 
@@ -135,9 +141,7 @@ const PURPOSE_OPTIONS = [
     { value: "DELIVERY", label: "Delivery" },
     { value: "MAINTENANCE", label: "Maintenance / Repair" },
     { value: "AUDIT", label: "Audit / Inspection" },
-    { value: "VENDOR_VISIT", label: "Vendor Visit" },
-    { value: "CLIENT_VISIT", label: "Client Visit" },
-    { value: "TRAINING", label: "Training" },
+    { value: "SITE_TOUR", label: "Site Tour" },
     { value: "PERSONAL", label: "Personal" },
     { value: "OTHER", label: "Other" },
 ];
@@ -147,17 +151,18 @@ const EMPTY_FORM = {
     visitorMobile: "",
     visitorEmail: "",
     visitorCompany: "",
+    visitorDesignation: "",
     visitorTypeId: "",
     purpose: "",
-    visitDate: "",
-    expectedArrival: "",
-    expectedDuration: "",
+    expectedDate: "",
+    expectedTime: "",
+    expectedDurationMinutes: "",
     hostEmployeeId: "",
-    hostName: "",
+    plantId: "",
     gateId: "",
-    vehicleNumber: "",
-    instructions: "",
-    meetingReference: "",
+    vehicleRegNumber: "",
+    specialInstructions: "",
+    meetingRef: "",
 };
 
 /* ── Screen ── */
@@ -166,39 +171,92 @@ export function PreRegisterVisitorScreen() {
     const createMutation = useCreateVisit();
     const visitorTypesQuery = useVisitorTypes();
     const gatesQuery = useGates();
+    const employeesQuery = useEmployees({ limit: 500 });
+    const locationsQuery = useCompanyLocations();
 
     const [form, setForm] = useState({ ...EMPTY_FORM });
+    const [countryCode, setCountryCode] = useState("+91");
+    const [visitorPhoto, setVisitorPhoto] = useState<string | null>(null);
+    const [showCamera, setShowCamera] = useState(false);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
 
     const visitorTypes: any[] = visitorTypesQuery.data?.data ?? [];
     const gates: any[] = gatesQuery.data?.data ?? [];
+    const employees: any[] = employeesQuery.data?.data ?? [];
+    const locations: any[] = (locationsQuery.data as any)?.data ?? [];
+
+    const filteredGates = gates.filter((g: any) => !form.plantId || g.plantId === form.plantId);
 
     const updateField = (key: string, value: string) => setForm((p) => ({ ...p, [key]: value }));
+
+    /* ── Webcam functions ── */
+
+    const startCamera = async () => {
+        setShowCamera(true);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: 320, height: 320 } });
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+                videoRef.current.play();
+            }
+        } catch (err) {
+            showApiError(err);
+            setShowCamera(false);
+        }
+    };
+
+    const capturePhoto = () => {
+        if (!videoRef.current || !canvasRef.current) return;
+        const canvas = canvasRef.current;
+        canvas.width = 320;
+        canvas.height = 320;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.drawImage(videoRef.current, 0, 0, 320, 320);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+        setVisitorPhoto(dataUrl);
+        stopCamera();
+    };
+
+    const stopCamera = () => {
+        if (videoRef.current?.srcObject) {
+            (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
+            videoRef.current.srcObject = null;
+        }
+        setShowCamera(false);
+    };
+
+    const removePhoto = () => {
+        setVisitorPhoto(null);
+    };
 
     const handleSubmit = async () => {
         try {
             const payload: any = {
                 visitorName: form.visitorName,
-                visitorMobile: form.visitorMobile || undefined,
+                visitorMobile: form.visitorMobile ? `${countryCode}${form.visitorMobile}` : undefined,
                 visitorEmail: form.visitorEmail || undefined,
                 visitorCompany: form.visitorCompany || undefined,
+                visitorDesignation: form.visitorDesignation || undefined,
                 visitorTypeId: form.visitorTypeId || undefined,
                 purpose: form.purpose || undefined,
-                visitDate: form.visitDate || undefined,
-                expectedArrival:
-                    form.visitDate && form.expectedArrival
-                        ? `${form.visitDate}T${form.expectedArrival}:00`
-                        : undefined,
-                expectedDuration: form.expectedDuration ? Number(form.expectedDuration) : undefined,
+                expectedDate: form.expectedDate || undefined,
+                expectedTime: form.expectedTime || undefined,
+                expectedDurationMinutes: form.expectedDurationMinutes ? Number(form.expectedDurationMinutes) : undefined,
                 hostEmployeeId: form.hostEmployeeId || undefined,
-                hostName: form.hostName || undefined,
+                plantId: form.plantId || undefined,
                 gateId: form.gateId || undefined,
-                vehicleNumber: form.vehicleNumber || undefined,
-                instructions: form.instructions || undefined,
-                meetingReference: form.meetingReference || undefined,
+                vehicleRegNumber: form.vehicleRegNumber || undefined,
+                specialInstructions: form.specialInstructions || undefined,
+                meetingRef: form.meetingRef || undefined,
+                visitorPhoto: visitorPhoto || undefined,
             };
             await createMutation.mutateAsync(payload);
             showSuccess("Visitor Pre-Registered", `${form.visitorName} has been registered successfully.`);
             setForm({ ...EMPTY_FORM });
+            setVisitorPhoto(null);
+            setCountryCode("+91");
         } catch (err) {
             showApiError(err);
         }
@@ -227,7 +285,14 @@ export function PreRegisterVisitorScreen() {
                 <SectionLabel title="Visitor Information" />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField label="Visitor Name" value={form.visitorName} onChange={(v) => updateField("visitorName", v)} placeholder="Full name" required icon={User} />
-                    <FormField label="Mobile Number" value={form.visitorMobile} onChange={(v) => updateField("visitorMobile", v)} placeholder="+91 98765 43210" icon={Phone} />
+                    <PhoneInput
+                        label="Mobile Number"
+                        countryCode={countryCode}
+                        phone={form.visitorMobile}
+                        onCountryCodeChange={setCountryCode}
+                        onPhoneChange={(v) => updateField("visitorMobile", v)}
+                        required
+                    />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField label="Email" value={form.visitorEmail} onChange={(v) => updateField("visitorEmail", v)} placeholder="visitor@company.com" type="email" icon={Mail} />
@@ -254,34 +319,86 @@ export function PreRegisterVisitorScreen() {
 
                 <SectionLabel title="Visit Schedule" />
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <FormField label="Visit Date" value={form.visitDate} onChange={(v) => updateField("visitDate", v)} type="date" required icon={Calendar} />
-                    <FormField label="Expected Arrival" value={form.expectedArrival} onChange={(v) => updateField("expectedArrival", v)} type="time" icon={Clock} />
-                    <FormField label="Duration (minutes)" value={form.expectedDuration} onChange={(v) => updateField("expectedDuration", v)} type="number" placeholder="e.g. 60" />
+                    <FormField label="Expected Date" value={form.expectedDate} onChange={(v) => updateField("expectedDate", v)} type="date" required icon={Calendar} />
+                    <FormField label="Expected Time" value={form.expectedTime} onChange={(v) => updateField("expectedTime", v)} type="time" icon={Clock} />
+                    <FormField label="Duration (minutes)" value={form.expectedDurationMinutes} onChange={(v) => updateField("expectedDurationMinutes", v)} type="number" placeholder="e.g. 60" />
                 </div>
 
                 <SectionLabel title="Host & Location" />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField label="Host Employee Name" value={form.hostName} onChange={(v) => updateField("hostName", v)} placeholder="Search or enter host name" icon={User} />
+                    <SearchableSelect
+                        label="Host Employee"
+                        value={form.hostEmployeeId}
+                        onChange={(v) => updateField("hostEmployeeId", v)}
+                        options={employees.map((e: any) => ({
+                            value: e.id,
+                            label: `${e.firstName} ${e.lastName}`,
+                            sublabel: e.designation?.name ?? e.department?.name ?? e.employeeCode ?? "",
+                        }))}
+                        placeholder="Search employee..."
+                    />
+                    <SearchableSelect
+                        label="Location (Plant)"
+                        value={form.plantId}
+                        onChange={(v) => updateField("plantId", v)}
+                        options={locations.map((l: any) => ({
+                            value: l.id,
+                            label: l.name,
+                            sublabel: l.city ? `${l.city}, ${l.state ?? ''}` : undefined,
+                        }))}
+                        placeholder="Select location..."
+                        required
+                    />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <SelectField
                         label="Entry Gate"
                         value={form.gateId}
                         onChange={(v) => updateField("gateId", v)}
-                        options={gates.map((g: any) => ({ value: g.id, label: `${g.name}${g.plant?.name ? ` (${g.plant.name})` : ""}` }))}
+                        options={filteredGates.map((g: any) => ({ value: g.id, label: `${g.name}${g.plant?.name ? ` (${g.plant.name})` : ""}` }))}
                         placeholder="Select gate..."
                     />
+                    <FormField label="Designation" value={form.visitorDesignation} onChange={(v) => updateField("visitorDesignation", v)} placeholder="Visitor designation" icon={Briefcase} />
                 </div>
 
                 <SectionLabel title="Additional Details" />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField label="Vehicle Number" value={form.vehicleNumber} onChange={(v) => updateField("vehicleNumber", v)} placeholder="e.g. KA-01-AB-1234" icon={Car} />
-                    <FormField label="Meeting Reference" value={form.meetingReference} onChange={(v) => updateField("meetingReference", v)} placeholder="Meeting ID or ref" icon={FileText} />
+                    <FormField label="Vehicle Reg Number" value={form.vehicleRegNumber} onChange={(v) => updateField("vehicleRegNumber", v)} placeholder="e.g. KA-01-AB-1234" icon={Car} />
+                    <FormField label="Meeting Reference" value={form.meetingRef} onChange={(v) => updateField("meetingRef", v)} placeholder="Meeting ID or ref" icon={FileText} />
                 </div>
                 <TextAreaField
                     label="Special Instructions"
-                    value={form.instructions}
-                    onChange={(v) => updateField("instructions", v)}
+                    value={form.specialInstructions}
+                    onChange={(v) => updateField("specialInstructions", v)}
                     placeholder="Any specific instructions for the visitor or gate security..."
                 />
+
+                <SectionLabel title="Visitor Photo" />
+                <div className="space-y-3">
+                    {visitorPhoto ? (
+                        <div className="flex items-center gap-4">
+                            <img src={visitorPhoto} alt="Visitor" className="w-24 h-24 rounded-full object-cover border-2 border-primary-200" />
+                            <div className="flex gap-2">
+                                <button type="button" onClick={startCamera} className="px-3 py-1.5 rounded-lg bg-primary-50 text-primary-600 text-xs font-bold hover:bg-primary-100 transition-colors">Retake</button>
+                                <button type="button" onClick={removePhoto} className="px-3 py-1.5 rounded-lg bg-danger-50 text-danger-600 text-xs font-bold hover:bg-danger-100 transition-colors">Remove</button>
+                            </div>
+                        </div>
+                    ) : showCamera ? (
+                        <div className="space-y-3">
+                            <video ref={videoRef} className="w-80 h-60 rounded-xl bg-black object-cover" autoPlay muted />
+                            <canvas ref={canvasRef} className="hidden" />
+                            <div className="flex gap-2">
+                                <button type="button" onClick={capturePhoto} className="px-4 py-2 rounded-xl bg-primary-600 text-white text-sm font-bold hover:bg-primary-700 transition-colors">Capture</button>
+                                <button type="button" onClick={stopCamera} className="px-4 py-2 rounded-xl border border-neutral-200 text-neutral-600 text-sm font-bold hover:bg-neutral-50 transition-colors">Cancel</button>
+                            </div>
+                        </div>
+                    ) : (
+                        <button type="button" onClick={startCamera} className="flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed border-primary-200 bg-primary-50/50 text-primary-600 text-sm font-semibold hover:bg-primary-100/50 transition-colors w-full justify-center">
+                            <Camera size={18} />
+                            Open Webcam to Capture Photo
+                        </button>
+                    )}
+                </div>
 
                 {/* Actions */}
                 <div className="flex gap-3 pt-4 border-t border-neutral-100 dark:border-neutral-800">
@@ -293,7 +410,7 @@ export function PreRegisterVisitorScreen() {
                     </a>
                     <button
                         onClick={handleSubmit}
-                        disabled={saving || !form.visitorName}
+                        disabled={saving || !form.visitorName || !form.visitorMobile || !form.visitorTypeId || !form.purpose || !form.expectedDate || !form.plantId}
                         className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                         {saving && <Loader2 size={14} className="animate-spin" />}

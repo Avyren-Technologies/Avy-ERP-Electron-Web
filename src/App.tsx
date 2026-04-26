@@ -207,6 +207,7 @@ const SelfRegistrationPage = lazyNamed(() => import("@/features/public/visitors/
 const VisitStatusPage = lazyNamed(() => import("@/features/public/visitors/VisitStatusPage"), "VisitStatusPage");
 const DigitalBadgePage = lazyNamed(() => import("@/features/public/visitors/DigitalBadgePage"), "DigitalBadgePage");
 const SelfCheckOutPage = lazyNamed(() => import("@/features/public/visitors/SelfCheckOutPage"), "SelfCheckOutPage");
+const SafetyInductionPage = lazyNamed(() => import("@/features/public/visitors/SafetyInductionPage"), "SafetyInductionPage");
 
 // ─── Visitor Management ───
 const VisitorDashboardScreen = lazyNamed(() => import("./features/company-admin/visitors/VisitorDashboardScreen"), "VisitorDashboardScreen");
@@ -366,11 +367,12 @@ function App() {
       </Route>
 
       {/* Public Visitor Pages (no auth required) */}
-      <Route path="visit/:visitCode" element={<PreArrivalFormPage />} />
-      <Route path="visit/register/:plantCode" element={<SelfRegistrationPage />} />
-      <Route path="visit/status/:visitCode" element={<VisitStatusPage />} />
-      <Route path="visit/badge/:visitCode" element={<DigitalBadgePage />} />
-      <Route path="visit/checkout/:visitCode" element={<SelfCheckOutPage />} />
+      <Route path="/visit/register/:plantCode" element={<SelfRegistrationPage />} />
+      <Route path="/visit/:visitCode/status" element={<VisitStatusPage />} />
+      <Route path="/visit/:visitCode/badge" element={<DigitalBadgePage />} />
+      <Route path="/visit/:visitCode/induction" element={<SafetyInductionPage />} />
+      <Route path="/visit/:visitCode/check-out" element={<SelfCheckOutPage />} />
+      <Route path="/visit/:visitCode" element={<PreArrivalFormPage />} />
 
       {/* Protected App Routes */}
       <Route

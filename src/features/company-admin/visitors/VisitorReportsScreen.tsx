@@ -42,8 +42,8 @@ export function VisitorReportsScreen() {
 
     const dailyParams = { date: selectedDate };
     const rangeParams: Record<string, unknown> = {};
-    if (dateFrom) rangeParams.dateFrom = dateFrom;
-    if (dateTo) rangeParams.dateTo = dateTo;
+    if (dateFrom) rangeParams.fromDate = dateFrom;
+    if (dateTo) rangeParams.toDate = dateTo;
 
     const dailyQuery = useDailyLog(tab === "daily" ? dailyParams : undefined);
     const summaryQuery = useReportSummary(tab === "summary" ? rangeParams : undefined);
@@ -152,11 +152,11 @@ export function VisitorReportsScreen() {
                                             <tr key={v.id || i} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
                                                 <td className="py-3 px-6 font-bold text-primary-950 dark:text-white">{v.visitorName}</td>
                                                 <td className="py-3 px-6 text-neutral-600 dark:text-neutral-400">{v.visitorCompany || "---"}</td>
-                                                <td className="py-3 px-6 text-neutral-600 dark:text-neutral-400">{v.hostName || "---"}</td>
+                                                <td className="py-3 px-6 text-neutral-600 dark:text-neutral-400">{v.hostEmployeeId || "---"}</td>
                                                 <td className="py-3 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{v.checkInTime ? fmt.time(v.checkInTime) : "---"}</td>
                                                 <td className="py-3 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{v.checkOutTime ? fmt.time(v.checkOutTime) : "---"}</td>
                                                 <td className="py-3 px-6 text-neutral-600 dark:text-neutral-400 text-xs font-mono">{duration}</td>
-                                                <td className="py-3 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{v.gateName || v.gate?.name || "---"}</td>
+                                                <td className="py-3 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{v.checkInGate?.name || "---"}</td>
                                             </tr>
                                         );
                                     })}
@@ -184,16 +184,16 @@ export function VisitorReportsScreen() {
                                     <div className="text-xs font-bold text-neutral-500 mt-1">Total Visits</div>
                                 </div>
                                 <div className="p-4 bg-success-50 dark:bg-success-900/20 rounded-xl border border-success-200 dark:border-success-800/50 text-center">
-                                    <div className="text-2xl font-black text-success-700 dark:text-success-400">{summaryData.completedVisits ?? 0}</div>
-                                    <div className="text-xs font-bold text-neutral-500 mt-1">Completed</div>
-                                </div>
-                                <div className="p-4 bg-warning-50 dark:bg-warning-900/20 rounded-xl border border-warning-200 dark:border-warning-800/50 text-center">
-                                    <div className="text-2xl font-black text-warning-700 dark:text-warning-400">{summaryData.avgDuration ?? 0}</div>
+                                    <div className="text-2xl font-black text-success-700 dark:text-success-400">{Math.round(summaryData.avgDurationMinutes ?? 0)}</div>
                                     <div className="text-xs font-bold text-neutral-500 mt-1">Avg Duration (min)</div>
                                 </div>
+                                <div className="p-4 bg-warning-50 dark:bg-warning-900/20 rounded-xl border border-warning-200 dark:border-warning-800/50 text-center">
+                                    <div className="text-2xl font-black text-warning-700 dark:text-warning-400">{summaryData.byMethod?.length ?? 0}</div>
+                                    <div className="text-xs font-bold text-neutral-500 mt-1">Reg. Methods</div>
+                                </div>
                                 <div className="p-4 bg-danger-50 dark:bg-danger-900/20 rounded-xl border border-danger-200 dark:border-danger-800/50 text-center">
-                                    <div className="text-2xl font-black text-danger-700 dark:text-danger-400">{summaryData.deniedEntries ?? 0}</div>
-                                    <div className="text-xs font-bold text-neutral-500 mt-1">Denied Entries</div>
+                                    <div className="text-2xl font-black text-danger-700 dark:text-danger-400">{summaryData.byStatus?.length ?? 0}</div>
+                                    <div className="text-xs font-bold text-neutral-500 mt-1">Status Types</div>
                                 </div>
                             </div>
                             {summaryData.byType && (
@@ -226,25 +226,28 @@ export function VisitorReportsScreen() {
                                     <tr className="bg-neutral-50/50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
                                         <th className="py-4 px-6 font-bold">Visitor</th>
                                         <th className="py-4 px-6 font-bold">Company</th>
-                                        <th className="py-4 px-6 font-bold">Host</th>
-                                        <th className="py-4 px-6 font-bold">Expected Checkout</th>
-                                        <th className="py-4 px-6 font-bold">Actual Checkout</th>
+                                        <th className="py-4 px-6 font-bold">Check-In</th>
+                                        <th className="py-4 px-6 font-bold">Expected (min)</th>
+                                        <th className="py-4 px-6 font-bold">Actual (min)</th>
                                         <th className="py-4 px-6 font-bold">Overstay (min)</th>
                                     </tr>
                                 </thead>
                                 <tbody className="text-sm">
-                                    {overstayData.map((v: any, i: number) => (
+                                    {overstayData.map((v: any, i: number) => {
+                                        const overstayMins = (v.visitDurationMinutes ?? 0) - (v.expectedDurationMinutes ?? 0);
+                                        return (
                                         <tr key={v.id || i} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
                                             <td className="py-3 px-6 font-bold text-primary-950 dark:text-white">{v.visitorName}</td>
                                             <td className="py-3 px-6 text-neutral-600 dark:text-neutral-400">{v.visitorCompany || "---"}</td>
-                                            <td className="py-3 px-6 text-neutral-600 dark:text-neutral-400">{v.hostName || "---"}</td>
-                                            <td className="py-3 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{v.expectedCheckout ? fmt.dateTime(v.expectedCheckout) : "---"}</td>
-                                            <td className="py-3 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{v.actualCheckout ? fmt.dateTime(v.actualCheckout) : "Still on-site"}</td>
+                                            <td className="py-3 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{v.checkInTime ? fmt.time(v.checkInTime) : "---"}</td>
+                                            <td className="py-3 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{v.expectedDurationMinutes ?? "---"}</td>
+                                            <td className="py-3 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{v.visitDurationMinutes ?? "---"}</td>
                                             <td className="py-3 px-6">
-                                                <span className="text-xs font-bold text-danger-700 dark:text-danger-400 bg-danger-50 dark:bg-danger-900/20 px-2 py-0.5 rounded-full border border-danger-200">{v.overstayMinutes ?? "---"}</span>
+                                                <span className="text-xs font-bold text-danger-700 dark:text-danger-400 bg-danger-50 dark:bg-danger-900/20 px-2 py-0.5 rounded-full border border-danger-200">+{overstayMins}</span>
                                             </td>
                                         </tr>
-                                    ))}
+                                        );
+                                    })}
                                     {overstayData.length === 0 && !overstayQuery.isLoading && (
                                         <tr><td colSpan={6}><EmptyState icon="list" title="No overstay records" message="No visitors exceeded their expected visit duration." /></td></tr>
                                     )}
@@ -265,35 +268,26 @@ export function VisitorReportsScreen() {
                             <h2 className="text-sm font-bold text-primary-950 dark:text-white uppercase tracking-wider">Visitor Analytics</h2>
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                                 <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-700 text-center">
-                                    <div className="text-2xl font-black text-primary-950 dark:text-white">{analyticsData.peakHour ?? "---"}</div>
-                                    <div className="text-xs font-bold text-neutral-500 mt-1">Peak Hour</div>
+                                    <div className="text-2xl font-black text-primary-950 dark:text-white">{analyticsData.totalVisits ?? 0}</div>
+                                    <div className="text-xs font-bold text-neutral-500 mt-1">Total Visits</div>
                                 </div>
                                 <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-700 text-center">
-                                    <div className="text-2xl font-black text-primary-950 dark:text-white">{analyticsData.avgVisitsPerDay ?? 0}</div>
-                                    <div className="text-xs font-bold text-neutral-500 mt-1">Avg Visits/Day</div>
+                                    <div className="text-2xl font-black text-primary-950 dark:text-white">{Math.round(analyticsData.avgDurationMinutes ?? 0)} min</div>
+                                    <div className="text-xs font-bold text-neutral-500 mt-1">Avg Duration</div>
                                 </div>
                                 <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-700 text-center">
-                                    <div className="text-2xl font-black text-primary-950 dark:text-white">{analyticsData.repeatVisitorPercent ?? 0}%</div>
-                                    <div className="text-xs font-bold text-neutral-500 mt-1">Repeat Visitors</div>
+                                    <div className="text-2xl font-black text-primary-950 dark:text-white">{analyticsData.preRegisteredPercent ?? 0}%</div>
+                                    <div className="text-xs font-bold text-neutral-500 mt-1">Pre-Registered</div>
+                                </div>
+                                <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-700 text-center">
+                                    <div className="text-2xl font-black text-danger-600 dark:text-danger-400">{analyticsData.overstayRatePercent ?? 0}%</div>
+                                    <div className="text-xs font-bold text-neutral-500 mt-1">Overstay Rate</div>
+                                </div>
+                                <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-700 text-center">
+                                    <div className="text-2xl font-black text-success-600 dark:text-success-400">{analyticsData.safetyInductionCompletionPercent ?? 0}%</div>
+                                    <div className="text-xs font-bold text-neutral-500 mt-1">Induction Rate</div>
                                 </div>
                             </div>
-                            {analyticsData.dailyTrend && analyticsData.dailyTrend.length > 0 && (
-                                <div>
-                                    <h3 className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3">Daily Trend</h3>
-                                    <div className="flex items-end gap-1 h-32">
-                                        {analyticsData.dailyTrend.map((d: any, i: number) => {
-                                            const max = Math.max(...analyticsData.dailyTrend.map((x: any) => x.count || 0), 1);
-                                            const height = ((d.count || 0) / max) * 100;
-                                            return (
-                                                <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                                                    <div className="w-full bg-primary-200 dark:bg-primary-800 rounded-t" style={{ height: `${height}%`, minHeight: 2 }} title={`${d.date}: ${d.count}`} />
-                                                    <span className="text-[8px] text-neutral-400 rotate-[-45deg]">{d.date?.slice(5)}</span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     ) : (
                         <EmptyState icon="list" title="No analytics data" message="Select a date range to view analytics." />

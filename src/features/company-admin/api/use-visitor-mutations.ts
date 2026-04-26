@@ -144,6 +144,26 @@ export function useUpdateVisitorType() {
     });
 }
 
+export function useDeactivateVisitorType() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => visitorsApi.deactivateVisitorType(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: visitorKeys.types() });
+        },
+    });
+}
+
+export function useActivateVisitorType() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => visitorsApi.activateVisitorType(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: visitorKeys.types() });
+        },
+    });
+}
+
 export function useDeleteVisitorType() {
     const queryClient = useQueryClient();
     return useMutation({
@@ -298,7 +318,7 @@ export function useUpdateRecurringPass() {
 export function useRevokeRecurringPass() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (id: string) => visitorsApi.revokeRecurringPass(id),
+        mutationFn: ({ id, data }: { id: string; data: { reason: string } }) => visitorsApi.revokeRecurringPass(id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: visitorKeys.recurringPasses() });
         },
@@ -406,7 +426,7 @@ export function useCreateMaterialPass() {
 export function useReturnMaterialPass() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data?: any }) =>
+        mutationFn: ({ id, data }: { id: string; data: { quantityReturned: string; returnStatus: string } }) =>
             visitorsApi.returnMaterialPass(id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: visitorKeys.materialPasses() });

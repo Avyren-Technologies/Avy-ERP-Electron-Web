@@ -20,14 +20,15 @@ export function EmergencyMusterScreen() {
     const resolveMutation = useResolveEmergency();
 
     const [showTrigger, setShowTrigger] = useState(false);
-    const [triggerReason, setTriggerReason] = useState("");
+    const [triggerPlantId, setTriggerPlantId] = useState("");
+    const [triggerIsDrill, setTriggerIsDrill] = useState(false);
     const [showResolve, setShowResolve] = useState(false);
     const [markingId, setMarkingId] = useState<string | null>(null);
+    const [resolvePlantId, setResolvePlantId] = useState("");
 
-    const musterList: any[] = musterData?.data?.visitors ?? musterData?.data ?? [];
-    const emergency = musterData?.data?.emergency ?? musterData?.data;
-    const isActive = emergency?.status === "ACTIVE" || musterList.length > 0;
+    const musterList: any[] = musterData?.data ?? [];
     const onSiteVisitors: any[] = onSiteData?.data ?? [];
+    const isActive = musterList.length > 0;
 
     const safeCount = musterList.filter((v: any) => v.markedSafe).length;
     const totalCount = musterList.length || onSiteVisitors.length;
@@ -35,26 +36,28 @@ export function EmergencyMusterScreen() {
 
     const handleTrigger = async () => {
         try {
-            await triggerMutation.mutateAsync({ reason: triggerReason, type: "EVACUATION" });
+            await triggerMutation.mutateAsync({ plantId: triggerPlantId, isDrill: triggerIsDrill });
             showSuccess("Emergency Triggered", "Emergency muster has been activated. All on-site visitors are being tracked.");
             setShowTrigger(false);
-            setTriggerReason("");
+            setTriggerPlantId("");
+            setTriggerIsDrill(false);
         } catch (err) { showApiError(err); }
     };
 
-    const handleMarkSafe = async (visitorId: string) => {
+    const handleMarkSafe = async (visitId: string) => {
         try {
-            setMarkingId(visitorId);
-            await markSafeMutation.mutateAsync({ visitorId });
+            setMarkingId(visitId);
+            await markSafeMutation.mutateAsync({ visitIds: [visitId] });
             showSuccess("Marked Safe", "Visitor has been marked as safe.");
         } catch (err) { showApiError(err); } finally { setMarkingId(null); }
     };
 
     const handleResolve = async () => {
         try {
-            await resolveMutation.mutateAsync({});
+            await resolveMutation.mutateAsync({ plantId: resolvePlantId });
             showSuccess("Emergency Resolved", "Emergency has been resolved. Normal operations can resume.");
             setShowResolve(false);
+            setResolvePlantId("");
         } catch (err) { showApiError(err); }
     };
 
@@ -89,7 +92,7 @@ export function EmergencyMusterScreen() {
                         </div>
                         <div>
                             <h2 className="text-xl font-black text-danger-700 dark:text-danger-400">EMERGENCY ACTIVE</h2>
-                            <p className="text-sm text-danger-600 dark:text-danger-500">{emergency?.reason || "Evacuation in progress"}</p>
+                            <p className="text-sm text-danger-600 dark:text-danger-500">Evacuation in progress &mdash; account for all visitors</p>
                         </div>
                     </div>
                 </div>
@@ -140,27 +143,26 @@ export function EmergencyMusterScreen() {
                             </thead>
                             <tbody className="text-sm">
                                 {(musterList.length > 0 ? musterList : onSiteVisitors).map((v: any) => (
-                                    <tr key={v.id} className={cn("border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 transition-colors", v.markedSafe ? "bg-success-50/30 dark:bg-success-900/5" : "bg-danger-50/20 dark:bg-danger-900/5")}>
+                                    <tr key={v.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 transition-colors bg-danger-50/20 dark:bg-danger-900/5">
                                         <td className="py-4 px-6">
                                             <div className="flex items-center gap-3">
-                                                <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold", v.markedSafe ? "bg-success-100 text-success-700" : "bg-danger-100 text-danger-700")}>
+                                                <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-danger-100 text-danger-700">
                                                     {(v.visitorName || "?")[0]?.toUpperCase()}
                                                 </div>
-                                                <span className="font-bold text-primary-950 dark:text-white">{v.visitorName}</span>
+                                                <div>
+                                                    <span className="font-bold text-primary-950 dark:text-white">{v.visitorName}</span>
+                                                    {v.badgeNumber && <span className="block text-[10px] font-mono text-neutral-400">Badge: {v.badgeNumber}</span>}
+                                                </div>
                                             </div>
                                         </td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{v.visitorCompany || "---"}</td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{v.hostName || v.hostEmployee?.name || "---"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{v.hostEmployeeId || "---"}</td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{v.checkInTime ? fmt.time(v.checkInTime) : "---"}</td>
                                         <td className="py-4 px-6 text-center">
-                                            {v.markedSafe ? (
-                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-success-50 text-success-700 px-2 py-0.5 rounded-full border border-success-200"><CheckCircle2 size={10} /> Safe</span>
-                                            ) : (
-                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-danger-50 text-danger-700 px-2 py-0.5 rounded-full border border-danger-200"><AlertTriangle size={10} /> Unaccounted</span>
-                                            )}
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-danger-50 text-danger-700 px-2 py-0.5 rounded-full border border-danger-200"><AlertTriangle size={10} /> On Site</span>
                                         </td>
                                         <td className="py-4 px-6 text-right">
-                                            {!v.markedSafe && canCreate && (
+                                            {canCreate && (
                                                 <button onClick={() => handleMarkSafe(v.id)} disabled={markingId === v.id} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-success-600 text-white hover:bg-success-700 transition-colors disabled:opacity-50">
                                                     {markingId === v.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />} Mark Safe
                                                 </button>
@@ -185,11 +187,17 @@ export function EmergencyMusterScreen() {
                             <div className="w-10 h-10 rounded-full bg-danger-100 flex items-center justify-center"><Siren className="w-5 h-5 text-danger-600" /></div>
                             <h2 className="text-lg font-bold text-danger-700 dark:text-danger-400">Trigger Emergency</h2>
                         </div>
-                        <p className="text-sm text-neutral-500 mb-4">This will activate the emergency muster list and lock all check-in/out operations.</p>
-                        <div><label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">Reason</label><input type="text" value={triggerReason} onChange={(e) => setTriggerReason(e.target.value)} placeholder="Fire, drill, etc." className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm dark:text-white placeholder:text-neutral-400 transition-all" /></div>
+                        <p className="text-sm text-neutral-500 mb-4">This will activate the emergency muster list for the selected plant.</p>
+                        <div className="space-y-3">
+                            <div><label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">Plant ID *</label><input type="text" value={triggerPlantId} onChange={(e) => setTriggerPlantId(e.target.value)} placeholder="Plant to evacuate" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm dark:text-white placeholder:text-neutral-400 transition-all" /></div>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" checked={triggerIsDrill} onChange={(e) => setTriggerIsDrill(e.target.checked)} className="w-4 h-4 rounded border-neutral-300" />
+                                <span className="text-sm text-neutral-700 dark:text-neutral-300 font-medium">This is a drill</span>
+                            </label>
+                        </div>
                         <div className="flex gap-3 mt-6">
                             <button onClick={() => setShowTrigger(false)} className="flex-1 py-3 rounded-xl border border-neutral-200 text-sm font-bold text-neutral-700 hover:bg-neutral-50 transition-colors">Cancel</button>
-                            <button onClick={handleTrigger} disabled={triggerMutation.isPending} className="flex-1 py-3 rounded-xl bg-danger-600 hover:bg-danger-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                            <button onClick={handleTrigger} disabled={triggerMutation.isPending || !triggerPlantId} className="flex-1 py-3 rounded-xl bg-danger-600 hover:bg-danger-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                                 {triggerMutation.isPending && <Loader2 size={14} className="animate-spin" />}
                                 {triggerMutation.isPending ? "Triggering..." : "Trigger Now"}
                             </button>
@@ -204,14 +212,13 @@ export function EmergencyMusterScreen() {
                     <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200">
                         <h2 className="text-lg font-bold text-success-700 dark:text-success-400 mb-2">Resolve Emergency</h2>
                         <p className="text-sm text-neutral-500">Confirm that the emergency is resolved and normal operations can resume.</p>
-                        {unsafeCount > 0 && (
-                            <div className="mt-3 p-3 bg-warning-50 border border-warning-200 rounded-xl text-xs text-warning-700 font-medium">
-                                Warning: {unsafeCount} visitor(s) are still unaccounted for.
-                            </div>
-                        )}
+                        <div className="mt-3">
+                            <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">Plant ID *</label>
+                            <input type="text" value={resolvePlantId} onChange={(e) => setResolvePlantId(e.target.value)} placeholder="Plant to resolve" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm dark:text-white placeholder:text-neutral-400 transition-all" />
+                        </div>
                         <div className="flex gap-3 mt-6">
                             <button onClick={() => setShowResolve(false)} className="flex-1 py-3 rounded-xl border border-neutral-200 text-sm font-bold text-neutral-700 hover:bg-neutral-50 transition-colors">Cancel</button>
-                            <button onClick={handleResolve} disabled={resolveMutation.isPending} className="flex-1 py-3 rounded-xl bg-success-600 hover:bg-success-700 text-white text-sm font-bold transition-colors disabled:opacity-50">{resolveMutation.isPending ? "Resolving..." : "Resolve"}</button>
+                            <button onClick={handleResolve} disabled={resolveMutation.isPending || !resolvePlantId} className="flex-1 py-3 rounded-xl bg-success-600 hover:bg-success-700 text-white text-sm font-bold transition-colors disabled:opacity-50">{resolveMutation.isPending ? "Resolving..." : "Resolve"}</button>
                         </div>
                     </div>
                 </div>

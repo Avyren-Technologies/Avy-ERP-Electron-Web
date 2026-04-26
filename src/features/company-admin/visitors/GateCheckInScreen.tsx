@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import {
     QrCode,
     Search,
@@ -14,10 +14,17 @@ import {
     Building2,
     X,
     Camera,
+    XCircle,
+    BadgeCheck,
 } from "lucide-react";
+import { Html5Qrcode } from "html5-qrcode";
+import QRCodeReact from "react-qr-code";
 import { useDashboardToday, useDashboardOnSite, useVisitByCode } from "@/features/company-admin/api/use-visitor-queries";
 import { useCheckInVisit, useCheckOutVisit, useCreateVisit, useCheckWatchlist } from "@/features/company-admin/api/use-visitor-mutations";
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
+import { useCompanyLocations } from "@/features/company-admin/api/use-company-admin-queries";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { showSuccess, showApiError, showWarning, showError } from "@/lib/toast";
 import { VisitStatusBadge } from "@/features/company-admin/visitors/components/VisitStatusBadge";
@@ -39,10 +46,31 @@ export function GateCheckInScreen() {
     const [walkInForm, setWalkInForm] = useState({
         visitorName: "",
         visitorMobile: "",
+        visitorEmail: "",
         visitorCompany: "",
-        purpose: "",
-        hostName: "",
+        purpose: "" as string,
+        hostEmployeeId: "",
+        visitorTypeId: "",
+        plantId: "",
     });
+
+    // Badge QR modal state after check-in
+    const [checkedInBadge, setCheckedInBadge] = useState<{ visitorName: string; badgeNumber: string; visitCode: string } | null>(null);
+
+    // QR Scanner state
+    const [showQrScanner, setShowQrScanner] = useState(false);
+    const qrScannerRef = useRef<Html5Qrcode | null>(null);
+    const qrContainerId = "qr-reader-container";
+
+    // Webcam photo state
+    const [showPhotoCamera, setShowPhotoCamera] = useState(false);
+    const photoVideoRef = useRef<HTMLVideoElement>(null);
+    const photoCanvasRef = useRef<HTMLCanvasElement>(null);
+
+    const employeesQuery = useEmployees({ limit: 500 });
+    const employees: any[] = employeesQuery.data?.data ?? [];
+    const locationsQuery = useCompanyLocations();
+    const locations: any[] = (locationsQuery.data as any)?.data ?? [];
 
     const todayQuery = useDashboardToday();
     const onSiteQuery = useDashboardOnSite();
@@ -50,18 +78,98 @@ export function GateCheckInScreen() {
 
     const todayData = todayQuery.data?.data ?? {};
     const expectedVisitors: any[] = (todayData.visitors ?? todayData.visits ?? []).filter(
-        (v: any) => v.status === "PRE_REGISTERED" || v.status === "APPROVED" || v.status === "PENDING_APPROVAL"
+        (v: any) => v.status === "EXPECTED" || v.status === "ARRIVED"
     );
     const onSiteVisitors: any[] = onSiteQuery.data?.data ?? [];
     const foundVisit = codeQuery.data?.data;
 
-    const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onloadend = () => setVisitorPhoto(reader.result as string);
-        reader.readAsDataURL(file);
-    };
+    // ── QR Scanner functions ──
+    const startQrScanner = useCallback(async () => {
+        setShowQrScanner(true);
+        // Wait for DOM element to render
+        setTimeout(async () => {
+            try {
+                const html5QrCode = new Html5Qrcode(qrContainerId);
+                qrScannerRef.current = html5QrCode;
+                await html5QrCode.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 250, height: 250 } },
+                    (decodedText) => {
+                        // Extract visit code from URL or use raw text
+                        let code = decodedText;
+                        // If it's a URL like /visit/register/PLT-2 or contains a visit code
+                        const urlMatch = decodedText.match(/\/visit\/(?:register\/)?([A-Z0-9-]+)/i);
+                        if (urlMatch) code = urlMatch[1]!;
+                        // Also handle raw visit codes
+                        const codeMatch = decodedText.match(/^[A-Z0-9]{6}$/i);
+                        if (codeMatch) code = codeMatch[0]!;
+
+                        setVisitCode(code.toUpperCase());
+                        setSearchCode(code.toUpperCase());
+                        stopQrScanner();
+                        showSuccess("QR Scanned", `Code: ${code.toUpperCase()}`);
+                    },
+                    () => { /* ignore scan failures */ },
+                );
+            } catch (err) {
+                showError("Camera Error", "Could not access camera. Please check permissions.");
+                setShowQrScanner(false);
+            }
+        }, 100);
+    }, []);
+
+    const stopQrScanner = useCallback(() => {
+        if (qrScannerRef.current?.isScanning) {
+            qrScannerRef.current.stop().catch(() => {});
+            qrScannerRef.current.clear();
+        }
+        qrScannerRef.current = null;
+        setShowQrScanner(false);
+    }, []);
+
+    // Cleanup scanner on unmount
+    useEffect(() => {
+        return () => {
+            if (qrScannerRef.current?.isScanning) {
+                qrScannerRef.current.stop().catch(() => {});
+            }
+        };
+    }, []);
+
+    // ── Webcam Photo functions ──
+    const startPhotoCamera = useCallback(async () => {
+        setShowPhotoCamera(true);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: 320, height: 320 } });
+            if (photoVideoRef.current) {
+                photoVideoRef.current.srcObject = stream;
+                photoVideoRef.current.play();
+            }
+        } catch {
+            showError("Camera Error", "Could not access camera.");
+            setShowPhotoCamera(false);
+        }
+    }, []);
+
+    const capturePhoto = useCallback(() => {
+        if (!photoVideoRef.current || !photoCanvasRef.current) return;
+        const canvas = photoCanvasRef.current;
+        canvas.width = 320;
+        canvas.height = 320;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.drawImage(photoVideoRef.current, 0, 0, 320, 320);
+        setVisitorPhoto(canvas.toDataURL("image/jpeg", 0.7));
+        stopPhotoCamera();
+    }, []);
+
+    const stopPhotoCamera = useCallback(() => {
+        if (photoVideoRef.current?.srcObject) {
+            (photoVideoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
+            photoVideoRef.current.srcObject = null;
+        }
+        setShowPhotoCamera(false);
+    }, []);
 
     const handleLookupCode = () => {
         if (visitCode.trim()) {
@@ -72,11 +180,36 @@ export function GateCheckInScreen() {
     const handleCheckIn = async (id: string) => {
         try {
             setActionId(id);
-            await checkInMutation.mutateAsync({
+            const checkInData: Record<string, unknown> = {};
+            if (visitorPhoto) checkInData.visitorPhoto = visitorPhoto;
+            // checkInGateId is required by the backend -- use the visit's assigned gate or first location gate
+            const visit = expectedVisitors.find((v: any) => v.id === id) ?? foundVisit;
+            if (visit?.gateId) {
+                checkInData.checkInGateId = visit.gateId;
+            } else if (visit?.checkInGateId) {
+                checkInData.checkInGateId = visit.checkInGateId;
+            }
+            const result = await checkInMutation.mutateAsync({
                 id,
-                data: visitorPhoto ? { visitorPhoto } : undefined,
+                data: Object.keys(checkInData).length > 0 ? checkInData : undefined,
             });
-            showSuccess("Checked In", "Visitor has been checked in successfully.");
+            const badgeNo = result?.data?.badgeNumber;
+            const warning = result?.data?.watchlistWarning;
+            if (warning) showWarning("Watchlist Alert", warning);
+            const checkInWarnings: string[] = result?.data?.warnings ?? [];
+            if (checkInWarnings.length) {
+                checkInWarnings.forEach((w: string) => showWarning("Requirement", w));
+            }
+            showSuccess("Checked In", badgeNo ? `Badge: ${badgeNo}` : "Visitor has been checked in successfully.");
+
+            // Show badge QR modal
+            const visitData = expectedVisitors.find((v: any) => v.id === id) ?? foundVisit;
+            setCheckedInBadge({
+                visitorName: visitData?.visitorName ?? "Visitor",
+                badgeNumber: badgeNo ?? "",
+                visitCode: visitData?.visitCode ?? "",
+            });
+
             setSearchCode("");
             setVisitCode("");
             setVisitorPhoto(null);
@@ -90,7 +223,7 @@ export function GateCheckInScreen() {
     const handleCheckOut = async (id: string) => {
         try {
             setActionId(id);
-            await checkOutMutation.mutateAsync({ id });
+            await checkOutMutation.mutateAsync({ id, data: { checkOutMethod: "SECURITY_DESK" } });
             showSuccess("Checked Out", "Visitor has been checked out.");
         } catch (err) {
             showApiError(err);
@@ -118,13 +251,21 @@ export function GateCheckInScreen() {
                 }
             }
 
+            const today = new Date().toISOString().slice(0, 10);
             await createMutation.mutateAsync({
-                ...walkInForm,
-                isWalkIn: true,
+                visitorName: walkInForm.visitorName,
+                visitorMobile: walkInForm.visitorMobile || undefined,
+                visitorEmail: walkInForm.visitorEmail || undefined,
+                visitorCompany: walkInForm.visitorCompany || undefined,
+                purpose: walkInForm.purpose || "OTHER",
+                hostEmployeeId: walkInForm.hostEmployeeId || undefined,
+                visitorTypeId: walkInForm.visitorTypeId || undefined,
+                plantId: walkInForm.plantId || undefined,
+                expectedDate: today,
             });
-            showSuccess("Walk-In Registered", `${walkInForm.visitorName} has been registered and checked in.`);
+            showSuccess("Walk-In Registered", `${walkInForm.visitorName} has been registered.`);
             setShowWalkIn(false);
-            setWalkInForm({ visitorName: "", visitorMobile: "", visitorCompany: "", purpose: "", hostName: "" });
+            setWalkInForm({ visitorName: "", visitorMobile: "", visitorEmail: "", visitorCompany: "", purpose: "", hostEmployeeId: "", visitorTypeId: "", plantId: "" });
         } catch (err) {
             showApiError(err);
         }
@@ -178,12 +319,25 @@ export function GateCheckInScreen() {
                         <div className="text-center">
                             <span className="text-xs text-neutral-400">or</span>
                         </div>
-                        <button
-                            className="w-full py-3 rounded-xl border border-accent-300 dark:border-accent-700 bg-accent-50 dark:bg-accent-900/20 text-accent-700 dark:text-accent-400 text-sm font-bold transition-colors hover:bg-accent-100 dark:hover:bg-accent-900/30 flex items-center justify-center gap-2"
-                        >
-                            <QrCode size={16} />
-                            Scan QR Code
-                        </button>
+                        {showQrScanner ? (
+                            <div className="space-y-2">
+                                <div id={qrContainerId} className="rounded-xl overflow-hidden bg-black" />
+                                <button
+                                    onClick={stopQrScanner}
+                                    className="w-full py-2 rounded-xl border border-danger-300 text-danger-600 text-sm font-bold hover:bg-danger-50 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <XCircle size={14} /> Stop Scanner
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={startQrScanner}
+                                className="w-full py-3 rounded-xl border border-accent-300 dark:border-accent-700 bg-accent-50 dark:bg-accent-900/20 text-accent-700 dark:text-accent-400 text-sm font-bold transition-colors hover:bg-accent-100 dark:hover:bg-accent-900/30 flex items-center justify-center gap-2"
+                            >
+                                <QrCode size={16} />
+                                Scan QR Code
+                            </button>
+                        )}
                     </div>
 
                     {/* Found visit display */}
@@ -196,18 +350,23 @@ export function GateCheckInScreen() {
                             <div className="text-sm space-y-1">
                                 <p className="font-bold text-primary-950 dark:text-white">{foundVisit.visitorName}</p>
                                 <p className="text-neutral-500 dark:text-neutral-400">{foundVisit.visitorCompany || "No company"}</p>
-                                <p className="text-neutral-500 dark:text-neutral-400">Host: {foundVisit.hostName || "---"}</p>
+                                <p className="text-neutral-500 dark:text-neutral-400">Host: {foundVisit.hostEmployeeName ?? foundVisit.hostEmployeeId ?? "---"}</p>
                             </div>
-                            {(foundVisit.status === "PRE_REGISTERED" || foundVisit.status === "APPROVED") && (
+                            {(foundVisit.status === "EXPECTED" || foundVisit.status === "ARRIVED") && (
                                 <div className="space-y-2">
-                                    <div className="flex items-center gap-3">
-                                        <label className="flex items-center gap-2 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-700 text-sm text-neutral-700 dark:text-neutral-300 transition-colors">
+                                    {/* Visitor Photo */}
+                                    {visitorPhoto ? (
+                                        <div className="flex items-center gap-3">
+                                            <img src={visitorPhoto} alt="Visitor" className="w-12 h-12 rounded-full object-cover border-2 border-success-200" />
+                                            <span className="text-xs text-success-600 font-medium flex-1">Photo captured</span>
+                                            <button type="button" onClick={() => setVisitorPhoto(null)} className="text-xs text-danger-500 hover:text-danger-700 font-semibold">Remove</button>
+                                        </div>
+                                    ) : (
+                                        <button type="button" onClick={startPhotoCamera} className="flex items-center gap-2 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 text-sm text-neutral-700 dark:text-neutral-300 transition-colors">
                                             <Camera className="w-4 h-4" />
-                                            <span>Visitor Photo</span>
-                                            <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} />
-                                        </label>
-                                        {visitorPhoto && <span className="text-xs text-success-600 dark:text-success-400 font-medium">Photo captured</span>}
-                                    </div>
+                                            <span>Capture Visitor Photo</span>
+                                        </button>
+                                    )}
                                     <button
                                         onClick={() => handleCheckIn(foundVisit.id)}
                                         disabled={actionId === foundVisit.id}
@@ -257,13 +416,46 @@ export function GateCheckInScreen() {
                             Expected Visitors Today ({expectedVisitors.length})
                         </h2>
                         <div className="flex items-center gap-3">
-                            <label className="flex items-center gap-2 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-700 text-sm text-neutral-700 dark:text-neutral-300 transition-colors">
-                                <Camera className="w-4 h-4" />
-                                <span>Visitor Photo</span>
-                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} />
-                            </label>
-                            {visitorPhoto && <span className="text-xs text-success-600 dark:text-success-400 font-medium">Photo captured</span>}
+                            {visitorPhoto ? (
+                                <>
+                                    <img src={visitorPhoto} alt="Visitor" className="w-8 h-8 rounded-full object-cover border border-success-200" />
+                                    <span className="text-xs text-success-600 dark:text-success-400 font-medium">Photo ready</span>
+                                    <button type="button" onClick={() => setVisitorPhoto(null)} className="text-xs text-danger-500 hover:text-danger-700 font-semibold">Clear</button>
+                                </>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={startPhotoCamera}
+                                    className="flex items-center gap-2 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 text-sm text-neutral-700 dark:text-neutral-300 transition-colors"
+                                >
+                                    <Camera className="w-4 h-4" />
+                                    <span>Capture Photo</span>
+                                </button>
+                            )}
                         </div>
+
+            {/* Webcam Photo Capture Modal */}
+            {showPhotoCamera && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
+                            <h2 className="text-lg font-bold text-primary-950 dark:text-white flex items-center gap-2"><Camera size={18} /> Capture Visitor Photo</h2>
+                            <button onClick={stopPhotoCamera} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"><X size={18} /></button>
+                        </div>
+                        <div className="p-6 flex flex-col items-center gap-4">
+                            <div className="relative w-64 h-64 rounded-full overflow-hidden border-4 border-primary-200 dark:border-primary-700 bg-black">
+                                <video ref={photoVideoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+                            </div>
+                            <canvas ref={photoCanvasRef} className="hidden" />
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400 text-center">Position the visitor's face within the circle</p>
+                            <div className="flex gap-3 w-full">
+                                <button type="button" onClick={stopPhotoCamera} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-600 hover:bg-neutral-50 transition-colors">Cancel</button>
+                                <button type="button" onClick={capturePhoto} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors flex items-center justify-center gap-2"><Camera size={14} /> Capture</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
                     </div>
                     {todayQuery.isLoading ? (
                         <SkeletonTable rows={5} cols={5} />
@@ -295,15 +487,15 @@ export function GateCheckInScreen() {
                                                 </div>
                                             </td>
                                             <td className="py-3 px-5 text-neutral-600 dark:text-neutral-400 text-xs">{v.visitorCompany || "---"}</td>
-                                            <td className="py-3 px-5 text-neutral-600 dark:text-neutral-400 text-xs">{v.hostName || v.hostEmployee?.name || "---"}</td>
+                                            <td className="py-3 px-5 text-neutral-600 dark:text-neutral-400 text-xs">{v.hostEmployeeName ?? v.hostEmployeeId ?? "---"}</td>
                                             <td className="py-3 px-5 text-neutral-600 dark:text-neutral-400 text-xs">
-                                                {v.expectedArrival ? fmt.time(v.expectedArrival) : "---"}
+                                                {v.expectedTime ? fmt.shiftTime(v.expectedTime) : v.expectedDate ? fmt.date(v.expectedDate) : "---"}
                                             </td>
                                             <td className="py-3 px-5 text-center">
                                                 <VisitStatusBadge status={v.status} />
                                             </td>
                                             <td className="py-3 px-5 text-right">
-                                                {(v.status === "PRE_REGISTERED" || v.status === "APPROVED") && (
+                                                {(v.status === "EXPECTED" || v.status === "ARRIVED") && (
                                                     <button
                                                         onClick={() => handleCheckIn(v.id)}
                                                         disabled={actionId === v.id}
@@ -329,6 +521,47 @@ export function GateCheckInScreen() {
                     )}
                 </div>
             </div>
+
+            {/* Badge QR Modal (shown after successful check-in) */}
+            {checkedInBadge && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
+                            <h2 className="text-lg font-bold text-primary-950 dark:text-white flex items-center gap-2">
+                                <BadgeCheck size={18} className="text-success-600" /> Check-In Complete
+                            </h2>
+                            <button onClick={() => setCheckedInBadge(null)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="p-6 flex flex-col items-center gap-4">
+                            <div className="text-center">
+                                <p className="text-lg font-bold text-primary-950 dark:text-white">{checkedInBadge.visitorName}</p>
+                                {checkedInBadge.badgeNumber && (
+                                    <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">Badge: <span className="font-mono font-semibold">{checkedInBadge.badgeNumber}</span></p>
+                                )}
+                            </div>
+                            {checkedInBadge.visitCode && (
+                                <div className="bg-white p-4 rounded-xl border border-neutral-200 dark:border-neutral-700">
+                                    <QRCodeReact
+                                        value={`${window.location.origin}/visit/${checkedInBadge.visitCode}/badge`}
+                                        size={200}
+                                    />
+                                </div>
+                            )}
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400 text-center">
+                                Show this QR code to the visitor to access their digital badge
+                            </p>
+                            <button
+                                onClick={() => setCheckedInBadge(null)}
+                                className="w-full py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors"
+                            >
+                                Done
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Walk-In Modal */}
             {showWalkIn && (
@@ -370,6 +603,16 @@ export function GateCheckInScreen() {
                                 </div>
                             </div>
                             <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Email <span className="text-neutral-400 text-[10px] font-normal normal-case">(for digital badge)</span></label>
+                                <input
+                                    type="email"
+                                    value={walkInForm.visitorEmail}
+                                    onChange={(e) => setWalkInForm((p) => ({ ...p, visitorEmail: e.target.value }))}
+                                    placeholder="visitor@company.com"
+                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
+                                />
+                            </div>
+                            <div>
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Company</label>
                                 <div className="relative">
                                     <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
@@ -384,24 +627,44 @@ export function GateCheckInScreen() {
                             </div>
                             <div>
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Purpose</label>
-                                <input
-                                    type="text"
+                                <select
                                     value={walkInForm.purpose}
                                     onChange={(e) => setWalkInForm((p) => ({ ...p, purpose: e.target.value }))}
-                                    placeholder="Purpose of visit"
-                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
-                                />
+                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                                >
+                                    <option value="">Select purpose...</option>
+                                    <option value="MEETING">Meeting</option>
+                                    <option value="DELIVERY">Delivery</option>
+                                    <option value="MAINTENANCE">Maintenance</option>
+                                    <option value="AUDIT">Audit</option>
+                                    <option value="INTERVIEW">Interview</option>
+                                    <option value="SITE_TOUR">Site Tour</option>
+                                    <option value="PERSONAL">Personal</option>
+                                    <option value="OTHER">Other</option>
+                                </select>
                             </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Host</label>
-                                <input
-                                    type="text"
-                                    value={walkInForm.hostName}
-                                    onChange={(e) => setWalkInForm((p) => ({ ...p, hostName: e.target.value }))}
-                                    placeholder="Person to meet"
-                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
-                                />
-                            </div>
+                            <SearchableSelect
+                                label="Host Employee"
+                                value={walkInForm.hostEmployeeId}
+                                onChange={(v) => setWalkInForm((p) => ({ ...p, hostEmployeeId: v }))}
+                                options={employees.map((e: any) => ({
+                                    value: e.id,
+                                    label: `${e.firstName} ${e.lastName}`,
+                                    sublabel: e.designation?.name ?? e.department?.name ?? e.employeeCode ?? "",
+                                }))}
+                                placeholder="Search employee..."
+                            />
+                            <SearchableSelect
+                                label="Location (Plant)"
+                                value={walkInForm.plantId}
+                                onChange={(v) => setWalkInForm((p) => ({ ...p, plantId: v }))}
+                                options={locations.map((l: any) => ({
+                                    value: l.id,
+                                    label: l.name,
+                                    sublabel: l.city ? `${l.city}, ${l.state ?? ""}` : undefined,
+                                }))}
+                                placeholder="Select location..."
+                            />
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
                             <button onClick={() => setShowWalkIn(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>

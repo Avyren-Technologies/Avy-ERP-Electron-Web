@@ -20,15 +20,17 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
 
 const EMPTY_FORM = {
-    name: "",
-    mobile: "",
+    personName: "",
+    mobileNumber: "",
     email: "",
     idNumber: "",
-    type: "BLOCKLIST",
+    type: "BLOCKLIST" as "BLOCKLIST" | "WATCHLIST",
     reason: "",
-    validFrom: "",
-    validUntil: "",
-    notes: "",
+    actionRequired: "",
+    blockDuration: "PERMANENT" as "PERMANENT" | "UNTIL_DATE",
+    expiryDate: "",
+    appliesToAllPlants: true,
+    plantIds: [] as string[],
 };
 
 /* ── Screen ── */
@@ -56,38 +58,42 @@ export function WatchlistScreen() {
     const openEdit = (e: any) => {
         setEditingId(e.id);
         setForm({
-            name: e.name ?? "",
-            mobile: e.mobile ?? "",
+            personName: e.personName ?? "",
+            mobileNumber: e.mobileNumber ?? "",
             email: e.email ?? "",
             idNumber: e.idNumber ?? "",
             type: e.type ?? tab,
             reason: e.reason ?? "",
-            validFrom: e.validFrom ? e.validFrom.split("T")[0] : "",
-            validUntil: e.validUntil ? e.validUntil.split("T")[0] : "",
-            notes: e.notes ?? "",
+            actionRequired: e.actionRequired ?? "",
+            blockDuration: e.blockDuration ?? "PERMANENT",
+            expiryDate: e.expiryDate ? e.expiryDate.split("T")[0] : "",
+            appliesToAllPlants: e.appliesToAllPlants ?? true,
+            plantIds: e.plantIds ?? [],
         });
         setModalOpen(true);
     };
 
     const handleSave = async () => {
         try {
-            const payload = {
-                name: form.name,
-                mobile: form.mobile || undefined,
+            const payload: Record<string, unknown> = {
+                personName: form.personName,
+                mobileNumber: form.mobileNumber || undefined,
                 email: form.email || undefined,
                 idNumber: form.idNumber || undefined,
                 type: form.type,
                 reason: form.reason,
-                validFrom: form.validFrom || undefined,
-                validUntil: form.validUntil || undefined,
-                notes: form.notes || undefined,
+                actionRequired: form.actionRequired || undefined,
+                blockDuration: form.blockDuration,
+                expiryDate: form.blockDuration === "UNTIL_DATE" ? (form.expiryDate || undefined) : undefined,
+                appliesToAllPlants: form.appliesToAllPlants,
+                plantIds: form.appliesToAllPlants ? [] : form.plantIds,
             };
             if (editingId) {
                 await updateMutation.mutateAsync({ id: editingId, data: payload });
-                showSuccess("Entry Updated", `${form.name} has been updated.`);
+                showSuccess("Entry Updated", `${form.personName} has been updated.`);
             } else {
                 await createMutation.mutateAsync(payload);
-                showSuccess("Entry Added", `${form.name} has been added to the ${form.type === "BLOCKLIST" ? "blocklist" : "watchlist"}.`);
+                showSuccess("Entry Added", `${form.personName} has been added to the ${form.type === "BLOCKLIST" ? "blocklist" : "watchlist"}.`);
             }
             setModalOpen(false);
         } catch (err) { showApiError(err); }
@@ -97,7 +103,7 @@ export function WatchlistScreen() {
         if (!deleteTarget) return;
         try {
             await deleteMutation.mutateAsync(deleteTarget.id);
-            showSuccess("Entry Removed", `${deleteTarget.name} has been removed.`);
+            showSuccess("Entry Removed", `${deleteTarget.personName} has been removed.`);
             setDeleteTarget(null);
         } catch (err) { showApiError(err); }
     };
@@ -174,14 +180,14 @@ export function WatchlistScreen() {
                                                 <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", e.type === "BLOCKLIST" ? "bg-danger-50 dark:bg-danger-900/30" : "bg-warning-50 dark:bg-warning-900/30")}>
                                                     <ShieldAlert className={cn("w-4 h-4", e.type === "BLOCKLIST" ? "text-danger-600 dark:text-danger-400" : "text-warning-600 dark:text-warning-400")} />
                                                 </div>
-                                                <span className="font-bold text-primary-950 dark:text-white">{e.name}</span>
+                                                <span className="font-bold text-primary-950 dark:text-white">{e.personName}</span>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{e.mobile || "---"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{e.mobileNumber || "---"}</td>
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{e.idNumber || "---"}</td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs max-w-[200px] truncate">{e.reason || "---"}</td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">
-                                            {e.validUntil ? fmt.date(e.validUntil) : "Permanent"}
+                                            {e.blockDuration === "UNTIL_DATE" && e.expiryDate ? fmt.date(e.expiryDate) : "Permanent"}
                                         </td>
                                         <td className="py-4 px-6 text-center">
                                             <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border", e.type === "BLOCKLIST" ? "bg-danger-50 text-danger-700 border-danger-200 dark:bg-danger-900/20 dark:text-danger-400" : "bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/20 dark:text-warning-400")}>
@@ -217,18 +223,22 @@ export function WatchlistScreen() {
                         </div>
                         <div className="p-6 overflow-y-auto flex-1 space-y-4">
                             <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Name *</label>
-                                <input type="text" value={form.name} onChange={(e) => updateField("name", e.target.value)} placeholder="Full name" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Person Name *</label>
+                                <input type="text" value={form.personName} onChange={(e) => updateField("personName", e.target.value)} placeholder="Full name" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Mobile</label>
-                                    <input type="text" value={form.mobile} onChange={(e) => updateField("mobile", e.target.value)} placeholder="Phone number" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Mobile Number</label>
+                                    <input type="text" value={form.mobileNumber} onChange={(e) => updateField("mobileNumber", e.target.value)} placeholder="Phone number" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">ID Number</label>
-                                    <input type="text" value={form.idNumber} onChange={(e) => updateField("idNumber", e.target.value)} placeholder="ID document number" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Email</label>
+                                    <input type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} placeholder="Email address" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
                                 </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">ID Number</label>
+                                <input type="text" value={form.idNumber} onChange={(e) => updateField("idNumber", e.target.value)} placeholder="ID document number" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
                             </div>
                             <div>
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">List Type</label>
@@ -241,20 +251,29 @@ export function WatchlistScreen() {
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Reason *</label>
                                 <textarea value={form.reason} onChange={(e) => updateField("reason", e.target.value)} placeholder="Reason for listing..." rows={3} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all resize-none" />
                             </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Action Required</label>
+                                <input type="text" value={form.actionRequired} onChange={(e) => updateField("actionRequired", e.target.value)} placeholder="Action to take when this person visits" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                            </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Valid From</label>
-                                    <input type="date" value={form.validFrom} onChange={(e) => updateField("validFrom", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Block Duration *</label>
+                                    <select value={form.blockDuration} onChange={(e) => updateField("blockDuration", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
+                                        <option value="PERMANENT">Permanent</option>
+                                        <option value="UNTIL_DATE">Until Date</option>
+                                    </select>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Valid Until</label>
-                                    <input type="date" value={form.validUntil} onChange={(e) => updateField("validUntil", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
-                                </div>
+                                {form.blockDuration === "UNTIL_DATE" && (
+                                    <div>
+                                        <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Expiry Date *</label>
+                                        <input type="date" value={form.expiryDate} onChange={(e) => updateField("expiryDate", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
                             <button onClick={() => setModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
-                            <button onClick={handleSave} disabled={saving || !form.name || !form.reason} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                            <button onClick={handleSave} disabled={saving || !form.personName || !form.reason} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                                 {saving && <Loader2 size={14} className="animate-spin" />}
                                 {saving ? "Saving..." : editingId ? "Update" : "Add"}
                             </button>
@@ -268,7 +287,7 @@ export function WatchlistScreen() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
                     <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200">
                         <h2 className="text-lg font-bold text-danger-700 dark:text-danger-400 mb-2">Remove Entry?</h2>
-                        <p className="text-sm text-neutral-500 dark:text-neutral-400">Remove <strong>{deleteTarget.name}</strong> from the {deleteTarget.type === "BLOCKLIST" ? "blocklist" : "watchlist"}?</p>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400">Remove <strong>{deleteTarget.personName}</strong> from the {deleteTarget.type === "BLOCKLIST" ? "blocklist" : "watchlist"}?</p>
                         <div className="flex gap-3 mt-6">
                             <button onClick={() => setDeleteTarget(null)} className="flex-1 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
                             <button onClick={handleDelete} disabled={deleteMutation.isPending} className="flex-1 py-3 rounded-xl bg-danger-600 hover:bg-danger-700 text-white text-sm font-bold transition-colors disabled:opacity-50">{deleteMutation.isPending ? "Removing..." : "Remove"}</button>

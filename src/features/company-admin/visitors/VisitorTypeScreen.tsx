@@ -9,10 +9,12 @@ import {
     Search,
     Check,
     Minus,
+    Power,
+    PowerOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useVisitorTypes } from "@/features/company-admin/api/use-visitor-queries";
-import { useCreateVisitorType, useUpdateVisitorType, useDeleteVisitorType } from "@/features/company-admin/api/use-visitor-mutations";
+import { useVisitorTypes, useSafetyInductions } from "@/features/company-admin/api/use-visitor-queries";
+import { useCreateVisitorType, useUpdateVisitorType, useDeactivateVisitorType, useActivateVisitorType, useDeleteVisitorType } from "@/features/company-admin/api/use-visitor-mutations";
 import { useCanPerform } from "@/hooks/useCanPerform";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -75,28 +77,27 @@ function SectionLabel({ title }: { title: string }) {
 }
 
 const BADGE_COLORS = [
-    { value: "blue", label: "Blue" },
-    { value: "green", label: "Green" },
-    { value: "orange", label: "Orange" },
-    { value: "red", label: "Red" },
-    { value: "purple", label: "Purple" },
-    { value: "yellow", label: "Yellow" },
-    { value: "gray", label: "Gray" },
+    { value: "#3B82F6", label: "Blue" },
+    { value: "#22C55E", label: "Green" },
+    { value: "#F97316", label: "Orange" },
+    { value: "#EF4444", label: "Red" },
+    { value: "#A855F7", label: "Purple" },
+    { value: "#F59E0B", label: "Yellow" },
+    { value: "#6B7280", label: "Gray" },
 ];
 
 const EMPTY_FORM = {
     name: "",
     code: "",
-    description: "",
-    badgeColor: "blue",
-    requiresApproval: false,
-    requiresInduction: false,
-    requiresNDA: false,
-    requiresPPE: false,
-    requiresEscort: false,
-    requiresIdVerification: true,
-    maxVisitDuration: "",
-    allowedAreas: "",
+    badgeColour: "#3B82F6",
+    requirePhoto: true,
+    requireIdVerification: true,
+    requireHostApproval: true,
+    requireSafetyInduction: false,
+    requireNda: false,
+    requireEscort: false,
+    defaultMaxDurationMinutes: "",
+    safetyInductionId: "",
 };
 
 /* ── Screen ── */
@@ -106,12 +107,17 @@ export function VisitorTypeScreen() {
     const { data, isLoading, isError } = useVisitorTypes();
     const createMutation = useCreateVisitorType();
     const updateMutation = useUpdateVisitorType();
+    const deactivateMutation = useDeactivateVisitorType();
+    const activateMutation = useActivateVisitorType();
     const deleteMutation = useDeleteVisitorType();
+    const { data: inductionsData } = useSafetyInductions();
+    const safetyInductions: any[] = inductionsData?.data ?? [];
 
     const [search, setSearch] = useState("");
     const [modalOpen, setModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [form, setForm] = useState({ ...EMPTY_FORM });
+    const [deactivateTarget, setDeactivateTarget] = useState<any>(null);
     const [deleteTarget, setDeleteTarget] = useState<any>(null);
 
     const visitorTypes: any[] = data?.data ?? [];
@@ -133,16 +139,15 @@ export function VisitorTypeScreen() {
         setForm({
             name: t.name ?? "",
             code: t.code ?? "",
-            description: t.description ?? "",
-            badgeColor: t.badgeColor ?? "blue",
-            requiresApproval: t.requiresApproval ?? false,
-            requiresInduction: t.requiresInduction ?? false,
-            requiresNDA: t.requiresNDA ?? false,
-            requiresPPE: t.requiresPPE ?? false,
-            requiresEscort: t.requiresEscort ?? false,
-            requiresIdVerification: t.requiresIdVerification ?? true,
-            maxVisitDuration: String(t.maxVisitDuration ?? ""),
-            allowedAreas: t.allowedAreas ?? "",
+            badgeColour: t.badgeColour ?? "#3B82F6",
+            requirePhoto: t.requirePhoto ?? true,
+            requireIdVerification: t.requireIdVerification ?? true,
+            requireHostApproval: t.requireHostApproval ?? true,
+            requireSafetyInduction: t.requireSafetyInduction ?? false,
+            requireNda: t.requireNda ?? false,
+            requireEscort: t.requireEscort ?? false,
+            defaultMaxDurationMinutes: String(t.defaultMaxDurationMinutes ?? ""),
+            safetyInductionId: t.safetyInductionId ?? "",
         });
         setModalOpen(true);
     };
@@ -151,17 +156,16 @@ export function VisitorTypeScreen() {
         try {
             const payload = {
                 name: form.name,
-                code: form.code || undefined,
-                description: form.description || undefined,
-                badgeColor: form.badgeColor,
-                requiresApproval: form.requiresApproval,
-                requiresInduction: form.requiresInduction,
-                requiresNDA: form.requiresNDA,
-                requiresPPE: form.requiresPPE,
-                requiresEscort: form.requiresEscort,
-                requiresIdVerification: form.requiresIdVerification,
-                maxVisitDuration: form.maxVisitDuration ? Number(form.maxVisitDuration) : undefined,
-                allowedAreas: form.allowedAreas || undefined,
+                code: form.code,
+                badgeColour: form.badgeColour,
+                requirePhoto: form.requirePhoto,
+                requireIdVerification: form.requireIdVerification,
+                requireHostApproval: form.requireHostApproval,
+                requireSafetyInduction: form.requireSafetyInduction,
+                requireNda: form.requireNda,
+                requireEscort: form.requireEscort,
+                defaultMaxDurationMinutes: form.defaultMaxDurationMinutes ? Number(form.defaultMaxDurationMinutes) : undefined,
+                safetyInductionId: form.requireSafetyInduction && form.safetyInductionId ? form.safetyInductionId : null,
             };
             if (editingId) {
                 await updateMutation.mutateAsync({ id: editingId, data: payload });
@@ -176,11 +180,31 @@ export function VisitorTypeScreen() {
         }
     };
 
+    const handleDeactivate = async () => {
+        if (!deactivateTarget) return;
+        try {
+            await deactivateMutation.mutateAsync(deactivateTarget.id);
+            showSuccess("Type Deactivated", `${deactivateTarget.name} has been deactivated.`);
+            setDeactivateTarget(null);
+        } catch (err) {
+            showApiError(err);
+        }
+    };
+
+    const handleActivate = async (t: any) => {
+        try {
+            await activateMutation.mutateAsync(t.id);
+            showSuccess("Type Activated", `${t.name} has been activated.`);
+        } catch (err) {
+            showApiError(err);
+        }
+    };
+
     const handleDelete = async () => {
         if (!deleteTarget) return;
         try {
             await deleteMutation.mutateAsync(deleteTarget.id);
-            showSuccess("Type Deleted", `${deleteTarget.name} has been removed.`);
+            showSuccess("Type Deleted", `${deleteTarget.name} has been permanently deleted.`);
             setDeleteTarget(null);
         } catch (err) {
             showApiError(err);
@@ -189,19 +213,6 @@ export function VisitorTypeScreen() {
 
     const saving = createMutation.isPending || updateMutation.isPending;
     const updateField = (key: string, value: any) => setForm((p) => ({ ...p, [key]: value }));
-
-    const badgeColorClass = (color: string) => {
-        const map: Record<string, string> = {
-            blue: "bg-blue-100 text-blue-700 border-blue-200",
-            green: "bg-green-100 text-green-700 border-green-200",
-            orange: "bg-orange-100 text-orange-700 border-orange-200",
-            red: "bg-red-100 text-red-700 border-red-200",
-            purple: "bg-purple-100 text-purple-700 border-purple-200",
-            yellow: "bg-yellow-100 text-yellow-700 border-yellow-200",
-            gray: "bg-gray-100 text-gray-700 border-gray-200",
-        };
-        return map[color] ?? map.blue;
-    };
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -254,45 +265,57 @@ export function VisitorTypeScreen() {
                                     <th className="py-4 px-6 font-bold">Name</th>
                                     <th className="py-4 px-6 font-bold">Code</th>
                                     <th className="py-4 px-6 font-bold">Badge</th>
+                                    <th className="py-4 px-6 font-bold text-center">Photo</th>
+                                    <th className="py-4 px-6 font-bold text-center">ID Check</th>
                                     <th className="py-4 px-6 font-bold text-center">Approval</th>
                                     <th className="py-4 px-6 font-bold text-center">Induction</th>
                                     <th className="py-4 px-6 font-bold text-center">NDA</th>
-                                    <th className="py-4 px-6 font-bold text-center">PPE</th>
-                                    <th className="py-4 px-6 font-bold text-center">ID Check</th>
+                                    <th className="py-4 px-6 font-bold text-center">Escort</th>
+                                    <th className="py-4 px-6 font-bold text-center">Status</th>
                                     <th className="py-4 px-6 font-bold text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="text-sm">
                                 {filtered.map((t: any) => (
-                                    <tr key={t.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
+                                    <tr key={t.id} className={cn("border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors", !t.isActive && "opacity-60")}>
                                         <td className="py-4 px-6">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-accent-50 dark:bg-accent-900/30 flex items-center justify-center shrink-0">
-                                                    <Tag className="w-4 h-4 text-accent-600 dark:text-accent-400" />
+                                                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${t.badgeColour ?? '#3B82F6'}20` }}>
+                                                    <Tag className="w-4 h-4" style={{ color: t.badgeColour ?? '#3B82F6' }} />
                                                 </div>
-                                                <div>
-                                                    <span className="font-bold text-primary-950 dark:text-white block">{t.name}</span>
-                                                    {t.description && <span className="text-[10px] text-neutral-400 line-clamp-1">{t.description}</span>}
-                                                </div>
+                                                <span className="font-bold text-primary-950 dark:text-white">{t.name}</span>
                                             </div>
                                         </td>
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{t.code || "---"}</td>
                                         <td className="py-4 px-6">
-                                            <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize", badgeColorClass(t.badgeColor))}>
-                                                {t.badgeColor || "blue"}
+                                            <div className="w-6 h-6 rounded-full border border-neutral-200" style={{ backgroundColor: t.badgeColour ?? '#3B82F6' }} />
+                                        </td>
+                                        <td className="py-4 px-6 text-center"><YesNoBadge enabled={t.requirePhoto} /></td>
+                                        <td className="py-4 px-6 text-center"><YesNoBadge enabled={t.requireIdVerification} /></td>
+                                        <td className="py-4 px-6 text-center"><YesNoBadge enabled={t.requireHostApproval} /></td>
+                                        <td className="py-4 px-6 text-center"><YesNoBadge enabled={t.requireSafetyInduction} /></td>
+                                        <td className="py-4 px-6 text-center"><YesNoBadge enabled={t.requireNda} /></td>
+                                        <td className="py-4 px-6 text-center"><YesNoBadge enabled={t.requireEscort} /></td>
+                                        <td className="py-4 px-6 text-center">
+                                            <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border", t.isActive !== false ? "bg-success-50 text-success-700 border-success-200" : "bg-neutral-100 text-neutral-500 border-neutral-200")}>
+                                                {t.isActive !== false ? "Active" : "Inactive"}
                                             </span>
                                         </td>
-                                        <td className="py-4 px-6 text-center"><YesNoBadge enabled={t.requiresApproval} /></td>
-                                        <td className="py-4 px-6 text-center"><YesNoBadge enabled={t.requiresInduction} /></td>
-                                        <td className="py-4 px-6 text-center"><YesNoBadge enabled={t.requiresNDA} /></td>
-                                        <td className="py-4 px-6 text-center"><YesNoBadge enabled={t.requiresPPE} /></td>
-                                        <td className="py-4 px-6 text-center"><YesNoBadge enabled={t.requiresIdVerification} /></td>
                                         <td className="py-4 px-6 text-right">
                                             {canConfigure && (
                                                 <div className="flex items-center justify-end gap-1">
                                                     <button onClick={() => openEdit(t)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit">
                                                         <Edit3 size={15} />
                                                     </button>
+                                                    {t.isActive !== false ? (
+                                                        <button onClick={() => setDeactivateTarget(t)} className="p-2 text-warning-600 dark:text-warning-400 hover:bg-warning-50 dark:hover:bg-warning-900/20 rounded-lg transition-colors" title="Deactivate">
+                                                            <PowerOff size={15} />
+                                                        </button>
+                                                    ) : (
+                                                        <button onClick={() => handleActivate(t)} disabled={activateMutation.isPending} className="p-2 text-success-600 dark:text-success-400 hover:bg-success-50 dark:hover:bg-success-900/20 rounded-lg transition-colors" title="Activate">
+                                                            <Power size={15} />
+                                                        </button>
+                                                    )}
                                                     <button onClick={() => setDeleteTarget(t)} className="p-2 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors" title="Delete">
                                                         <Trash2 size={15} />
                                                     </button>
@@ -303,7 +326,7 @@ export function VisitorTypeScreen() {
                                 ))}
                                 {filtered.length === 0 && !isLoading && (
                                     <tr>
-                                        <td colSpan={9}>
+                                        <td colSpan={11}>
                                             <EmptyState icon="list" title="No visitor types found" message="Add your first visitor type to get started." action={canConfigure ? { label: "Add Type", onClick: openCreate } : undefined} />
                                         </td>
                                     </tr>
@@ -328,31 +351,45 @@ export function VisitorTypeScreen() {
                             <SectionLabel title="Basic" />
                             <div className="grid grid-cols-2 gap-4">
                                 <FormField label="Name" value={form.name} onChange={(v) => updateField("name", v)} placeholder="e.g. Contractor" />
-                                <FormField label="Code" value={form.code} onChange={(v) => updateField("code", v)} placeholder="e.g. CONT" />
+                                <FormField label="Code" value={form.code} onChange={(v) => updateField("code", v)} placeholder="e.g. CT" />
                             </div>
-                            <FormField label="Description" value={form.description} onChange={(v) => updateField("description", v)} placeholder="Brief description..." />
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Badge Color</label>
-                                    <select
-                                        value={form.badgeColor}
-                                        onChange={(e) => updateField("badgeColor", e.target.value)}
-                                        className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
-                                    >
-                                        {BADGE_COLORS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-                                    </select>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Badge Colour</label>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        {BADGE_COLORS.map((c) => (
+                                            <button key={c.value} type="button" onClick={() => updateField("badgeColour", c.value)} className={cn("w-8 h-8 rounded-full border-2 transition-all flex items-center justify-center", form.badgeColour === c.value ? "border-primary-600 scale-110 shadow-md" : "border-transparent hover:scale-105")} style={{ backgroundColor: c.value }} title={c.label}>
+                                                {form.badgeColour === c.value && <Check size={14} className="text-white" />}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                                <FormField label="Max Duration (min)" value={form.maxVisitDuration} onChange={(v) => updateField("maxVisitDuration", v)} placeholder="e.g. 480" />
+                                <FormField label="Max Duration (min)" value={form.defaultMaxDurationMinutes} onChange={(v) => updateField("defaultMaxDurationMinutes", v)} placeholder="e.g. 480" />
                             </div>
 
                             <SectionLabel title="Requirements" />
                             <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-4 border border-neutral-200 dark:border-neutral-700 space-y-1">
-                                <ToggleSwitch label="Requires Approval" checked={form.requiresApproval} onChange={(v) => updateField("requiresApproval", v)} />
-                                <ToggleSwitch label="Requires Safety Induction" checked={form.requiresInduction} onChange={(v) => updateField("requiresInduction", v)} />
-                                <ToggleSwitch label="Requires NDA Signing" checked={form.requiresNDA} onChange={(v) => updateField("requiresNDA", v)} />
-                                <ToggleSwitch label="Requires PPE" checked={form.requiresPPE} onChange={(v) => updateField("requiresPPE", v)} />
-                                <ToggleSwitch label="Requires Escort" checked={form.requiresEscort} onChange={(v) => updateField("requiresEscort", v)} />
-                                <ToggleSwitch label="Requires ID Verification" checked={form.requiresIdVerification} onChange={(v) => updateField("requiresIdVerification", v)} />
+                                <ToggleSwitch label="Require Photo" checked={form.requirePhoto} onChange={(v) => updateField("requirePhoto", v)} />
+                                <ToggleSwitch label="Require ID Verification" checked={form.requireIdVerification} onChange={(v) => updateField("requireIdVerification", v)} />
+                                <ToggleSwitch label="Require Host Approval" checked={form.requireHostApproval} onChange={(v) => updateField("requireHostApproval", v)} />
+                                <ToggleSwitch label="Require Safety Induction" checked={form.requireSafetyInduction} onChange={(v) => { updateField("requireSafetyInduction", v); if (!v) updateField("safetyInductionId", ""); }} />
+                                {form.requireSafetyInduction && (
+                                    <div className="pl-2 pb-2">
+                                        <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Safety Induction</label>
+                                        <select
+                                            value={form.safetyInductionId}
+                                            onChange={(e) => updateField("safetyInductionId", e.target.value)}
+                                            className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                                        >
+                                            <option value="">Auto (first active induction)</option>
+                                            {safetyInductions.filter((si: any) => si.isActive !== false).map((si: any) => (
+                                                <option key={si.id} value={si.id}>{si.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                                <ToggleSwitch label="Require NDA Signing" checked={form.requireNda} onChange={(v) => updateField("requireNda", v)} />
+                                <ToggleSwitch label="Require Escort" checked={form.requireEscort} onChange={(v) => updateField("requireEscort", v)} />
                             </div>
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
@@ -366,13 +403,31 @@ export function VisitorTypeScreen() {
                 </div>
             )}
 
+            {/* Deactivate Confirmation */}
+            {deactivateTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200">
+                        <h2 className="text-lg font-bold text-warning-700 dark:text-warning-400 mb-2">Deactivate Visitor Type?</h2>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                            <strong>{deactivateTarget.name}</strong> will be deactivated and hidden from active lists. Existing visits of this type will not be affected.
+                        </p>
+                        <div className="flex gap-3 mt-6">
+                            <button onClick={() => setDeactivateTarget(null)} className="flex-1 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
+                            <button onClick={handleDeactivate} disabled={deactivateMutation.isPending} className="flex-1 py-3 rounded-xl bg-warning-600 hover:bg-warning-700 text-white text-sm font-bold transition-colors disabled:opacity-50">
+                                {deactivateMutation.isPending ? "Deactivating..." : "Deactivate"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Delete Confirmation */}
             {deleteTarget && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
                     <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200">
                         <h2 className="text-lg font-bold text-danger-700 dark:text-danger-400 mb-2">Delete Visitor Type?</h2>
                         <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                            This will deactivate <strong>{deleteTarget.name}</strong>. Existing visits of this type will not be affected.
+                            This will permanently delete <strong>{deleteTarget.name}</strong>. This cannot be undone. Types with existing visits cannot be deleted.
                         </p>
                         <div className="flex gap-3 mt-6">
                             <button onClick={() => setDeleteTarget(null)} className="flex-1 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>

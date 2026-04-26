@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
     DoorOpen,
     Plus,
@@ -8,10 +8,14 @@ import {
     X,
     Search,
     Copy,
+    QrCode,
+    Printer,
 } from "lucide-react";
+import QRCode from "react-qr-code";
 import { cn } from "@/lib/utils";
 import { useGates } from "@/features/company-admin/api/use-visitor-queries";
 import { useCreateGate, useUpdateGate, useDeleteGate } from "@/features/company-admin/api/use-visitor-mutations";
+import { useCompanyLocations } from "@/features/company-admin/api/use-company-admin-queries";
 import { useCanPerform } from "@/hooks/useCanPerform";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -40,23 +44,20 @@ function ToggleSwitch({ label, checked, onChange }: { label: string; checked: bo
 }
 
 const GATE_TYPES = [
-    { value: "ENTRY", label: "Entry Only" },
-    { value: "EXIT", label: "Exit Only" },
-    { value: "BOTH", label: "Entry & Exit" },
+    { value: "MAIN", label: "Main Gate" },
+    { value: "SERVICE", label: "Service Gate" },
+    { value: "LOADING_DOCK", label: "Loading Dock" },
+    { value: "VIP", label: "VIP Gate" },
 ];
 
 const EMPTY_FORM = {
     name: "",
     code: "",
-    type: "BOTH",
+    type: "MAIN",
     plantId: "",
-    plantName: "",
-    operatingHoursStart: "06:00",
-    operatingHoursEnd: "22:00",
+    openTime: "06:00",
+    closeTime: "22:00",
     isActive: true,
-    enableQR: true,
-    allowedVisitorTypeIds: "",
-    description: "",
 };
 
 /* ── Screen ── */
@@ -64,15 +65,20 @@ const EMPTY_FORM = {
 export function GateScreen() {
     const canConfigure = useCanPerform("visitors:configure");
     const { data, isLoading, isError } = useGates();
+    const { data: locationsData } = useCompanyLocations();
     const createMutation = useCreateGate();
     const updateMutation = useUpdateGate();
     const deleteMutation = useDeleteGate();
+
+    const locations: { id: string; name: string }[] = (locationsData as any)?.data ?? [];
 
     const [search, setSearch] = useState("");
     const [modalOpen, setModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [form, setForm] = useState({ ...EMPTY_FORM });
     const [deleteTarget, setDeleteTarget] = useState<any>(null);
+    const [qrGate, setQrGate] = useState<any>(null);
+    const printRef = useRef<HTMLDivElement>(null);
 
     const gates: any[] = data?.data ?? [];
 
@@ -89,15 +95,11 @@ export function GateScreen() {
         setForm({
             name: g.name ?? "",
             code: g.code ?? "",
-            type: g.type ?? "BOTH",
+            type: g.type ?? "MAIN",
             plantId: g.plantId ?? "",
-            plantName: g.plant?.name ?? "",
-            operatingHoursStart: g.operatingHoursStart ?? "06:00",
-            operatingHoursEnd: g.operatingHoursEnd ?? "22:00",
+            openTime: g.openTime ?? "06:00",
+            closeTime: g.closeTime ?? "22:00",
             isActive: g.isActive ?? true,
-            enableQR: g.enableQR ?? true,
-            allowedVisitorTypeIds: (g.allowedVisitorTypeIds ?? []).join(", "),
-            description: g.description ?? "",
         });
         setModalOpen(true);
     };
@@ -106,18 +108,12 @@ export function GateScreen() {
         try {
             const payload = {
                 name: form.name,
-                code: form.code || undefined,
+                code: form.code,
                 type: form.type,
-                plantId: form.plantId || undefined,
-                operatingHoursStart: form.operatingHoursStart || undefined,
-                operatingHoursEnd: form.operatingHoursEnd || undefined,
+                plantId: form.plantId,
+                openTime: form.openTime || undefined,
+                closeTime: form.closeTime || undefined,
                 isActive: form.isActive,
-                enableQR: form.enableQR,
-                allowedVisitorTypeIds: (form.allowedVisitorTypeIds || "")
-                    .split(",")
-                    .map((id) => id.trim())
-                    .filter(Boolean),
-                description: form.description || undefined,
             };
             if (editingId) {
                 await updateMutation.mutateAsync({ id: editingId, data: payload });
@@ -141,6 +137,35 @@ export function GateScreen() {
 
     const saving = createMutation.isPending || updateMutation.isPending;
     const updateField = (key: string, value: any) => setForm((p) => ({ ...p, [key]: value }));
+
+    const handlePrintQR = () => {
+        if (!printRef.current) return;
+        const printContent = printRef.current.innerHTML;
+        const printWindow = window.open("", "_blank", "width=600,height=800");
+        if (!printWindow) return;
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Gate QR - ${qrGate?.name || "Gate"}</title>
+                <style>
+                    body { font-family: Inter, system-ui, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #fff; }
+                    .print-card { text-align: center; padding: 48px; max-width: 400px; }
+                    .company-name { font-size: 14px; color: #6b7280; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 2px; }
+                    .gate-name { font-size: 28px; font-weight: 800; color: #1e1b4b; margin-bottom: 4px; }
+                    .gate-code { font-size: 14px; color: #6366f1; font-weight: 600; margin-bottom: 32px; }
+                    .qr-wrap { display: inline-block; padding: 24px; border: 2px solid #e5e7eb; border-radius: 16px; margin-bottom: 24px; }
+                    .instruction { font-size: 18px; font-weight: 600; color: #374151; margin-bottom: 8px; }
+                    .sub-instruction { font-size: 13px; color: #9ca3af; }
+                    @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+                </style>
+            </head>
+            <body>${printContent}</body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.onload = () => { printWindow.print(); printWindow.close(); };
+    };
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -183,7 +208,6 @@ export function GateScreen() {
                                     <th className="py-4 px-6 font-bold">Type</th>
                                     <th className="py-4 px-6 font-bold">Plant</th>
                                     <th className="py-4 px-6 font-bold">Hours</th>
-                                    <th className="py-4 px-6 font-bold text-center">QR</th>
                                     <th className="py-4 px-6 font-bold text-center">Status</th>
                                     <th className="py-4 px-6 font-bold text-right">Actions</th>
                                 </tr>
@@ -201,20 +225,13 @@ export function GateScreen() {
                                         </td>
                                         <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{g.code || "---"}</td>
                                         <td className="py-4 px-6">
-                                            <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border", g.type === "ENTRY" ? "bg-success-50 text-success-700 border-success-200" : g.type === "EXIT" ? "bg-warning-50 text-warning-700 border-warning-200" : "bg-info-50 text-info-700 border-info-200")}>
-                                                {g.type || "BOTH"}
+                                            <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border", g.type === "MAIN" ? "bg-primary-50 text-primary-700 border-primary-200" : g.type === "VIP" ? "bg-warning-50 text-warning-700 border-warning-200" : g.type === "LOADING_DOCK" ? "bg-info-50 text-info-700 border-info-200" : "bg-success-50 text-success-700 border-success-200")}>
+                                                {GATE_TYPES.find(t => t.value === g.type)?.label ?? g.type}
                                             </span>
                                         </td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{g.plant?.name || "---"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{g.locationName || "---"}</td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">
-                                            {g.operatingHoursStart && g.operatingHoursEnd ? `${g.operatingHoursStart} - ${g.operatingHoursEnd}` : "24/7"}
-                                        </td>
-                                        <td className="py-4 px-6 text-center">
-                                            {g.enableQR ? (
-                                                <span className="text-[10px] font-bold bg-success-50 text-success-700 px-2 py-0.5 rounded-full border border-success-200">Enabled</span>
-                                            ) : (
-                                                <span className="text-[10px] font-bold bg-neutral-100 text-neutral-500 px-2 py-0.5 rounded-full border border-neutral-200">Disabled</span>
-                                            )}
+                                            {g.openTime && g.closeTime ? `${g.openTime} - ${g.closeTime}` : "24/7"}
                                         </td>
                                         <td className="py-4 px-6 text-center">
                                             <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border", g.isActive !== false ? "bg-success-50 text-success-700 border-success-200" : "bg-neutral-100 text-neutral-500 border-neutral-200")}>
@@ -224,10 +241,15 @@ export function GateScreen() {
                                         <td className="py-4 px-6 text-right">
                                             {canConfigure && (
                                                 <div className="flex items-center justify-end gap-1">
-                                                    {g.qrUrl && (
-                                                        <button onClick={() => { navigator.clipboard.writeText(g.qrUrl); showSuccess("Copied", "QR URL copied to clipboard."); }} className="p-2 text-info-600 dark:text-info-400 hover:bg-info-50 dark:hover:bg-info-900/30 rounded-lg transition-colors" title="Copy QR URL">
-                                                            <Copy size={15} />
-                                                        </button>
+                                                    {g.qrPosterUrl && (
+                                                        <>
+                                                            <button onClick={() => setQrGate(g)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Show QR Code">
+                                                                <QrCode size={15} />
+                                                            </button>
+                                                            <button onClick={() => { navigator.clipboard.writeText(g.qrPosterUrl); showSuccess("Copied", "QR URL copied to clipboard."); }} className="p-2 text-info-600 dark:text-info-400 hover:bg-info-50 dark:hover:bg-info-900/30 rounded-lg transition-colors" title="Copy QR URL">
+                                                                <Copy size={15} />
+                                                            </button>
+                                                        </>
                                                     )}
                                                     <button onClick={() => openEdit(g)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit">
                                                         <Edit3 size={15} />
@@ -241,7 +263,7 @@ export function GateScreen() {
                                     </tr>
                                 ))}
                                 {filtered.length === 0 && !isLoading && (
-                                    <tr><td colSpan={8}><EmptyState icon="list" title="No gates found" message="Add your first gate to get started." action={canConfigure ? { label: "Add Gate", onClick: openCreate } : undefined} /></td></tr>
+                                    <tr><td colSpan={7}><EmptyState icon="list" title="No gates found" message="Add your first gate to get started." action={canConfigure ? { label: "Add Gate", onClick: openCreate } : undefined} /></td></tr>
                                 )}
                             </tbody>
                         </table>
@@ -263,24 +285,29 @@ export function GateScreen() {
                                 <FormField label="Code" value={form.code} onChange={(v) => updateField("code", v)} placeholder="e.g. MG-01" />
                             </div>
                             <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Location (Plant) <span className="text-danger-500">*</span></label>
+                                <select value={form.plantId} onChange={(e) => updateField("plantId", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
+                                    <option value="">Select location...</option>
+                                    {locations.map((loc) => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Gate Type</label>
                                 <select value={form.type} onChange={(e) => updateField("type", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
                                     {GATE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                                 </select>
                             </div>
-                            <FormField label="Description" value={form.description} onChange={(v) => updateField("description", v)} placeholder="Gate description..." />
                             <div className="grid grid-cols-2 gap-4">
-                                <FormField label="Opening Time" value={form.operatingHoursStart} onChange={(v) => updateField("operatingHoursStart", v)} type="time" />
-                                <FormField label="Closing Time" value={form.operatingHoursEnd} onChange={(v) => updateField("operatingHoursEnd", v)} type="time" />
+                                <FormField label="Opening Time" value={form.openTime} onChange={(v) => updateField("openTime", v)} type="time" />
+                                <FormField label="Closing Time" value={form.closeTime} onChange={(v) => updateField("closeTime", v)} type="time" />
                             </div>
                             <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-4 border border-neutral-200 dark:border-neutral-700 space-y-1">
-                                <ToggleSwitch label="Enable QR Code" checked={form.enableQR} onChange={(v) => updateField("enableQR", v)} />
                                 <ToggleSwitch label="Active" checked={form.isActive} onChange={(v) => updateField("isActive", v)} />
                             </div>
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
                             <button onClick={() => setModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
-                            <button onClick={handleSave} disabled={saving || !form.name} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                            <button onClick={handleSave} disabled={saving || !form.name || !form.code || !form.plantId} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                                 {saving && <Loader2 size={14} className="animate-spin" />}
                                 {saving ? "Saving..." : editingId ? "Update" : "Create"}
                             </button>
@@ -299,6 +326,50 @@ export function GateScreen() {
                             <button onClick={() => setDeleteTarget(null)} className="flex-1 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
                             <button onClick={handleDelete} disabled={deleteMutation.isPending} className="flex-1 py-3 rounded-xl bg-danger-600 hover:bg-danger-700 text-white text-sm font-bold transition-colors disabled:opacity-50">{deleteMutation.isPending ? "Deleting..." : "Delete"}</button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* QR Code Modal */}
+            {qrGate && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in-95 duration-200">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
+                            <h2 className="text-lg font-bold text-primary-950 dark:text-white">Gate QR Code</h2>
+                            <button onClick={() => setQrGate(null)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"><X size={18} /></button>
+                        </div>
+                        <div className="p-8 text-center">
+                            <h3 className="text-xl font-bold text-primary-950 dark:text-white mb-1">{qrGate.name}</h3>
+                            <p className="text-sm text-primary-600 dark:text-primary-400 font-semibold mb-6">{qrGate.code}</p>
+                            <div className="bg-white p-6 rounded-2xl border border-neutral-200 inline-block mb-4">
+                                <QRCode value={qrGate.qrPosterUrl} size={200} />
+                            </div>
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400 font-mono break-all mb-2">{qrGate.qrPosterUrl}</p>
+                            <p className="text-sm text-neutral-600 dark:text-neutral-400 font-medium">Scan to register your visit</p>
+                        </div>
+                        <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
+                            <button onClick={() => { navigator.clipboard.writeText(qrGate.qrPosterUrl); showSuccess("Copied", "QR URL copied to clipboard."); }} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors flex items-center justify-center gap-2">
+                                <Copy size={14} /> Copy URL
+                            </button>
+                            <button onClick={handlePrintQR} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors flex items-center justify-center gap-2">
+                                <Printer size={14} /> Print QR
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Hidden print-friendly content */}
+            {qrGate && (
+                <div ref={printRef} style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
+                    <div className="print-card">
+                        <div className="gate-name">{qrGate.name}</div>
+                        <div className="gate-code">{qrGate.code}</div>
+                        <div className="qr-wrap">
+                            <QRCode value={qrGate.qrPosterUrl} size={240} />
+                        </div>
+                        <div className="instruction">Scan to register your visit</div>
+                        <div className="sub-instruction">{qrGate.qrPosterUrl}</div>
                     </div>
                 </div>
             )}

@@ -20,14 +20,14 @@ import { VisitStatusBadge } from "@/features/company-admin/visitors/components/V
 
 const STATUS_OPTIONS = [
     { value: "", label: "All Statuses" },
-    { value: "PRE_REGISTERED", label: "Pre-Registered" },
-    { value: "APPROVED", label: "Approved" },
-    { value: "PENDING_APPROVAL", label: "Pending Approval" },
+    { value: "EXPECTED", label: "Expected" },
+    { value: "ARRIVED", label: "Arrived" },
     { value: "CHECKED_IN", label: "Checked In" },
     { value: "CHECKED_OUT", label: "Checked Out" },
-    { value: "REJECTED", label: "Rejected" },
+    { value: "NO_SHOW", label: "No Show" },
     { value: "CANCELLED", label: "Cancelled" },
-    { value: "OVERSTAY", label: "Overstay" },
+    { value: "REJECTED", label: "Rejected" },
+    { value: "AUTO_CHECKED_OUT", label: "Auto Checked Out" },
 ];
 
 /* ── Screen ── */
@@ -50,8 +50,8 @@ export function VisitorListScreen() {
     if (search) params.search = search;
     if (status) params.status = status;
     if (visitorTypeId) params.visitorTypeId = visitorTypeId;
-    if (dateFrom) params.dateFrom = dateFrom;
-    if (dateTo) params.dateTo = dateTo;
+    if (dateFrom) params.fromDate = dateFrom;
+    if (dateTo) params.toDate = dateTo;
 
     const { data, isLoading, isError } = useVisits(params);
     const visitorTypesQuery = useVisitorTypes();
@@ -63,7 +63,11 @@ export function VisitorListScreen() {
     const handleCheckIn = async (id: string) => {
         try {
             setActionId(id);
-            await checkInMutation.mutateAsync({ id });
+            // Use the visit's assigned gate as checkInGateId
+            const visit = visits.find((v: any) => v.id === id);
+            const data: Record<string, unknown> = {};
+            if (visit?.gateId) data.checkInGateId = visit.gateId;
+            await checkInMutation.mutateAsync({ id, data: Object.keys(data).length > 0 ? data : undefined });
             showSuccess("Checked In", "Visitor has been checked in successfully.");
         } catch (err) {
             showApiError(err);
@@ -75,7 +79,7 @@ export function VisitorListScreen() {
     const handleCheckOut = async (id: string) => {
         try {
             setActionId(id);
-            await checkOutMutation.mutateAsync({ id });
+            await checkOutMutation.mutateAsync({ id, data: { checkOutMethod: "SECURITY_DESK" } });
             showSuccess("Checked Out", "Visitor has been checked out successfully.");
         } catch (err) {
             showApiError(err);
@@ -234,10 +238,10 @@ export function VisitorListScreen() {
                                                 {v.visitorType?.name || v.visitorTypeName || "Visitor"}
                                             </span>
                                         </td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{v.hostEmployee?.name || v.hostName || "---"}</td>
+                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{v.hostEmployeeName ?? v.hostEmployeeId ?? "---"}</td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{v.purpose || "---"}</td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">
-                                            {v.visitDate ? fmt.date(v.visitDate) : v.expectedArrival ? fmt.date(v.expectedArrival) : "---"}
+                                            {v.expectedDate ? fmt.date(v.expectedDate) : "---"}
                                         </td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">
                                             {v.checkInTime ? fmt.time(v.checkInTime) : "---"}
@@ -247,7 +251,7 @@ export function VisitorListScreen() {
                                         </td>
                                         <td className="py-4 px-6 text-right">
                                             <div className="flex items-center justify-end gap-1">
-                                                {(v.status === "PRE_REGISTERED" || v.status === "APPROVED") && (
+                                                {(v.status === "EXPECTED" || v.status === "ARRIVED") && v.approvalStatus !== "PENDING" && v.approvalStatus !== "REJECTED" && (
                                                     <button
                                                         onClick={() => handleCheckIn(v.id)}
                                                         disabled={actionId === v.id}

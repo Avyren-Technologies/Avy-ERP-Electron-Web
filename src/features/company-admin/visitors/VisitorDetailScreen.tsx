@@ -20,6 +20,9 @@ import {
     Trash2,
     Pencil,
     BookCheck,
+    BadgeCheck,
+    ExternalLink,
+    Hash,
 } from "lucide-react";
 import QRCode from "react-qr-code";
 import { cn } from "@/lib/utils";
@@ -62,6 +65,7 @@ export function VisitorDetailScreen() {
 
     const [showExtend, setShowExtend] = useState(false);
     const [extendMinutes, setExtendMinutes] = useState("60");
+    const [extendReason, setExtendReason] = useState("");
     const [rejectReason, setRejectReason] = useState("");
     const [showReject, setShowReject] = useState(false);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -94,14 +98,18 @@ export function VisitorDetailScreen() {
 
     const handleCheckIn = async () => {
         try {
-            await checkInMutation.mutateAsync({ id: visit.id });
-            showSuccess("Checked In", `${visit.visitorName} has been checked in.`);
+            const data: Record<string, unknown> = {};
+            if (visit.gateId) data.checkInGateId = visit.gateId;
+            else if (visit.checkInGateId) data.checkInGateId = visit.checkInGateId;
+            const result = await checkInMutation.mutateAsync({ id: visit.id, data: Object.keys(data).length > 0 ? data : undefined });
+            const badgeNo = result?.data?.badgeNumber;
+            showSuccess("Checked In", badgeNo ? `${visit.visitorName} checked in. Badge: ${badgeNo}` : `${visit.visitorName} has been checked in.`);
         } catch (err) { showApiError(err); }
     };
 
     const handleCheckOut = async () => {
         try {
-            await checkOutMutation.mutateAsync({ id: visit.id });
+            await checkOutMutation.mutateAsync({ id: visit.id, data: { checkOutMethod: "SECURITY_DESK" } });
             showSuccess("Checked Out", `${visit.visitorName} has been checked out.`);
         } catch (err) { showApiError(err); }
     };
@@ -115,7 +123,7 @@ export function VisitorDetailScreen() {
 
     const handleReject = async () => {
         try {
-            await rejectMutation.mutateAsync({ id: visit.id, data: { reason: rejectReason } });
+            await rejectMutation.mutateAsync({ id: visit.id, data: { notes: rejectReason } });
             showSuccess("Rejected", `Visit for ${visit.visitorName} has been rejected.`);
             setShowReject(false);
         } catch (err) { showApiError(err); }
@@ -123,9 +131,10 @@ export function VisitorDetailScreen() {
 
     const handleExtend = async () => {
         try {
-            await extendMutation.mutateAsync({ id: visit.id, data: { additionalMinutes: Number(extendMinutes) } });
+            await extendMutation.mutateAsync({ id: visit.id, data: { additionalMinutes: Number(extendMinutes), reason: extendReason || "Extended by host" } });
             showSuccess("Extended", `Visit has been extended by ${extendMinutes} minutes.`);
             setShowExtend(false);
+            setExtendReason("");
         } catch (err) { showApiError(err); }
     };
 
@@ -148,7 +157,7 @@ export function VisitorDetailScreen() {
         setEditForm({
             visitorName: visit.visitorName || "",
             visitorMobile: visit.visitorMobile || "",
-            expectedDate: visit.expectedArrival ? visit.expectedArrival.slice(0, 16) : "",
+            expectedDate: visit.expectedDate ? visit.expectedDate.slice(0, 10) : "",
             purpose: visit.purpose || "",
         });
         setShowEdit(true);
@@ -161,7 +170,7 @@ export function VisitorDetailScreen() {
                 data: {
                     visitorName: editForm.visitorName,
                     visitorMobile: editForm.visitorMobile,
-                    expectedArrival: editForm.expectedDate || undefined,
+                    expectedDate: editForm.expectedDate || undefined,
                     purpose: editForm.purpose,
                 },
             });
@@ -172,10 +181,10 @@ export function VisitorDetailScreen() {
 
     const timeline: { time: string; label: string; icon: any; color: string }[] = [];
     if (visit.createdAt) timeline.push({ time: fmt.dateTime(visit.createdAt), label: "Visit Created", icon: FileText, color: "primary" });
-    if (visit.approvedAt) timeline.push({ time: fmt.dateTime(visit.approvedAt), label: "Approved", icon: CheckCircle2, color: "success" });
-    if (visit.rejectedAt) timeline.push({ time: fmt.dateTime(visit.rejectedAt), label: "Rejected", icon: XCircle, color: "danger" });
+    if (visit.approvalTimestamp && visit.approvalStatus === "APPROVED") timeline.push({ time: fmt.dateTime(visit.approvalTimestamp), label: "Approved", icon: CheckCircle2, color: "success" });
+    if (visit.approvalTimestamp && visit.approvalStatus === "REJECTED") timeline.push({ time: fmt.dateTime(visit.approvalTimestamp), label: "Rejected", icon: XCircle, color: "danger" });
     if (visit.checkInTime) timeline.push({ time: fmt.dateTime(visit.checkInTime), label: "Checked In", icon: LogIn, color: "success" });
-    if (visit.inductionCompletedAt) timeline.push({ time: fmt.dateTime(visit.inductionCompletedAt), label: "Induction Completed", icon: Shield, color: "info" });
+    if (visit.safetyInductionTimestamp) timeline.push({ time: fmt.dateTime(visit.safetyInductionTimestamp), label: "Induction Completed", icon: Shield, color: "info" });
     if (visit.checkOutTime) timeline.push({ time: fmt.dateTime(visit.checkOutTime), label: "Checked Out", icon: LogOut, color: "neutral" });
 
     return (
@@ -201,7 +210,7 @@ export function VisitorDetailScreen() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                    {(visit.status === "PENDING_APPROVAL" || visit.status === "PRE_REGISTERED") && canApprove && (
+                    {visit.approvalStatus === "PENDING" && canApprove && (
                         <>
                             <button
                                 onClick={handleApprove}
@@ -219,7 +228,7 @@ export function VisitorDetailScreen() {
                             </button>
                         </>
                     )}
-                    {(visit.status === "PRE_REGISTERED" || visit.status === "APPROVED") && canCreate && (
+                    {(visit.status === "EXPECTED" || visit.status === "ARRIVED") && visit.approvalStatus !== "PENDING" && visit.approvalStatus !== "REJECTED" && canCreate && (
                         <button
                             onClick={handleCheckIn}
                             disabled={checkInMutation.isPending}
@@ -257,7 +266,7 @@ export function VisitorDetailScreen() {
                             Mark Induction Complete
                         </button>
                     )}
-                    {(visit.status === "EXPECTED" || visit.status === "PRE_REGISTERED" || visit.status === "APPROVED" || visit.status === "ARRIVED") && canCreate && (
+                    {(visit.status === "EXPECTED" || visit.status === "ARRIVED") && canCreate && (
                         <button
                             onClick={openEditModal}
                             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-primary-300 dark:border-primary-700 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 text-sm font-bold transition-colors hover:bg-primary-100 dark:hover:bg-primary-900/30"
@@ -265,7 +274,7 @@ export function VisitorDetailScreen() {
                             <Pencil size={14} /> Edit
                         </button>
                     )}
-                    {(visit.status === "EXPECTED" || visit.status === "PRE_REGISTERED" || visit.status === "APPROVED" || visit.status === "ARRIVED" || visit.status === "PENDING_APPROVAL") && canCreate && (
+                    {(visit.status === "EXPECTED" || visit.status === "ARRIVED") && canCreate && (
                         <button
                             onClick={() => setShowCancelConfirm(true)}
                             disabled={cancelMutation.isPending}
@@ -284,6 +293,16 @@ export function VisitorDetailScreen() {
                 <div className="lg:col-span-2 space-y-6">
                     <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-xl shadow-neutral-900/5 p-6">
                         <h2 className="text-sm font-bold text-primary-950 dark:text-white uppercase tracking-wider mb-4">Visitor Information</h2>
+                        {visit.visitorPhoto && (
+                            <div className="flex items-center gap-4 mb-5 pb-5 border-b border-neutral-100 dark:border-neutral-800">
+                                <img src={visit.visitorPhoto} alt={visit.visitorName} className="w-20 h-20 rounded-full object-cover border-2 border-primary-200 dark:border-primary-700 shadow-md" />
+                                <div>
+                                    <p className="text-lg font-bold text-primary-950 dark:text-white">{visit.visitorName}</p>
+                                    {visit.visitorCompany && <p className="text-sm text-neutral-500 dark:text-neutral-400">{visit.visitorCompany}</p>}
+                                    {visit.visitorDesignation && <p className="text-xs text-neutral-400">{visit.visitorDesignation}</p>}
+                                </div>
+                            </div>
+                        )}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                             <InfoRow icon={User} label="Name" value={visit.visitorName} />
                             <InfoRow icon={Phone} label="Mobile" value={visit.visitorMobile} />
@@ -291,38 +310,69 @@ export function VisitorDetailScreen() {
                             <InfoRow icon={Building2} label="Company" value={visit.visitorCompany} />
                             <InfoRow icon={Shield} label="Type" value={visit.visitorType?.name || visit.visitorTypeName} />
                             <InfoRow icon={FileText} label="Purpose" value={visit.purpose} />
-                            <InfoRow icon={Car} label="Vehicle" value={visit.vehicleNumber} />
-                            <InfoRow icon={FileText} label="ID Type" value={visit.idDocumentType} />
+                            <InfoRow icon={Car} label="Vehicle" value={visit.vehicleRegNumber} />
+                            <InfoRow icon={FileText} label="ID Type" value={visit.governmentIdType} />
+                            {visit.governmentIdNumber && <InfoRow icon={FileText} label="ID Number" value={visit.governmentIdNumber} />}
                         </div>
+                        {visit.idDocumentPhoto && (
+                            <div className="mt-4">
+                                <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-2">ID Document</p>
+                                <img src={visit.idDocumentPhoto} alt="ID Document" className="max-w-xs rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-sm" />
+                            </div>
+                        )}
                     </div>
 
                     <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-xl shadow-neutral-900/5 p-6">
                         <h2 className="text-sm font-bold text-primary-950 dark:text-white uppercase tracking-wider mb-4">Visit Details</h2>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-                            <InfoRow icon={User} label="Host" value={visit.hostEmployee?.name || visit.hostName} />
-                            <InfoRow icon={MapPin} label="Gate" value={visit.gate?.name || visit.gateName} />
-                            <InfoRow icon={MapPin} label="Plant" value={visit.plant?.name || visit.plantName} />
-                            <InfoRow icon={Clock} label="Expected Arrival" value={visit.expectedArrival ? fmt.dateTime(visit.expectedArrival) : undefined} />
+                            <InfoRow icon={User} label="Host" value={visit.hostEmployeeName ?? visit.hostEmployeeId} />
+                            <InfoRow icon={MapPin} label="Gate" value={visit.assignedGate?.name || visit.checkInGate?.name} />
+                            <InfoRow icon={MapPin} label="Plant" value={visit.plantId} />
+                            <InfoRow icon={Clock} label="Expected Date" value={visit.expectedDate ? fmt.date(visit.expectedDate) : undefined} />
                             <InfoRow icon={LogIn} label="Check-In Time" value={visit.checkInTime ? fmt.dateTime(visit.checkInTime) : undefined} />
                             <InfoRow icon={LogOut} label="Check-Out Time" value={visit.checkOutTime ? fmt.dateTime(visit.checkOutTime) : undefined} />
+                            <InfoRow icon={Hash} label="Badge Number" value={visit.badgeNumber} />
+                            <InfoRow icon={BadgeCheck} label="Badge Format" value={visit.badgeFormat} />
                         </div>
-                        {visit.instructions && (
+                        {visit.specialInstructions && (
                             <div className="mt-4 p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-700">
                                 <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">Instructions</span>
-                                <p className="text-sm text-neutral-700 dark:text-neutral-300">{visit.instructions}</p>
+                                <p className="text-sm text-neutral-700 dark:text-neutral-300">{visit.specialInstructions}</p>
                             </div>
                         )}
                     </div>
 
+                    {/* Digital Badge Link */}
+                    {visit.status === "CHECKED_IN" && visit.badgeNumber && visit.visitCode && (
+                        <div className="bg-success-50 dark:bg-success-900/10 rounded-2xl border border-success-200 dark:border-success-800/50 shadow-xl shadow-neutral-900/5 p-6 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <BadgeCheck className="w-5 h-5 text-success-600 dark:text-success-400" />
+                                <div>
+                                    <span className="text-sm font-bold text-success-700 dark:text-success-400 block">Digital Badge Active</span>
+                                    <span className="text-xs text-success-600 dark:text-success-500 font-mono">{visit.badgeNumber}</span>
+                                </div>
+                            </div>
+                            <a
+                                href={`/visit/${visit.visitCode}/badge`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-success-600 hover:bg-success-700 text-white text-xs font-bold transition-colors"
+                            >
+                                <ExternalLink size={12} />
+                                View Badge
+                            </a>
+                        </div>
+                    )}
+
                     {/* Safety Compliance */}
-                    {(visit.inductionCompleted !== undefined || visit.nda !== undefined || visit.ppe !== undefined) && (
+                    {(visit.safetyInductionStatus !== undefined || visit.ndaSigned !== undefined || visit.ppeIssued !== undefined) && (
                         <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-xl shadow-neutral-900/5 p-6">
                             <h2 className="text-sm font-bold text-primary-950 dark:text-white uppercase tracking-wider mb-4">Safety & Compliance</h2>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div className={cn("p-3 rounded-xl border text-center", visit.inductionCompleted ? "bg-success-50 border-success-200 dark:bg-success-900/10 dark:border-success-800/50" : "bg-neutral-50 border-neutral-200 dark:bg-neutral-800/50 dark:border-neutral-700")}>
-                                    <Shield className={cn("w-5 h-5 mx-auto mb-1", visit.inductionCompleted ? "text-success-600" : "text-neutral-400")} />
-                                    <span className={cn("text-xs font-bold", visit.inductionCompleted ? "text-success-700 dark:text-success-400" : "text-neutral-500")}>
-                                        Induction {visit.inductionCompleted ? "Complete" : "Pending"}
+                                <div className={cn("p-3 rounded-xl border text-center", visit.safetyInductionStatus === "COMPLETED" ? "bg-success-50 border-success-200 dark:bg-success-900/10 dark:border-success-800/50" : "bg-neutral-50 border-neutral-200 dark:bg-neutral-800/50 dark:border-neutral-700")}>
+                                    <Shield className={cn("w-5 h-5 mx-auto mb-1", visit.safetyInductionStatus === "COMPLETED" ? "text-success-600" : "text-neutral-400")} />
+                                    <span className={cn("text-xs font-bold", visit.safetyInductionStatus === "COMPLETED" ? "text-success-700 dark:text-success-400" : "text-neutral-500")}>
+                                        Induction {visit.safetyInductionStatus === "COMPLETED" ? "Complete" : visit.safetyInductionStatus === "NOT_REQUIRED" ? "N/A" : "Pending"}
                                     </span>
                                 </div>
                                 <div className={cn("p-3 rounded-xl border text-center", visit.ndaSigned ? "bg-success-50 border-success-200 dark:bg-success-900/10 dark:border-success-800/50" : "bg-neutral-50 border-neutral-200 dark:bg-neutral-800/50 dark:border-neutral-700")}>
@@ -428,6 +478,16 @@ export function VisitorDetailScreen() {
                                 className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
                             />
                         </div>
+                        <div className="mt-3">
+                            <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Reason <span className="text-danger-500">*</span></label>
+                            <textarea
+                                value={extendReason}
+                                onChange={(e) => setExtendReason(e.target.value)}
+                                placeholder="Reason for extension..."
+                                rows={2}
+                                className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all resize-none"
+                            />
+                        </div>
                         <div className="flex gap-3 mt-6">
                             <button onClick={() => setShowExtend(false)} className="flex-1 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
                             <button onClick={handleExtend} disabled={extendMutation.isPending} className="flex-1 py-3 rounded-xl bg-warning-600 hover:bg-warning-700 text-white text-sm font-bold transition-colors disabled:opacity-50">
@@ -511,9 +571,9 @@ export function VisitorDetailScreen() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Expected Arrival</label>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Expected Date</label>
                                 <input
-                                    type="datetime-local"
+                                    type="date"
                                     value={editForm.expectedDate}
                                     onChange={(e) => setEditForm((p) => ({ ...p, expectedDate: e.target.value }))}
                                     className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
