@@ -455,6 +455,7 @@ export function EmployeeProfileScreen() {
             paymentMode: emp.paymentMode ?? "NEFT",
             salaryStructure: emp.salaryStructure ?? null,
             structureId: emp.salaryStructureId ?? "",
+            statutoryEstimates: null,
         });
 
         setBank({
