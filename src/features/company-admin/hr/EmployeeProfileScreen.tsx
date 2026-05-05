@@ -51,7 +51,7 @@ import {
     useDeleteEmployee,
     useDeleteDocument,
 } from "@/features/company-admin/api/use-hr-mutations";
-import { useSalaryStructures } from "@/features/company-admin/api/use-payroll-queries";
+import { useSalaryStructures, useSalaryComponents, usePFConfig, useESIConfig, useGratuityConfig } from "@/features/company-admin/api/use-payroll-queries";
 import { useGeofencesForDropdown } from "@/features/company-admin/api/use-geofence-queries";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { PhoneInput } from "@/components/ui/PhoneInput";
@@ -235,6 +235,7 @@ const EMPTY_SALARY = {
     annualCTC: "", paymentMode: "NEFT",
     salaryStructure: null as any,
     structureId: "",
+    statutoryEstimates: null as { label: string; monthly: number; annual: number }[] | null,
 };
 
 const EMPTY_BANK = {
@@ -326,6 +327,14 @@ export function EmployeeProfileScreen() {
     const timelineQuery = useEmployeeTimeline(isNew ? "" : id!);
     const { data: structuresData } = useSalaryStructures();
     const structures = (structuresData as any)?.data ?? [];
+    const { data: componentsData } = useSalaryComponents();
+    const allComponents: any[] = (componentsData as any)?.data ?? [];
+    const { data: pfConfigData } = usePFConfig();
+    const pfConfig = (pfConfigData as any)?.data;
+    const { data: esiConfigData } = useESIConfig();
+    const esiConfig = (esiConfigData as any)?.data;
+    const { data: gratuityConfigData } = useGratuityConfig();
+    const gratuityConfig = (gratuityConfigData as any)?.data;
 
     // Mutations
     const createMutation = useCreateEmployee();
@@ -565,8 +574,61 @@ export function EmployeeProfileScreen() {
             }
         }
 
-        setSalary((p) => ({ ...p, salaryStructure: breakdown }));
-    }, []);
+        // Compute statutory estimates based on inclusion flags
+        const estimates: { label: string; monthly: number; annual: number }[] = [];
+        const monthlyBreakdown: Record<string, number> = {};
+        for (const [label, annual] of Object.entries(breakdown)) {
+            monthlyBreakdown[label] = Math.round(annual / 12);
+        }
+
+        // Build wage bases from component inclusion flags
+        const resolveComponentCode = (comp: any) => comp.component?.code ?? comp.componentCode ?? "";
+        let pfWageBase = 0;
+        let esiWageBase = 0;
+        let gratuityWageBase = 0;
+        const monthlyGross = Math.round(annualCtc / 12);
+
+        for (const c of comps) {
+            const code = resolveComponentCode(c);
+            const master = allComponents.find((mc: any) => mc.id === c.componentId || mc.code === code);
+            if (!master) continue;
+            const label = master.name ?? c.component?.name ?? code;
+            const monthlyVal = monthlyBreakdown[label] ?? 0;
+            if (master.pfInclusion) pfWageBase += monthlyVal;
+            if (master.esiInclusion) esiWageBase += monthlyVal;
+            if (master.gratuityInclusion) gratuityWageBase += monthlyVal;
+        }
+
+        if (pfConfig && pfWageBase > 0) {
+            const capped = Math.min(pfWageBase, Number(pfConfig.wageCeiling ?? 15000));
+            const pfEmp = Math.round(capped * Number(pfConfig.employeeRate ?? 12) / 100);
+            const pfEr = Math.round(capped * (Number(pfConfig.employerEpfRate ?? 3.67) + Number(pfConfig.employerEpsRate ?? 8.33)) / 100);
+            estimates.push({ label: "PF (Employee)", monthly: pfEmp, annual: pfEmp * 12 });
+            estimates.push({ label: "PF (Employer)", monthly: pfEr, annual: pfEr * 12 });
+        }
+
+        if (esiConfig) {
+            const esiBase = esiWageBase > 0 ? esiWageBase : monthlyGross;
+            if (esiBase <= Number(esiConfig.wageCeiling ?? 21000)) {
+                const esiEmp = Math.round(esiBase * Number(esiConfig.employeeRate ?? 0.75) / 100);
+                const esiEr = Math.round(esiBase * Number(esiConfig.employerRate ?? 3.25) / 100);
+                estimates.push({ label: "ESI (Employee)", monthly: esiEmp, annual: esiEmp * 12 });
+                estimates.push({ label: "ESI (Employer)", monthly: esiEr, annual: esiEr * 12 });
+            }
+        }
+
+        if (gratuityConfig && gratuityConfig.provisionMethod === "MONTHLY") {
+            const gBase = gratuityWageBase > 0 ? gratuityWageBase : Math.round(basicAmount / 12);
+            if (gBase > 0) {
+                const annualGratuity = (gBase * 15 * 1) / 26; // 1 year assumed for preview
+                const capped = Math.min(annualGratuity, Number(gratuityConfig.maxAmount ?? 2000000));
+                const monthlyProvision = Math.round(capped / 12);
+                estimates.push({ label: "Gratuity (Employer)", monthly: monthlyProvision, annual: monthlyProvision * 12 });
+            }
+        }
+
+        setSalary((p) => ({ ...p, salaryStructure: breakdown, statutoryEstimates: estimates.length > 0 ? estimates : null }));
+    }, [allComponents, pfConfig, esiConfig, gratuityConfig]);
 
     const updateBank = (key: string, value: any) => setBank((p) => ({ ...p, [key]: value }));
     const updateDocuments = (key: string, value: any) => setDocuments((p) => ({ ...p, [key]: value }));
@@ -1411,6 +1473,40 @@ export function EmployeeProfileScreen() {
                                     </div>
                                 )}
                             </div>
+
+                            {/* Statutory Deductions Estimate */}
+                            {salary.statutoryEstimates && salary.statutoryEstimates.length > 0 && (
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">Statutory Deductions (Estimated)</label>
+                                    <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800 overflow-hidden">
+                                        <table className="w-full text-sm">
+                                            <thead>
+                                                <tr className="bg-amber-100 dark:bg-amber-900/30 text-xs text-amber-600 dark:text-amber-400 uppercase">
+                                                    <th className="py-2.5 px-4 text-left font-bold">Deduction</th>
+                                                    <th className="py-2.5 px-4 text-right font-bold">Monthly</th>
+                                                    <th className="py-2.5 px-4 text-right font-bold">Annual</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {salary.statutoryEstimates.map((est: any) => (
+                                                    <tr key={est.label} className="border-t border-amber-200 dark:border-amber-800">
+                                                        <td className="py-2 px-4 text-amber-800 dark:text-amber-300 font-medium">{est.label}</td>
+                                                        <td className="py-2 px-4 text-right font-mono text-amber-700 dark:text-amber-400">
+                                                            {est.monthly.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                                                        </td>
+                                                        <td className="py-2 px-4 text-right font-mono text-amber-700 dark:text-amber-400">
+                                                            {est.annual.toLocaleString("en-IN")}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        <div className="px-4 py-2 text-[10px] text-amber-500 dark:text-amber-500 border-t border-amber-200 dark:border-amber-800">
+                                            Estimates based on current statutory configuration. Actual amounts may vary based on attendance, LOP, and mid-month changes.
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 
