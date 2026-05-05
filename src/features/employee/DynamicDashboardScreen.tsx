@@ -74,6 +74,9 @@ import { showSuccess, showApiError } from "@/lib/toast";
 import { useAuthStore } from "@/store/useAuthStore";
 import { checkPermission } from "@/lib/api/auth";
 import { useDashboard, essKeys } from "@/features/company-admin/api/use-ess-queries";
+import { useNavigationManifest } from "@/features/company-admin/api";
+import { WelcomeDashboard } from "./WelcomeDashboard";
+import type { WelcomeNavigationItem } from "./WelcomeDashboard";
 import { Skeleton } from "@/components/ui/Skeleton";
 import type {
     DashboardData,
@@ -1780,12 +1783,58 @@ function DashboardSkeleton() {
 
 export function DynamicDashboardScreen() {
     const fmt = useCompanyFormatter();
-    const { data: dashboardResponse, isLoading } = useDashboard();
     const user = useAuthStore((s) => s.user);
     const permissions = useAuthStore((s) => s.permissions) || [];
     const firstName = user?.firstName ?? "there";
 
+    // Only fetch ESS dashboard if user has HR/ESS permissions
+    const canAccessEssDashboard = checkPermission(permissions, 'hr:read')
+        || checkPermission(permissions, 'ess:view-profile');
+
+    const { data: dashboardResponse, isLoading } = useDashboard(canAccessEssDashboard);
+    const { data: manifestData } = useNavigationManifest();
+
     const rawData = dashboardResponse?.data as Record<string, unknown> | undefined;
+
+    // Build navigation items from manifest for the welcome dashboard
+    const welcomeNavItems = useMemo<WelcomeNavigationItem[]>(() => {
+        if (canAccessEssDashboard) return [];
+        const rawManifest = (manifestData as any)?.data ?? manifestData;
+        if (!Array.isArray(rawManifest)) return [];
+        const items: WelcomeNavigationItem[] = [];
+        for (const section of rawManifest) {
+            const group = section.group ?? section.moduleSeparator ?? 'General';
+            for (const item of section.items ?? []) {
+                // Skip the dashboard itself
+                if (item.id === 'dashboard' || item.path === '/app/dashboard') continue;
+                items.push({
+                    id: item.id,
+                    label: item.label,
+                    path: item.path,
+                    icon: item.icon ?? 'dashboard',
+                    group,
+                });
+                // Include children as separate items
+                if (Array.isArray(item.children)) {
+                    for (const child of item.children) {
+                        items.push({
+                            id: `${item.id}-${child.label}`,
+                            label: child.label,
+                            path: child.path,
+                            icon: item.icon ?? 'dashboard',
+                            group,
+                        });
+                    }
+                }
+            }
+        }
+        return items;
+    }, [canAccessEssDashboard, manifestData]);
+
+    // If user has no ESS/HR permissions, show the polished welcome dashboard
+    if (!canAccessEssDashboard) {
+        return <WelcomeDashboard firstName={firstName} navigationItems={welcomeNavItems} />;
+    }
 
     if (isLoading || !rawData) {
         return (

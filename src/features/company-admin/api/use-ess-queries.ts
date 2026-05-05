@@ -89,11 +89,12 @@ export const essKeys = {
 
 // ── Dashboard ──
 
-export function useDashboard() {
+export function useDashboard(enabled = true) {
     return useQuery({
         queryKey: essKeys.dashboard(),
         queryFn: () => essApi.getDashboard(),
-        refetchInterval: 30_000,
+        refetchInterval: enabled ? 30_000 : false,
+        enabled,
     });
 }
 

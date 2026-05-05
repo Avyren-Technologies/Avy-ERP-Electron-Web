@@ -417,51 +417,51 @@ function App() {
         <Route path="company/billing/invoices" element={<RequirePermission permission="billing:read"><MyInvoicesScreen /></RequirePermission>} />
         <Route path="company/billing/payments" element={<RequirePermission permission="billing:read"><MyPaymentsScreen /></RequirePermission>} />
         {/* Company-admin HR routes */}
-        <Route path="company/hr/departments" element={<RequirePermission permission="hr:read"><DepartmentScreen /></RequirePermission>} />
-        <Route path="company/hr/designations" element={<RequirePermission permission="hr:read"><DesignationScreen /></RequirePermission>} />
-        <Route path="company/hr/grades" element={<RequirePermission permission="hr:read"><GradeScreen /></RequirePermission>} />
-        <Route path="company/hr/employee-types" element={<RequirePermission permission="hr:read"><EmployeeTypeScreen /></RequirePermission>} />
-        <Route path="company/hr/cost-centres" element={<RequirePermission permission="hr:read"><CostCentreScreen /></RequirePermission>} />
-        <Route path="company/hr/employees" element={<RequirePermission permission={['hr:read', 'ess:view-directory']}><EmployeeDirectoryScreen /></RequirePermission>} />
-        <Route path="company/hr/employees/:id" element={<RequirePermission permission={['hr:read', 'ess:view-profile']}><EmployeeProfileScreen /></RequirePermission>} />
+        <Route path="company/hr/departments" element={<RequirePermission permission="hr.org-structure:read"><DepartmentScreen /></RequirePermission>} />
+        <Route path="company/hr/designations" element={<RequirePermission permission="hr.org-structure:read"><DesignationScreen /></RequirePermission>} />
+        <Route path="company/hr/grades" element={<RequirePermission permission="hr.org-structure:read"><GradeScreen /></RequirePermission>} />
+        <Route path="company/hr/employee-types" element={<RequirePermission permission="hr.org-structure:read"><EmployeeTypeScreen /></RequirePermission>} />
+        <Route path="company/hr/cost-centres" element={<RequirePermission permission="hr.org-structure:read"><CostCentreScreen /></RequirePermission>} />
+        <Route path="company/hr/employees" element={<RequirePermission permission={['hr.employees:read', 'ess:view-directory']}><EmployeeDirectoryScreen /></RequirePermission>} />
+        <Route path="company/hr/employees/:id" element={<RequirePermission permission={['hr.employees:read', 'ess:view-profile']}><EmployeeProfileScreen /></RequirePermission>} />
         {/* Company-admin Attendance routes */}
-        <Route path="company/hr/attendance" element={<RequirePermission permission="hr:read"><AttendanceDashboardScreen /></RequirePermission>} />
-        <Route path="company/hr/holidays" element={<RequirePermission permission={['hr:read', 'ess:view-holidays']}><HolidayScreen /></RequirePermission>} />
-        <Route path="company/hr/rosters" element={<RequirePermission permission="hr:read"><RosterScreen /></RequirePermission>} />
-        <Route path="company/hr/attendance-rules" element={<RequirePermission permission="hr:read"><AttendanceRulesScreen /></RequirePermission>} />
-        <Route path="company/hr/attendance-overrides" element={<RequirePermission permission="hr:read"><AttendanceOverrideScreen /></RequirePermission>} />
-        <Route path="company/hr/overtime-rules" element={<RequirePermission permission="hr:read"><OvertimeRulesScreen /></RequirePermission>} />
+        <Route path="company/hr/attendance" element={<RequirePermission permission="hr.attendance:read"><AttendanceDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/holidays" element={<RequirePermission permission={['hr.attendance:read', 'ess:view-holidays']}><HolidayScreen /></RequirePermission>} />
+        <Route path="company/hr/rosters" element={<RequirePermission permission="hr.attendance:read"><RosterScreen /></RequirePermission>} />
+        <Route path="company/hr/attendance-rules" element={<RequirePermission permission="hr.attendance:configure"><AttendanceRulesScreen /></RequirePermission>} />
+        <Route path="company/hr/attendance-overrides" element={<RequirePermission permission="hr.attendance:read"><AttendanceOverrideScreen /></RequirePermission>} />
+        <Route path="company/hr/overtime-rules" element={<RequirePermission permission="hr.attendance:configure"><OvertimeRulesScreen /></RequirePermission>} />
         <Route path="company/hr/admin-attendance" element={<RequirePermission permission="attendance:mark"><AdminAttendanceScreen /></RequirePermission>} />
         {/* Company-admin Leave Management routes */}
-        <Route path="company/hr/leave-types" element={<RequirePermission permission={['hr:read', 'ess:view-leave']}><LeaveTypeScreen /></RequirePermission>} />
-        <Route path="company/hr/leave-policies" element={<RequirePermission permission="hr:read"><LeavePolicyScreen /></RequirePermission>} />
-        <Route path="company/hr/leave-requests" element={<RequirePermission permission={['hr:read', 'ess:apply-leave']}><LeaveRequestScreen /></RequirePermission>} />
-        <Route path="company/hr/leave-balances" element={<RequirePermission permission={['hr:read', 'ess:view-leave']}><LeaveBalanceScreen /></RequirePermission>} />
+        <Route path="company/hr/leave-types" element={<RequirePermission permission={['hr.leave:read', 'ess:view-leave']}><LeaveTypeScreen /></RequirePermission>} />
+        <Route path="company/hr/leave-policies" element={<RequirePermission permission="hr.leave:read"><LeavePolicyScreen /></RequirePermission>} />
+        <Route path="company/hr/leave-requests" element={<RequirePermission permission={['hr.leave:read', 'ess:apply-leave']}><LeaveRequestScreen /></RequirePermission>} />
+        <Route path="company/hr/leave-balances" element={<RequirePermission permission={['hr.leave:read', 'ess:view-leave']}><LeaveBalanceScreen /></RequirePermission>} />
         {/* Company-admin Payroll & Compliance routes */}
-        <Route path="company/hr/salary-components" element={<RequirePermission permission="hr:read"><SalaryComponentScreen /></RequirePermission>} />
-        <Route path="company/hr/salary-structures" element={<RequirePermission permission="hr:read"><SalaryStructureScreen /></RequirePermission>} />
-        <Route path="company/hr/employee-salary" element={<RequirePermission permission="hr:read"><EmployeeSalaryScreen /></RequirePermission>} />
-        <Route path="company/hr/statutory-config" element={<RequirePermission permission="hr:configure"><StatutoryConfigScreen /></RequirePermission>} />
-        <Route path="company/hr/tax-config" element={<RequirePermission permission="hr:configure"><TaxConfigScreen /></RequirePermission>} />
-        <Route path="company/hr/bank-config" element={<RequirePermission permission="hr:configure"><BankConfigScreen /></RequirePermission>} />
-        <Route path="company/hr/loan-policies" element={<RequirePermission permission="hr:read"><LoanPolicyScreen /></RequirePermission>} />
-        <Route path="company/hr/loans" element={<RequirePermission permission="hr:read"><LoanScreen /></RequirePermission>} />
+        <Route path="company/hr/salary-components" element={<RequirePermission permission="hr.payroll-config:read"><SalaryComponentScreen /></RequirePermission>} />
+        <Route path="company/hr/salary-structures" element={<RequirePermission permission="hr.payroll-config:read"><SalaryStructureScreen /></RequirePermission>} />
+        <Route path="company/hr/employee-salary" element={<RequirePermission permission="hr.payroll-config:read"><EmployeeSalaryScreen /></RequirePermission>} />
+        <Route path="company/hr/statutory-config" element={<RequirePermission permission="hr.payroll-config:configure"><StatutoryConfigScreen /></RequirePermission>} />
+        <Route path="company/hr/tax-config" element={<RequirePermission permission="hr.payroll-config:configure"><TaxConfigScreen /></RequirePermission>} />
+        <Route path="company/hr/bank-config" element={<RequirePermission permission="hr.payroll-config:configure"><BankConfigScreen /></RequirePermission>} />
+        <Route path="company/hr/loan-policies" element={<RequirePermission permission="hr.payroll-config:read"><LoanPolicyScreen /></RequirePermission>} />
+        <Route path="company/hr/loans" element={<RequirePermission permission="hr.payroll-config:read"><LoanScreen /></RequirePermission>} />
         {/* Company-admin Payroll Operations routes */}
-        <Route path="company/hr/payroll-runs" element={<RequirePermission permission="hr:read"><PayrollRunScreen /></RequirePermission>} />
-        <Route path="company/hr/payslips" element={<RequirePermission permission="hr:read"><PayslipScreen /></RequirePermission>} />
-        <Route path="company/hr/salary-holds" element={<RequirePermission permission="hr:read"><SalaryHoldScreen /></RequirePermission>} />
-        <Route path="company/hr/salary-revisions" element={<RequirePermission permission="hr:read"><SalaryRevisionScreen /></RequirePermission>} />
-        <Route path="company/hr/statutory-filings" element={<RequirePermission permission="hr:read"><StatutoryFilingScreen /></RequirePermission>} />
-        <Route path="company/hr/payroll-reports" element={<RequirePermission permission="hr:read"><PayrollReportScreen /></RequirePermission>} />
+        <Route path="company/hr/payroll-runs" element={<RequirePermission permission="hr.payroll-ops:read"><PayrollRunScreen /></RequirePermission>} />
+        <Route path="company/hr/payslips" element={<RequirePermission permission="hr.payroll-ops:read"><PayslipScreen /></RequirePermission>} />
+        <Route path="company/hr/salary-holds" element={<RequirePermission permission="hr.payroll-ops:read"><SalaryHoldScreen /></RequirePermission>} />
+        <Route path="company/hr/salary-revisions" element={<RequirePermission permission="hr.payroll-ops:read"><SalaryRevisionScreen /></RequirePermission>} />
+        <Route path="company/hr/statutory-filings" element={<RequirePermission permission="hr.payroll-ops:read"><StatutoryFilingScreen /></RequirePermission>} />
+        <Route path="company/hr/payroll-reports" element={<RequirePermission permission="hr.payroll-ops:export"><PayrollReportScreen /></RequirePermission>} />
         {/* Company-admin ESS & Workflow routes */}
-        <Route path="company/hr/ess-config" element={<RequirePermission permission="hr:configure"><EssConfigScreen /></RequirePermission>} />
-        <Route path="company/hr/approval-workflows" element={<RequirePermission permission="hr:configure"><ApprovalWorkflowScreen /></RequirePermission>} />
-        <Route path="company/hr/approval-requests" element={<RequirePermission permission="hr:read"><ApprovalRequestScreen /></RequirePermission>} />
-        <Route path="company/hr/notification-templates" element={<RequirePermission permission="hr:configure"><NotificationTemplateScreen /></RequirePermission>} />
-        <Route path="company/hr/notification-rules" element={<RequirePermission permission="hr:configure"><NotificationRuleScreen /></RequirePermission>} />
-        <Route path="company/hr/notification-analytics" element={<RequirePermission permission="hr:configure"><NotificationAnalyticsScreen /></RequirePermission>} />
-        <Route path="company/hr/announcements" element={<RequirePermission permission="hr:configure"><AnnouncementsScreen /></RequirePermission>} />
-        <Route path="company/hr/it-declarations" element={<RequirePermission permission={['hr:read', 'ess:it-declaration']}><ITDeclarationScreen /></RequirePermission>} />
+        <Route path="company/hr/ess-config" element={<RequirePermission permission="hr.ess-config:configure"><EssConfigScreen /></RequirePermission>} />
+        <Route path="company/hr/approval-workflows" element={<RequirePermission permission="hr.ess-config:configure"><ApprovalWorkflowScreen /></RequirePermission>} />
+        <Route path="company/hr/approval-requests" element={<RequirePermission permission="hr.ess-config:read"><ApprovalRequestScreen /></RequirePermission>} />
+        <Route path="company/hr/notification-templates" element={<RequirePermission permission="hr.ess-config:configure"><NotificationTemplateScreen /></RequirePermission>} />
+        <Route path="company/hr/notification-rules" element={<RequirePermission permission="hr.ess-config:configure"><NotificationRuleScreen /></RequirePermission>} />
+        <Route path="company/hr/notification-analytics" element={<RequirePermission permission="hr.ess-config:configure"><NotificationAnalyticsScreen /></RequirePermission>} />
+        <Route path="company/hr/announcements" element={<RequirePermission permission="hr.ess-config:configure"><AnnouncementsScreen /></RequirePermission>} />
+        <Route path="company/hr/it-declarations" element={<RequirePermission permission={['hr.payroll-config:read', 'ess:it-declaration']}><ITDeclarationScreen /></RequirePermission>} />
         {/* Self-Service routes (accessible to all users with ESS permissions) */}
         <Route path="company/hr/my-profile" element={<RequirePermission permission="ess:view-profile"><MyProfileScreen /></RequirePermission>} />
         <Route path="company/hr/my-payslips" element={<RequirePermission permission="ess:view-payslips"><MyPayslipsScreen /></RequirePermission>} />
@@ -484,77 +484,77 @@ function App() {
         <Route path="company/hr/my-loans" element={<RequirePermission permission={['hr:read', 'ess:apply-loan']}><MyLoanScreen /></RequirePermission>} />
         <Route path="company/hr/my-overtime" element={<RequirePermission permission="ess:view-overtime"><MyOvertimeScreen /></RequirePermission>} />
         {/* Company-admin Recruitment & Training routes */}
-        <Route path="company/hr/requisitions" element={<RequirePermission permission="hr:read"><RequisitionScreen /></RequirePermission>} />
-        <Route path="company/hr/candidates/:id" element={<RequirePermission permission="hr:read"><CandidateDetailScreen /></RequirePermission>} />
-        <Route path="company/hr/candidates" element={<RequirePermission permission="hr:read"><CandidateScreen /></RequirePermission>} />
-        <Route path="company/hr/training" element={<RequirePermission permission="hr:read"><TrainingCatalogueScreen /></RequirePermission>} />
-        <Route path="company/hr/training-nominations" element={<RequirePermission permission="hr:read"><TrainingNominationScreen /></RequirePermission>} />
+        <Route path="company/hr/requisitions" element={<RequirePermission permission="hr.recruitment:read"><RequisitionScreen /></RequirePermission>} />
+        <Route path="company/hr/candidates/:id" element={<RequirePermission permission="hr.recruitment:read"><CandidateDetailScreen /></RequirePermission>} />
+        <Route path="company/hr/candidates" element={<RequirePermission permission="hr.recruitment:read"><CandidateScreen /></RequirePermission>} />
+        <Route path="company/hr/training" element={<RequirePermission permission="hr.recruitment:read"><TrainingCatalogueScreen /></RequirePermission>} />
+        <Route path="company/hr/training-nominations" element={<RequirePermission permission="hr.recruitment:read"><TrainingNominationScreen /></RequirePermission>} />
         {/* Company-admin Exit & Separation routes */}
-        <Route path="company/hr/exit-requests" element={<RequirePermission permission="hr:read"><ExitRequestScreen /></RequirePermission>} />
-        <Route path="company/hr/clearance-dashboard" element={<RequirePermission permission="hr:read"><ClearanceDashboardScreen /></RequirePermission>} />
-        <Route path="company/hr/fnf-settlement" element={<RequirePermission permission="hr:read"><FnFSettlementScreen /></RequirePermission>} />
+        <Route path="company/hr/exit-requests" element={<RequirePermission permission="hr.exit:read"><ExitRequestScreen /></RequirePermission>} />
+        <Route path="company/hr/clearance-dashboard" element={<RequirePermission permission="hr.exit:read"><ClearanceDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/fnf-settlement" element={<RequirePermission permission="hr.exit:read"><FnFSettlementScreen /></RequirePermission>} />
         {/* Company-admin Advanced HR routes */}
-        <Route path="company/hr/assets" element={<RequirePermission permission="hr:read"><AssetManagementScreen /></RequirePermission>} />
-        <Route path="company/hr/expenses" element={<RequirePermission permission="hr:read"><ExpenseClaimScreen /></RequirePermission>} />
-        <Route path="company/hr/hr-letters" element={<RequirePermission permission="hr:read"><HRLetterScreen /></RequirePermission>} />
-        <Route path="company/hr/grievances" element={<RequirePermission permission="hr:read"><GrievanceScreen /></RequirePermission>} />
-        <Route path="company/hr/disciplinary" element={<RequirePermission permission={['hr:read', 'ess:view-disciplinary']}><DisciplinaryScreen /></RequirePermission>} />
+        <Route path="company/hr/assets" element={<RequirePermission permission="hr.advanced:read"><AssetManagementScreen /></RequirePermission>} />
+        <Route path="company/hr/expenses" element={<RequirePermission permission="hr.advanced:read"><ExpenseClaimScreen /></RequirePermission>} />
+        <Route path="company/hr/hr-letters" element={<RequirePermission permission="hr.advanced:read"><HRLetterScreen /></RequirePermission>} />
+        <Route path="company/hr/grievances" element={<RequirePermission permission="hr.advanced:read"><GrievanceScreen /></RequirePermission>} />
+        <Route path="company/hr/disciplinary" element={<RequirePermission permission={['hr.advanced:read', 'ess:view-disciplinary']}><DisciplinaryScreen /></RequirePermission>} />
         {/* Company-admin Transfer, Promotion & Delegation routes */}
-        <Route path="company/hr/transfers" element={<RequirePermission permission="hr:read"><TransferScreen /></RequirePermission>} />
-        <Route path="company/hr/promotions" element={<RequirePermission permission="hr:read"><PromotionScreen /></RequirePermission>} />
-        <Route path="company/hr/delegates" element={<RequirePermission permission="hr:read"><DelegateScreen /></RequirePermission>} />
+        <Route path="company/hr/transfers" element={<RequirePermission permission="hr.transfers:read"><TransferScreen /></RequirePermission>} />
+        <Route path="company/hr/promotions" element={<RequirePermission permission="hr.transfers:read"><PromotionScreen /></RequirePermission>} />
+        <Route path="company/hr/delegates" element={<RequirePermission permission="hr.transfers:read"><DelegateScreen /></RequirePermission>} />
         {/* Company-admin Performance Management routes */}
-        <Route path="company/hr/appraisal-cycles" element={<RequirePermission permission="hr:read"><AppraisalCycleScreen /></RequirePermission>} />
-        <Route path="company/hr/goals" element={<RequirePermission permission={['hr:read', 'ess:view-goals']}><GoalScreen /></RequirePermission>} />
-        <Route path="company/hr/feedback-360" element={<RequirePermission permission={['hr:read', 'ess:submit-feedback']}><Feedback360Screen /></RequirePermission>} />
-        <Route path="company/hr/ratings" element={<RequirePermission permission={['hr:read', 'ess:submit-appraisal']}><RatingsScreen /></RequirePermission>} />
-        <Route path="company/hr/skills" element={<RequirePermission permission="hr:read"><SkillScreen /></RequirePermission>} />
-        <Route path="company/hr/succession" element={<RequirePermission permission="hr:read"><SuccessionScreen /></RequirePermission>} />
-        <Route path="company/hr/performance-dashboard" element={<RequirePermission permission="hr:read"><PerformanceDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/appraisal-cycles" element={<RequirePermission permission="hr.performance:read"><AppraisalCycleScreen /></RequirePermission>} />
+        <Route path="company/hr/goals" element={<RequirePermission permission={['hr.performance:read', 'ess:view-goals']}><GoalScreen /></RequirePermission>} />
+        <Route path="company/hr/feedback-360" element={<RequirePermission permission={['hr.performance:read', 'ess:submit-feedback']}><Feedback360Screen /></RequirePermission>} />
+        <Route path="company/hr/ratings" element={<RequirePermission permission={['hr.performance:read', 'ess:submit-appraisal']}><RatingsScreen /></RequirePermission>} />
+        <Route path="company/hr/skills" element={<RequirePermission permission="hr.performance:read"><SkillScreen /></RequirePermission>} />
+        <Route path="company/hr/succession" element={<RequirePermission permission="hr.performance:read"><SuccessionScreen /></RequirePermission>} />
+        <Route path="company/hr/performance-dashboard" element={<RequirePermission permission="hr.performance:read"><PerformanceDashboardScreen /></RequirePermission>} />
         {/* Company-admin Additional HR routes */}
-        <Route path="company/hr/onboarding" element={<RequirePermission permission="hr:read"><OnboardingScreen /></RequirePermission>} />
-        <Route path="company/hr/probation-reviews" element={<RequirePermission permission="hr:read"><ProbationReviewScreen /></RequirePermission>} />
-        <Route path="company/hr/org-chart" element={<RequirePermission permission={['hr:read', 'ess:view-org-chart']}><OrgChartScreen /></RequirePermission>} />
-        <Route path="company/hr/form-16" element={<RequirePermission permission="hr:read"><Form16Screen /></RequirePermission>} />
-        <Route path="company/hr/chatbot" element={<RequirePermission permission={['hr:read', 'ess:view-profile']}><ChatbotScreen /></RequirePermission>} />
-        <Route path="company/hr/bonus-batches" element={<RequirePermission permission="hr:read"><BonusBatchScreen /></RequirePermission>} />
-        <Route path="company/hr/esign" element={<RequirePermission permission={['hr:read', 'ess:view-esign']}><ESignScreen /></RequirePermission>} />
-        <Route path="company/hr/data-retention" element={<RequirePermission permission="hr:read"><DataRetentionScreen /></RequirePermission>} />
-        <Route path="company/hr/biometric-devices" element={<RequirePermission permission="hr:read"><BiometricDeviceScreen /></RequirePermission>} />
-        <Route path="company/hr/shift-rotations" element={<RequirePermission permission="hr:read"><ShiftRotationScreen /></RequirePermission>} />
-        <Route path="company/hr/production-incentives" element={<RequirePermission permission="hr:read"><ProductionIncentiveScreen /></RequirePermission>} />
-        <Route path="company/hr/travel-advances" element={<RequirePermission permission="hr:read"><TravelAdvanceScreen /></RequirePermission>} />
+        <Route path="company/hr/onboarding" element={<RequirePermission permission="hr.recruitment:read"><OnboardingScreen /></RequirePermission>} />
+        <Route path="company/hr/probation-reviews" element={<RequirePermission permission="hr.recruitment:read"><ProbationReviewScreen /></RequirePermission>} />
+        <Route path="company/hr/org-chart" element={<RequirePermission permission={['hr.org-structure:read', 'ess:view-org-chart']}><OrgChartScreen /></RequirePermission>} />
+        <Route path="company/hr/form-16" element={<RequirePermission permission="hr.payroll-ops:read"><Form16Screen /></RequirePermission>} />
+        <Route path="company/hr/chatbot" element={<RequirePermission permission={['hr.advanced:read', 'ess:view-profile']}><ChatbotScreen /></RequirePermission>} />
+        <Route path="company/hr/bonus-batches" element={<RequirePermission permission="hr.payroll-ops:read"><BonusBatchScreen /></RequirePermission>} />
+        <Route path="company/hr/esign" element={<RequirePermission permission={['hr.ess-config:read', 'ess:view-esign']}><ESignScreen /></RequirePermission>} />
+        <Route path="company/hr/data-retention" element={<RequirePermission permission="hr.advanced:configure"><DataRetentionScreen /></RequirePermission>} />
+        <Route path="company/hr/biometric-devices" element={<RequirePermission permission="hr.attendance:configure"><BiometricDeviceScreen /></RequirePermission>} />
+        <Route path="company/hr/shift-rotations" element={<RequirePermission permission="hr.attendance:configure"><ShiftRotationScreen /></RequirePermission>} />
+        <Route path="company/hr/production-incentives" element={<RequirePermission permission="hr.advanced:read"><ProductionIncentiveScreen /></RequirePermission>} />
+        <Route path="company/hr/travel-advances" element={<RequirePermission permission="hr.payroll-ops:read"><TravelAdvanceScreen /></RequirePermission>} />
         {/* HR Analytics Dashboard routes */}
-        <Route path="company/hr/analytics/reports" element={<RequirePermission permission="analytics:export"><ReportsHubScreen /></RequirePermission>} />
-        <Route path="company/hr/analytics" element={<RequirePermission permission="analytics:read"><ExecAnalyticsScreen /></RequirePermission>} />
-        <Route path="company/hr/analytics/executive" element={<RequirePermission permission="analytics:read"><ExecAnalyticsScreen /></RequirePermission>} />
-        <Route path="company/hr/analytics/workforce" element={<RequirePermission permission="analytics:read"><WorkforceDashboardScreen /></RequirePermission>} />
-        <Route path="company/hr/analytics/attendance" element={<RequirePermission permission="analytics:read"><AttendanceAnalyticsDashboardScreen /></RequirePermission>} />
-        <Route path="company/hr/analytics/leave" element={<RequirePermission permission="analytics:read"><LeaveAnalyticsDashboardScreen /></RequirePermission>} />
-        <Route path="company/hr/analytics/payroll" element={<RequirePermission permission="analytics:read"><PayrollAnalyticsDashboardScreen /></RequirePermission>} />
-        <Route path="company/hr/analytics/compliance" element={<RequirePermission permission="analytics:read"><ComplianceDashboardScreen /></RequirePermission>} />
-        <Route path="company/hr/analytics/performance" element={<RequirePermission permission="analytics:read"><PerformanceAnalyticsDashboardScreen /></RequirePermission>} />
-        <Route path="company/hr/analytics/recruitment" element={<RequirePermission permission="analytics:read"><RecruitmentDashboardScreen /></RequirePermission>} />
-        <Route path="company/hr/analytics/attrition" element={<RequirePermission permission="analytics:read"><AttritionDashboardScreen /></RequirePermission>} />
-        <Route path="company/hr/analytics/training" element={<RequirePermission permission="analytics:read"><TrainingDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/reports" element={<RequirePermission permission="hr.analytics:export"><ReportsHubScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics" element={<RequirePermission permission="hr.analytics:read"><ExecAnalyticsScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/executive" element={<RequirePermission permission="hr.analytics:read"><ExecAnalyticsScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/workforce" element={<RequirePermission permission="hr.analytics:read"><WorkforceDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/attendance" element={<RequirePermission permission="hr.analytics:read"><AttendanceAnalyticsDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/leave" element={<RequirePermission permission="hr.analytics:read"><LeaveAnalyticsDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/payroll" element={<RequirePermission permission="hr.analytics:read"><PayrollAnalyticsDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/compliance" element={<RequirePermission permission="hr.analytics:read"><ComplianceDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/performance" element={<RequirePermission permission="hr.analytics:read"><PerformanceAnalyticsDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/recruitment" element={<RequirePermission permission="hr.analytics:read"><RecruitmentDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/attrition" element={<RequirePermission permission="hr.analytics:read"><AttritionDashboardScreen /></RequirePermission>} />
+        <Route path="company/hr/analytics/training" element={<RequirePermission permission="hr.analytics:read"><TrainingDashboardScreen /></RequirePermission>} />
         {/* Visitor Management routes */}
-        <Route path="company/visitors/dashboard" element={<RequirePermission permission="visitors:read"><VisitorDashboardScreen /></RequirePermission>} />
-        <Route path="company/visitors/list" element={<RequirePermission permission="visitors:read"><VisitorListScreen /></RequirePermission>} />
-        <Route path="company/visitors/pre-register" element={<RequirePermission permission="visitors:create"><PreRegisterVisitorScreen /></RequirePermission>} />
-        <Route path="company/visitors/gate-check-in" element={<RequirePermission permission="visitors:create"><GateCheckInScreen /></RequirePermission>} />
-        <Route path="company/visitors/detail/:id" element={<RequirePermission permission="visitors:read"><VisitorDetailScreen /></RequirePermission>} />
-        <Route path="company/visitors/settings/types" element={<RequirePermission permission="visitors:configure"><VisitorTypeScreen /></RequirePermission>} />
-        <Route path="company/visitors/settings/gates" element={<RequirePermission permission="visitors:configure"><GateScreen /></RequirePermission>} />
-        <Route path="company/visitors/watchlist" element={<RequirePermission permission="visitors:configure"><WatchlistScreen /></RequirePermission>} />
-        <Route path="company/visitors/recurring-passes" element={<RequirePermission permission="visitors:read"><RecurringPassScreen /></RequirePermission>} />
-        <Route path="company/visitors/settings" element={<RequirePermission permission="visitors:configure"><VMSSettingsScreen /></RequirePermission>} />
-        <Route path="company/visitors/vehicle-passes" element={<RequirePermission permission="visitors:read"><VehiclePassScreen /></RequirePermission>} />
-        <Route path="company/visitors/material-passes" element={<RequirePermission permission="visitors:read"><MaterialPassScreen /></RequirePermission>} />
-        <Route path="company/visitors/group-visits" element={<RequirePermission permission="visitors:read"><GroupVisitScreen /></RequirePermission>} />
-        <Route path="company/visitors/settings/inductions" element={<RequirePermission permission="visitors:configure"><SafetyInductionScreen /></RequirePermission>} />
-        <Route path="company/visitors/denied-entries" element={<RequirePermission permission="visitors:read"><DeniedEntriesScreen /></RequirePermission>} />
-        <Route path="company/visitors/emergency" element={<RequirePermission permission="visitors:read"><EmergencyMusterScreen /></RequirePermission>} />
-        <Route path="company/visitors/reports" element={<RequirePermission permission="visitors:export"><VisitorReportsScreen /></RequirePermission>} />
+        <Route path="company/visitors/dashboard" element={<RequirePermission permission="visitors.dashboard:read"><VisitorDashboardScreen /></RequirePermission>} />
+        <Route path="company/visitors/list" element={<RequirePermission permission="visitors.visits:read"><VisitorListScreen /></RequirePermission>} />
+        <Route path="company/visitors/pre-register" element={<RequirePermission permission="visitors.pre-register:read"><PreRegisterVisitorScreen /></RequirePermission>} />
+        <Route path="company/visitors/gate-check-in" element={<RequirePermission permission="visitors.gate-checkin:read"><GateCheckInScreen /></RequirePermission>} />
+        <Route path="company/visitors/detail/:id" element={<RequirePermission permission="visitors.visits:read"><VisitorDetailScreen /></RequirePermission>} />
+        <Route path="company/visitors/settings/types" element={<RequirePermission permission="visitors.types:read"><VisitorTypeScreen /></RequirePermission>} />
+        <Route path="company/visitors/settings/gates" element={<RequirePermission permission="visitors.gates:read"><GateScreen /></RequirePermission>} />
+        <Route path="company/visitors/watchlist" element={<RequirePermission permission="visitors.watchlist:read"><WatchlistScreen /></RequirePermission>} />
+        <Route path="company/visitors/recurring-passes" element={<RequirePermission permission="visitors.recurring-passes:read"><RecurringPassScreen /></RequirePermission>} />
+        <Route path="company/visitors/settings" element={<RequirePermission permission="visitors.settings:read"><VMSSettingsScreen /></RequirePermission>} />
+        <Route path="company/visitors/vehicle-passes" element={<RequirePermission permission="visitors.vehicle-passes:read"><VehiclePassScreen /></RequirePermission>} />
+        <Route path="company/visitors/material-passes" element={<RequirePermission permission="visitors.material-passes:read"><MaterialPassScreen /></RequirePermission>} />
+        <Route path="company/visitors/group-visits" element={<RequirePermission permission="visitors.group-visits:read"><GroupVisitScreen /></RequirePermission>} />
+        <Route path="company/visitors/settings/inductions" element={<RequirePermission permission="visitors.inductions:read"><SafetyInductionScreen /></RequirePermission>} />
+        <Route path="company/visitors/denied-entries" element={<RequirePermission permission="visitors.denied-entries:read"><DeniedEntriesScreen /></RequirePermission>} />
+        <Route path="company/visitors/emergency" element={<RequirePermission permission="visitors.emergency:read"><EmergencyMusterScreen /></RequirePermission>} />
+        <Route path="company/visitors/reports" element={<RequirePermission permission="visitors.reports:read"><VisitorReportsScreen /></RequirePermission>} />
         {/* DocDiff Pro */}
         <Route path="docdiff" element={<RequirePermission permission="docdiff:read"><DocDiffScreen /></RequirePermission>} />
         {/* Operations module routes */}
