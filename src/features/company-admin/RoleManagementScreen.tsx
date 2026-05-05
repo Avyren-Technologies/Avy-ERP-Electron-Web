@@ -1,4 +1,4 @@
-import { useState, useMemo, Fragment } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
     Shield,
     Plus,
@@ -7,32 +7,58 @@ import {
     Loader2,
     X,
     Search,
-    CheckSquare,
     Lock,
-    Minus,
+    ChevronDown,
+    ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRbacRoles, usePermissionCatalogue, useReferenceRoles } from "@/features/company-admin/api/use-company-admin-queries";
 import { useCreateRole, useUpdateRole, useDeleteRole } from "@/features/company-admin/api/use-company-admin-mutations";
-import type { RbacRole } from "@/lib/api/company-admin";
+import type { RbacRole, PermissionModuleEntry } from "@/lib/api/company-admin";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
 
 function buildPermissions(
     matrix: Record<string, boolean>,
-    modules: Array<{ module: string; actions: string[] }>,
+    modules: Array<{ module: string; actions: string[]; subModules?: Array<{ key: string; actions: string[] }> }>,
 ): string[] {
     const result: string[] = [];
     modules.forEach((mod) => {
+        // Parent-level permissions (e.g. "hr:read")
         mod.actions.forEach((action) => {
             const key = `${mod.module}:${action}`;
             if (matrix[key]) {
                 result.push(key);
             }
         });
+        // Sub-module permissions (e.g. "visitors.dashboard:read")
+        if (mod.subModules) {
+            mod.subModules.forEach((sub) => {
+                sub.actions.forEach((action) => {
+                    const subKey = `${sub.key}:${action}`;
+                    // Only add sub-module permission if parent-level is NOT already set
+                    if (matrix[subKey] && !matrix[`${mod.module}:${action}`]) {
+                        result.push(subKey);
+                    }
+                });
+            });
+        }
     });
     return result;
+}
+
+/** Check if a sub-module action is effectively enabled (via direct, parent, or wildcard) */
+function isSubModuleActionEnabled(
+    matrix: Record<string, boolean>,
+    parentModule: string,
+    subKey: string,
+    action: string,
+): boolean {
+    if (matrix[`${subKey}:${action}`]) return true;
+    if (matrix[`${parentModule}:${action}`]) return true;
+    if (matrix[`${parentModule}:*`]) return true;
+    return false;
 }
 
 function flattenPermissions(permissions: string[] | unknown[]): Record<string, boolean> {
@@ -57,16 +83,16 @@ export function RoleManagementScreen() {
 
     const roles: RbacRole[] = rolesData?.data ?? [];
 
-    // Permission catalogue from API — filter out platform module
+    // Permission catalogue from API — only show implemented modules
+    const IMPLEMENTED_MODULES = useMemo(() => new Set([
+        'hr', 'visitors', 'ess', 'attendance', 'user', 'role', 'company',
+        'analytics', 'reports', 'audit', 'billing', 'docdiff',
+    ]), []);
+
     const catalogueModules = useMemo(() => {
         const modules = catalogueData?.data?.modules ?? [];
-        return modules.filter((m) => m.module !== 'platform');
-    }, [catalogueData]);
-
-    // Standard actions shown as table columns
-    const STANDARD_ACTIONS = useMemo(() => {
-        return ['read', 'create', 'update', 'delete', 'approve', 'export', 'configure'];
-    }, []);
+        return modules.filter((m) => IMPLEMENTED_MODULES.has(m.module));
+    }, [catalogueData, IMPLEMENTED_MODULES]);
 
     // Reference roles as templates — backend returns Record<name, {description, permissions}>
     const roleTemplates = useMemo(() => {
@@ -96,6 +122,7 @@ export function RoleManagementScreen() {
     const [formDescription, setFormDescription] = useState("");
     const [matrix, setMatrix] = useState<Record<string, boolean>>({});
     const [deleteTarget, setDeleteTarget] = useState<RbacRole | null>(null);
+    const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({});
 
     const saving = createMutation.isPending || updateMutation.isPending;
     const deleting = deleteMutation.isPending;
@@ -105,11 +132,16 @@ export function RoleManagementScreen() {
         return r.name.toLowerCase().includes(search.toLowerCase());
     });
 
+    const toggleModuleExpanded = useCallback((moduleKey: string) => {
+        setExpandedModules((prev) => ({ ...prev, [moduleKey]: !prev[moduleKey] }));
+    }, []);
+
     const openCreate = () => {
         setEditingId(null);
         setFormName("");
         setFormDescription("");
         setMatrix({});
+        setExpandedModules({});
         setModalOpen(true);
     };
 
@@ -130,23 +162,131 @@ export function RoleManagementScreen() {
         setMatrix((p) => ({ ...p, [key]: !p[key] }));
     };
 
-    const toggleModuleAll = (mod: { module: string; actions: string[] }) => {
-        const moduleKeys = mod.actions.map((a) => `${mod.module}:${a}`);
-        const allSelected = moduleKeys.every((k) => matrix[k]);
+    /** Toggle a parent-level action checkbox for a module with sub-modules */
+    const toggleModuleAction = useCallback((mod: PermissionModuleEntry, action: string) => {
+        const parentKey = `${mod.module}:${action}`;
         setMatrix((prev) => {
             const next = { ...prev };
-            moduleKeys.forEach((k) => { next[k] = !allSelected; });
+            const wasOn = prev[parentKey];
+            if (wasOn) {
+                // Turn off parent
+                next[parentKey] = false;
+            } else {
+                // Turn on parent — also clear individual sub-module keys for this action
+                next[parentKey] = true;
+                if (mod.subModules) {
+                    mod.subModules.forEach((sub) => {
+                        delete next[`${sub.key}:${action}`];
+                    });
+                }
+            }
             return next;
         });
-    };
+    }, []);
 
-    const getModuleSelectionState = (mod: { module: string; actions: string[] }): 'none' | 'some' | 'all' => {
+    /** Toggle a sub-module action checkbox */
+    const toggleSubModuleAction = useCallback((mod: PermissionModuleEntry, subKey: string, action: string) => {
+        setMatrix((prev) => {
+            const next = { ...prev };
+            const parentKey = `${mod.module}:${action}`;
+
+            // If parent is currently on, we need to "expand" it: turn off parent, turn on all other subs
+            if (prev[parentKey]) {
+                next[parentKey] = false;
+                if (mod.subModules) {
+                    mod.subModules.forEach((sub) => {
+                        if (sub.actions.includes(action)) {
+                            // Turn on all except the one being toggled off
+                            if (sub.key !== subKey) {
+                                next[`${sub.key}:${action}`] = true;
+                            }
+                        }
+                    });
+                }
+                return next;
+            }
+
+            // Toggle the individual sub-module
+            const subPermKey = `${subKey}:${action}`;
+            const newVal = !prev[subPermKey];
+            next[subPermKey] = newVal;
+
+            // Auto-collapse: if ALL sub-modules for this action are now checked, replace with parent
+            if (newVal && mod.subModules) {
+                const allSubsChecked = mod.subModules
+                    .filter((s) => s.actions.includes(action))
+                    .every((s) => s.key === subKey || next[`${s.key}:${action}`]);
+                if (allSubsChecked) {
+                    next[parentKey] = true;
+                    mod.subModules.forEach((s) => {
+                        delete next[`${s.key}:${action}`];
+                    });
+                }
+            }
+
+            return next;
+        });
+    }, []);
+
+    /** Toggle all actions for a module (the "Select All" checkbox) */
+    const toggleModuleAll = useCallback((mod: PermissionModuleEntry) => {
         const moduleKeys = mod.actions.map((a) => `${mod.module}:${a}`);
-        const selectedCount = moduleKeys.filter((k) => matrix[k]).length;
-        if (selectedCount === 0) return 'none';
+        setMatrix((prev) => {
+            const allSelected = moduleKeys.every((k) => prev[k]);
+            const next = { ...prev };
+            moduleKeys.forEach((k) => { next[k] = !allSelected; });
+            // If deselecting all, also clear sub-module keys
+            if (allSelected && mod.subModules) {
+                mod.subModules.forEach((sub) => {
+                    sub.actions.forEach((a) => {
+                        delete next[`${sub.key}:${a}`];
+                    });
+                });
+            }
+            // If selecting all, clear sub-module keys (parent covers them)
+            if (!allSelected && mod.subModules) {
+                mod.subModules.forEach((sub) => {
+                    sub.actions.forEach((a) => {
+                        delete next[`${sub.key}:${a}`];
+                    });
+                });
+            }
+            return next;
+        });
+    }, []);
+
+    /** Get the selection state for a module's "Select All" checkbox */
+    const getModuleSelectionState = useCallback((mod: PermissionModuleEntry, currentMatrix: Record<string, boolean>): 'none' | 'some' | 'all' => {
+        const moduleKeys = mod.actions.map((a) => `${mod.module}:${a}`);
+        const selectedCount = moduleKeys.filter((k) => currentMatrix[k]).length;
+        if (selectedCount === 0) {
+            // Check if any sub-module permissions are set
+            if (mod.subModules) {
+                const hasAnySub = mod.subModules.some((sub) =>
+                    sub.actions.some((a) => currentMatrix[`${sub.key}:${a}`])
+                );
+                if (hasAnySub) return 'some';
+            }
+            return 'none';
+        }
         if (selectedCount === moduleKeys.length) return 'all';
         return 'some';
-    };
+    }, []);
+
+    /** Get the state for a module-level action column checkbox (for modules with sub-modules) */
+    const getModuleActionState = useCallback((mod: PermissionModuleEntry, action: string, currentMatrix: Record<string, boolean>): 'none' | 'some' | 'all' => {
+        const parentKey = `${mod.module}:${action}`;
+        if (currentMatrix[parentKey]) return 'all';
+        if (!mod.subModules) return 'none';
+
+        const subsWithAction = mod.subModules.filter((s) => s.actions.includes(action));
+        if (subsWithAction.length === 0) return 'none';
+
+        const checkedCount = subsWithAction.filter((s) => currentMatrix[`${s.key}:${action}`]).length;
+        if (checkedCount === 0) return 'none';
+        if (checkedCount === subsWithAction.length) return 'all';
+        return 'some';
+    }, []);
 
     const handleSave = async () => {
         const permissions = buildPermissions(matrix, catalogueModules);
@@ -297,7 +437,7 @@ export function RoleManagementScreen() {
 
                             {/* Permission Matrix */}
                             <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">Permission Matrix</label>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">Permission Matrix</label>
                                 {catalogueLoading ? (
                                     <div className="flex items-center gap-2 text-sm text-neutral-400 py-6 justify-center">
                                         <Loader2 size={14} className="animate-spin" /> Loading permissions...
@@ -305,114 +445,191 @@ export function RoleManagementScreen() {
                                 ) : catalogueModules.length === 0 ? (
                                     <div className="text-sm text-neutral-400 py-6 text-center">No permission modules available.</div>
                                 ) : (
-                                    <div className="border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden">
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-left border-collapse">
-                                                <thead>
-                                                    <tr className="bg-neutral-50 dark:bg-neutral-800/50">
-                                                        <th className="py-3 px-4 text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">Module</th>
-                                                        <th className="py-3 px-3 text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider text-center">All</th>
-                                                        {STANDARD_ACTIONS.map((a) => (
-                                                            <th key={a} className="py-3 px-3 text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider text-center">{a}</th>
-                                                        ))}
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {catalogueModules.map((mod, i) => {
-                                                        const customActions = mod.actions.filter(a => !STANDARD_ACTIONS.includes(a));
-                                                        const isLast = i === catalogueModules.length - 1;
-                                                        return (
-                                                            <Fragment key={mod.module}>
-                                                                <tr className={cn((!isLast && customActions.length === 0) && "border-b border-neutral-100 dark:border-neutral-800")}>
-                                                                    <td className="py-2.5 px-4 text-xs font-semibold text-primary-950 dark:text-white">{mod.label}</td>
-                                                                    <td className="py-2.5 px-3 text-center">
-                                                                        {(() => {
-                                                                            const state = getModuleSelectionState(mod);
+                                    <div className="space-y-3">
+                                        {catalogueModules.map((mod) => {
+                                            const hasSubModules = mod.subModules && mod.subModules.length > 0;
+                                            const isExpanded = expandedModules[mod.module] ?? false;
+                                            const selectionState = getModuleSelectionState(mod, matrix);
+
+                                            // Count selected permissions for badge
+                                            const selectedCount = (() => {
+                                                let count = 0;
+                                                mod.actions.forEach((a) => { if (matrix[`${mod.module}:${a}`]) count++; });
+                                                if (mod.subModules) {
+                                                    mod.subModules.forEach((sub) => {
+                                                        sub.actions.forEach((a) => {
+                                                            if (matrix[`${sub.key}:${a}`]) count++;
+                                                        });
+                                                    });
+                                                }
+                                                return count;
+                                            })();
+
+                                            // Group sub-modules by their group field
+                                            const groupedSubs = (() => {
+                                                if (!mod.subModules) return {};
+                                                const groups: Record<string, typeof mod.subModules> = {};
+                                                mod.subModules.forEach((sub) => {
+                                                    const g = sub.group || 'General';
+                                                    if (!groups[g]) groups[g] = [];
+                                                    groups[g]!.push(sub);
+                                                });
+                                                return groups;
+                                            })();
+
+                                            return (
+                                                <div
+                                                    key={mod.module}
+                                                    className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200/60 dark:border-neutral-800 overflow-hidden"
+                                                >
+                                                    {/* Module header */}
+                                                    <div className="flex items-center justify-between px-4 py-3">
+                                                        <div className="flex items-center gap-2 min-w-0">
+                                                            {hasSubModules ? (
+                                                                <button
+                                                                    onClick={() => toggleModuleExpanded(mod.module)}
+                                                                    className="flex items-center gap-2 text-sm font-semibold text-primary-950 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                                                                >
+                                                                    {isExpanded
+                                                                        ? <ChevronDown size={16} className="text-neutral-400 shrink-0" />
+                                                                        : <ChevronRight size={16} className="text-neutral-400 shrink-0" />
+                                                                    }
+                                                                    {mod.label}
+                                                                </button>
+                                                            ) : (
+                                                                <span className="text-sm font-semibold text-primary-950 dark:text-white">{mod.label}</span>
+                                                            )}
+                                                            {selectedCount > 0 && (
+                                                                <span className="text-[10px] font-bold bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400 px-1.5 py-0.5 rounded-full">
+                                                                    {selectedCount}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        {/* Select All toggle */}
+                                                        <button
+                                                            onClick={() => toggleModuleAll(mod)}
+                                                            className={cn(
+                                                                "text-[11px] font-semibold px-2.5 py-1 rounded-lg border transition-colors",
+                                                                selectionState === 'all'
+                                                                    ? "bg-primary-600 border-primary-600 text-white"
+                                                                    : selectionState === 'some'
+                                                                        ? "bg-primary-100 border-primary-300 text-primary-700 dark:bg-primary-900/40 dark:border-primary-700 dark:text-primary-300"
+                                                                        : "border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:border-primary-400 hover:text-primary-600 dark:hover:text-primary-400"
+                                                            )}
+                                                        >
+                                                            {selectionState === 'all' ? 'Deselect All' : 'Select All'}
+                                                        </button>
+                                                    </div>
+
+                                                    {/* Simple module (no sub-modules): show action chips inline */}
+                                                    {!hasSubModules && (
+                                                        <div className="px-4 pb-3 flex flex-wrap gap-1.5">
+                                                            {mod.actions.map((action) => {
+                                                                const key = `${mod.module}:${action}`;
+                                                                const checked = matrix[key] ?? false;
+                                                                return (
+                                                                    <button
+                                                                        key={action}
+                                                                        onClick={() => togglePermission(key)}
+                                                                        className={cn(
+                                                                            "px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors capitalize",
+                                                                            checked
+                                                                                ? "bg-primary-600 border-primary-600 text-white"
+                                                                                : "bg-neutral-100 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:border-primary-400 hover:text-primary-600 dark:hover:text-primary-400"
+                                                                        )}
+                                                                    >
+                                                                        {action.replace(/-/g, ' ')}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Module with sub-modules: expandable content */}
+                                                    {hasSubModules && isExpanded && (
+                                                        <div className="border-t border-neutral-100 dark:border-neutral-800">
+                                                            {/* Module-level action chips (parent-level permissions) */}
+                                                            {mod.actions.length > 0 && (
+                                                                <div className="px-4 pt-3 pb-2">
+                                                                    <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">Module-Level Actions</span>
+                                                                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                                                        {mod.actions.map((action) => {
+                                                                            const actionState = getModuleActionState(mod, action, matrix);
                                                                             return (
                                                                                 <button
-                                                                                    onClick={() => toggleModuleAll(mod)}
-                                                                                    title={state === 'all' ? `Deselect all ${mod.label} permissions` : `Select all ${mod.label} permissions`}
+                                                                                    key={action}
+                                                                                    onClick={() => toggleModuleAction(mod, action)}
                                                                                     className={cn(
-                                                                                        "w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors mx-auto",
-                                                                                        state === 'all'
+                                                                                        "px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors capitalize",
+                                                                                        actionState === 'all'
                                                                                             ? "bg-primary-600 border-primary-600 text-white"
-                                                                                            : state === 'some'
-                                                                                                ? "bg-primary-200 border-primary-400 text-primary-700 dark:bg-primary-800 dark:border-primary-500 dark:text-primary-300"
-                                                                                                : "border-neutral-300 dark:border-neutral-600 hover:border-primary-400"
+                                                                                            : actionState === 'some'
+                                                                                                ? "bg-primary-100 border-primary-300 text-primary-700 dark:bg-primary-900/40 dark:border-primary-700 dark:text-primary-300"
+                                                                                                : "bg-neutral-100 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:border-primary-400 hover:text-primary-600 dark:hover:text-primary-400"
                                                                                     )}
                                                                                 >
-                                                                                    {state === 'all' && <CheckSquare size={12} />}
-                                                                                    {state === 'some' && <Minus size={12} />}
+                                                                                    {action.replace(/-/g, ' ')}
                                                                                 </button>
                                                                             );
-                                                                        })()}
-                                                                    </td>
-                                                                    {STANDARD_ACTIONS.map((action) => {
-                                                                        const hasAction = mod.actions.includes(action);
-                                                                        const key = `${mod.module}:${action}`;
-                                                                        const checked = matrix[key] ?? false;
-                                                                        return (
-                                                                            <td key={action} className="py-2.5 px-3 text-center">
-                                                                                {hasAction ? (
-                                                                                    <button
-                                                                                        onClick={() => togglePermission(key)}
-                                                                                        className={cn(
-                                                                                            "w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors mx-auto",
-                                                                                            checked
-                                                                                                ? "bg-primary-600 border-primary-600 text-white"
-                                                                                                : "border-neutral-300 dark:border-neutral-600 hover:border-primary-400"
-                                                                                        )}
-                                                                                    >
-                                                                                        {checked && <CheckSquare size={12} />}
-                                                                                    </button>
-                                                                                ) : (
-                                                                                    <span className="text-neutral-200 dark:text-neutral-700">&mdash;</span>
-                                                                                )}
-                                                                            </td>
-                                                                        );
-                                                                    })}
-                                                                </tr>
-                                                                {customActions.length > 0 && (
-                                                                    <tr className={cn(!isLast && "border-b border-neutral-100 dark:border-neutral-800")}>
-                                                                        <td colSpan={STANDARD_ACTIONS.length + 2} className="px-4 pb-4 pt-1">
-                                                                            <div className="flex flex-wrap gap-2 pt-3 border-t border-neutral-100 dark:border-neutral-800/50 mt-1">
-                                                                                <span className="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase w-full mb-1">Specific Permissions</span>
-                                                                                {customActions.map(action => {
-                                                                                    const key = `${mod.module}:${action}`;
-                                                                                    const checked = matrix[key] ?? false;
-                                                                                    return (
-                                                                                        <label key={action} className={cn(
-                                                                                            "flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold cursor-pointer transition-colors shadow-sm",
-                                                                                            checked 
-                                                                                                ? "bg-primary-50 border-primary-200 text-primary-700 dark:bg-primary-900/40 dark:border-primary-800 dark:text-primary-300" 
-                                                                                                : "bg-white border-neutral-200 text-neutral-600 hover:border-primary-300 dark:bg-neutral-900 dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-primary-700"
-                                                                                        )}>
-                                                                                            <input 
-                                                                                                type="checkbox" 
-                                                                                                className="sr-only" 
-                                                                                                checked={checked} 
-                                                                                                onChange={() => togglePermission(key)} 
-                                                                                            />
-                                                                                            <div className={cn(
-                                                                                                "w-3.5 h-3.5 flex-shrink-0 rounded-[4px] flex items-center justify-center transition-colors",
-                                                                                                checked ? "bg-primary-600 text-white border-transparent" : "border border-neutral-300 dark:border-neutral-600 bg-transparent"
-                                                                                            )}>
-                                                                                                {checked && <CheckSquare size={10} />}
-                                                                                            </div>
-                                                                                            {action.replace(/-/g, ' ')}
-                                                                                        </label>
-                                                                                    );
-                                                                                })}
-                                                                            </div>
-                                                                        </td>
-                                                                    </tr>
-                                                                )}
-                                                            </Fragment>
-                                                        );
-                                                    })}
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                                                        })}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Grouped sub-modules */}
+                                                            {Object.entries(groupedSubs).map(([groupName, subs]) => (
+                                                                <div key={groupName} className="px-4 pb-2 pt-1">
+                                                                    <div className="py-1.5">
+                                                                        <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">{groupName}</span>
+                                                                    </div>
+                                                                    <div className="bg-neutral-50/80 dark:bg-neutral-800/30 rounded-lg border border-neutral-100 dark:border-neutral-800/50">
+                                                                        {subs!.map((sub, subIdx) => {
+                                                                            const isLastSub = subIdx === subs!.length - 1;
+                                                                            return (
+                                                                                <div
+                                                                                    key={sub.key}
+                                                                                    className={cn(
+                                                                                        "flex items-center justify-between gap-3 px-3 py-2",
+                                                                                        !isLastSub && "border-b border-neutral-100/50 dark:border-neutral-800/30"
+                                                                                    )}
+                                                                                >
+                                                                                    <span className="text-[11px] text-neutral-600 dark:text-neutral-400 shrink-0">{sub.label}</span>
+                                                                                    <div className="flex flex-wrap gap-1 justify-end">
+                                                                                        {sub.actions.map((action) => {
+                                                                                            const checked = isSubModuleActionEnabled(matrix, mod.module, sub.key, action);
+                                                                                            const isFromParent = matrix[`${mod.module}:${action}`] || matrix[`${mod.module}:*`];
+                                                                                            return (
+                                                                                                <button
+                                                                                                    key={action}
+                                                                                                    onClick={() => toggleSubModuleAction(mod, sub.key, action)}
+                                                                                                    disabled={!!isFromParent}
+                                                                                                    className={cn(
+                                                                                                        "px-2 py-0.5 rounded text-[10px] font-semibold border transition-colors capitalize",
+                                                                                                        checked
+                                                                                                            ? isFromParent
+                                                                                                                ? "bg-primary-100 dark:bg-primary-900/30 border-dashed border-primary-300 dark:border-primary-700 text-primary-600 dark:text-primary-400 opacity-75 cursor-not-allowed"
+                                                                                                                : "bg-primary-600 border-primary-600 text-white"
+                                                                                                            : "bg-neutral-100 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:border-primary-400 hover:text-primary-600 dark:hover:text-primary-400"
+                                                                                                    )}
+                                                                                                    title={isFromParent ? `Inherited from ${mod.label} module-level permission` : `Toggle ${action} for ${sub.label}`}
+                                                                                                >
+                                                                                                    {isFromParent && <Lock size={8} className="inline mr-0.5 -mt-px" />}
+                                                                                                    {action.replace(/-/g, ' ')}
+                                                                                                </button>
+                                                                                            );
+                                                                                        })}
+                                                                                    </div>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>

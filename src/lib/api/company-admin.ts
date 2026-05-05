@@ -563,10 +563,18 @@ export interface RolePermission {
 
 // ── Permission Catalogue ──
 
+export interface PermissionSubModuleEntry {
+    key: string;
+    label: string;
+    group: string;
+    actions: string[];
+}
+
 export interface PermissionModuleEntry {
     module: string;
     label: string;
     actions: string[];
+    subModules?: PermissionSubModuleEntry[];
 }
 
 export interface PermissionCatalogue {
