@@ -140,7 +140,7 @@ export function VisitorDashboardScreen() {
     const handleQuickCheckOut = async (id: string) => {
         try {
             setQuickCheckOutId(id);
-            await checkOutMutation.mutateAsync({ id });
+            await checkOutMutation.mutateAsync({ id, data: { checkOutMethod: 'SECURITY_DESK' } });
             showSuccess("Checked Out", "Visitor has been checked out successfully.");
         } catch (err) {
             showApiError(err);

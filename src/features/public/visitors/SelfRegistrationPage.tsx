@@ -15,12 +15,29 @@ const PURPOSE_OPTIONS = [
   { value: 'OTHER', label: 'Other' },
 ];
 
+interface SafetyInduction {
+  id: string;
+  name: string;
+  type: 'VIDEO' | 'SLIDES' | 'QUESTIONNAIRE' | 'DECLARATION';
+  contentUrl?: string | null;
+  questions?: { question: string; options: string[]; correctAnswer: number }[] | null;
+  passingScore?: number | null;
+  durationSeconds?: number | null;
+}
+
 interface FormConfig {
   company: { id: string; name: string; displayName?: string; logoUrl?: string };
   plant: { id: string; name: string; code: string };
-  visitorTypes: { id: string; name: string; code: string }[];
+  visitorTypes: { id: string; name: string; code: string; requireNda?: boolean; requireSafetyInduction?: boolean; safetyInductionId?: string | null }[];
   employees: { id: string; name: string }[];
-  config: { photoRequired: boolean; privacyConsentText?: string };
+  safetyInductions?: SafetyInduction[];
+  config: {
+    photoRequired: boolean;
+    privacyConsentText?: string;
+    ndaRequired?: string; // ALWAYS | PER_VISITOR_TYPE | NEVER
+    ndaTemplateContent?: string | null;
+    safetyInductionRequired?: string; // ALWAYS | PER_VISITOR_TYPE | NEVER
+  };
 }
 
 export function SelfRegistrationPage() {
@@ -42,6 +59,9 @@ export function SelfRegistrationPage() {
   const hostRef = useRef<HTMLDivElement>(null);
   const [visitorTypeId, setVisitorTypeId] = useState('');
   const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [ndaAccepted, setNdaAccepted] = useState(false);
+  const [inductionAcknowledged, setInductionAcknowledged] = useState(false);
+  const [quizAnswers, setQuizAnswers] = useState<Record<string, number>>({});
 
   // Load form config (company info, visitor types, privacy text) on mount
   useEffect(() => {
@@ -68,6 +88,22 @@ export function SelfRegistrationPage() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  // Determine if NDA/induction is required based on config mode + selected visitor type
+  const selectedType = formConfig?.visitorTypes.find(vt => vt.id === visitorTypeId);
+  const ndaNeeded = formConfig?.config.ndaRequired === 'ALWAYS'
+    || (formConfig?.config.ndaRequired === 'PER_VISITOR_TYPE' && selectedType?.requireNda);
+  const inductionNeeded = formConfig?.config.safetyInductionRequired === 'ALWAYS'
+    || (formConfig?.config.safetyInductionRequired === 'PER_VISITOR_TYPE' && selectedType?.requireSafetyInduction);
+
+  // Get applicable inductions (linked to visitor type, or all if ALWAYS mode)
+  const applicableInductions = useMemo(() => {
+    if (!inductionNeeded || !formConfig?.safetyInductions?.length) return [];
+    if (selectedType?.safetyInductionId) {
+      return formConfig.safetyInductions.filter(si => si.id === selectedType.safetyInductionId);
+    }
+    return formConfig.safetyInductions;
+  }, [inductionNeeded, formConfig?.safetyInductions, selectedType?.safetyInductionId]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!plantCode) return;
@@ -82,6 +118,35 @@ export function SelfRegistrationPage() {
       return;
     }
 
+    if (ndaNeeded && !ndaAccepted) {
+      showApiError({ response: { data: { message: 'Please review and accept the Non-Disclosure Agreement.' } } });
+      return;
+    }
+
+    if (inductionNeeded && applicableInductions.length > 0 && !inductionAcknowledged) {
+      showApiError({ response: { data: { message: 'Please complete the safety induction before registering.' } } });
+      return;
+    }
+
+    // Score quiz if applicable
+    let inductionScore: number | undefined;
+    let inductionCompleted = false;
+    if (inductionNeeded && applicableInductions.length > 0) {
+      const quiz = applicableInductions.find(si => si.type === 'QUESTIONNAIRE');
+      if (quiz?.questions?.length) {
+        const total = quiz.questions.length;
+        const correct = quiz.questions.filter((q, idx) => quizAnswers[`${quiz.id}-${idx}`] === q.correctAnswer).length;
+        inductionScore = Math.round((correct / total) * 100);
+        inductionCompleted = inductionScore >= (quiz.passingScore ?? 80);
+        if (!inductionCompleted) {
+          showApiError({ response: { data: { message: `You scored ${inductionScore}%. A minimum of ${quiz.passingScore ?? 80}% is required to pass.` } } });
+          return;
+        }
+      } else {
+        inductionCompleted = true;
+      }
+    }
+
     setSubmitting(true);
     try {
       const res = await publicApi.post(`/public/visit/register/${plantCode}`, {
@@ -92,6 +157,9 @@ export function SelfRegistrationPage() {
         purpose,
         hostEmployeeId: hostEmployeeId || undefined,
         visitorTypeId: visitorTypeId || undefined,
+        ndaSigned: ndaNeeded ? ndaAccepted : undefined,
+        inductionCompleted: inductionCompleted || undefined,
+        inductionScore,
       });
       const visitCode = res.data?.data?.visitCode;
       setResultCode(visitCode || 'REGISTERED');
@@ -373,6 +441,133 @@ export function SelfRegistrationPage() {
             </div>
           )}
 
+          {/* Safety Induction Section */}
+          {inductionNeeded && applicableInductions.length > 0 && (
+            <div className="border border-red-200 bg-red-50 rounded-xl p-4 space-y-3">
+              <h3 className="text-sm font-bold text-red-800 uppercase tracking-wide flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                Safety Induction Required
+              </h3>
+              {applicableInductions.map((si) => (
+                <div key={si.id} className="bg-white rounded-lg border border-red-100 p-3">
+                  <p className="text-sm font-semibold text-gray-800 mb-2">{si.name}</p>
+
+                  {si.type === 'VIDEO' && si.contentUrl && (
+                    <div className="mb-2">
+                      {si.contentUrl.includes('youtube') || si.contentUrl.includes('youtu.be') ? (
+                        <iframe
+                          src={si.contentUrl.replace('watch?v=', 'embed/').replace('youtu.be/', 'youtube.com/embed/')}
+                          className="w-full aspect-video rounded-lg"
+                          allowFullScreen
+                          title={si.name}
+                        />
+                      ) : si.contentUrl.includes('vimeo') ? (
+                        <iframe
+                          src={si.contentUrl.replace('vimeo.com/', 'player.vimeo.com/video/')}
+                          className="w-full aspect-video rounded-lg"
+                          allowFullScreen
+                          title={si.name}
+                        />
+                      ) : (
+                        <video src={si.contentUrl} controls className="w-full rounded-lg" />
+                      )}
+                    </div>
+                  )}
+
+                  {si.type === 'SLIDES' && si.contentUrl && (
+                    <a href={si.contentUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-700 font-medium mb-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                      Open Safety Slides
+                    </a>
+                  )}
+
+                  {si.type === 'DECLARATION' && si.contentUrl && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-2 max-h-40 overflow-y-auto">
+                      <p className="text-xs text-gray-700 whitespace-pre-wrap">{si.contentUrl}</p>
+                    </div>
+                  )}
+
+                  {si.type === 'QUESTIONNAIRE' && si.questions && (
+                    <div className="space-y-3">
+                      {(si.questions as { question: string; options: string[]; correctAnswer: number }[]).map((q, qIdx) => (
+                        <div key={qIdx} className="bg-gray-50 rounded-lg p-3">
+                          <p className="text-sm font-medium text-gray-800 mb-2">{qIdx + 1}. {q.question}</p>
+                          <div className="space-y-1">
+                            {q.options.map((opt, oIdx) => (
+                              <label key={oIdx} className="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                                <input
+                                  type="radio"
+                                  name={`quiz-${si.id}-${qIdx}`}
+                                  checked={quizAnswers[`${si.id}-${qIdx}`] === oIdx}
+                                  onChange={() => setQuizAnswers(prev => ({ ...prev, [`${si.id}-${qIdx}`]: oIdx }))}
+                                  className="text-indigo-600 focus:ring-indigo-500"
+                                />
+                                {opt}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {!applicableInductions.some(si => si.type === 'QUESTIONNAIRE') && (
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={inductionAcknowledged}
+                    onChange={(e) => setInductionAcknowledged(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-red-300 text-red-600 focus:ring-red-500"
+                  />
+                  <span className="text-sm text-red-800">
+                    I have reviewed and understood the safety induction material. <span className="text-red-500">*</span>
+                  </span>
+                </label>
+              )}
+
+              {applicableInductions.some(si => si.type === 'QUESTIONNAIRE') && (
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={inductionAcknowledged}
+                    onChange={(e) => setInductionAcknowledged(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-red-300 text-red-600 focus:ring-red-500"
+                  />
+                  <span className="text-sm text-red-800">
+                    I have answered the questionnaire above and confirm my understanding. <span className="text-red-500">*</span>
+                  </span>
+                </label>
+              )}
+            </div>
+          )}
+
+          {/* NDA Section */}
+          {ndaNeeded && formConfig.config.ndaTemplateContent && (
+            <div className="border border-blue-200 bg-blue-50 rounded-xl p-4 space-y-3">
+              <h3 className="text-sm font-bold text-blue-800 uppercase tracking-wide flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                Non-Disclosure Agreement
+              </h3>
+              <div className="bg-white border border-blue-100 rounded-lg p-3 max-h-48 overflow-y-auto">
+                <p className="text-xs text-gray-700 whitespace-pre-wrap">{formConfig.config.ndaTemplateContent}</p>
+              </div>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={ndaAccepted}
+                  onChange={(e) => setNdaAccepted(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-blue-800">
+                  I have read, understood, and agree to the Non-Disclosure Agreement. <span className="text-red-500">*</span>
+                </span>
+              </label>
+            </div>
+          )}
+
+          {/* Privacy Consent */}
           <label className="flex items-start gap-3 cursor-pointer">
             <input
               type="checkbox"

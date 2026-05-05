@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
 import { Siren, CheckCircle2, Loader2, Users, UserCheck, AlertTriangle, ShieldCheck } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useCompanyLocations } from "@/features/company-admin/api/use-company-admin-queries";
 import { useMusterList, useDashboardOnSite } from "@/features/company-admin/api/use-visitor-queries";
 import { useTriggerEmergency, useMarkSafe, useResolveEmergency } from "@/features/company-admin/api/use-visitor-mutations";
