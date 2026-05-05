@@ -44,6 +44,7 @@ export function SearchableSelect({
 }: SearchableSelectProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
+    const [openUpward, setOpenUpward] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
 
     // Close on outside click
@@ -57,6 +58,15 @@ export function SearchableSelect({
         document.addEventListener("mousedown", handleClick);
         return () => document.removeEventListener("mousedown", handleClick);
     }, []);
+
+    useEffect(() => {
+        if (!isOpen || !containerRef.current) return;
+        const rect = containerRef.current.getBoundingClientRect();
+        const estimatedDropdownHeight = 320;
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        setOpenUpward(spaceBelow < estimatedDropdownHeight && spaceAbove > spaceBelow);
+    }, [isOpen, options.length]);
 
     const filtered = options.filter(
         (o) =>
@@ -120,7 +130,12 @@ export function SearchableSelect({
             </button>
 
             {isOpen && (
-                <div className="absolute left-0 right-0 z-[1] mt-1 w-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                <div
+                    className={cn(
+                        "absolute left-0 right-0 z-[1] w-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150",
+                        openUpward ? "bottom-full mb-1" : "mt-1"
+                    )}
+                >
                     {/* Search */}
                     <div className="p-2 border-b border-neutral-100 dark:border-neutral-700">
                         <div className="relative">

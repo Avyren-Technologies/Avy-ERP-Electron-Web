@@ -573,7 +573,7 @@ export function GateCheckInScreen() {
                                 <X size={18} />
                             </button>
                         </div>
-                        <div className="p-6 space-y-4">
+                        <div className="p-6 space-y-4 overflow-y-auto min-h-0">
                             <div>
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
                                     Visitor Name <span className="text-danger-500">*</span>
