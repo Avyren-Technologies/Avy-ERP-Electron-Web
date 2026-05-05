@@ -220,7 +220,6 @@ const GateScreen = lazyNamed(() => import("./features/company-admin/visitors/Gat
 const WatchlistScreen = lazyNamed(() => import("./features/company-admin/visitors/WatchlistScreen"), "WatchlistScreen");
 const RecurringPassScreen = lazyNamed(() => import("./features/company-admin/visitors/RecurringPassScreen"), "RecurringPassScreen");
 const VMSSettingsScreen = lazyNamed(() => import("./features/company-admin/visitors/VMSSettingsScreen"), "VMSSettingsScreen");
-const VisitHistoryScreen = lazyNamed(() => import("./features/company-admin/visitors/VisitHistoryScreen"), "VisitHistoryScreen");
 const VehiclePassScreen = lazyNamed(() => import("./features/company-admin/visitors/VehiclePassScreen"), "VehiclePassScreen");
 const MaterialPassScreen = lazyNamed(() => import("./features/company-admin/visitors/MaterialPassScreen"), "MaterialPassScreen");
 const GroupVisitScreen = lazyNamed(() => import("./features/company-admin/visitors/GroupVisitScreen"), "GroupVisitScreen");
@@ -549,7 +548,6 @@ function App() {
         <Route path="company/visitors/watchlist" element={<RequirePermission permission="visitors:configure"><WatchlistScreen /></RequirePermission>} />
         <Route path="company/visitors/recurring-passes" element={<RequirePermission permission="visitors:read"><RecurringPassScreen /></RequirePermission>} />
         <Route path="company/visitors/settings" element={<RequirePermission permission="visitors:configure"><VMSSettingsScreen /></RequirePermission>} />
-        <Route path="company/visitors/history" element={<RequirePermission permission="visitors:read"><VisitHistoryScreen /></RequirePermission>} />
         <Route path="company/visitors/vehicle-passes" element={<RequirePermission permission="visitors:read"><VehiclePassScreen /></RequirePermission>} />
         <Route path="company/visitors/material-passes" element={<RequirePermission permission="visitors:read"><MaterialPassScreen /></RequirePermission>} />
         <Route path="company/visitors/group-visits" element={<RequirePermission permission="visitors:read"><GroupVisitScreen /></RequirePermission>} />

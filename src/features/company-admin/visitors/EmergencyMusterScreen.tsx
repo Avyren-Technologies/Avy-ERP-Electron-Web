@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Siren, CheckCircle2, Loader2, Users, UserCheck, AlertTriangle, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useCompanyLocations } from "@/features/company-admin/api/use-company-admin-queries";
 import { useMusterList, useDashboardOnSite } from "@/features/company-admin/api/use-visitor-queries";
 import { useTriggerEmergency, useMarkSafe, useResolveEmergency } from "@/features/company-admin/api/use-visitor-mutations";
 import { useCanPerform } from "@/hooks/useCanPerform";
@@ -12,6 +13,13 @@ export function EmergencyMusterScreen() {
     const fmt = useCompanyFormatter();
     const canConfigure = useCanPerform("visitors:configure");
     const canCreate = useCanPerform("visitors:create");
+
+    const { data: locationsData } = useCompanyLocations();
+    const locationOptions = useMemo(() => {
+        const raw = (locationsData as any)?.data ?? [];
+        if (!Array.isArray(raw)) return [];
+        return raw.map((l: any) => ({ id: l.id, name: l.name ?? l.code ?? l.id }));
+    }, [locationsData]);
 
     const { data: musterData, isLoading: musterLoading } = useMusterList();
     const { data: onSiteData } = useDashboardOnSite();
@@ -189,7 +197,7 @@ export function EmergencyMusterScreen() {
                         </div>
                         <p className="text-sm text-neutral-500 mb-4">This will activate the emergency muster list for the selected plant.</p>
                         <div className="space-y-3">
-                            <div><label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">Plant ID *</label><input type="text" value={triggerPlantId} onChange={(e) => setTriggerPlantId(e.target.value)} placeholder="Plant to evacuate" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm dark:text-white placeholder:text-neutral-400 transition-all" /></div>
+                            <div><label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">Plant / Location *</label><select value={triggerPlantId} onChange={(e) => setTriggerPlantId(e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm dark:text-white transition-all"><option value="">Select plant to evacuate...</option>{locationOptions.map((l: any) => (<option key={l.id} value={l.id}>{l.name}</option>))}</select></div>
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <input type="checkbox" checked={triggerIsDrill} onChange={(e) => setTriggerIsDrill(e.target.checked)} className="w-4 h-4 rounded border-neutral-300" />
                                 <span className="text-sm text-neutral-700 dark:text-neutral-300 font-medium">This is a drill</span>
@@ -213,8 +221,8 @@ export function EmergencyMusterScreen() {
                         <h2 className="text-lg font-bold text-success-700 dark:text-success-400 mb-2">Resolve Emergency</h2>
                         <p className="text-sm text-neutral-500">Confirm that the emergency is resolved and normal operations can resume.</p>
                         <div className="mt-3">
-                            <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">Plant ID *</label>
-                            <input type="text" value={resolvePlantId} onChange={(e) => setResolvePlantId(e.target.value)} placeholder="Plant to resolve" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm dark:text-white placeholder:text-neutral-400 transition-all" />
+                            <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">Plant / Location *</label>
+                            <select value={resolvePlantId} onChange={(e) => setResolvePlantId(e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm dark:text-white transition-all"><option value="">Select plant to resolve...</option>{locationOptions.map((l: any) => (<option key={l.id} value={l.id}>{l.name}</option>))}</select>
                         </div>
                         <div className="flex gap-3 mt-6">
                             <button onClick={() => setShowResolve(false)} className="flex-1 py-3 rounded-xl border border-neutral-200 text-sm font-bold text-neutral-700 hover:bg-neutral-50 transition-colors">Cancel</button>

@@ -135,50 +135,81 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
         setOpenGroups((prev) => ({ ...prev, [path]: !prev[path] }));
     };
 
-    // ── Section-level collapse/expand ──
+    // ── Section-level collapse/expand (accordion — only one open at a time) ──
     const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
         const initial: Record<string, boolean> = {};
-        const defaultExpanded = ['Overview', 'My Workspace', 'Team Management'];
         if (manifestSections) {
             const seen = new Set<string>();
+            // Find which section has the active route — that one stays open
+            let activeGroup: string | null = null;
             manifestSections.forEach((section) => {
                 if (seen.has(section.group)) return;
                 seen.add(section.group);
-                if (defaultExpanded.includes(section.group)) return;
-                // Skip sections whose items all have children (already self-collapsible)
-                if (section.items.every(i => i.children && i.children.length > 0)) return;
                 const hasActive = section.items.some(item =>
                     location.pathname === item.path ||
                     location.pathname.startsWith(item.path + '/') ||
                     item.children?.some(c => location.pathname.startsWith(c.path))
                 );
-                if (!hasActive) initial[section.group] = true;
+                if (hasActive && !activeGroup) activeGroup = section.group;
+            });
+            // Collapse all sections except the active one
+            seen.clear();
+            manifestSections.forEach((section) => {
+                if (seen.has(section.group)) return;
+                seen.add(section.group);
+                if (section.group === 'Overview') return;
+                if (section.items.every(i => i.children && i.children.length > 0)) return;
+                if (section.group !== activeGroup) initial[section.group] = true;
             });
         }
         return initial;
     });
 
-    // Auto-expand section containing active route
+    // Auto-expand section containing active route (accordion: collapse others)
     useEffect(() => {
         if (!manifestSections) return;
+        let activeGroup: string | null = null;
         manifestSections.forEach((section) => {
             const hasActive = section.items.some(item =>
                 location.pathname === item.path ||
                 location.pathname.startsWith(item.path + '/') ||
                 item.children?.some(c => location.pathname.startsWith(c.path))
             );
-            if (hasActive) {
-                setCollapsedSections(prev => {
-                    if (prev[section.group]) return { ...prev, [section.group]: false };
-                    return prev;
-                });
-            }
+            if (hasActive && !activeGroup) activeGroup = section.group;
         });
+        if (activeGroup) {
+            setCollapsedSections(prev => {
+                const next: Record<string, boolean> = {};
+                const seen = new Set<string>();
+                manifestSections.forEach((section) => {
+                    if (seen.has(section.group)) return;
+                    seen.add(section.group);
+                    if (section.group === 'Overview') return;
+                    if (section.items.every(i => i.children && i.children.length > 0)) return;
+                    next[section.group] = section.group !== activeGroup;
+                });
+                // Only update if something actually changed
+                const changed = Object.keys(next).some(k => prev[k] !== next[k]);
+                return changed ? next : prev;
+            });
+        }
     }, [location.pathname, manifestSections]);
 
     const toggleSection = (group: string) => {
         if (group === 'Overview') return;
-        setCollapsedSections(prev => ({ ...prev, [group]: !prev[group] }));
+        setCollapsedSections(prev => {
+            const isCurrentlyCollapsed = !!prev[group];
+            if (!isCurrentlyCollapsed) {
+                // Collapsing this section — just collapse it
+                return { ...prev, [group]: true };
+            }
+            // Expanding this section — collapse all others (accordion)
+            const next: Record<string, boolean> = {};
+            for (const key of Object.keys(prev)) {
+                next[key] = key !== group;
+            }
+            return next;
+        });
     };
 
     // ── Module-level collapse (HRMS, Operations, etc.) ──
