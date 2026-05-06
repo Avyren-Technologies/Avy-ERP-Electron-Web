@@ -27,8 +27,8 @@ async function updateLeaveType(id: string, data: any): Promise<ApiResponse<any>>
     return response.data;
 }
 
-async function deleteLeaveType(id: string): Promise<ApiResponse<any>> {
-    const response = await client.delete(`/hr/leave-types/${id}`);
+async function deleteLeaveType(id: string, force = false): Promise<ApiResponse<any>> {
+    const response = await client.delete(`/hr/leave-types/${id}`, { params: force ? { force: 'true' } : undefined });
     return response.data;
 }
 

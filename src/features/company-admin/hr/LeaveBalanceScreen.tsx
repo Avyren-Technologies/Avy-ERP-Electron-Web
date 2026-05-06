@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
     Wallet,
     Search,
@@ -11,6 +11,7 @@ import {
     Filter,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { useLeaveBalances, useLeaveTypes } from "@/features/company-admin/api/use-leave-queries";
 import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
 import { useAdjustLeaveBalance } from "@/features/company-admin/api/use-leave-mutations";
@@ -168,7 +169,6 @@ const yearOptions = Array.from({ length: 5 }, (_, i) => {
 export function LeaveBalanceScreen() {
     const [search, setSearch] = useState("");
     const [year, setYear] = useState(String(currentYear));
-    const [employeeFilter, setEmployeeFilter] = useState("");
     const [expandedRow, setExpandedRow] = useState<string | null>(null);
     const [adjustModal, setAdjustModal] = useState(false);
     const [adjustForm, setAdjustForm] = useState({
@@ -179,14 +179,29 @@ export function LeaveBalanceScreen() {
         reason: "",
     });
 
-    const { data, isLoading, isError } = useLeaveBalances({ year: Number(year), employeeId: employeeFilter || undefined });
+    const { data, isLoading, isError } = useLeaveBalances({ year: Number(year), limit: 100 });
     const leaveTypesQuery = useLeaveTypes();
-    const employeesQuery = useEmployees();
+    const employeesQuery = useEmployees({ limit: 100 });
     const adjustMutation = useAdjustLeaveBalance();
 
     const rawBalances: any[] = data?.data ?? [];
     const leaveTypes: any[] = leaveTypesQuery.data?.data ?? [];
     const employees: any[] = employeesQuery.data?.data ?? [];
+
+    const employeeOptions = useMemo(() =>
+        employees.map((e: any) => ({
+            value: e.id,
+            label: [e.firstName, e.lastName].filter(Boolean).join(" ") || e.fullName || e.email || e.id,
+            sublabel: [e.employeeId, e.department?.name].filter(Boolean).join(" · "),
+        })),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [employees]
+    );
+
+    const leaveTypeOptions = useMemo(() =>
+        leaveTypes.map((lt: any) => ({ value: lt.id, label: lt.name })),
+        [leaveTypes]
+    );
 
     // Normalize API balance records: Prisma Decimal fields come as strings,
     // and there is no `entitlement` field — compute it as openingBalance + accrued.
@@ -306,21 +321,6 @@ export function LeaveBalanceScreen() {
                 <div className="flex items-center gap-4 overflow-x-auto pb-1 lg:pb-0">
                     <div className="flex items-center gap-2">
                         <Filter size={14} className="text-neutral-400 flex-shrink-0" />
-                        <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 whitespace-nowrap">Employee:</span>
-                        <select
-                            value={employeeFilter}
-                            onChange={(e) => setEmployeeFilter(e.target.value)}
-                            className="px-3 py-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm font-semibold text-neutral-700 dark:text-neutral-300 focus:outline-none max-w-[200px]"
-                        >
-                            <option value="">All Employees</option>
-                            {employees.map((e: any) => (
-                                <option key={e.id} value={e.id}>
-                                    {[e.firstName, e.lastName].filter(Boolean).join(" ") || e.fullName || e.email}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="flex items-center gap-2">
                         <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 whitespace-nowrap">Year:</span>
                         <select
                             value={year}
@@ -474,17 +474,14 @@ export function LeaveBalanceScreen() {
                             </button>
                         </div>
                         <div className="p-6 overflow-y-auto flex-1 space-y-4">
-                            <SelectField
+                            <SearchableSelect
                                 label="Employee"
                                 value={adjustForm.employeeId}
                                 onChange={(v) => updateAdjustField("employeeId", v)}
-                                options={employees.map((e: any) => ({
-                                    value: e.id,
-                                    label: [e.firstName, e.lastName].filter(Boolean).join(" ") || e.fullName || e.email,
-                                }))}
+                                options={employeeOptions}
                                 placeholder="Select employee..."
                             />
-                            <SelectField
+                            <SearchableSelect
                                 label="Leave Type"
                                 value={adjustForm.leaveTypeId}
                                 onChange={(v) => updateAdjustField("leaveTypeId", v)}

@@ -312,6 +312,8 @@ export function LeaveTypeScreen() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [form, setForm] = useState({ ...EMPTY_LEAVE_TYPE });
     const [deleteTarget, setDeleteTarget] = useState<any>(null);
+    const [forceDelete, setForceDelete] = useState(false);
+    const [forceDeleteMessage, setForceDeleteMessage] = useState("");
 
     const leaveTypes: any[] = data?.data ?? [];
     const empTypes: any[] = empTypesQuery.data?.data ?? [];
@@ -405,11 +407,20 @@ export function LeaveTypeScreen() {
     const handleDelete = async () => {
         if (!deleteTarget) return;
         try {
-            await deleteMutation.mutateAsync(deleteTarget.id);
-            showSuccess("Leave Type Deleted", `${deleteTarget.name} has been removed.`);
+            await deleteMutation.mutateAsync({ id: deleteTarget.id, force: forceDelete });
+            showSuccess("Leave Type Deleted", `${deleteTarget.name} and all associated data have been removed.`);
             setDeleteTarget(null);
-        } catch (err) {
-            showApiError(err);
+            setForceDelete(false);
+            setForceDeleteMessage("");
+        } catch (err: any) {
+            const msg = err?.response?.data?.error ?? err?.response?.data?.message ?? err?.message ?? "";
+            if (!forceDelete && msg.includes("force=true")) {
+                // Show force-delete confirmation
+                setForceDelete(true);
+                setForceDeleteMessage(msg);
+            } else {
+                showApiError(err);
+            }
         }
     };
 
@@ -635,14 +646,27 @@ export function LeaveTypeScreen() {
             {deleteTarget && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
                     <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200">
-                        <h2 className="text-lg font-bold text-danger-700 dark:text-danger-400 mb-2">Delete Leave Type?</h2>
-                        <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                            This will permanently delete <strong>{deleteTarget.name}</strong>. Any policies referencing this type may be affected.
-                        </p>
+                        <h2 className="text-lg font-bold text-danger-700 dark:text-danger-400 mb-2">
+                            {forceDelete ? "Confirm Force Delete" : "Delete Leave Type?"}
+                        </h2>
+                        {forceDelete ? (
+                            <div className="space-y-2">
+                                <p className="text-sm text-danger-600 dark:text-danger-400 font-semibold">
+                                    {forceDeleteMessage.split(". Pass")[0]}.
+                                </p>
+                                <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                                    Deleting <strong>{deleteTarget.name}</strong> will permanently remove all associated balances, policies, and leave requests. This action cannot be undone.
+                                </p>
+                            </div>
+                        ) : (
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                                This will permanently delete <strong>{deleteTarget.name}</strong> and all associated policies, balances, and requests.
+                            </p>
+                        )}
                         <div className="flex gap-3 mt-6">
-                            <button onClick={() => setDeleteTarget(null)} className="flex-1 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
+                            <button onClick={() => { setDeleteTarget(null); setForceDelete(false); setForceDeleteMessage(""); }} className="flex-1 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
                             <button onClick={handleDelete} disabled={deleteMutation.isPending} className="flex-1 py-3 rounded-xl bg-danger-600 hover:bg-danger-700 text-white text-sm font-bold transition-colors disabled:opacity-50">
-                                {deleteMutation.isPending ? "Deleting..." : "Delete"}
+                                {deleteMutation.isPending ? "Deleting..." : forceDelete ? "Delete Everything" : "Delete"}
                             </button>
                         </div>
                     </div>
