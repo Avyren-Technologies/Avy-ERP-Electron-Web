@@ -3,7 +3,7 @@ import { leaveApi } from '@/lib/api/leave';
 
 export const leaveKeys = {
     all: ['leave'] as const,
-    leaveTypes: (params?: Record<string, unknown>) => [...leaveKeys.all, 'leave-types', params] as const,
+    leaveTypes: (params?: Record<string, unknown>) => params ? [...leaveKeys.all, 'leave-types', params] as const : [...leaveKeys.all, 'leave-types'] as const,
     leaveType: (id: string) => [...leaveKeys.all, 'leave-type', id] as const,
     policies: (params?: Record<string, unknown>) => [...leaveKeys.all, 'policies', params] as const,
     balances: (params?: Record<string, unknown>) => params ? [...leaveKeys.all, 'balances', params] as const : [...leaveKeys.all, 'balances'] as const,

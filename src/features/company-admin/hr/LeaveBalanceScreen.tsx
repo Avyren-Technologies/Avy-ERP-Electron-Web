@@ -253,7 +253,7 @@ function txnTypeColor(type: string): string {
         case "LEAVE_TAKEN": return "text-danger-600 bg-danger-50 dark:text-danger-400 dark:bg-danger-900/20";
         case "CARRY_FORWARD": return "text-orange-600 bg-orange-50 dark:text-orange-400 dark:bg-orange-900/20";
         case "ENCASHMENT": return "text-violet-600 bg-violet-50 dark:text-violet-400 dark:bg-violet-900/20";
-        case "INITIALIZATION": return "text-primary-600 bg-primary-50 dark:text-primary-400 dark:bg-primary-900/20";
+        case "INITIALIZED": return "text-primary-600 bg-primary-50 dark:text-primary-400 dark:bg-primary-900/20";
         default: return "text-neutral-600 bg-neutral-50 dark:text-neutral-400 dark:bg-neutral-800";
     }
 }
@@ -559,7 +559,7 @@ export function LeaveBalanceScreen() {
 
     const handleConfirmImport = async () => {
         if (!validationResult?.rows) return;
-        const validRows = validationResult.rows.filter((r: any) => r.status === "valid");
+        const validRows = validationResult.rows.filter((r: any) => r.valid === true);
         if (validRows.length === 0) return;
         try {
             const result = await confirmImportMutation.mutateAsync(validRows);
@@ -597,9 +597,9 @@ export function LeaveBalanceScreen() {
     const handleEncash = async () => {
         try {
             await encashMutation.mutateAsync({
-                balanceId: encashForm.balanceId,
                 employeeId: encashForm.employeeId,
                 leaveTypeId: encashForm.leaveTypeId,
+                year: Number(year),
                 days: encashForm.days,
                 reason: encashForm.reason,
             });
@@ -1077,10 +1077,10 @@ export function LeaveBalanceScreen() {
                         <>
                             <div className="flex items-center gap-4 text-sm">
                                 <span className="flex items-center gap-1.5 text-success-600 dark:text-success-400 font-medium">
-                                    <CheckCircle2 size={14} /> {validationResult.rows?.filter((r: any) => r.status === "valid").length ?? 0} valid
+                                    <CheckCircle2 size={14} /> {validationResult.rows?.filter((r: any) => r.valid === true).length ?? 0} valid
                                 </span>
                                 <span className="flex items-center gap-1.5 text-danger-600 dark:text-danger-400 font-medium">
-                                    <XCircle size={14} /> {validationResult.rows?.filter((r: any) => r.status !== "valid").length ?? 0} invalid
+                                    <XCircle size={14} /> {validationResult.rows?.filter((r: any) => !r.valid).length ?? 0} invalid
                                 </span>
                             </div>
                             <div className="overflow-x-auto rounded-xl border border-neutral-200 dark:border-neutral-700">
@@ -1098,7 +1098,7 @@ export function LeaveBalanceScreen() {
                                         {(validationResult.rows ?? []).map((row: any, idx: number) => (
                                             <tr key={idx} className={cn(
                                                 "border-t border-neutral-100 dark:border-neutral-800",
-                                                row.status === "valid"
+                                                row.valid
                                                     ? "bg-success-50/50 dark:bg-success-900/10"
                                                     : "bg-danger-50/50 dark:bg-danger-900/10"
                                             )}>
@@ -1108,12 +1108,12 @@ export function LeaveBalanceScreen() {
                                                 <td className="py-2 px-3">
                                                     <span className={cn(
                                                         "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold",
-                                                        row.status === "valid"
+                                                        row.valid
                                                             ? "bg-success-100 text-success-700 dark:bg-success-900/30 dark:text-success-400"
                                                             : "bg-danger-100 text-danger-700 dark:bg-danger-900/30 dark:text-danger-400"
                                                     )}>
-                                                        {row.status === "valid" ? <CheckCircle2 size={10} /> : <XCircle size={10} />}
-                                                        {row.status}
+                                                        {row.valid ? <CheckCircle2 size={10} /> : <XCircle size={10} />}
+                                                        {row.valid ? "valid" : "invalid"}
                                                     </span>
                                                 </td>
                                                 <td className="py-2 px-3 text-danger-600 dark:text-danger-400 max-w-[200px] truncate">
@@ -1184,7 +1184,7 @@ export function LeaveBalanceScreen() {
                     {importStep === 2 && (
                         <button
                             onClick={handleConfirmImport}
-                            disabled={confirmImportMutation.isPending || (validationResult?.rows?.filter((r: any) => r.status === "valid").length ?? 0) === 0}
+                            disabled={confirmImportMutation.isPending || (validationResult?.rows?.filter((r: any) => r.valid === true).length ?? 0) === 0}
                             className="flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                         >
                             {confirmImportMutation.isPending && <Loader2 size={14} className="animate-spin" />}
