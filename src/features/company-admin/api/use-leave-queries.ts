@@ -64,6 +64,18 @@ export function useLeaveRequest(id: string) {
     });
 }
 
+// ── Balance Transactions ──
+
+export function useBalanceTransactions(balanceId: string, params?: { page?: number; limit?: number }) {
+    return useQuery({
+        queryKey: params
+            ? [...leaveKeys.all, 'transactions', balanceId, params] as const
+            : [...leaveKeys.all, 'transactions', balanceId] as const,
+        queryFn: () => leaveApi.listTransactions(balanceId, params),
+        enabled: !!balanceId,
+    });
+}
+
 // ── Summary ──
 
 export function useLeaveSummary() {

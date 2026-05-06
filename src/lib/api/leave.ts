@@ -119,6 +119,60 @@ async function cancelRequest(id: string, data?: any): Promise<ApiResponse<any>> 
     return response.data;
 }
 
+// ── Leave Balances — Direct Edit ──
+
+async function updateBalance(id: string, data: any): Promise<ApiResponse<any>> {
+    const response = await client.patch(`/hr/leave-balances/${id}`, data);
+    return response.data;
+}
+
+// ── Leave Balances — Transactions ──
+
+async function listTransactions(balanceId: string, params?: { page?: number; limit?: number }): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/leave-balances/${balanceId}/transactions`, { params });
+    return response.data;
+}
+
+// ── Leave Balances — Encashment ──
+
+async function encashBalance(data: any): Promise<ApiResponse<any>> {
+    const response = await client.post('/hr/leave-balances/encash', data);
+    return response.data;
+}
+
+// ── Leave Balances — Accrual & Carry Forward ──
+
+async function accrueBalances(data: { month: number; year: number; dayOfMonth?: number }): Promise<ApiResponse<any>> {
+    const response = await client.post('/hr/leave-balances/accrue', data);
+    return response.data;
+}
+
+async function carryForwardBalances(data: { fromYear: number; toYear: number }): Promise<ApiResponse<any>> {
+    const response = await client.post('/hr/leave-balances/carry-forward', data);
+    return response.data;
+}
+
+// ── Leave Balances — Bulk Import ──
+
+async function downloadBalanceTemplate(): Promise<any> {
+    const response = await client.get('/hr/leave-balances/bulk/template', { responseType: 'blob' });
+    return response.data;
+}
+
+async function validateBalanceUpload(file: File): Promise<ApiResponse<any>> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await client.post('/hr/leave-balances/bulk/validate', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+}
+
+async function confirmBalanceImport(rows: any[]): Promise<ApiResponse<any>> {
+    const response = await client.post('/hr/leave-balances/bulk/import', { rows });
+    return response.data;
+}
+
 // ── Leave Summary / Dashboard ──
 
 async function getSummary(): Promise<ApiResponse<any>> {
@@ -142,6 +196,14 @@ export const leaveApi = {
     listBalances,
     adjustBalance,
     initializeBalances,
+    updateBalance,
+    listTransactions,
+    encashBalance,
+    accrueBalances,
+    carryForwardBalances,
+    downloadBalanceTemplate,
+    validateBalanceUpload,
+    confirmBalanceImport,
     // Leave Requests
     listRequests,
     getRequest,
