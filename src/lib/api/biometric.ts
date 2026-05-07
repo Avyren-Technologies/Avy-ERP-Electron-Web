@@ -1,49 +1,39 @@
 import { client } from './client';
-import type { ApiResponse } from './auth';
-
-// ── Biometric Devices ──
-
-async function listDevices(params?: Record<string, unknown>): Promise<ApiResponse<any>> {
-    const response = await client.get('/hr/biometric-devices', { params });
-    return response.data;
-}
-
-async function getDevice(id: string): Promise<ApiResponse<any>> {
-    const response = await client.get(`/hr/biometric-devices/${id}`);
-    return response.data;
-}
-
-async function createDevice(data: Record<string, unknown>): Promise<ApiResponse<any>> {
-    const response = await client.post('/hr/biometric-devices', data);
-    return response.data;
-}
-
-async function updateDevice(id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> {
-    const response = await client.patch(`/hr/biometric-devices/${id}`, data);
-    return response.data;
-}
-
-async function deleteDevice(id: string): Promise<ApiResponse<any>> {
-    const response = await client.delete(`/hr/biometric-devices/${id}`);
-    return response.data;
-}
-
-async function testDevice(id: string): Promise<ApiResponse<any>> {
-    const response = await client.post(`/hr/biometric-devices/${id}/test`);
-    return response.data;
-}
-
-async function syncDevice(id: string): Promise<ApiResponse<any>> {
-    const response = await client.post(`/hr/biometric-devices/${id}/sync`);
-    return response.data;
-}
 
 export const biometricApi = {
-    listDevices,
-    getDevice,
-    createDevice,
-    updateDevice,
-    deleteDevice,
-    testDevice,
-    syncDevice,
+  // ── Devices ──
+  listDevices: (params?: { locationId?: string }) =>
+    client.get('/hr/biometric/devices', { params }).then(r => r.data),
+  getDevice: (id: string) =>
+    client.get(`/hr/biometric/devices/${id}`).then(r => r.data),
+  getDeviceStats: (params?: { locationId?: string }) =>
+    client.get('/hr/biometric/devices/stats', { params }).then(r => r.data),
+  claimDevice: (data: { serialNumber: string; deviceName: string; locationId?: string; timezone?: string }) =>
+    client.post('/hr/biometric/devices/claim', data).then(r => r.data),
+  updateDevice: (id: string, data: Record<string, unknown>) =>
+    client.patch(`/hr/biometric/devices/${id}`, data).then(r => r.data),
+  deactivateDevice: (id: string) =>
+    client.delete(`/hr/biometric/devices/${id}`).then(r => r.data),
+
+  // ── Employee Mappings ──
+  listMappings: () =>
+    client.get('/hr/biometric/mappings').then(r => r.data),
+  createMapping: (data: { employeeId: string; deviceSerialNumber: string; deviceUserId: string }) =>
+    client.post('/hr/biometric/mappings', data).then(r => r.data),
+  deleteMapping: (id: string) =>
+    client.delete(`/hr/biometric/mappings/${id}`).then(r => r.data),
+  getUnmappedPunches: () =>
+    client.get('/hr/biometric/mappings/unmapped').then(r => r.data),
+
+  // ── Punch Logs ──
+  listPunchLogs: (params?: Record<string, unknown>) =>
+    client.get('/hr/biometric/punch-logs', { params }).then(r => r.data),
+
+  // ── Platform (Super Admin) ──
+  listUnassignedDevices: () =>
+    client.get('/platform/biometric/devices/unassigned').then(r => r.data),
+  countUnassigned: () =>
+    client.get('/platform/biometric/devices/unassigned/count').then(r => r.data),
+  assignDevice: (id: string, data: { companyId: string; deviceName: string; locationId?: string }) =>
+    client.post(`/platform/biometric/devices/${id}/assign`, data).then(r => r.data),
 };

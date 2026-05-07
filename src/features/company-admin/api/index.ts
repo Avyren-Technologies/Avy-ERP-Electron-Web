@@ -583,14 +583,21 @@ export {
     biometricKeys,
     useBiometricDevices,
     useBiometricDevice,
+    useBiometricDeviceStats,
+    useBiometricMappings,
+    useUnmappedPunches,
+    useBiometricPunchLogs,
+    useUnassignedDevices,
+    useUnassignedDeviceCount,
 } from './use-biometric-queries';
 
 export {
-    useCreateBiometricDevice,
+    useClaimBiometricDevice,
     useUpdateBiometricDevice,
-    useDeleteBiometricDevice,
-    useTestBiometricDevice,
-    useSyncBiometricDevice,
+    useDeactivateBiometricDevice,
+    useCreateBiometricMapping,
+    useDeleteBiometricMapping,
+    useAssignBiometricDevice,
 } from './use-biometric-mutations';
 
 // Shift Rotations

@@ -197,6 +197,8 @@ const BonusBatchScreen = lazyNamed(() => import("./features/company-admin/hr/Bon
 const ESignScreen = lazyNamed(() => import("./features/company-admin/hr/ESignScreen"), "ESignScreen");
 const DataRetentionScreen = lazyNamed(() => import("./features/company-admin/hr/DataRetentionScreen"), "DataRetentionScreen");
 const BiometricDeviceScreen = lazyNamed(() => import("./features/company-admin/hr/BiometricDeviceScreen"), "BiometricDeviceScreen");
+const BiometricMappingScreen = lazyNamed(() => import("./features/company-admin/hr/BiometricMappingScreen"), "BiometricMappingScreen");
+const BiometricLiveFeedScreen = lazyNamed(() => import("./features/company-admin/hr/BiometricLiveFeedScreen"), "BiometricLiveFeedScreen");
 const ShiftRotationScreen = lazyNamed(() => import("./features/company-admin/hr/ShiftRotationScreen"), "ShiftRotationScreen");
 const ProductionIncentiveScreen = lazyNamed(() => import("./features/company-admin/hr/ProductionIncentiveScreen"), "ProductionIncentiveScreen");
 const TravelAdvanceScreen = lazyNamed(() => import("./features/company-admin/hr/TravelAdvanceScreen"), "TravelAdvanceScreen");
@@ -521,6 +523,8 @@ function App() {
         <Route path="company/hr/esign" element={<RequirePermission permission={['hr.ess-config:read', 'ess:view-esign']}><ESignScreen /></RequirePermission>} />
         <Route path="company/hr/data-retention" element={<RequirePermission permission="hr.advanced:configure"><DataRetentionScreen /></RequirePermission>} />
         <Route path="company/hr/biometric-devices" element={<RequirePermission permission="hr.attendance:configure"><BiometricDeviceScreen /></RequirePermission>} />
+        <Route path="company/hr/biometric-mapping" element={<RequirePermission permission="hr.attendance:configure"><BiometricMappingScreen /></RequirePermission>} />
+        <Route path="company/hr/biometric-live" element={<RequirePermission permission="hr.attendance:read"><BiometricLiveFeedScreen /></RequirePermission>} />
         <Route path="company/hr/shift-rotations" element={<RequirePermission permission="hr.attendance:configure"><ShiftRotationScreen /></RequirePermission>} />
         <Route path="company/hr/production-incentives" element={<RequirePermission permission="hr.advanced:read"><ProductionIncentiveScreen /></RequirePermission>} />
         <Route path="company/hr/travel-advances" element={<RequirePermission permission="hr.payroll-ops:read"><TravelAdvanceScreen /></RequirePermission>} />

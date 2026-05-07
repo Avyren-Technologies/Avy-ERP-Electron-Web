@@ -117,6 +117,10 @@ export function NotificationListScreen() {
                             const type = (n.type as string) ?? 'info';
                             const readAt = n.readAt as string | null;
                             const createdAt = n.createdAt as string;
+                            const data = n.data as Record<string, unknown> | null;
+                            const imageUrl = typeof data?.image_url === 'string' && (data.image_url as string).startsWith('http')
+                                ? data.image_url as string
+                                : null;
                             return (
                                 <div
                                     key={id}
@@ -144,6 +148,13 @@ export function NotificationListScreen() {
                                         <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5 leading-5">
                                             {body}
                                         </p>
+                                        {imageUrl && (
+                                            <img
+                                                src={imageUrl}
+                                                alt=""
+                                                className="mt-2 w-full max-h-40 rounded-lg object-cover"
+                                            />
+                                        )}
                                         <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1 font-medium">
                                             {formatDate(createdAt)}
                                         </p>

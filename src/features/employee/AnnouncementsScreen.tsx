@@ -240,6 +240,13 @@ export function AnnouncementsScreen() {
                                 <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">
                                     {a.body}
                                 </p>
+                                {typeof a.imageUrl === 'string' && a.imageUrl.startsWith('http') && (
+                                    <img
+                                        src={a.imageUrl}
+                                        alt=""
+                                        className="mt-3 w-full max-h-48 rounded-xl object-cover"
+                                    />
+                                )}
                                 <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-3">
                                     {fmt.date(a.createdAt)}
                                 </p>

@@ -359,7 +359,9 @@ function NotificationsPanel() {
                                 </p>
                             </div>
                         ) : (
-                            notifications.map((n: any) => (
+                            notifications.map((n: any) => {
+                                const imageUrl = n.data?.image_url;
+                                return (
                                 <div
                                     key={n.id}
                                     onClick={() => {
@@ -384,13 +386,21 @@ function NotificationsPanel() {
                                             {n.title}
                                         </p>
                                         <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 leading-4 line-clamp-2">{n.body}</p>
+                                        {typeof imageUrl === 'string' && imageUrl.startsWith('http') && (
+                                            <img
+                                                src={imageUrl}
+                                                alt=""
+                                                className="mt-2 w-full max-h-28 rounded-lg object-cover"
+                                            />
+                                        )}
                                         <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-1 font-medium">
                                             {formatTimeAgo(n.createdAt)}
                                         </p>
                                     </div>
                                     {!n.readAt && <span className="w-2 h-2 rounded-full bg-primary-500 flex-shrink-0 mt-1.5" />}
                                 </div>
-                            ))
+                                );
+                            })
                         )}
                     </div>
 

@@ -265,7 +265,7 @@ const ACCRUAL_FREQUENCIES = [
 ];
 
 const GENDER_OPTIONS = [
-    { value: "", label: "All" },
+    { value: "All", label: "All" },
     { value: "MALE", label: "Male" },
     { value: "FEMALE", label: "Female" },
 ];
@@ -285,7 +285,7 @@ const EMPTY_LEAVE_TYPE = {
     maxEncashableDays: 0,
     encashmentRate: "",
     applicableTypeIds: [] as string[],
-    applicableGender: "",
+    applicableGender: "All",
     probationRestricted: false,
     minAdvanceNotice: 0,
     minDaysPerApplication: 0.5,
@@ -349,7 +349,7 @@ export function LeaveTypeScreen() {
             maxEncashableDays: lt.maxEncashableDays ?? 0,
             encashmentRate: lt.encashmentRate ?? "",
             applicableTypeIds: lt.applicableTypeIds ?? [],
-            applicableGender: lt.applicableGender ?? "",
+            applicableGender: lt.applicableGender || "All",
             probationRestricted: lt.probationRestricted ?? false,
             minAdvanceNotice: lt.minAdvanceNotice ?? 0,
             minDaysPerApplication: lt.minDaysPerApplication ?? 0.5,
@@ -366,29 +366,34 @@ export function LeaveTypeScreen() {
 
     const handleSave = async () => {
         try {
+            // For numeric fields: 0 means "no restriction/not set"
+            // For create: omit 0 values (undefined = skip). For update: always send (0 clears the field)
+            const isUpdate = !!editingId;
+            const optNum = (v: number) => isUpdate ? v : (v > 0 ? v : undefined);
+
             const payload = {
                 name: form.name,
                 code: form.code,
                 category: form.category,
                 annualEntitlement: form.annualEntitlement,
                 accrualFrequency: form.accrualFrequency || undefined,
-                accrualDay: form.accrualDay || undefined,
+                accrualDay: optNum(form.accrualDay),
                 carryForwardAllowed: form.carryForwardAllowed,
-                maxCarryForwardDays: form.carryForwardAllowed ? form.maxCarryForwardDays : undefined,
+                maxCarryForwardDays: form.carryForwardAllowed ? form.maxCarryForwardDays : (isUpdate ? 0 : undefined),
                 encashmentAllowed: form.encashmentAllowed,
-                maxEncashableDays: form.encashmentAllowed ? form.maxEncashableDays : undefined,
+                maxEncashableDays: form.encashmentAllowed ? form.maxEncashableDays : (isUpdate ? 0 : undefined),
                 encashmentRate: form.encashmentAllowed && form.encashmentRate ? String(form.encashmentRate) : undefined,
                 applicableTypeIds: form.applicableTypeIds.length > 0 ? form.applicableTypeIds : undefined,
-                applicableGender: form.applicableGender || undefined,
+                applicableGender: form.applicableGender,
                 probationRestricted: form.probationRestricted,
-                minAdvanceNotice: form.minAdvanceNotice || undefined,
-                minDaysPerApplication: form.minDaysPerApplication || undefined,
-                maxConsecutiveDays: form.maxConsecutiveDays || undefined,
+                minAdvanceNotice: optNum(form.minAdvanceNotice),
+                minDaysPerApplication: optNum(form.minDaysPerApplication),
+                maxConsecutiveDays: optNum(form.maxConsecutiveDays),
                 allowHalfDay: form.allowHalfDay,
                 weekendSandwich: form.weekendSandwich,
                 holidaySandwich: form.holidaySandwich,
                 documentRequired: form.documentRequired,
-                documentAfterDays: form.documentRequired ? form.documentAfterDays : undefined,
+                documentAfterDays: form.documentRequired ? form.documentAfterDays : (isUpdate ? 0 : undefined),
                 lopOnExcess: form.lopOnExcess,
             };
             if (editingId) {
