@@ -395,7 +395,7 @@ function CreateMappingModal({
     employeeSearch.length >= 2 ? { search: employeeSearch, limit: 10 } : undefined,
   );
   const employees: Employee[] = employeeSearch.length >= 2
-    ? ((employeesData as Record<string, unknown>)?.data as Employee[] ?? [])
+    ? ((employeesData as unknown as Record<string, unknown>)?.data as Employee[] ?? [])
     : [];
 
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);

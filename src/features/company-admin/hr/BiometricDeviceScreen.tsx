@@ -92,7 +92,7 @@ export function BiometricDeviceScreen() {
   // Derived data
   const devices: BiometricDevice[] = ((devicesData as any)?.data ?? []) as BiometricDevice[];
   const stats = (statsData as Record<string, unknown>)?.data as { total?: number; online?: number; offline?: number } | undefined;
-  const locations: Array<{ id: string; name: string }> = ((locationsData as Record<string, unknown>)?.data as Array<{ id: string; name: string }>) ?? [];
+  const locations: Array<{ id: string; name: string }> = ((locationsData as unknown as Record<string, unknown>)?.data as Array<{ id: string; name: string }>) ?? [];
 
   const filtered = useMemo(() => {
     if (!search) return devices;
