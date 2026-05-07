@@ -40,6 +40,15 @@ export interface NotificationPreferencesResponse {
     categoryCatalogue: NotificationCategoryDef[];
 }
 
+// ── React Query key factory (shared across TopBar, NotificationListScreen, etc.) ──
+
+export const notificationKeys = {
+    all: ['notifications'] as const,
+    unreadCount: () => [...notificationKeys.all, 'unread-count'] as const,
+    list: (params?: { page?: number; limit?: number }) =>
+        params ? [...notificationKeys.all, 'list', params] as const : [...notificationKeys.all, 'list'] as const,
+};
+
 export const notificationApi = {
     listNotifications: async (params?: { page?: number; limit?: number }) => {
         const response = await client.get('/notifications', { params });

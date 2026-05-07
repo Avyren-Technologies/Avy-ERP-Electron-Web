@@ -1,17 +1,10 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { notificationApi } from '@/lib/api/notifications';
+import { notificationApi, notificationKeys } from '@/lib/api/notifications';
 import { showApiError } from '@/lib/toast';
 import { DateTime } from 'luxon';
 import { Bell, CheckCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const notificationKeys = {
-    all: ['notifications'] as const,
-    unreadCount: () => [...notificationKeys.all, 'unread-count'] as const,
-    list: (params?: Record<string, unknown>) =>
-        params ? [...notificationKeys.all, 'list', params] as const : [...notificationKeys.all, 'list'] as const,
-};
 
 const typeColors: Record<string, string> = {
     info: 'bg-info-50 text-info-600 dark:bg-info-900/40',

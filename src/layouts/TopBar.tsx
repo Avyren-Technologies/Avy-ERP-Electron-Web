@@ -6,7 +6,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
-import { notificationApi } from '@/lib/api/notifications';
+import { notificationApi, notificationKeys } from '@/lib/api/notifications';
 import { showApiError } from '@/lib/toast';
 import {
     Search, Sun, Moon, Monitor, Bell, ChevronDown, X,
@@ -235,12 +235,6 @@ function formatTimeAgo(dateStr: string): string {
     return DateTime.fromISO(dateStr).toFormat('dd/MM/yyyy');
 }
 
-const notificationKeys = {
-    all: ['notifications'] as const,
-    unreadCount: () => [...notificationKeys.all, 'unread-count'] as const,
-    list: (params?: { page?: number; limit?: number }) =>
-        params ? [...notificationKeys.all, 'list', params] as const : [...notificationKeys.all, 'list'] as const,
-};
 
 function NotificationsPanel() {
     const [open, setOpen] = useState(false);
