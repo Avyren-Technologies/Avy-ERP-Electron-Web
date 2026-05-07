@@ -25,6 +25,7 @@ import {
 } from "@/features/company-admin/api/use-leave-mutations";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Shared form atoms ── */
@@ -571,7 +572,7 @@ export function LeaveRequestScreen() {
                             </button>
                         </div>
                         <div className="p-6 overflow-y-auto flex-1 space-y-4">
-                            <SelectField
+                            <SearchableSelect
                                 label="Employee"
                                 value={form.employeeId}
                                 onChange={(v) => updateField("employeeId", v)}

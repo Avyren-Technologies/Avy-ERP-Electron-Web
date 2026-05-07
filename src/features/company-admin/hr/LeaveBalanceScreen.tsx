@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, Fragment } from "react";
 import {
     Wallet,
     Search,
@@ -727,7 +727,8 @@ export function LeaveBalanceScreen() {
                                     const totals = getTotals(empBalances);
                                     const isExpanded = expandedRow === empId;
                                     return (
-                                        <tr key={empId} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
+                                        <Fragment key={empId}>
+                                        <tr className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
                                             <td className="py-4 px-3">
                                                 <button
                                                     onClick={() => setExpandedRow(isExpanded ? null : empId)}
@@ -765,14 +766,7 @@ export function LeaveBalanceScreen() {
                                                 </button>
                                             </td>
                                         </tr>
-                                    );
-                                })}
-
-                                {/* Expanded Detail Rows */}
-                                {filteredEmployees.map((empId) => {
-                                    if (expandedRow !== empId) return null;
-                                    const empBalances = groupedByEmployee[empId];
-                                    return (
+                                        {isExpanded && (
                                         <tr key={`${empId}-detail`} className="bg-neutral-50/80 dark:bg-neutral-800/30">
                                             <td colSpan={activeLeaveTypes.length + 4} className="px-6 py-4">
                                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -829,6 +823,8 @@ export function LeaveBalanceScreen() {
                                                 </div>
                                             </td>
                                         </tr>
+                                        )}
+                                        </Fragment>
                                     );
                                 })}
 
@@ -1102,9 +1098,9 @@ export function LeaveBalanceScreen() {
                                                     ? "bg-success-50/50 dark:bg-success-900/10"
                                                     : "bg-danger-50/50 dark:bg-danger-900/10"
                                             )}>
-                                                <td className="py-2 px-3 font-mono">{row.rowNumber ?? idx + 1}</td>
-                                                <td className="py-2 px-3">{row.employee ?? row.employeeName ?? "-"}</td>
-                                                <td className="py-2 px-3">{row.leaveType ?? row.leaveTypeName ?? "-"}</td>
+                                                <td className="py-2 px-3 font-mono">{row.rowNum ?? idx + 1}</td>
+                                                <td className="py-2 px-3">{row.data?.employeeName ?? row.data?.employeeId ?? "-"}</td>
+                                                <td className="py-2 px-3">{row.data?.leaveTypeName ?? row.data?.leaveTypeCode ?? "-"}</td>
                                                 <td className="py-2 px-3">
                                                     <span className={cn(
                                                         "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold",
@@ -1149,7 +1145,7 @@ export function LeaveBalanceScreen() {
                                         <tbody>
                                             {importResult.results.map((r: any, idx: number) => (
                                                 <tr key={idx} className="border-t border-neutral-100 dark:border-neutral-800">
-                                                    <td className="py-2 px-3 font-mono">{r.rowNumber ?? idx + 1}</td>
+                                                    <td className="py-2 px-3 font-mono">{r.rowNum ?? idx + 1}</td>
                                                     <td className="py-2 px-3">
                                                         {r.success ? (
                                                             <CheckCircle2 size={14} className="text-success-500" />
@@ -1157,7 +1153,11 @@ export function LeaveBalanceScreen() {
                                                             <XCircle size={14} className="text-danger-500" />
                                                         )}
                                                     </td>
-                                                    <td className="py-2 px-3 text-neutral-600 dark:text-neutral-400">{r.message ?? r.error ?? "-"}</td>
+                                                    <td className="py-2 px-3 text-neutral-600 dark:text-neutral-400">
+                                                        {r.success
+                                                            ? `${r.employeeId ?? ""} ${r.leaveTypeCode ?? ""} ${r.action === "updated" ? "(updated)" : "(created)"}`.trim()
+                                                            : r.error ?? "Failed"}
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>
