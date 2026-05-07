@@ -14,12 +14,17 @@ import {
     Stethoscope,
     Baby,
     Briefcase,
+    Upload,
+    FileText,
+    Paperclip,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMyLeaveBalance } from "@/features/company-admin/api/use-ess-queries";
 import { useLeaveRequests, useLeaveTypes, leaveKeys } from "@/features/company-admin/api/use-leave-queries";
 import { useApplyLeave, useCancelLeave } from "@/features/company-admin/api/use-ess-mutations";
+import { useFileUpload } from "@/hooks/useFileUpload";
+import { R2Link } from "@/components/R2Link";
 import { SkeletonTable, SkeletonCard } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
@@ -88,6 +93,8 @@ export function MyLeaveScreen() {
     const location = useLocation();
     const [modalOpen, setModalOpen] = useState(false);
     const [form, setForm] = useState({ ...EMPTY_FORM });
+    const [documentKey, setDocumentKey] = useState<string | null>(null);
+    const [documentName, setDocumentName] = useState<string | null>(null);
 
     const queryClient = useQueryClient();
     const balanceQuery = useMyLeaveBalance();
@@ -95,6 +102,10 @@ export function MyLeaveScreen() {
     const requestsQuery = useLeaveRequests({ employeeId: "me" });
     const applyMutation = useApplyLeave();
     const cancelMutation = useCancelLeave();
+    const { upload: uploadDoc, isUploading: isUploadingDoc, error: uploadError } = useFileUpload({
+        category: 'leave-document',
+        entityId: 'draft',
+    });
 
     // Auto-open apply modal when navigated with comp-off deep link state
     useEffect(() => {
@@ -110,6 +121,23 @@ export function MyLeaveScreen() {
     const requests: any[] = requestsQuery.data?.data ?? [];
 
     const leaveTypeName = (id: string) => leaveTypes.find((lt: any) => lt.id === id)?.name ?? id;
+
+    const selectedLeaveType = leaveTypes.find((lt: any) => lt.id === form.leaveTypeId);
+    const computedDays = (() => {
+        if (!form.fromDate || !form.toDate) return 0;
+        const from = new Date(form.fromDate);
+        const to = new Date(form.toDate);
+        const diffMs = to.getTime() - from.getTime();
+        let days = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1);
+        if (form.isHalfDay) days = 0.5;
+        return days;
+    })();
+    const requiresDocument = selectedLeaveType?.documentRequired === true;
+    const requiresDocumentAfterDays = selectedLeaveType?.documentAfterDays
+        ? computedDays > Number(selectedLeaveType.documentAfterDays)
+        : false;
+    const showDocumentUpload = requiresDocument || requiresDocumentAfterDays;
+    const documentMissing = showDocumentUpload && requiresDocument && !documentKey;
 
     const computeDays = () => {
         if (!form.fromDate || !form.toDate) return 0;
@@ -131,6 +159,8 @@ export function MyLeaveScreen() {
                 days,
                 isHalfDay: form.isHalfDay,
                 reason: form.reason,
+                documentUrl: documentKey ?? undefined,
+                documentName: documentName ?? undefined,
             };
             if (form.isHalfDay && form.halfDayType) {
                 payload.halfDayType = form.halfDayType;
@@ -145,6 +175,8 @@ export function MyLeaveScreen() {
 
     const openApply = () => {
         setForm({ ...EMPTY_FORM });
+        setDocumentKey(null);
+        setDocumentName(null);
         setModalOpen(true);
     };
 
@@ -245,6 +277,7 @@ export function MyLeaveScreen() {
                                     <th className="py-4 px-6 font-bold text-center">Days</th>
                                     <th className="py-4 px-6 font-bold text-center">Status</th>
                                     <th className="py-4 px-6 font-bold">Reason</th>
+                                    <th className="py-4 px-6 font-bold text-center">Document</th>
                                     <th className="py-4 px-6 font-bold text-center">Actions</th>
                                 </tr>
                             </thead>
@@ -257,6 +290,18 @@ export function MyLeaveScreen() {
                                         <td className="py-4 px-6 text-center font-semibold text-primary-950 dark:text-white">{r.days ?? "—"}</td>
                                         <td className="py-4 px-6 text-center"><StatusBadge status={r.status ?? "Pending"} /></td>
                                         <td className="py-4 px-6 text-neutral-500 dark:text-neutral-400 text-xs truncate max-w-[200px]">{r.reason || "—"}</td>
+                                        <td className="py-4 px-6 text-center">
+                                            {r.documentUrl ? (
+                                                <R2Link fileKey={r.documentUrl}>
+                                                    <span className="inline-flex items-center gap-1 text-xs text-primary-600 dark:text-primary-400 hover:underline">
+                                                        <Paperclip size={12} />
+                                                        {r.documentName ?? 'View Document'}
+                                                    </span>
+                                                </R2Link>
+                                            ) : (
+                                                <span className="text-xs text-neutral-400">—</span>
+                                            )}
+                                        </td>
                                         <td className="py-4 px-6 text-center">
                                             {(r.status === "PENDING" || r.status === "APPROVED") && (
                                                 <button
@@ -336,10 +381,53 @@ export function MyLeaveScreen() {
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Reason</label>
                                 <textarea value={form.reason} onChange={(e) => setForm((p) => ({ ...p, reason: e.target.value }))} placeholder="Reason for leave..." rows={3} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all resize-none" />
                             </div>
+                            {showDocumentUpload && (
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
+                                        Supporting Document {requiresDocument ? <span className="text-danger-500">*</span> : '(Optional)'}
+                                    </label>
+                                    {documentKey ? (
+                                        <div className="flex items-center gap-2 bg-success-50 dark:bg-success-900/20 rounded-xl p-3 border border-success-200 dark:border-success-800/50">
+                                            <FileText size={16} className="text-success-600 flex-shrink-0" />
+                                            <span className="text-sm text-success-700 dark:text-success-400 truncate flex-1">{documentName}</span>
+                                            <button type="button" onClick={() => { setDocumentKey(null); setDocumentName(null); }} className="text-neutral-400 hover:text-danger-500 transition-colors">
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="border-2 border-dashed border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
+                                            <input
+                                                type="file"
+                                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                                onChange={async (e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (!file) return;
+                                                    const key = await uploadDoc(file);
+                                                    if (key) {
+                                                        setDocumentKey(key);
+                                                        setDocumentName(file.name);
+                                                    }
+                                                }}
+                                                className="hidden"
+                                                id="leave-doc-upload"
+                                            />
+                                            <label htmlFor="leave-doc-upload" className="cursor-pointer flex flex-col items-center gap-2">
+                                                {isUploadingDoc ? (
+                                                    <Loader2 size={20} className="animate-spin text-primary-500" />
+                                                ) : (
+                                                    <Upload size={20} className="text-neutral-400" />
+                                                )}
+                                                <span className="text-xs text-neutral-500">Click to upload PDF, Word, or image (max 10MB)</span>
+                                            </label>
+                                            {uploadError && <p className="text-xs text-danger-500 mt-2">{uploadError}</p>}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
                             <button onClick={() => setModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
-                            <button onClick={handleApply} disabled={saving} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                            <button onClick={handleApply} disabled={saving || documentMissing || isUploadingDoc} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                                 {saving && <Loader2 size={14} className="animate-spin" />}
                                 {saving ? "Submitting..." : "Submit Request"}
                             </button>

@@ -13,6 +13,9 @@ import {
     Clock,
     Ban,
     CalendarDays,
+    Upload,
+    FileText,
+    Paperclip,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLeaveRequests, useLeaveTypes } from "@/features/company-admin/api/use-leave-queries";
@@ -23,6 +26,8 @@ import {
     useRejectLeaveRequest,
     useCancelLeaveRequest,
 } from "@/features/company-admin/api/use-leave-mutations";
+import { useFileUpload } from "@/hooks/useFileUpload";
+import { R2Link } from "@/components/R2Link";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
@@ -203,6 +208,8 @@ export function LeaveRequestScreen() {
 
     const [modalOpen, setModalOpen] = useState(false);
     const [form, setForm] = useState({ ...EMPTY_REQUEST });
+    const [documentKey, setDocumentKey] = useState<string | null>(null);
+    const [documentName, setDocumentName] = useState<string | null>(null);
     const [rejectTarget, setRejectTarget] = useState<any>(null);
     const [rejectNote, setRejectNote] = useState("");
     const [cancelTarget, setCancelTarget] = useState<any>(null);
@@ -211,6 +218,11 @@ export function LeaveRequestScreen() {
     const requests: any[] = data?.data ?? [];
     const leaveTypes: any[] = leaveTypesQuery.data?.data ?? [];
     const employees: any[] = employeesQuery.data?.data ?? [];
+
+    const { upload: uploadDoc, isUploading: isUploadingDoc, error: uploadError } = useFileUpload({
+        category: 'leave-document',
+        entityId: 'draft',
+    });
 
     const leaveTypeName = (id: string) => leaveTypes.find((lt: any) => lt.id === id)?.name ?? id;
     const employeeName = (id: string) => {
@@ -232,6 +244,8 @@ export function LeaveRequestScreen() {
 
     const openApply = () => {
         setForm({ ...EMPTY_REQUEST });
+        setDocumentKey(null);
+        setDocumentName(null);
         setModalOpen(true);
     };
 
@@ -246,6 +260,8 @@ export function LeaveRequestScreen() {
                 days,
                 isHalfDay: form.isHalfDay,
                 reason: form.reason,
+                documentUrl: documentKey ?? undefined,
+                documentName: documentName ?? undefined,
             };
             if (form.isHalfDay && form.halfDayType) {
                 payload.halfDayType = form.halfDayType;
@@ -293,6 +309,14 @@ export function LeaveRequestScreen() {
     const saving = createMutation.isPending;
     const updateField = (key: string, value: any) => setForm((p) => ({ ...p, [key]: value }));
     const computedDays = calcDays(form.fromDate, form.toDate, form.isHalfDay, false);
+
+    const selectedLeaveType = leaveTypes.find((lt: any) => lt.id === form.leaveTypeId);
+    const requiresDocument = selectedLeaveType?.documentRequired === true;
+    const requiresDocumentAfterDays = selectedLeaveType?.documentAfterDays
+        ? computedDays > Number(selectedLeaveType.documentAfterDays)
+        : false;
+    const showDocumentUpload = requiresDocument || requiresDocumentAfterDays;
+    const documentMissing = showDocumentUpload && requiresDocument && !documentKey;
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -439,6 +463,16 @@ export function LeaveRequestScreen() {
                                     </div>
                                     {req.reason && (
                                         <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4 line-clamp-2 italic">"{req.reason}"</p>
+                                    )}
+                                    {req.documentUrl && (
+                                        <div className="mb-4">
+                                            <R2Link fileKey={req.documentUrl}>
+                                                <span className="inline-flex items-center gap-1 text-xs text-primary-600 dark:text-primary-400 hover:underline">
+                                                    <Paperclip size={12} />
+                                                    {req.documentName ?? 'View Document'}
+                                                </span>
+                                            </R2Link>
+                                        </div>
                                     )}
                                     <div className="flex gap-2">
                                         <button
@@ -633,10 +667,53 @@ export function LeaveRequestScreen() {
                                     className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all resize-none"
                                 />
                             </div>
+                            {showDocumentUpload && (
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
+                                        Supporting Document {requiresDocument ? <span className="text-danger-500">*</span> : '(Optional)'}
+                                    </label>
+                                    {documentKey ? (
+                                        <div className="flex items-center gap-2 bg-success-50 dark:bg-success-900/20 rounded-xl p-3 border border-success-200 dark:border-success-800/50">
+                                            <FileText size={16} className="text-success-600 flex-shrink-0" />
+                                            <span className="text-sm text-success-700 dark:text-success-400 truncate flex-1">{documentName}</span>
+                                            <button type="button" onClick={() => { setDocumentKey(null); setDocumentName(null); }} className="text-neutral-400 hover:text-danger-500 transition-colors">
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="border-2 border-dashed border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
+                                            <input
+                                                type="file"
+                                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                                onChange={async (e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (!file) return;
+                                                    const key = await uploadDoc(file);
+                                                    if (key) {
+                                                        setDocumentKey(key);
+                                                        setDocumentName(file.name);
+                                                    }
+                                                }}
+                                                className="hidden"
+                                                id="admin-leave-doc-upload"
+                                            />
+                                            <label htmlFor="admin-leave-doc-upload" className="cursor-pointer flex flex-col items-center gap-2">
+                                                {isUploadingDoc ? (
+                                                    <Loader2 size={20} className="animate-spin text-primary-500" />
+                                                ) : (
+                                                    <Upload size={20} className="text-neutral-400" />
+                                                )}
+                                                <span className="text-xs text-neutral-500">Click to upload PDF, Word, or image (max 10MB)</span>
+                                            </label>
+                                            {uploadError && <p className="text-xs text-danger-500 mt-2">{uploadError}</p>}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
                             <button onClick={() => setModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
-                            <button onClick={handleApply} disabled={saving} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                            <button onClick={handleApply} disabled={saving || documentMissing || isUploadingDoc} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                                 {saving && <Loader2 size={14} className="animate-spin" />}
                                 {saving ? "Submitting..." : "Submit Request"}
                             </button>
@@ -744,6 +821,17 @@ export function LeaveRequestScreen() {
                                 <div className="bg-danger-50 dark:bg-danger-900/20 rounded-xl p-3 border border-danger-200 dark:border-danger-800/50">
                                     <span className="text-xs text-danger-600 dark:text-danger-400 block mb-0.5 font-semibold">Rejection Note</span>
                                     <p className="text-sm text-danger-700 dark:text-danger-400">"{detailTarget.rejectionNote}"</p>
+                                </div>
+                            )}
+                            {detailTarget.documentUrl && (
+                                <div>
+                                    <span className="text-xs text-neutral-400 block mb-0.5">Attached Document</span>
+                                    <R2Link fileKey={detailTarget.documentUrl}>
+                                        <span className="inline-flex items-center gap-1.5 text-sm text-primary-600 dark:text-primary-400 hover:underline font-medium">
+                                            <Paperclip size={14} />
+                                            {detailTarget.documentName ?? 'View Document'}
+                                        </span>
+                                    </R2Link>
                                 </div>
                             )}
                         </div>
