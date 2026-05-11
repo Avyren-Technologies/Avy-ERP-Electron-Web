@@ -1,12 +1,13 @@
 import {
   CheckCircle,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Flag,
   MinusCircle,
   Pencil,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import type {
   DetectedDifference,
   VerificationActionPayload,
@@ -84,6 +85,29 @@ export function DifferenceDetail({
   };
 
   const confidencePct = Math.round(difference.confidence * 100);
+  const [valuesExpanded, setValuesExpanded] = useState(false);
+
+  // Check if either value is long enough to truncate
+  const beforeRef = useRef<HTMLSpanElement>(null);
+  const afterRef = useRef<HTMLSpanElement>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  useEffect(() => {
+    const checkTruncation = () => {
+      const b = beforeRef.current;
+      const a = afterRef.current;
+      setIsTruncated(
+        (b ? b.scrollWidth > b.clientWidth : false) ||
+        (a ? a.scrollWidth > a.clientWidth : false),
+      );
+    };
+    checkTruncation();
+  }, [difference.value_before, difference.value_after]);
+
+  // Collapse when navigating to a different difference
+  useEffect(() => {
+    setValuesExpanded(false);
+  }, [difference.id]);
 
   return (
     <div className="bg-white px-4 py-2">
@@ -114,17 +138,33 @@ export function DifferenceDetail({
           {(difference.value_before || difference.value_after) && (
             <div className="flex items-center gap-1 text-xs min-w-0 flex-shrink">
               {difference.value_before && (
-                <span className="bg-red-50 text-red-700 px-1.5 py-0.5 rounded line-through truncate max-w-[150px]">
+                <span
+                  ref={beforeRef}
+                  className={`bg-red-50 text-red-700 px-1.5 py-0.5 rounded line-through ${valuesExpanded ? 'whitespace-normal break-all max-w-xs' : 'truncate max-w-[150px]'}`}
+                >
                   {difference.value_before}
                 </span>
               )}
               {difference.value_before && difference.value_after && (
-                <span className="text-neutral-400">&rarr;</span>
+                <span className="text-neutral-400 flex-shrink-0">&rarr;</span>
               )}
               {difference.value_after && (
-                <span className="bg-green-50 text-green-700 px-1.5 py-0.5 rounded truncate max-w-[150px]">
+                <span
+                  ref={afterRef}
+                  className={`bg-green-50 text-green-700 px-1.5 py-0.5 rounded ${valuesExpanded ? 'whitespace-normal break-all max-w-xs' : 'truncate max-w-[150px]'}`}
+                >
                   {difference.value_after}
                 </span>
+              )}
+              {isTruncated && (
+                <button
+                  type="button"
+                  onClick={() => setValuesExpanded((v) => !v)}
+                  className="p-0.5 rounded hover:bg-neutral-100 flex-shrink-0 transition-transform"
+                  title={valuesExpanded ? 'Collapse' : 'Expand full values'}
+                >
+                  <ChevronDown className={`h-3.5 w-3.5 text-neutral-400 transition-transform duration-150 ${valuesExpanded ? 'rotate-180' : ''}`} />
+                </button>
               )}
             </div>
           )}

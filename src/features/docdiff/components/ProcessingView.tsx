@@ -9,13 +9,11 @@ interface Props {
 }
 
 const STAGE_NAMES = [
-  "Ingestion & Validation",
-  "Page Classification",
-  "Content Extraction",
-  "Normalization",
-  "Section Alignment",
-  "Computing Differences",
-  "Classifying Differences",
+  "Ingestion & Render",
+  "Page Alignment",
+  "Visual Comparison",
+  "Text Refinement",
+  "Smart Filtering",
   "Assembling Results",
 ];
 

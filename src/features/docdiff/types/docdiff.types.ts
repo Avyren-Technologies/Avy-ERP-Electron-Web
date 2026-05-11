@@ -170,15 +170,21 @@ export const MODEL_OPTIONS: ModelOption[] = [
   // ── Anthropic (Secondary) ─────────────────────────────────────────────
   {
     provider: "anthropic",
-    model: "claude-3-7-sonnet-20250219",
-    label: "Claude 3.7 Sonnet",
-    description: "Fast, strong reasoning",
+    model: "claude-sonnet-4-6",
+    label: "Claude Sonnet 4.6",
+    description: "Best balance of speed and intelligence, vision-capable",
   },
   {
     provider: "anthropic",
-    model: "claude-3-opus-20240229",
-    label: "Claude 3 Opus",
-    description: "Most capable Claude, higher cost",
+    model: "claude-sonnet-4-5",
+    label: "Claude Sonnet 4.5",
+    description: "Strong reasoning with vision support",
+  },
+  {
+    provider: "anthropic",
+    model: "claude-haiku-4-5",
+    label: "Claude Haiku 4.5",
+    description: "Fastest Claude — lowest latency and cost",
   },
   // ── OpenRouter (Secondary) ────────────────────────────────────────────
   {
