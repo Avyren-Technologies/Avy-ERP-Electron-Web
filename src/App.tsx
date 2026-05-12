@@ -62,6 +62,8 @@ const InvoiceDetailScreen = lazyNamed(() => import("./features/super-admin/Invoi
 const SubscriptionDetailScreen = lazyNamed(() => import("./features/super-admin/SubscriptionDetailScreen"), "SubscriptionDetailScreen");
 const AppVersionConfigScreen = lazyNamed(() => import("./features/super-admin/AppVersionConfigScreen"), "AppVersionConfigScreen");
 const CompanyAdminPermissionsScreen = lazyNamed(() => import("./features/super-admin/CompanyAdminPermissionsScreen"), "CompanyAdminPermissionsScreen");
+const BiometricDeviceManagementScreen = lazyNamed(() => import("./features/super-admin/BiometricDeviceManagementScreen"), "BiometricDeviceManagementScreen");
+const PlatformUserManagementScreen = lazyNamed(() => import("./features/super-admin/PlatformUserManagementScreen"), "PlatformUserManagementScreen");
 
 // ─── Super Admin Support ───
 const SupportDashboardScreen = lazyNamed(() => import("./features/super-admin/support/SupportDashboardScreen"), "SupportDashboardScreen");
@@ -403,6 +405,8 @@ function App() {
         <Route path="support/ticket/:id" element={<RequireRole roles={['super-admin']}><SupportTicketDetailScreen /></RequireRole>} />
         <Route path="app-versions" element={<RequireRole roles={['super-admin']}><AppVersionConfigScreen /></RequireRole>} />
         <Route path="admin/company-admin-permissions" element={<RequireRole roles={['super-admin']}><CompanyAdminPermissionsScreen /></RequireRole>} />
+        <Route path="admin/biometric-devices" element={<RequireRole roles={['super-admin']}><BiometricDeviceManagementScreen /></RequireRole>} />
+        <Route path="admin/users" element={<RequireRole roles={['super-admin']}><PlatformUserManagementScreen /></RequireRole>} />
         {/* Company-admin-only routes */}
         <Route path="company/profile" element={<RequirePermission permission="company:read"><CompanyProfileScreen /></RequirePermission>} />
         <Route path="company/locations" element={<RequirePermission permission="company:read"><LocationManagementScreen /></RequirePermission>} />

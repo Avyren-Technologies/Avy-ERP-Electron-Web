@@ -656,18 +656,21 @@ export function AttendanceDashboardScreen() {
             {/* Data Table */}
             <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-xl shadow-neutral-900/5 overflow-hidden">
                 {recordsQuery.isLoading ? (
-                    <SkeletonTable rows={8} cols={8} />
+                    <SkeletonTable rows={8} cols={12} />
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse min-w-[1100px]">
+                        <table className="w-full text-left border-collapse min-w-[1400px]">
                             <thead>
                                 <tr className="bg-neutral-50/50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
                                     <th className="py-4 px-5 font-bold">Employee</th>
                                     <th className="py-4 px-5 font-bold">Shift</th>
+                                    <th className="py-4 px-5 font-bold text-center">1st Half</th>
+                                    <th className="py-4 px-5 font-bold text-center">2nd Half</th>
                                     <th className="py-4 px-5 font-bold">Punch In</th>
                                     <th className="py-4 px-5 font-bold">Punch Out</th>
                                     <th className="py-4 px-5 font-bold">Worked</th>
                                     <th className="py-4 px-5 font-bold text-center">Status</th>
+                                    <th className="py-4 px-5 font-bold text-center">OT</th>
                                     <th className="py-4 px-5 font-bold text-center">Late</th>
                                     <th className="py-4 px-5 font-bold text-center">Source</th>
                                     <th className="py-4 px-5 font-bold text-center">Actions</th>
@@ -702,6 +705,32 @@ export function AttendanceDashboardScreen() {
                                                 <span className="text-xs text-neutral-400">—</span>
                                             )}
                                         </td>
+                                        {/* 1st Half */}
+                                        <td className="py-3.5 px-5 text-center">
+                                            {(() => {
+                                                const h = rec.halves?.find((h: any) => h.half === 'FIRST_HALF');
+                                                if (!h) return <span className="text-xs text-neutral-400">—</span>;
+                                                return (
+                                                    <div className="flex flex-col items-center gap-0.5">
+                                                        <StatusBadge status={h.status} />
+                                                        {h.leaveType?.name && <span className="text-[9px] text-neutral-400 truncate max-w-[80px]" title={h.leaveType.name}>{h.leaveType.name}</span>}
+                                                    </div>
+                                                );
+                                            })()}
+                                        </td>
+                                        {/* 2nd Half */}
+                                        <td className="py-3.5 px-5 text-center">
+                                            {(() => {
+                                                const h = rec.halves?.find((h: any) => h.half === 'SECOND_HALF');
+                                                if (!h) return <span className="text-xs text-neutral-400">—</span>;
+                                                return (
+                                                    <div className="flex flex-col items-center gap-0.5">
+                                                        <StatusBadge status={h.status} />
+                                                        {h.leaveType?.name && <span className="text-[9px] text-neutral-400 truncate max-w-[80px]" title={h.leaveType.name}>{h.leaveType.name}</span>}
+                                                    </div>
+                                                );
+                                            })()}
+                                        </td>
                                         <td className="py-3.5 px-5 font-mono text-xs text-neutral-600 dark:text-neutral-400">{formatPunchTime(rec.punchIn, fmt)}</td>
                                         <td className="py-3.5 px-5 font-mono text-xs text-neutral-600 dark:text-neutral-400">{formatPunchTime(rec.punchOut, fmt)}</td>
                                         <td className="py-3.5 px-5 font-semibold text-neutral-700 dark:text-neutral-300 text-sm">{formatWorkedHrs(rec.workedHours)}</td>
@@ -714,6 +743,14 @@ export function AttendanceDashboardScreen() {
                                                     </span>
                                                 )}
                                             </div>
+                                        </td>
+                                        {/* OT Hours */}
+                                        <td className="py-3.5 px-5 text-center">
+                                            {rec.overtimeHours != null && Number(rec.overtimeHours) > 0 ? (
+                                                <span className="text-xs font-semibold text-success-600 dark:text-success-400">{Number(rec.overtimeHours).toFixed(1)}h</span>
+                                            ) : (
+                                                <span className="text-xs text-neutral-400">—</span>
+                                            )}
                                         </td>
                                         <td className="py-3.5 px-5 text-center">
                                             {rec.isLate && rec.lateMinutes ? (
@@ -749,7 +786,7 @@ export function AttendanceDashboardScreen() {
                                 ))}
                                 {filtered.length === 0 && !recordsQuery.isLoading && (
                                     <tr>
-                                        <td colSpan={9}>
+                                        <td colSpan={12}>
                                             <EmptyState icon="list" title="No attendance records" message="No records found for the selected date and filters." />
                                         </td>
                                     </tr>
@@ -1083,6 +1120,25 @@ export function AttendanceDashboardScreen() {
                                 </div>
                             </div>
 
+                            {/* Half-Day Details */}
+                            {detailRecord.halves && detailRecord.halves.length > 0 && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    {detailRecord.halves
+                                        .sort((a: any, b: any) => a.half === 'FIRST_HALF' ? -1 : 1)
+                                        .map((h: any) => (
+                                        <div key={h.id || h.half} className="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-3">
+                                            <p className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
+                                                {h.half === 'FIRST_HALF' ? '1st Half' : '2nd Half'}
+                                            </p>
+                                            <StatusBadge status={h.status} />
+                                            {h.leaveType?.name && (
+                                                <p className="text-[10px] text-primary-600 dark:text-primary-400 mt-1 font-semibold">{h.leaveType.name}</p>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
                             {/* Shift */}
                             {detailRecord.shiftName && (
                                 <div className="bg-primary-50/50 dark:bg-primary-900/10 rounded-xl p-3 border border-primary-100 dark:border-primary-800/30">
@@ -1091,31 +1147,49 @@ export function AttendanceDashboardScreen() {
                                 </div>
                             )}
 
-                            {/* Late / Early Exit */}
-                            {(detailRecord.isLate || detailRecord.isEarlyExit) && (
-                                <div className="flex gap-3">
-                                    {detailRecord.isLate && detailRecord.lateMinutes != null && (
-                                        <div className="flex-1 bg-warning-50 dark:bg-warning-900/10 rounded-xl p-3 border border-warning-200 dark:border-warning-800/30">
-                                            <p className="text-[10px] font-bold text-warning-600 dark:text-warning-400 uppercase tracking-wider mb-1">Late By</p>
-                                            <p className="text-sm font-bold text-warning-700 dark:text-warning-400">{detailRecord.lateMinutes} minutes</p>
-                                        </div>
-                                    )}
-                                    {detailRecord.isEarlyExit && detailRecord.earlyMinutes != null && (
-                                        <div className="flex-1 bg-danger-50 dark:bg-danger-900/10 rounded-xl p-3 border border-danger-200 dark:border-danger-800/30">
-                                            <p className="text-[10px] font-bold text-danger-600 dark:text-danger-400 uppercase tracking-wider mb-1">Early Exit By</p>
-                                            <p className="text-sm font-bold text-danger-700 dark:text-danger-400">{detailRecord.earlyMinutes} minutes</p>
-                                        </div>
-                                    )}
+                            {/* Late / Early Exit / Overtime Row */}
+                            <div className="grid grid-cols-3 gap-3">
+                                {detailRecord.isLate && detailRecord.lateMinutes != null ? (
+                                    <div className="bg-warning-50 dark:bg-warning-900/10 rounded-xl p-3 border border-warning-200 dark:border-warning-800/30">
+                                        <p className="text-[10px] font-bold text-warning-600 dark:text-warning-400 uppercase tracking-wider mb-1">Late By</p>
+                                        <p className="text-sm font-bold text-warning-700 dark:text-warning-400">{detailRecord.lateMinutes} min</p>
+                                    </div>
+                                ) : (
+                                    <div className="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-3">
+                                        <p className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">Late</p>
+                                        <p className="text-sm font-bold text-success-600 dark:text-success-400">On Time</p>
+                                    </div>
+                                )}
+                                {detailRecord.isEarlyExit && detailRecord.earlyMinutes != null ? (
+                                    <div className="bg-danger-50 dark:bg-danger-900/10 rounded-xl p-3 border border-danger-200 dark:border-danger-800/30">
+                                        <p className="text-[10px] font-bold text-danger-600 dark:text-danger-400 uppercase tracking-wider mb-1">Early Exit</p>
+                                        <p className="text-sm font-bold text-danger-700 dark:text-danger-400">{detailRecord.earlyMinutes} min</p>
+                                    </div>
+                                ) : (
+                                    <div className="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-3">
+                                        <p className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">Early Exit</p>
+                                        <p className="text-sm font-bold text-neutral-500 dark:text-neutral-400">—</p>
+                                    </div>
+                                )}
+                                <div className={cn(
+                                    "rounded-xl p-3 border",
+                                    detailRecord.overtimeHours != null && Number(detailRecord.overtimeHours) > 0
+                                        ? "bg-success-50/50 dark:bg-success-900/10 border-success-100 dark:border-success-800/30"
+                                        : "bg-neutral-50 dark:bg-neutral-800 border-transparent"
+                                )}>
+                                    <p className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">OT Hours</p>
+                                    <p className={cn(
+                                        "text-sm font-bold",
+                                        detailRecord.overtimeHours != null && Number(detailRecord.overtimeHours) > 0
+                                            ? "text-success-700 dark:text-success-400"
+                                            : "text-neutral-500 dark:text-neutral-400"
+                                    )}>
+                                        {detailRecord.overtimeHours != null && Number(detailRecord.overtimeHours) > 0
+                                            ? `${Number(detailRecord.overtimeHours).toFixed(1)} hrs`
+                                            : '—'}
+                                    </p>
                                 </div>
-                            )}
-
-                            {/* Overtime */}
-                            {detailRecord.overtimeHours != null && Number(detailRecord.overtimeHours) > 0 && (
-                                <div className="bg-success-50/50 dark:bg-success-900/10 rounded-xl p-3 border border-success-100 dark:border-success-800/30">
-                                    <p className="text-[10px] font-bold text-success-600 dark:text-success-400 uppercase tracking-wider mb-1">Overtime</p>
-                                    <p className="text-sm font-bold text-success-700 dark:text-success-400">{Number(detailRecord.overtimeHours).toFixed(1)} hours</p>
-                                </div>
-                            )}
+                            </div>
 
                             {/* Location */}
                             {detailRecord.location?.name && (

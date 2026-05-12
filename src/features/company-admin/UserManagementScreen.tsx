@@ -73,9 +73,7 @@ function UserModal({ editingId, form, updateField, onClose, onSave, saving, dyna
                         <FormField label="Last Name" value={form.lastName} onChange={(v) => updateField("lastName", v)} placeholder="Last name" />
                     </div>
                     <FormField label="Email" value={form.email} onChange={(v) => updateField("email", v)} type="email" placeholder="user@company.com" />
-                    {!editingId && (
-                        <FormField label="Password" value={form.password} onChange={(v) => updateField("password", v)} type="password" placeholder="Min 6 characters" />
-                    )}
+                    <FormField label={editingId ? "New Password" : "Password"} value={form.password} onChange={(v) => updateField("password", v)} type="password" placeholder={editingId ? "Leave blank to keep current" : "Min 6 characters"} />
                     <div>
                         <label htmlFor="user-role" className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Role</label>
                         <select
@@ -227,6 +225,7 @@ export function UserManagementScreen() {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(form.email.trim())) return "Please enter a valid email address.";
         if (!editingId && form.password.length < 6) return "Password must be at least 6 characters.";
+        if (editingId && form.password.length > 0 && form.password.length < 6) return "Password must be at least 6 characters.";
         return null;
     };
 
@@ -238,9 +237,9 @@ export function UserManagementScreen() {
         }
         try {
             if (editingId) {
-                const { password: _pw, department: _dept, location: _loc, role: selectedRole, ...updateData } = form;
-                // Include roleId in update payload so backend handles assignment
-                await updateMutation.mutateAsync({ id: editingId, data: { ...updateData, role: selectedRole || undefined } });
+                const { department: _dept, location: _loc, role: selectedRole, password, ...updateData } = form;
+                // Include roleId and password (if changed) in update payload
+                await updateMutation.mutateAsync({ id: editingId, data: { ...updateData, role: selectedRole || undefined, ...(password.trim() && { password: password.trim() }) } });
                 showSuccess("User Updated", `${form.firstName} ${form.lastName} has been updated.`);
             } else {
                 const { department: _dept, location: _loc, ...createData } = form;

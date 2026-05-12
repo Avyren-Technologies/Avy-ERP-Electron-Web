@@ -448,14 +448,36 @@ function FiltersPanel({
             <SearchableSelect
               label="Month"
               value={filters.month}
-              onChange={v => onChange({ ...filters, month: v })}
+              onChange={v => {
+                const m = parseInt(v || '0', 10);
+                const y = parseInt(filters.year || getCurrentYear(), 10);
+                if (m > 0 && y > 0) {
+                  const first = `${y}-${String(m).padStart(2, '0')}-01`;
+                  const lastDay = new Date(y, m, 0).getDate();
+                  const last = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+                  onChange({ ...filters, month: v, dateFrom: first, dateTo: last });
+                } else {
+                  onChange({ ...filters, month: v });
+                }
+              }}
               options={MONTHS}
               placeholder="Select month"
             />
             <SearchableSelect
               label="Year"
               value={filters.year}
-              onChange={v => onChange({ ...filters, year: v })}
+              onChange={v => {
+                const y = parseInt(v || '0', 10);
+                const m = parseInt(filters.month || '0', 10);
+                if (m > 0 && y > 0) {
+                  const first = `${y}-${String(m).padStart(2, '0')}-01`;
+                  const lastDay = new Date(y, m, 0).getDate();
+                  const last = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+                  onChange({ ...filters, year: v, dateFrom: first, dateTo: last });
+                } else {
+                  onChange({ ...filters, year: v });
+                }
+              }}
               options={YEARS}
               placeholder="Select year"
             />

@@ -50,6 +50,40 @@ function formatTimestamp(ts: string, fmt: ReturnType<typeof useCompanyFormatter>
     }
 }
 
+function formatChanges(changes: Record<string, any> | null | undefined): string {
+    if (!changes || typeof changes !== 'object') return '—';
+    const entries = Object.entries(changes);
+    if (entries.length === 0) return '—';
+
+    const parts: string[] = [];
+    for (const [key, val] of entries) {
+        if (val && typeof val === 'object' && ('from' in val || 'to' in val)) {
+            // Simple {from, to} diff
+            if (val.from !== undefined && val.to !== undefined) {
+                parts.push(`${key}: ${stringify(val.from)} → ${stringify(val.to)}`);
+            } else if (val.to !== undefined) {
+                parts.push(`${key}: ${stringify(val.to)}`);
+            }
+        } else if (val && typeof val === 'object' && 'to' in val) {
+            parts.push(`${key}: ${stringify(val.to)}`);
+        } else {
+            parts.push(`${key}: ${stringify(val)}`);
+        }
+    }
+    return parts.slice(0, 3).join(', ') + (parts.length > 3 ? ` +${parts.length - 3} more` : '');
+}
+
+function stringify(val: unknown): string {
+    if (val === null || val === undefined) return '—';
+    if (typeof val === 'object') {
+        // For nested objects like {status: "PRESENT"}, show "PRESENT"
+        const entries = Object.entries(val as Record<string, unknown>);
+        if (entries.length === 1) return String(entries[0][1]);
+        return JSON.stringify(val);
+    }
+    return String(val);
+}
+
 export function AuditLogScreen() {
     const fmt = useCompanyFormatter();
     const userRole = useAuthStore((s) => s.userRole);
@@ -119,7 +153,7 @@ export function AuditLogScreen() {
                         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400 dark:text-neutral-500" />
                         <input
                             type="text"
-                            placeholder="Search by user, entity, or IP..."
+                            placeholder="Search by action, entity type, or entity ID..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             className="w-full pl-11 pr-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:focus:border-primary-500 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 transition-all"
@@ -178,17 +212,18 @@ export function AuditLogScreen() {
 
             {/* Data Table */}
             <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-xl shadow-neutral-900/5 overflow-hidden transition-colors">
-                {isLoading ? <SkeletonTable rows={10} cols={6} /> : (
+                {isLoading ? <SkeletonTable rows={10} cols={7} /> : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse min-w-[900px]">
+                        <table className="w-full text-left border-collapse min-w-[1100px]">
                             <thead>
                                 <tr className="bg-neutral-50/50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
                                     <th className="py-4 px-6 font-bold">Timestamp</th>
                                     <th className="py-4 px-6 font-bold">Action</th>
                                     <th className="py-4 px-6 font-bold">Entity Type</th>
                                     <th className="py-4 px-6 font-bold">Entity ID</th>
-                                    <th className="py-4 px-6 font-bold">User</th>
-                                    <th className="py-4 px-6 font-bold">IP Address</th>
+                                    <th className="py-4 px-6 font-bold">Changed By</th>
+                                    <th className="py-4 px-6 font-bold">Company</th>
+                                    <th className="py-4 px-6 font-bold">Changes</th>
                                 </tr>
                             </thead>
                             <tbody className="text-sm">
@@ -199,7 +234,7 @@ export function AuditLogScreen() {
                                     >
                                         <td className="py-4 px-6">
                                             <span className="text-neutral-700 dark:text-neutral-300 font-medium text-xs">
-                                                {formatTimestamp(log.createdAt ?? log.timestamp, fmt)}
+                                                {formatTimestamp(log.changedAt ?? log.createdAt, fmt)}
                                             </span>
                                         </td>
 
@@ -226,7 +261,7 @@ export function AuditLogScreen() {
 
                                         <td className="py-4 px-6">
                                             <span className="text-neutral-700 dark:text-neutral-300 font-medium text-sm">
-                                                {log.userName ?? log.userEmail ?? log.userId ?? '—'}
+                                                {log.userName ?? log.changedBy ?? '—'}
                                             </span>
                                             {log.userName && log.userEmail && (
                                                 <p className="text-[11px] text-neutral-400 dark:text-neutral-500 mt-0.5">{log.userEmail}</p>
@@ -234,8 +269,14 @@ export function AuditLogScreen() {
                                         </td>
 
                                         <td className="py-4 px-6">
-                                            <span className="text-neutral-500 dark:text-neutral-400 font-mono text-xs">
-                                                {log.ipAddress ?? '—'}
+                                            <span className="text-neutral-600 dark:text-neutral-400 text-xs">
+                                                {log.companyName ?? '—'}
+                                            </span>
+                                        </td>
+
+                                        <td className="py-4 px-6">
+                                            <span className="text-neutral-500 dark:text-neutral-400 text-xs max-w-[250px] truncate block" title={formatChanges(log.changes)}>
+                                                {formatChanges(log.changes)}
                                             </span>
                                         </td>
                                     </tr>
@@ -243,7 +284,7 @@ export function AuditLogScreen() {
 
                                 {logs.length === 0 && !isLoading && (
                                     <tr>
-                                        <td colSpan={6}>
+                                        <td colSpan={7}>
                                             <EmptyState icon="search" title="No audit logs found" message="Try adjusting your filters." />
                                         </td>
                                     </tr>

@@ -11,6 +11,7 @@ import {
   WifiOff,
   Cpu,
   Power,
+  Info,
 } from 'lucide-react';
 import {
   useBiometricDevices,
@@ -355,6 +356,13 @@ export function BiometricDeviceScreen() {
               </button>
             </div>
             <div className="p-6 space-y-4">
+              {/* Guidance callout */}
+              <div className="flex gap-2.5 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+                <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
+                  The biometric device must be powered on and connected to the network with the correct ADMS server URL configured. It needs to have connected to the server at least once before it can be registered here. Contact your platform admin if the device has not been provisioned yet.
+                </p>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Serial Number <span className="text-red-500">*</span>
