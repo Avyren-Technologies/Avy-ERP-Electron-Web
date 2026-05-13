@@ -314,7 +314,10 @@ describe('client — response interceptor (TOKEN_EXPIRED, successful refresh)', 
                     headers: config?.headers ?? {},
                 });
 
-            const refreshClient = { post: refreshPost, get: vi.fn(), defaults: {} };
+            const refreshClient = {
+                post: refreshPost, get: vi.fn(), defaults: {},
+                interceptors: { request: { use: vi.fn() }, response: { use: vi.fn() } },
+            };
 
             return {
                 __esModule: true,
@@ -416,7 +419,10 @@ describe('client — response interceptor (TOKEN_EXPIRED, refresh fails)', () =>
                     headers: config?.headers ?? {},
                 });
 
-            const refreshClient = { post: refreshPost, get: vi.fn(), defaults: {} };
+            const refreshClient = {
+                post: refreshPost, get: vi.fn(), defaults: {},
+                interceptors: { request: { use: vi.fn() }, response: { use: vi.fn() } },
+            };
 
             return {
                 __esModule: true,
@@ -499,7 +505,10 @@ describe('client — response interceptor (TOKEN_EXPIRED, refresh fails)', () =>
                     headers: config?.headers ?? {},
                 });
 
-            const refreshClient = { post: refreshPost, get: vi.fn(), defaults: {} };
+            const refreshClient = {
+                post: refreshPost, get: vi.fn(), defaults: {},
+                interceptors: { request: { use: vi.fn() }, response: { use: vi.fn() } },
+            };
 
             return {
                 __esModule: true,
@@ -583,7 +592,10 @@ describe('client — response interceptor (TOKEN_EXPIRED, refresh fails)', () =>
                     headers: config?.headers ?? {},
                 });
 
-            const refreshClient = { post: refreshPost, get: vi.fn(), defaults: {} };
+            const refreshClient = {
+                post: refreshPost, get: vi.fn(), defaults: {},
+                interceptors: { request: { use: vi.fn() }, response: { use: vi.fn() } },
+            };
 
             return {
                 __esModule: true,

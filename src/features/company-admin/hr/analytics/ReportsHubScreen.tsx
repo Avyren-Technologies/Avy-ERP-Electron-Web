@@ -412,7 +412,7 @@ function FiltersPanel({
   );
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#F5F8FF] via-white to-[#F0EDFF] dark:from-indigo-950/20 dark:via-neutral-900 dark:to-violet-950/20 border border-neutral-200/60 dark:border-neutral-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)]">
+    <div className="relative overflow-visible rounded-2xl bg-gradient-to-br from-[#F5F8FF] via-white to-[#F0EDFF] dark:from-indigo-950/20 dark:via-neutral-900 dark:to-violet-950/20 border border-neutral-200/60 dark:border-neutral-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)]">
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-neutral-50/80 dark:hover:bg-neutral-700/50 transition-colors"

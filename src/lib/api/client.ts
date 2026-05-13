@@ -41,8 +41,6 @@ function getStoredRefreshToken(): string | null {
     }
 }
 
-// ── Proactive token refresh ──
-
 /**
  * Returns true if the JWT will expire within `thresholdMs` milliseconds.
  * Defaults to 60 seconds — enough time to refresh before the server rejects it.
@@ -57,52 +55,55 @@ function isTokenExpiringSoon(token: string, thresholdMs = 60_000): boolean {
     }
 }
 
-let isProactiveRefreshing = false;
+// ── Unified token refresh (single promise, shared by proactive + reactive) ──
 
 /**
- * If the access token is about to expire, silently refresh it before the
- * request goes out. This avoids 401 round-trips for most requests.
+ * A single in-flight refresh promise. Both proactive (request interceptor) and
+ * reactive (response interceptor) paths share this. If a refresh is already
+ * in-flight, callers get the same promise — preventing the race condition where
+ * two parallel refresh calls consume and blacklist each other's tokens.
  */
-async function proactiveRefreshIfNeeded(): Promise<string | null> {
-    const accessToken = getStoredAccessToken();
-    if (!accessToken || !isTokenExpiringSoon(accessToken)) {
-        return accessToken;
-    }
+let activeRefreshPromise: Promise<string | null> | null = null;
 
-    // Avoid duplicate proactive refreshes
-    if (isProactiveRefreshing) return accessToken;
-    isProactiveRefreshing = true;
+/**
+ * Performs a token refresh, or returns the existing in-flight promise.
+ * Returns the new access token on success, or null on failure.
+ */
+function refreshTokens(): Promise<string | null> {
+    if (activeRefreshPromise) return activeRefreshPromise;
 
-    try {
+    activeRefreshPromise = (async () => {
         const storedRefreshToken = getStoredRefreshToken();
-        if (!storedRefreshToken) return accessToken;
+        if (!storedRefreshToken) return null;
 
-        const { data } = await refreshClient.post('/auth/refresh-token', {
-            refreshToken: storedRefreshToken,
-        });
+        try {
+            const { data } = await refreshClient.post('/auth/refresh-token', {
+                refreshToken: storedRefreshToken,
+            });
 
-        if (data.success && data.data?.tokens) {
-            const newTokens = data.data.tokens;
-            localStorage.setItem('auth_tokens', JSON.stringify(newTokens));
+            if (data.success && data.data?.tokens) {
+                const newTokens = data.data.tokens;
+                localStorage.setItem('auth_tokens', JSON.stringify(newTokens));
 
-            // Update Zustand store
-            try {
-                const { useAuthStore } = await import('@/store/useAuthStore');
-                useAuthStore.getState().updateTokens(newTokens);
-            } catch {
-                // Store not available — tokens already saved to localStorage
+                // Update Zustand store
+                try {
+                    const { useAuthStore } = await import('@/store/useAuthStore');
+                    useAuthStore.getState().updateTokens(newTokens);
+                } catch {
+                    // Store not available — tokens already saved to localStorage
+                }
+
+                return newTokens.accessToken as string;
             }
-
-            return newTokens.accessToken;
+            return null;
+        } catch {
+            return null;
+        } finally {
+            activeRefreshPromise = null;
         }
-    } catch {
-        // Proactive refresh failed — let the request proceed with the old token;
-        // the response interceptor will handle the 401 if it actually expires.
-    } finally {
-        isProactiveRefreshing = false;
-    }
+    })();
 
-    return accessToken;
+    return activeRefreshPromise;
 }
 
 // ── Request interceptor: attach Bearer token (with proactive refresh) ──
@@ -115,7 +116,16 @@ refreshClient.interceptors.request.use((config) => {
 client.interceptors.request.use(
     async (config) => {
         config.headers['X-Device-Info'] = 'web';
-        const token = await proactiveRefreshIfNeeded();
+
+        let token = getStoredAccessToken();
+
+        // Proactive refresh: if the token is about to expire, refresh before sending
+        if (token && isTokenExpiringSoon(token)) {
+            const newToken = await refreshTokens();
+            if (newToken) token = newToken;
+            // If refresh fails, proceed with old token — response interceptor handles 401
+        }
+
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -126,11 +136,11 @@ client.interceptors.request.use(
 
 // ── Response interceptor: handle 401 + silent refresh ──
 
-let isRefreshing = false;
 let failedQueue: Array<{
     resolve: (value: unknown) => void;
     reject: (reason?: unknown) => void;
 }> = [];
+let isHandlingRefresh = false;
 
 function processQueue(error: unknown, token: string | null = null) {
     failedQueue.forEach(({ resolve, reject }) => {
@@ -168,8 +178,19 @@ client.interceptors.response.use(
             return Promise.reject(error);
         }
 
-        if (isRefreshing) {
-            // Queue this request until the refresh completes
+        // Check if the token was already refreshed since this request was sent
+        // (by proactive refresh, another concurrent request, or another tab).
+        // If so, just retry with the current token — no need for another refresh.
+        const currentToken = getStoredAccessToken();
+        const requestToken = originalRequest.headers?.Authorization?.replace('Bearer ', '');
+        if (currentToken && requestToken && currentToken !== requestToken) {
+            originalRequest._retry = true;
+            originalRequest.headers.Authorization = `Bearer ${currentToken}`;
+            return client(originalRequest);
+        }
+
+        if (isHandlingRefresh) {
+            // Queue this request until the in-progress refresh completes
             return new Promise((resolve, reject) => {
                 failedQueue.push({ resolve, reject });
             }).then((token) => {
@@ -179,36 +200,16 @@ client.interceptors.response.use(
         }
 
         originalRequest._retry = true;
-        isRefreshing = true;
-
-        const storedRefreshToken = getStoredRefreshToken();
-
-        if (!storedRefreshToken) {
-            isRefreshing = false;
-            processQueue(error, null);
-            clearAuthAndRedirect();
-            return Promise.reject(error);
-        }
+        isHandlingRefresh = true;
 
         try {
-            const { data } = await refreshClient.post('/auth/refresh-token', {
-                refreshToken: storedRefreshToken,
-            });
+            // refreshTokens() deduplicates: if a proactive refresh is already
+            // in-flight, this awaits the same promise instead of firing a second call
+            const newAccessToken = await refreshTokens();
 
-            if (data.success && data.data?.tokens) {
-                const newTokens = data.data.tokens;
-                localStorage.setItem('auth_tokens', JSON.stringify(newTokens));
-
-                // Update the Zustand store if available
-                try {
-                    const { useAuthStore } = await import('@/store/useAuthStore');
-                    useAuthStore.getState().updateTokens(newTokens);
-                } catch {
-                    // Store not available — tokens already saved to localStorage
-                }
-
-                originalRequest.headers.Authorization = `Bearer ${newTokens.accessToken}`;
-                processQueue(null, newTokens.accessToken);
+            if (newAccessToken) {
+                originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+                processQueue(null, newAccessToken);
                 return client(originalRequest);
             } else {
                 processQueue(error, null);
@@ -220,10 +221,31 @@ client.interceptors.response.use(
             clearAuthAndRedirect();
             return Promise.reject(refreshError);
         } finally {
-            isRefreshing = false;
+            isHandlingRefresh = false;
         }
     },
 );
+
+// ── Visibility change: refresh tokens when tab becomes active ──
+//
+// When the user switches back to this tab after a long absence, the access token
+// may be expired. React Query's refetchOnWindowFocus fires stale queries
+// immediately. By refreshing here FIRST, we ensure the new token is available
+// before those queries go out.
+
+if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            const token = getStoredAccessToken();
+            if (token && isTokenExpiringSoon(token)) {
+                // Fire-and-forget — if a refresh is already in progress
+                // (activeRefreshPromise !== null), this reuses the same promise.
+                // The request interceptor will await the result before sending.
+                refreshTokens();
+            }
+        }
+    });
+}
 
 function clearAuthAndRedirect() {
     localStorage.removeItem('auth_tokens');
