@@ -170,6 +170,7 @@ interface BookRowState {
     saved: boolean;
     error: string | null;
     existingRecordUpdatedAt?: string;
+    hasExistingRecord: boolean;
 }
 
 function deriveBookStatus(firstHalf: HalfDayStatus, secondHalf: HalfDayStatus): { label: string; color: string; tooltip: string } {
@@ -447,6 +448,7 @@ export function AdminAttendanceScreen() {
                     saved: false,
                     error: null,
                     existingRecordUpdatedAt: emp.existingRecord?.updatedAt,
+                    hasExistingRecord: !!emp.existingRecord,
                 };
             }
             return next;
@@ -461,7 +463,7 @@ export function AdminAttendanceScreen() {
             const empId = variables.employeeId;
             setBookRowStates(prev => ({
                 ...prev,
-                [empId]: { ...prev[empId], saving: false, saved: true, dirty: false, error: null },
+                [empId]: { ...prev[empId], saving: false, saved: true, dirty: false, error: null, hasExistingRecord: true },
             }));
             // Clear saved indicator after 3 seconds
             if (savedTimers.current[empId]) clearTimeout(savedTimers.current[empId]);
@@ -494,7 +496,7 @@ export function AdminAttendanceScreen() {
                 const next = { ...prev };
                 for (const key of Object.keys(next)) {
                     if (next[key].dirty) {
-                        next[key] = { ...next[key], dirty: false, saved: true, saving: false, error: null };
+                        next[key] = { ...next[key], dirty: false, saved: true, saving: false, error: null, hasExistingRecord: true };
                     }
                 }
                 return next;
@@ -1522,7 +1524,9 @@ export function AdminAttendanceScreen() {
                                                         "border-b border-neutral-100 dark:border-neutral-800/50 transition-colors",
                                                         bookSelectedIds.has(emp.employeeId)
                                                             ? "bg-primary-50/50 dark:bg-primary-900/10"
-                                                            : "hover:bg-neutral-50/30 dark:hover:bg-neutral-800/30",
+                                                            : row?.hasExistingRecord
+                                                                ? "bg-success-50/30 dark:bg-success-900/5 hover:bg-success-50/50 dark:hover:bg-success-900/10"
+                                                                : "hover:bg-neutral-50/30 dark:hover:bg-neutral-800/30",
                                                         isLocked && "opacity-60"
                                                     )}
                                                 >
@@ -1700,7 +1704,16 @@ export function AdminAttendanceScreen() {
                                                                 <Loader2 className="w-4 h-4 animate-spin text-primary-500" />
                                                             )}
                                                             {row?.saved && !row?.saving && (
-                                                                <Check className="w-4 h-4 text-success-500" />
+                                                                <span className="inline-flex items-center gap-1 text-success-600 dark:text-success-400" title="Just saved">
+                                                                    <Check className="w-4 h-4" />
+                                                                    <span className="text-[10px] font-semibold hidden xl:inline">Saved</span>
+                                                                </span>
+                                                            )}
+                                                            {!row?.saved && !row?.saving && !row?.dirty && !row?.error && row?.hasExistingRecord && (
+                                                                <span className="inline-flex items-center gap-1 text-success-500/70 dark:text-success-400/60" title="Attendance recorded">
+                                                                    <Check className="w-3.5 h-3.5" />
+                                                                    <span className="text-[10px] font-medium hidden xl:inline">Recorded</span>
+                                                                </span>
                                                             )}
                                                             {row?.dirty && !row?.saving && !row?.saved && (
                                                                 <div className="w-2.5 h-2.5 rounded-full bg-warning-400" title="Unsaved changes" />
