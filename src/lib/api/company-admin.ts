@@ -234,6 +234,7 @@ export interface SystemControls {
     mobileAppEnabled: boolean;
     aiChatbotEnabled: boolean;
     // Production
+    productionIncentivePlanEnabled: boolean;
     ncEditMode: boolean;
     loadUnload: boolean;
     cycleTime: boolean;

@@ -40,6 +40,13 @@ async function unassignRotation(id: string, employeeId: string): Promise<ApiResp
     return response.data;
 }
 
+// ── Employee Overview ──
+
+async function getEmployeeOverview(params?: { search?: string }): Promise<ApiResponse<any>> {
+    const response = await client.get('/hr/shift-rotations/employee-overview', { params });
+    return response.data;
+}
+
 // ── Execute ──
 
 async function executeRotations(): Promise<ApiResponse<any>> {
@@ -56,4 +63,5 @@ export const shiftRotationApi = {
     assignRotation,
     unassignRotation,
     executeRotations,
+    getEmployeeOverview,
 };

@@ -10,6 +10,7 @@ import {
   Target,
   UserMinus,
   ShieldCheck,
+  Factory,
   Download,
   Loader2,
   ChevronDown,
@@ -235,6 +236,57 @@ const REPORT_DEFINITIONS: Record<string, ReportDef> = {
     category: 'Compliance',
     sheets: ['Score', 'Filings', 'Grievances', 'Document Status'],
   },
+
+  // ── Production (PIP) Reports — keys must match backend REPORT_DEFINITIONS / catalog ──
+  'pip-daily-production': {
+    key: 'pip-daily-production',
+    title: 'PIP Daily Production Report',
+    description: 'Daily production output and incentive summary by operator and machine for a selected date and shift.',
+    category: 'Production',
+    sheets: ['Summary', 'Operator Detail', 'Machine Utilization'],
+  },
+  'pip-incentive-summary': {
+    key: 'pip-incentive-summary',
+    title: 'PIP Incentive Summary Report',
+    description: 'Monthly incentive consolidation with operator-wise, part-wise breakdowns and daily trend for payroll processing.',
+    category: 'Production',
+    sheets: ['Monthly Summary', 'Operator-wise', 'Part-wise', 'Daily Trend'],
+  },
+  'pip-operator-performance': {
+    key: 'pip-operator-performance',
+    title: 'PIP Operator Performance Report',
+    description: 'Operator performance analysis including achievement rates, eligibility trends, and incentive earnings over time.',
+    category: 'Production',
+    sheets: ['Summary', 'Detail', 'Achievement Trend'],
+  },
+  'pip-machine-utilization': {
+    key: 'pip-machine-utilization',
+    title: 'PIP Machine Utilization Report',
+    description: 'Machine-level production analysis showing utilization rates, output volumes, and shift-wise productivity.',
+    category: 'Production',
+    sheets: ['Summary', 'Machine-wise', 'Shift Analysis'],
+  },
+  'pip-shift-productivity': {
+    key: 'pip-shift-productivity',
+    title: 'PIP Shift Productivity Report',
+    description: 'Shift comparison report analyzing production output, incentive distribution, and target achievement across shifts.',
+    category: 'Production',
+    sheets: ['Summary', 'Shift Comparison', 'Trend'],
+  },
+  'pip-payroll-merge': {
+    key: 'pip-payroll-merge',
+    title: 'PIP Payroll Merge Report',
+    description: 'Audit report of incentive amounts merged into payroll runs with employee-wise breakdown.',
+    category: 'Production',
+    sheets: ['Merge Summary', 'Employee Detail'],
+  },
+  'pip-exception': {
+    key: 'pip-exception',
+    title: 'PIP Exception Report',
+    description: 'Exception report highlighting below-target operators, missing production entries, and duplicate submissions.',
+    category: 'Production',
+    sheets: ['Below Target', 'Missing Entries', 'Duplicates'],
+  },
 };
 
 const CATEGORIES = [
@@ -246,6 +298,7 @@ const CATEGORIES = [
   'Performance',
   'Attrition',
   'Compliance',
+  'Production',
 ] as const;
 
 type Category = (typeof CATEGORIES)[number];
@@ -259,6 +312,7 @@ const CATEGORY_CONFIG: Record<Category, { color: string; bgColor: string; textCo
   Performance: { color: 'bg-pink-500', bgColor: 'bg-pink-50 dark:bg-pink-950/30', textColor: 'text-pink-700 dark:text-pink-300', borderColor: 'border-pink-200 dark:border-pink-800', icon: Target },
   Attrition: { color: 'bg-red-500', bgColor: 'bg-red-50 dark:bg-red-950/30', textColor: 'text-red-700 dark:text-red-300', borderColor: 'border-red-200 dark:border-red-800', icon: UserMinus },
   Compliance: { color: 'bg-teal-500', bgColor: 'bg-teal-50 dark:bg-teal-950/30', textColor: 'text-teal-700 dark:text-teal-300', borderColor: 'border-teal-200 dark:border-teal-800', icon: ShieldCheck },
+  Production: { color: 'bg-orange-500', bgColor: 'bg-orange-50 dark:bg-orange-950/30', textColor: 'text-orange-700 dark:text-orange-300', borderColor: 'border-orange-200 dark:border-orange-800', icon: Factory },
 };
 
 // ── Helpers ──

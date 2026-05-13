@@ -86,7 +86,7 @@ export function RoleManagementScreen() {
     // Permission catalogue from API — only show implemented modules
     const IMPLEMENTED_MODULES = useMemo(() => new Set([
         'hr', 'visitors', 'ess', 'attendance', 'user', 'role', 'company',
-        'analytics', 'reports', 'audit', 'billing', 'docdiff',
+        'analytics', 'reports', 'audit', 'billing', 'docdiff', 'production', 'masters',
     ]), []);
 
     const catalogueModules = useMemo(() => {

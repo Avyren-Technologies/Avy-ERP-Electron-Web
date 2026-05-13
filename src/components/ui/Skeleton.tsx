@@ -69,7 +69,7 @@ export function SkeletonTable({ rows = 5, cols = 4 }: { rows?: number; cols?: nu
 
 export function SkeletonKPIGrid({ count = 4 }: { count?: number }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(count, 4)}, 1fr)`, gap: 16 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(count, 5)}, 1fr)`, gap: 12 }}>
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} style={{ padding: 20, borderRadius: 12, border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <Skeleton width={100} height={12} />

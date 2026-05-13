@@ -5,6 +5,7 @@ export const shiftRotationKeys = {
     all: ['shift-rotation'] as const,
     rotations: (params?: Record<string, unknown>) => [...shiftRotationKeys.all, 'list', params] as const,
     rotation: (id: string) => [...shiftRotationKeys.all, 'detail', id] as const,
+    employeeOverview: (search?: string) => [...shiftRotationKeys.all, 'employee-overview', search] as const,
 };
 
 export function useShiftRotations(params?: Record<string, unknown>) {
@@ -19,5 +20,12 @@ export function useShiftRotation(id: string) {
         queryKey: shiftRotationKeys.rotation(id),
         queryFn: () => shiftRotationApi.getRotation(id),
         enabled: !!id,
+    });
+}
+
+export function useRotationEmployeeOverview(search?: string) {
+    return useQuery({
+        queryKey: shiftRotationKeys.employeeOverview(search),
+        queryFn: () => shiftRotationApi.getEmployeeOverview(search ? { search } : undefined),
     });
 }

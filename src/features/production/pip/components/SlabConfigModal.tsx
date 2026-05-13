@@ -1,0 +1,670 @@
+import { useState, useMemo } from 'react';
+import { X, Search, Plus, Trash2, Loader2, ChevronRight, ChevronLeft, Check, Info } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useBulkCreatePipSlabConfigs } from '@/features/production/pip/api/use-pip-mutations';
+import { showSuccess, showApiError } from '@/lib/toast';
+import type { Part, Machine } from '@/lib/api/masters';
+
+/* ── Types ── */
+
+interface SlabTierForm {
+  fromQty: string;
+  toQty: string; // empty = infinity
+  ratePerPiece: string;
+}
+
+interface PartConfigForm {
+  partId: string;
+  partNumber: string;
+  partName: string;
+  shiftTargetQty: string;
+  slabTiers: SlabTierForm[];
+}
+
+interface SlabConfigModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+  machines: Machine[];
+  parts: Part[];
+}
+
+const EMPTY_TIER: SlabTierForm = { fromQty: '', toQty: '', ratePerPiece: '' };
+
+/* ── Searchable Checkbox Dropdown ── */
+
+function CheckboxDropdown<T extends { id: string }>({
+  label,
+  items,
+  selectedIds,
+  onToggle,
+  onSelectAll,
+  renderItem,
+  searchPlaceholder,
+}: {
+  label: string;
+  items: T[];
+  selectedIds: Set<string>;
+  onToggle: (id: string) => void;
+  onSelectAll: () => void;
+  renderItem: (item: T) => React.ReactNode;
+  searchPlaceholder: string;
+}) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [dropdownOpen, setDropdownOpen] = useState(true);
+
+  const filtered = useMemo(() => {
+    if (!searchTerm) return items;
+    const lower = searchTerm.toLowerCase();
+    return items.filter((item) => {
+      const m = item as unknown as Record<string, unknown>;
+      const text = [m.assetCode, m.assetName, m.partNumber, m.name].filter(Boolean).join(' ').toLowerCase();
+      return text.includes(lower);
+    });
+  }, [items, searchTerm]);
+
+  const allSelected = items.length > 0 && items.every((i) => selectedIds.has(i.id));
+
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
+        {label}
+      </label>
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setDropdownOpen(!dropdownOpen)}
+          className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm text-left focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all flex items-center justify-between"
+        >
+          <span className={cn(selectedIds.size === 0 && 'text-neutral-400')}>
+            {selectedIds.size === 0
+              ? `Select ${label.toLowerCase()}...`
+              : `${selectedIds.size} selected`}
+          </span>
+          <ChevronRight
+            size={16}
+            className={cn('text-neutral-400 transition-transform', dropdownOpen && 'rotate-90')}
+          />
+        </button>
+
+        {dropdownOpen && (
+          <div className="absolute z-20 w-full mt-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl max-h-80 overflow-hidden">
+            {/* Search */}
+            <div className="p-2 border-b border-neutral-100 dark:border-neutral-800">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder={searchPlaceholder}
+                  className="w-full pl-8 pr-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+            </div>
+
+            {/* Select All */}
+            <button
+              type="button"
+              onClick={onSelectAll}
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-xs hover:bg-neutral-50 dark:hover:bg-neutral-800 border-b border-neutral-100 dark:border-neutral-800 transition-colors"
+            >
+              <div
+                className={cn(
+                  'w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors',
+                  allSelected
+                    ? 'bg-primary-600 border-primary-600'
+                    : 'border-neutral-300 dark:border-neutral-600',
+                )}
+              >
+                {allSelected && <Check size={10} className="text-white" />}
+              </div>
+              <span className="font-bold text-neutral-700 dark:text-neutral-300">Select All</span>
+            </button>
+
+            {/* Items */}
+            <div className="overflow-y-auto max-h-44">
+              {filtered.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => onToggle(item.id)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-xs hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                >
+                  <div
+                    className={cn(
+                      'w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors',
+                      selectedIds.has(item.id)
+                        ? 'bg-primary-600 border-primary-600'
+                        : 'border-neutral-300 dark:border-neutral-600',
+                    )}
+                  >
+                    {selectedIds.has(item.id) && <Check size={10} className="text-white" />}
+                  </div>
+                  {renderItem(item)}
+                </button>
+              ))}
+              {filtered.length === 0 && (
+                <p className="text-xs text-neutral-400 p-3 text-center">No results found</p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Part Config Card ── */
+
+function PartConfigCard({
+  config,
+  onChange,
+  onRemove,
+}: {
+  config: PartConfigForm;
+  onChange: (updated: PartConfigForm) => void;
+  onRemove: () => void;
+}) {
+  const addTier = () => {
+    const lastTier = config.slabTiers[config.slabTiers.length - 1];
+    const nextFrom = lastTier?.toQty ? String(Number(lastTier.toQty) + 1) : '';
+    onChange({
+      ...config,
+      slabTiers: [...config.slabTiers, { ...EMPTY_TIER, fromQty: nextFrom }],
+    });
+  };
+
+  const updateTier = (idx: number, field: keyof SlabTierForm, value: string) => {
+    const tiers = [...config.slabTiers];
+    tiers[idx] = { ...tiers[idx], [field]: value };
+    onChange({ ...config, slabTiers: tiers });
+  };
+
+  const removeTier = (idx: number) => {
+    const tiers = config.slabTiers.filter((_, i) => i !== idx);
+    onChange({ ...config, slabTiers: tiers });
+  };
+
+  return (
+    <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5 space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className="inline-block px-2.5 py-1 rounded-lg bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 font-mono text-xs font-bold border border-primary-100 dark:border-primary-800/50">
+            {config.partNumber}
+          </span>
+          <span className="text-sm font-bold text-primary-950 dark:text-white">
+            {config.partName}
+          </span>
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 font-bold">
+            per selected machine
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="p-1.5 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors"
+          title="Remove part"
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
+
+      {/* Shift Target */}
+      <div className="max-w-xs">
+        <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
+          Shift Target Qty <span className="text-danger-500">*</span>
+        </label>
+        <input
+          type="number"
+          min={1}
+          value={config.shiftTargetQty}
+          onChange={(e) => onChange({ ...config, shiftTargetQty: e.target.value })}
+          placeholder="e.g. 100"
+          className="w-full px-3 py-2.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
+        />
+      </div>
+
+      {/* Slab Tiers */}
+      <div>
+        <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
+          Slab Tiers
+        </p>
+        <div className="space-y-2">
+          {config.slabTiers.map((tier, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <div className="flex-1">
+                <input
+                  type="number"
+                  min={1}
+                  value={tier.fromQty}
+                  onChange={(e) => updateTier(idx, 'fromQty', e.target.value)}
+                  placeholder="From Qty"
+                  className="w-full px-2.5 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
+                />
+              </div>
+              <div className="flex-1">
+                <input
+                  type="number"
+                  min={0}
+                  value={tier.toQty}
+                  onChange={(e) => updateTier(idx, 'toQty', e.target.value)}
+                  placeholder="To Qty (blank=\u221e)"
+                  className="w-full px-2.5 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
+                />
+              </div>
+              <div className="flex-1">
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={tier.ratePerPiece}
+                  onChange={(e) => updateTier(idx, 'ratePerPiece', e.target.value)}
+                  placeholder="Rate \u20b9/pc"
+                  className="w-full px-2.5 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => removeTier(idx)}
+                className="p-1.5 text-neutral-400 hover:text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors shrink-0"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={addTier}
+          className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
+        >
+          <Plus size={14} />
+          Add Tier
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Modal ── */
+
+export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: SlabConfigModalProps) {
+  const bulkCreateMutation = useBulkCreatePipSlabConfigs();
+
+  // Step state
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+
+  // Step 1: Machine selection
+  const [selectedMachineIds, setSelectedMachineIds] = useState<Set<string>>(new Set());
+
+  // Step 2: Part selection
+  const [selectedPartIds, setSelectedPartIds] = useState<Set<string>>(new Set());
+
+  // Step 3: Part configs
+  const [partConfigs, setPartConfigs] = useState<PartConfigForm[]>([]);
+
+  /* ── Machine handlers ── */
+
+  const toggleMachine = (id: string) => {
+    setSelectedMachineIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllMachines = () => {
+    if (selectedMachineIds.size === machines.length) {
+      setSelectedMachineIds(new Set());
+    } else {
+      setSelectedMachineIds(new Set(machines.map((m) => m.id)));
+    }
+  };
+
+  /* ── Part handlers ── */
+
+  const togglePart = (id: string) => {
+    setSelectedPartIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllParts = () => {
+    if (selectedPartIds.size === parts.length) {
+      setSelectedPartIds(new Set());
+    } else {
+      setSelectedPartIds(new Set(parts.map((p) => p.id)));
+    }
+  };
+
+  /* ── Step transitions ── */
+
+  const goToStep2 = () => {
+    if (selectedMachineIds.size === 0) {
+      showApiError({ message: 'Select at least one machine' });
+      return;
+    }
+    setStep(2);
+  };
+
+  const goToStep3 = () => {
+    if (selectedPartIds.size === 0) {
+      showApiError({ message: 'Select at least one part' });
+      return;
+    }
+    // Build part configs from selection
+    const configs: PartConfigForm[] = Array.from(selectedPartIds).map((pid) => {
+      const part = parts.find((p) => p.id === pid);
+      // Preserve existing config if available
+      const existing = partConfigs.find((c) => c.partId === pid);
+      return (
+        existing ?? {
+          partId: pid,
+          partNumber: part?.partNumber ?? '',
+          partName: part?.name ?? '',
+          shiftTargetQty: '',
+          slabTiers: [{ ...EMPTY_TIER }],
+        }
+      );
+    });
+    setPartConfigs(configs);
+    setStep(3);
+  };
+
+  /* ── Save ── */
+
+  const handleSave = async () => {
+    // Validate
+    for (const cfg of partConfigs) {
+      if (!cfg.shiftTargetQty || Number(cfg.shiftTargetQty) < 1) {
+        showApiError({ message: `Shift target required for ${cfg.partNumber}` });
+        return;
+      }
+      if (cfg.slabTiers.length === 0) {
+        showApiError({ message: `At least one slab tier required for ${cfg.partNumber}` });
+        return;
+      }
+      for (const tier of cfg.slabTiers) {
+        if (!tier.fromQty || !tier.ratePerPiece) {
+          showApiError({ message: `From Qty and Rate are required in all tiers for ${cfg.partNumber}` });
+          return;
+        }
+      }
+    }
+
+    const payload = {
+      machineIds: Array.from(selectedMachineIds),
+      configs: partConfigs.map((cfg) => ({
+        partId: cfg.partId,
+        shiftTargetQty: Number(cfg.shiftTargetQty),
+        slabTiers: cfg.slabTiers.map((t) => ({
+          fromQty: Number(t.fromQty),
+          toQty: t.toQty ? Number(t.toQty) : null,
+          ratePerPiece: Number(t.ratePerPiece),
+        })),
+      })),
+    };
+
+    try {
+      await bulkCreateMutation.mutateAsync(payload);
+      const machineCount = selectedMachineIds.size;
+      const partCount = partConfigs.length;
+      showSuccess(
+        'Slab Configs Saved',
+        `${machineCount * partCount} config(s) saved \u2014 ${machineCount} machine(s) \u00d7 ${partCount} part(s)`,
+      );
+      onSaved();
+      handleClose();
+    } catch (err) {
+      showApiError(err);
+    }
+  };
+
+  const handleClose = () => {
+    setStep(1);
+    setSelectedMachineIds(new Set());
+    setSelectedPartIds(new Set());
+    setPartConfigs([]);
+    onClose();
+  };
+
+  const saving = bulkCreateMutation.isPending;
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-3xl animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
+          <div>
+            <h2 className="text-lg font-bold text-primary-950 dark:text-white">Add Slab Configuration</h2>
+            <p className="text-xs text-neutral-400 mt-0.5">
+              Step {step} of 3 &mdash;{' '}
+              {step === 1 ? 'Select Machines' : step === 2 ? 'Select Parts' : 'Set Targets & Slabs'}
+            </p>
+          </div>
+          <button
+            onClick={handleClose}
+            className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Step Indicator */}
+        <div className="px-6 pt-4">
+          <div className="flex items-center gap-2">
+            {[1, 2, 3].map((s) => (
+              <div key={s} className="flex items-center gap-2 flex-1">
+                <div
+                  className={cn(
+                    'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors',
+                    step >= s
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-neutral-200 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400',
+                  )}
+                >
+                  {step > s ? <Check size={14} /> : s}
+                </div>
+                {s < 3 && (
+                  <div
+                    className={cn(
+                      'h-0.5 flex-1 rounded-full transition-colors',
+                      step > s ? 'bg-primary-600' : 'bg-neutral-200 dark:bg-neutral-700',
+                    )}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 overflow-y-auto flex-1 space-y-5 min-h-[40vh]">
+          {/* Step 1: Machines */}
+          {step === 1 && (
+            <>
+              <CheckboxDropdown
+                label="Machines"
+                items={machines}
+                selectedIds={selectedMachineIds}
+                onToggle={toggleMachine}
+                onSelectAll={selectAllMachines}
+                searchPlaceholder="Search by asset code or name..."
+                renderItem={(m) => (
+                  <div className="text-left">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-primary-700 dark:text-primary-400">
+                        {m.assetCode}
+                      </span>
+                      <span className="text-neutral-700 dark:text-neutral-300">{m.assetName}</span>
+                    </div>
+                    {(m.zone || m.category) && (
+                      <p className="text-[10px] text-neutral-400 mt-0.5">
+                        {[m.zone?.name, m.category?.name].filter(Boolean).join(' \u2022 ')}
+                      </p>
+                    )}
+                  </div>
+                )}
+              />
+
+              {/* Selected Chips */}
+              {selectedMachineIds.size > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {Array.from(selectedMachineIds).map((id) => {
+                    const m = machines.find((x) => x.id === id);
+                    if (!m) return null;
+                    return (
+                      <span
+                        key={id}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 text-xs font-bold border border-primary-100 dark:border-primary-800/50"
+                      >
+                        {m.assetCode}
+                        <button
+                          type="button"
+                          onClick={() => toggleMachine(id)}
+                          className="hover:text-danger-500 transition-colors"
+                        >
+                          <X size={12} />
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Step 2: Parts */}
+          {step === 2 && (
+            <>
+              <CheckboxDropdown
+                label="Parts"
+                items={parts}
+                selectedIds={selectedPartIds}
+                onToggle={togglePart}
+                onSelectAll={selectAllParts}
+                searchPlaceholder="Search by part no or name..."
+                renderItem={(p) => (
+                  <div className="text-left">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-primary-700 dark:text-primary-400">
+                        {p.partNumber}
+                      </span>
+                      <span className="text-neutral-700 dark:text-neutral-300">{p.name}</span>
+                    </div>
+                  </div>
+                )}
+              />
+
+              {/* Selected Chips */}
+              {selectedPartIds.size > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {Array.from(selectedPartIds).map((id) => {
+                    const p = parts.find((x) => x.id === id);
+                    if (!p) return null;
+                    return (
+                      <span
+                        key={id}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 text-xs font-bold border border-primary-100 dark:border-primary-800/50"
+                      >
+                        {p.partNumber}
+                        <button
+                          type="button"
+                          onClick={() => togglePart(id)}
+                          className="hover:text-danger-500 transition-colors"
+                        >
+                          <X size={12} />
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Step 3: Config per Part */}
+          {step === 3 && (
+            <div className="space-y-4">
+              {partConfigs.map((cfg, idx) => (
+                <PartConfigCard
+                  key={cfg.partId}
+                  config={cfg}
+                  onChange={(updated) => {
+                    const next = [...partConfigs];
+                    next[idx] = updated;
+                    setPartConfigs(next);
+                  }}
+                  onRemove={() => {
+                    setPartConfigs((prev) => prev.filter((_, i) => i !== idx));
+                    setSelectedPartIds((prev) => {
+                      const next = new Set(prev);
+                      next.delete(cfg.partId);
+                      return next;
+                    });
+                  }}
+                />
+              ))}
+              {partConfigs.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-sm text-neutral-400">No parts selected. Go back to add parts.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
+          <div>
+            {step > 1 && (
+              <button
+                type="button"
+                onClick={() => setStep((s) => (s - 1) as 1 | 2 | 3)}
+                className="inline-flex items-center gap-1.5 py-2.5 px-4 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+              >
+                <ChevronLeft size={16} />
+                Back
+              </button>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={handleClose}
+              className="py-2.5 px-5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+            >
+              Cancel
+            </button>
+            {step < 3 ? (
+              <button
+                onClick={step === 1 ? goToStep2 : goToStep3}
+                className="inline-flex items-center gap-1.5 py-2.5 px-5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors shadow-md shadow-primary-500/20"
+              >
+                Next
+                <ChevronRight size={16} />
+              </button>
+            ) : (
+              <button
+                onClick={handleSave}
+                disabled={saving || partConfigs.length === 0}
+                className="inline-flex items-center gap-2 py-2.5 px-5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 shadow-md shadow-primary-500/20"
+              >
+                {saving && <Loader2 size={14} className="animate-spin" />}
+                {saving ? 'Saving...' : 'Save All'}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

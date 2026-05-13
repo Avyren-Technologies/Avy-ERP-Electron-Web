@@ -249,10 +249,25 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
     });
 
     // Build module→section mapping for module-level collapse
+    // Only associate sections with a module separator if the section has the separator
+    // itself, or if all items in the section share the same module as the separator's items.
     const sectionModuleMap: Record<string, string> = {};
     let _currentMod = '';
-    for (const s of visibleSections) {
-        if (s.moduleSeparator) _currentMod = s.moduleSeparator;
+    let _currentModModule = ''; // the `module` field value of the separator-bearing section
+    for (let i = 0; i < visibleSections.length; i++) {
+        const s = visibleSections[i];
+        const raw = (manifestSections ?? [])[i];
+        if (s.moduleSeparator) {
+            _currentMod = s.moduleSeparator;
+            _currentModModule = raw?.items?.[0]?.module ?? '';
+        } else if (_currentMod && raw) {
+            // Reset if this section's items belong to a different module (or null module)
+            const sectionModule = raw.items?.[0]?.module ?? '';
+            if (sectionModule !== _currentModModule) {
+                _currentMod = '';
+                _currentModModule = '';
+            }
+        }
         if (_currentMod) sectionModuleMap[s.group] = _currentMod;
     }
 
@@ -342,12 +357,16 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
                 {visibleSections.map((section) => {
                     const isOverview = section.group === 'Overview';
                     const hasOnlyChildItems = section.items.every(item => item.children && item.children.length > 0);
-                    const isNonCollapsible = isOverview || hasOnlyChildItems;
+                    // Single-item sections inside a module separator render as direct nav items (no group header)
+                    const isSingleItemInModule = section.items.length === 1 && !!sectionModuleMap[section.group];
+                    const isNonCollapsible = isOverview || hasOnlyChildItems || isSingleItemInModule;
                     const isSectionCollapsed = !isNonCollapsible && !collapsed && !!collapsedSections[section.group];
                     const moduleOfSection = sectionModuleMap[section.group];
                     const isModuleCollapsed = !!moduleOfSection && !!collapsedModules[moduleOfSection];
                     const sectionHasActive = section.items.some(item => isItemActive(item));
                     const SectionIcon = section.items[0]?.icon ?? Blocks;
+                    // Strip module prefix from group names for display (e.g. "PIP Masters" → "Masters")
+                    const displayGroup = moduleOfSection ? section.group.replace(/^PIP\s+/i, '') : section.group;
 
                     return (
                     <div key={section.group}>
@@ -379,9 +398,11 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
                         <div className={cn('mb-1', collapsed ? 'px-2' : 'px-3')}>
                             {/* Section header */}
                             {!collapsed && (isNonCollapsible ? (
-                                <p className="px-3 pt-3 pb-1.5 text-[10px] font-bold uppercase tracking-widest text-neutral-600 dark:text-neutral-300">
-                                    {section.group}
-                                </p>
+                                !isSingleItemInModule && (
+                                    <p className="px-3 pt-3 pb-1.5 text-[10px] font-bold uppercase tracking-widest text-neutral-600 dark:text-neutral-300">
+                                        {section.group}
+                                    </p>
+                                )
                             ) : (
                                 <button
                                     onClick={() => toggleSection(section.group)}
@@ -405,7 +426,7 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
                                         )}
                                     />
                                     <span className={cn('flex-1 text-left text-sm font-medium whitespace-nowrap', sectionHasActive && 'font-semibold')}>
-                                        {section.group}
+                                        {displayGroup}
                                     </span>
                                     <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
                                         {section.items.length}

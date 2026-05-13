@@ -264,6 +264,19 @@ const MyLoanScreen = lazyNamed(() => import("./features/ess/MyLoanScreen"), "MyL
 const MyAppraisalScreen = lazyNamed(() => import("./features/ess/MyAppraisalScreen"), "MyAppraisalScreen");
 const MyOvertimeScreen = lazyNamed(() => import("./features/ess/MyOvertimeScreen"), "MyOvertimeScreen");
 
+// ─── Masters ───
+const PartMasterScreen = lazyNamed(() => import("./features/masters/PartMasterScreen"), "PartMasterScreen");
+const MachineMasterScreen = lazyNamed(() => import("./features/masters/MachineMasterScreen"), "MachineMasterScreen");
+
+// ─── Production Incentive Plan (PIP) ───
+const PipDashboard = lazyNamed(() => import("./features/production/pip/PipDashboard"), "PipDashboard");
+const PipSlabConfigScreen = lazyNamed(() => import("./features/production/pip/PipSlabConfigScreen"), "PipSlabConfigScreen");
+const PipDailyEntryScreen = lazyNamed(() => import("./features/production/pip/PipDailyEntryScreen"), "PipDailyEntryScreen");
+const PipIncentiveCalculator = lazyNamed(() => import("./features/production/pip/PipIncentiveCalculator"), "PipIncentiveCalculator");
+const PipDailyReportScreen = lazyNamed(() => import("./features/production/pip/PipDailyReportScreen"), "PipDailyReportScreen");
+const PipIncentiveSummaryScreen = lazyNamed(() => import("./features/production/pip/PipIncentiveSummaryScreen"), "PipIncentiveSummaryScreen");
+const PipIncentiveConfig = lazyNamed(() => import("./features/production/pip/PipIncentiveConfig"), "PipIncentiveConfig");
+
 // ─── Operations Modules ───
 const InventoryScreen = lazyNamed(() => import("./features/inventory/InventoryScreen"), "InventoryScreen");
 const ProductionScreen = lazyNamed(() => import("./features/production/ProductionScreen"), "ProductionScreen");
@@ -565,6 +578,17 @@ function App() {
         <Route path="company/visitors/reports" element={<RequirePermission permission="visitors.reports:read"><VisitorReportsScreen /></RequirePermission>} />
         {/* DocDiff Pro */}
         <Route path="docdiff" element={<RequirePermission permission="docdiff:read"><DocDiffScreen /></RequirePermission>} />
+        {/* Masters */}
+        <Route path="company/masters/parts" element={<RequirePermission permission="masters.parts:read"><PartMasterScreen /></RequirePermission>} />
+        <Route path="company/masters/machines" element={<RequirePermission permission="masters.machines:read"><MachineMasterScreen /></RequirePermission>} />
+        {/* Production Incentive Plan */}
+        <Route path="company/production/pip/dashboard" element={<RequirePermission permission="production.pip:read"><PipDashboard /></RequirePermission>} />
+        <Route path="company/production/pip/slab-config" element={<RequirePermission permission="production.pip:read"><PipSlabConfigScreen /></RequirePermission>} />
+        <Route path="company/production/pip/daily-entry" element={<RequirePermission permission="production.pip:create"><PipDailyEntryScreen /></RequirePermission>} />
+        <Route path="company/production/pip/calculator" element={<RequirePermission permission="production.pip:read"><PipIncentiveCalculator /></RequirePermission>} />
+        <Route path="company/production/pip/daily-report" element={<RequirePermission permission="production.pip:read"><PipDailyReportScreen /></RequirePermission>} />
+        <Route path="company/production/pip/summary-report" element={<RequirePermission permission="production.pip:read"><PipIncentiveSummaryScreen /></RequirePermission>} />
+        <Route path="company/production/pip/config" element={<RequirePermission permission="production.pip:configure"><PipIncentiveConfig /></RequirePermission>} />
         {/* Operations module routes */}
         <Route path="inventory" element={<RequireRole roles={['super-admin', 'company-admin']}><InventoryScreen /></RequireRole>} />
         <Route path="production" element={<RequireRole roles={['super-admin', 'company-admin']}><ProductionScreen /></RequireRole>} />

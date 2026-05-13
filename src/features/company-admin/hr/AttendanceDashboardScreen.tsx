@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
+    Users,
     UserCheck,
     UserX,
     Clock,
@@ -37,10 +38,16 @@ interface KpiProps {
     label: string;
     value: number;
     icon: React.ComponentType<{ className?: string; size?: number }>;
-    color: "success" | "danger" | "warning" | "primary";
+    color: "success" | "danger" | "warning" | "primary" | "accent";
 }
 
 const colorMap = {
+    accent: {
+        bg: "bg-accent-50 dark:bg-accent-900/20",
+        border: "border-accent-100 dark:border-accent-800/50",
+        icon: "text-accent-600 dark:text-accent-400",
+        value: "text-accent-700 dark:text-accent-400",
+    },
     success: {
         bg: "bg-success-50 dark:bg-success-900/20",
         border: "border-success-100 dark:border-success-800/50",
@@ -70,14 +77,14 @@ const colorMap = {
 function KpiCard({ label, value, icon: Icon, color }: KpiProps) {
     const c = colorMap[color];
     return (
-        <div className={cn("rounded-2xl border p-5", c.bg, c.border)}>
-            <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">{label}</span>
-                <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", c.bg)}>
-                    <Icon size={16} className={c.icon} />
+        <div className={cn("rounded-2xl border p-4", c.bg, c.border)}>
+            <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">{label}</span>
+                <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center", c.bg)}>
+                    <Icon size={14} className={c.icon} />
                 </div>
             </div>
-            <p className={cn("text-3xl font-extrabold", c.value)}>{value}</p>
+            <p className={cn("text-2xl font-extrabold", c.value)}>{value}</p>
         </div>
     );
 }
@@ -510,9 +517,10 @@ export function AttendanceDashboardScreen() {
 
             {/* KPI Row */}
             {summaryQuery.isLoading ? (
-                <SkeletonKPIGrid count={4} />
+                <SkeletonKPIGrid count={5} />
             ) : (
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                    <KpiCard label="Total Employees" value={summary.total ?? 0} icon={Users} color="accent" />
                     <KpiCard label="Present" value={summary.present ?? 0} icon={UserCheck} color="success" />
                     <KpiCard label="Absent" value={summary.absent ?? 0} icon={UserX} color="danger" />
                     <KpiCard label="Late" value={summary.late ?? 0} icon={Clock} color="warning" />

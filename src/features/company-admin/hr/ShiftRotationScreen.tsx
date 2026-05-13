@@ -14,7 +14,7 @@ import {
     Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useShiftRotations } from "@/features/company-admin/api/use-shift-rotation-queries";
+import { useShiftRotations, useRotationEmployeeOverview } from "@/features/company-admin/api/use-shift-rotation-queries";
 import {
     useCreateShiftRotation,
     useUpdateShiftRotation,
@@ -156,8 +156,12 @@ export function ShiftRotationScreen() {
     const [assignModalOpen, setAssignModalOpen] = useState(false);
     const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
     const [executeResult, setExecuteResult] = useState<any>(null);
+    const [activeTab, setActiveTab] = useState<'schedules' | 'overview'>('schedules');
+    const [overviewSearch, setOverviewSearch] = useState("");
+    const [overviewFilter, setOverviewFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
 
     const { data, isLoading, isError } = useShiftRotations();
+    const { data: overviewData, isLoading: overviewLoading } = useRotationEmployeeOverview(overviewSearch || undefined);
     const createMutation = useCreateShiftRotation();
     const updateMutation = useUpdateShiftRotation();
     const deleteMutation = useDeleteShiftRotation();
@@ -312,15 +316,47 @@ export function ShiftRotationScreen() {
                     <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Shift Rotations</h1>
                     <p className="text-neutral-500 dark:text-neutral-400 mt-1">Manage shift rotation schedules</p>
                 </div>
+                {activeTab === 'schedules' && (
+                    <button
+                        onClick={openCreate}
+                        className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none"
+                    >
+                        <Plus className="w-5 h-5" />
+                        Add Schedule
+                    </button>
+                )}
+            </div>
+
+            {/* Tab Bar */}
+            <div className="bg-white dark:bg-neutral-900 p-1.5 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm flex gap-1">
                 <button
-                    onClick={openCreate}
-                    className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none"
+                    onClick={() => setActiveTab('schedules')}
+                    className={cn(
+                        "flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2",
+                        activeTab === 'schedules'
+                            ? "bg-primary-600 text-white shadow-md shadow-primary-500/20"
+                            : "text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                    )}
                 >
-                    <Plus className="w-5 h-5" />
-                    Add Schedule
+                    <RotateCcw className="w-4 h-4" />
+                    Schedules
+                </button>
+                <button
+                    onClick={() => setActiveTab('overview')}
+                    className={cn(
+                        "flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2",
+                        activeTab === 'overview'
+                            ? "bg-primary-600 text-white shadow-md shadow-primary-500/20"
+                            : "text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                    )}
+                >
+                    <Users className="w-4 h-4" />
+                    Employee Overview
                 </button>
             </div>
 
+            {activeTab === 'schedules' && (
+            <>
             {/* Toolbar */}
             <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm">
                 <div className="relative max-w-md w-full">
@@ -417,6 +453,129 @@ export function ShiftRotationScreen() {
                     </div>
                 )}
             </div>
+            </>
+            )}
+
+            {activeTab === 'overview' && (
+            <>
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {(() => {
+                        const summary = (overviewData as any)?.data?.summary ?? { total: 0, assigned: 0, unassigned: 0 };
+                        const cards = [
+                            { label: 'Total Employees', value: summary.total, iconEl: <Users className="w-5 h-5 text-primary-600 dark:text-primary-400" />, bgClass: 'bg-primary-50 dark:bg-primary-900/30' },
+                            { label: 'Assigned', value: summary.assigned, iconEl: <RotateCcw className="w-5 h-5 text-success-600 dark:text-success-400" />, bgClass: 'bg-success-50 dark:bg-success-900/30' },
+                            { label: 'Unassigned', value: summary.unassigned, iconEl: <UserMinus className="w-5 h-5 text-warning-600 dark:text-warning-400" />, bgClass: 'bg-warning-50 dark:bg-warning-900/30' },
+                        ];
+                        return cards.map((card) => (
+                            <div key={card.label} className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm p-5">
+                                <div className="flex items-center gap-3">
+                                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", card.bgClass)}>
+                                        {card.iconEl}
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">{card.label}</p>
+                                        <p className="text-2xl font-bold text-primary-950 dark:text-white">{card.value}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ));
+                    })()}
+                </div>
+
+                {/* Toolbar: Filter + Search */}
+                <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm flex flex-col sm:flex-row gap-3">
+                    <div className="flex gap-1 bg-neutral-100 dark:bg-neutral-800 rounded-xl p-1">
+                        {(['all', 'assigned', 'unassigned'] as const).map((f) => (
+                            <button
+                                key={f}
+                                onClick={() => setOverviewFilter(f)}
+                                className={cn(
+                                    "px-4 py-2 rounded-lg text-xs font-bold transition-all capitalize",
+                                    overviewFilter === f
+                                        ? "bg-white dark:bg-neutral-700 text-primary-700 dark:text-primary-400 shadow-sm"
+                                        : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-700"
+                                )}
+                            >
+                                {f}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="relative flex-1 max-w-md">
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400 dark:text-neutral-500" />
+                        <input
+                            type="text"
+                            placeholder="Search employees..."
+                            value={overviewSearch}
+                            onChange={(e) => setOverviewSearch(e.target.value)}
+                            className="w-full pl-11 pr-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
+                        />
+                    </div>
+                </div>
+
+                {/* Employee Table */}
+                <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-xl shadow-neutral-900/5 overflow-hidden">
+                    {overviewLoading ? (
+                        <SkeletonTable rows={8} cols={6} />
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse min-w-[800px]">
+                                <thead>
+                                    <tr className="bg-neutral-50/50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
+                                        <th className="py-4 px-6 font-bold">Employee</th>
+                                        <th className="py-4 px-6 font-bold">Employee ID</th>
+                                        <th className="py-4 px-6 font-bold">Department</th>
+                                        <th className="py-4 px-6 font-bold">Current Shift</th>
+                                        <th className="py-4 px-6 font-bold">Rotation Schedule</th>
+                                        <th className="py-4 px-6 font-bold text-center">Pattern</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="text-sm">
+                                    {(() => {
+                                        const employees = ((overviewData as any)?.data?.employees ?? [])
+                                            .filter((emp: any) => {
+                                                if (overviewFilter === 'assigned') return emp.rotationSchedule !== null;
+                                                if (overviewFilter === 'unassigned') return emp.rotationSchedule === null;
+                                                return true;
+                                            });
+                                        if (employees.length === 0) {
+                                            return (
+                                                <tr><td colSpan={6}>
+                                                    <EmptyState icon="list" title="No employees found" message={overviewSearch ? `No employees match "${overviewSearch}".` : "No employees available."} />
+                                                </td></tr>
+                                            );
+                                        }
+                                        return employees.map((emp: any) => (
+                                            <tr key={emp.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
+                                                <td className="py-4 px-6 font-bold text-primary-950 dark:text-white">{emp.firstName} {emp.lastName}</td>
+                                                <td className="py-4 px-6 font-mono text-xs text-neutral-600 dark:text-neutral-400">{emp.employeeCode}</td>
+                                                <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{emp.department ?? '—'}</td>
+                                                <td className="py-4 px-6">
+                                                    <span className="text-neutral-700 dark:text-neutral-300">{emp.currentShift?.name ?? '—'}</span>
+                                                    {emp.currentShift?.noShuffle && (
+                                                        <span className="ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full border bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50">No Shuffle</span>
+                                                    )}
+                                                </td>
+                                                <td className="py-4 px-6">
+                                                    {emp.rotationSchedule ? (
+                                                        <span className="font-semibold text-primary-700 dark:text-primary-400">{emp.rotationSchedule.name}</span>
+                                                    ) : (
+                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-neutral-100 text-neutral-500 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700">Not Assigned</span>
+                                                    )}
+                                                </td>
+                                                <td className="py-4 px-6 text-center">
+                                                    {emp.rotationSchedule ? <PatternBadge pattern={emp.rotationSchedule.pattern} /> : <span className="text-neutral-300 dark:text-neutral-600">—</span>}
+                                                </td>
+                                            </tr>
+                                        ));
+                                    })()}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            </>
+            )}
 
             {/* ── Create/Edit Modal ── */}
             {modalOpen && (

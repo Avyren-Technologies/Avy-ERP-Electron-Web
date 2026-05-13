@@ -127,6 +127,7 @@ const DEFAULTS: SystemControls = {
     mobileAppEnabled: true,
     aiChatbotEnabled: false,
     // Production
+    productionIncentivePlanEnabled: false,
     ncEditMode: false,
     loadUnload: false,
     cycleTime: false,
@@ -201,6 +202,7 @@ const SECTIONS: ControlSection[] = [
         sectionDescription: "Control production-related features like non-conformance editing, machine tracking, and cycle time recording.",
         icon: Factory,
         fields: [
+            { key: "productionIncentivePlanEnabled", label: "Production Incentive Plan", description: "Enable PIP module — slab-based incentive calculation, daily entry, reports, and payroll merge", type: "toggle" },
             { key: "ncEditMode", label: "NC Edit Mode", description: "Allow editing non-conformance records", type: "toggle" },
             { key: "loadUnload", label: "Load / Unload Tracking", description: "Track machine loading and unloading events", type: "toggle" },
             { key: "cycleTime", label: "Cycle Time Capture", description: "Record cycle times for production runs", type: "toggle" },
