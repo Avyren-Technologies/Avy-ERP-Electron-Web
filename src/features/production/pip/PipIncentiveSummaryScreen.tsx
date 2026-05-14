@@ -208,18 +208,22 @@ export function PipIncentiveSummaryScreen() {
   const handleExportPdf = async () => {
     try {
       const response = await client.get('/production/pip/export/monthly-report', {
-        params: { month: selected.month, year: selected.year },
+        params: { year: selected.year, format: 'pdf' },
         responseType: 'blob',
       });
-      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const contentType = response.headers['content-type'] || 'text/csv';
+      const blob = new Blob([response.data], { type: contentType });
+      const disposition = response.headers['content-disposition'] || '';
+      const filenameMatch = disposition.match(/filename="?([^"]+)"?/);
+      const filename = filenameMatch?.[1] || `monthly-report-${selected.year}.csv`;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `incentive-summary-${selected.year}-${String(selected.month).padStart(2, '0')}.pdf`;
+      a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      showApiError({ message: 'PDF export is not available for this report.' });
+      showApiError({ message: 'Export is not available for this report.' });
     }
   };
 

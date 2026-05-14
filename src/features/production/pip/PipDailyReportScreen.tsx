@@ -122,13 +122,18 @@ export function PipDailyReportScreen() {
         params,
         responseType: 'blob',
       });
-      const blob = new Blob([response.data], {
-        type: format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      });
+      const contentType = response.headers['content-type'] || (format === 'excel'
+        ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        : 'text/csv');
+      const blob = new Blob([response.data], { type: contentType });
+      // Derive extension from Content-Disposition or content type
+      const disposition = response.headers['content-disposition'] || '';
+      const filenameMatch = disposition.match(/filename="?([^"]+)"?/);
+      const filename = filenameMatch?.[1] || `daily-report-${entryDate}.${format === 'excel' ? 'xlsx' : 'csv'}`;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `daily-report-${entryDate}.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
+      a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
