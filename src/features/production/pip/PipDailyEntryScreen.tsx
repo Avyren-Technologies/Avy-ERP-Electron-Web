@@ -1573,13 +1573,28 @@ export function PipDailyEntryScreen() {
                   return (
                     <tr key={entry.id} className="border-b border-neutral-50 dark:border-neutral-800/50 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
                       <td className="px-4 py-3">
-                        <p className="font-bold text-neutral-900 dark:text-white text-sm">{entry.operatorId}</p>
+                        <p className="font-bold text-neutral-900 dark:text-white text-sm">
+                          {entry.operator ? `${entry.operator.firstName ?? ''} ${entry.operator.lastName ?? ''}`.trim() : entry.operatorId}
+                        </p>
+                        {entry.operator?.employeeId && (
+                          <p className="text-[10px] text-neutral-400">{entry.operator.employeeId}</p>
+                        )}
                       </td>
                       <td className="px-3 py-3">
-                        <p className="font-medium text-neutral-900 dark:text-white text-sm">{entry.machineId}</p>
+                        <p className="font-medium text-neutral-900 dark:text-white text-sm">
+                          {entry.slabConfig?.machine?.assetName ?? entry.machineId}
+                        </p>
+                        {entry.slabConfig?.machine?.assetCode && (
+                          <p className="text-[10px] text-neutral-400">{entry.slabConfig.machine.assetCode}</p>
+                        )}
                       </td>
                       <td className="px-3 py-3">
-                        <span className="text-xs text-neutral-500">{entry.partId}</span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-xs font-bold">
+                          {entry.slabConfig?.part?.partNumber ?? entry.partId}
+                        </span>
+                        {entry.slabConfig?.part?.name && (
+                          <p className="text-[10px] text-neutral-400 mt-0.5">{entry.slabConfig.part.name}</p>
+                        )}
                       </td>
                       <td className="text-center px-3 py-3 font-semibold text-neutral-700 dark:text-neutral-300">{entry.qtyProduced}</td>
                       <td className="text-center px-3 py-3 text-neutral-500">{entry.shiftTargetQty}</td>

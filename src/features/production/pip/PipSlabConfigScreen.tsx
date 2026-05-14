@@ -13,6 +13,8 @@ import {
   Settings2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { exportToExcel } from '@/lib/export-utils';
+import { useCompanyProfile } from '@/features/company-admin/api/use-company-admin-queries';
 import { usePipSlabConfigs } from '@/features/production/pip/api/use-pip-queries';
 import {
   useUpdatePipSlabConfig,
@@ -254,6 +256,8 @@ export function PipSlabConfigScreen() {
   const { data: partsData } = useParts({ limit: 500, status: 'ACTIVE' });
   const { data: machinesData } = useMachines({ limit: 500 });
 
+  const { data: profileData } = useCompanyProfile();
+
   const slabConfigs: PipSlabConfig[] = slabData?.data ?? [];
   const meta = slabData?.meta;
   const allParts: Part[] = partsData?.data ?? [];
@@ -278,24 +282,24 @@ export function PipSlabConfigScreen() {
   };
 
   const handleExport = () => {
-    const headers = ['Machine Code', 'Machine Name', 'Part No', 'Part Name', 'Shift Target', 'Tiers', 'Status'];
+    const headers = ['Machine Code', 'Machine Name', 'Part No', 'Part Name', 'Shift Target', 'Slab Tiers', 'Status'];
     const rows = slabConfigs.map((c) => [
       c.machine?.assetCode ?? '',
       c.machine?.assetName ?? '',
       c.part?.partNumber ?? '',
       c.part?.name ?? '',
-      String(c.shiftTargetQty),
-      c.slabTiers.map((t) => `${t.fromQty}-${t.toQty ?? '\u221e'}@${t.ratePerPiece}`).join('; '),
+      c.shiftTargetQty,
+      c.slabTiers.map((t) => `${t.fromQty}-${t.toQty ?? '\u221e'}@\u20b9${t.ratePerPiece}`).join('; '),
       c.isActive ? 'Active' : 'Inactive',
     ]);
-    const csv = [headers, ...rows].map((r) => r.map((cell) => `"${cell}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'slab-configs-export.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+    const companyName = profileData?.data?.name ?? profileData?.data?.displayName ?? '';
+    exportToExcel(headers, rows, {
+      fileName: 'slab-configs-export',
+      sheetName: 'Slab Configuration',
+      companyName,
+      title: 'Slab Configuration Report',
+      reportDate: new Date().toLocaleDateString(),
+    });
   };
 
   const totalPages = meta?.totalPages ?? 1;

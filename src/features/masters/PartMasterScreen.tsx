@@ -12,6 +12,8 @@ import {
   Package,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { exportToExcel } from '@/lib/export-utils';
+import { useCompanyProfile } from '@/features/company-admin/api/use-company-admin-queries';
 import { useParts, usePartCategories, useProductModels, useUoms } from '@/features/masters/api/use-masters-queries';
 import {
   useCreatePart,
@@ -247,6 +249,7 @@ export function PartMasterScreen() {
   const { data: categoriesData } = usePartCategories();
   const { data: modelsData } = useProductModels();
   const { data: uomsData } = useUoms();
+  const { data: profileData } = useCompanyProfile();
 
   const parts: Part[] = partsData?.data ?? [];
   const meta = partsData?.meta;
@@ -387,23 +390,39 @@ export function PartMasterScreen() {
   };
 
   const handleExport = () => {
-    const headers = ['Part No', 'Name', 'Product Model', 'Engineering Part No', 'Part Type', 'Status'];
+    const headers = [
+      'Part No', 'Name', 'Product Model', 'Engineering Part No', 'Category', 'UOM',
+      'Part Type', 'HSN Code', 'Weight (kg)', 'Dimensions', 'Revision', 'Drawing Reference',
+      'Status', 'Batch Tracked', 'Serial Tracked', 'BOM Enabled', 'QC Required', 'Inventory Item',
+    ];
     const rows = parts.map((p) => [
       p.partNumber,
       p.name,
       p.productModel?.name ?? '',
       p.engineeringPartNo ?? '',
+      p.category?.name ?? '',
+      p.uom ? `${p.uom.name} (${p.uom.abbreviation})` : '',
       p.partType,
+      p.hsnCode ?? '',
+      p.weight != null ? p.weight : '',
+      p.dimensions ?? '',
+      p.revision ?? '',
+      p.drawingReference ?? '',
       p.status,
+      p.isBatchTracked ? 'Yes' : 'No',
+      p.isSerialTracked ? 'Yes' : 'No',
+      p.isBomEnabled ? 'Yes' : 'No',
+      p.isQcRequired ? 'Yes' : 'No',
+      p.isInventoryItem ? 'Yes' : 'No',
     ]);
-    const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'parts-export.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+    const companyName = profileData?.data?.name ?? profileData?.data?.displayName ?? '';
+    exportToExcel(headers, rows, {
+      fileName: 'parts-export',
+      sheetName: 'Part Master',
+      companyName,
+      title: 'Part Master Report',
+      reportDate: new Date().toLocaleDateString(),
+    });
   };
 
   const saving = createMutation.isPending || updateMutation.isPending;

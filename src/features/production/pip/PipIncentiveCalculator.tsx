@@ -454,7 +454,7 @@ export function PipIncentiveCalculator() {
                           : 'text-amber-700 dark:text-amber-400',
                       )}
                     >
-                      {'\u20B9'}{result.totalIncentive.toFixed(2)}
+                      {'\u20B9'}{Number(result.totalIncentive).toFixed(2)}
                     </p>
                     <span
                       className={cn(
@@ -472,7 +472,7 @@ export function PipIncentiveCalculator() {
 
               {/* Per-part rows */}
               <div className="p-6 space-y-3">
-                {result.parts.map((part, idx) => (
+                {(result.parts ?? []).map((part, idx) => (
                   <div
                     key={idx}
                     className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-100 dark:border-neutral-700/50"
@@ -482,7 +482,7 @@ export function PipIncentiveCalculator() {
                         {part.partNumber}
                       </span>
                       <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                        {part.qtyProduced}/{part.shiftTargetQty} ({part.achievementPct.toFixed(0)}%)
+                        {part.qtyProduced}/{part.shiftTargetQty} ({Number(part.achievementPct).toFixed(0)}%)
                       </span>
                       <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
                         {part.breakdown}
@@ -491,12 +491,12 @@ export function PipIncentiveCalculator() {
                     <span
                       className={cn(
                         'text-sm font-bold',
-                        part.incentiveAmount > 0
+                        Number(part.incentiveAmount) > 0
                           ? 'text-success-600 dark:text-success-400'
                           : 'text-neutral-400',
                       )}
                     >
-                      {'\u20B9'}{part.incentiveAmount.toFixed(2)}
+                      {'\u20B9'}{Number(part.incentiveAmount).toFixed(2)}
                     </span>
                   </div>
                 ))}
@@ -509,13 +509,13 @@ export function PipIncentiveCalculator() {
                   <span
                     className={cn(
                       'inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border',
-                      result.cumulativeRatio >= 100
+                      Number(result.cumulativeRatio) >= 100
                         ? 'bg-success-50 text-success-700 border-success-100 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50'
                         : 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800/50',
                     )}
                   >
                     <TrendingUp size={12} />
-                    {result.cumulativeRatio.toFixed(1)}%
+                    {Number(result.cumulativeRatio).toFixed(1)}%
                   </span>
                 </div>
               </div>
@@ -604,12 +604,12 @@ export function PipIncentiveCalculator() {
                         <span
                           className={cn(
                             'font-bold',
-                            r && r.completion >= 100
+                            r && Number(r.completion ?? 0) >= 100
                               ? 'text-success-600 dark:text-success-400'
                               : 'text-amber-600 dark:text-amber-400',
                           )}
                         >
-                          {r ? `${r.completion.toFixed(0)}%` : '--'}
+                          {r ? `${Number(r.completion ?? 0).toFixed(0)}%` : '--'}
                         </span>
                       </td>
                       <td className="py-4 px-6">
@@ -632,12 +632,12 @@ export function PipIncentiveCalculator() {
                         <span
                           className={cn(
                             'font-bold',
-                            r && r.incentive > 0
+                            r && Number(r.incentive ?? 0) > 0
                               ? 'text-success-600 dark:text-success-400'
                               : 'text-neutral-400',
                           )}
                         >
-                          {r ? `\u20B9${r.incentive.toFixed(2)}` : '--'}
+                          {r ? `\u20B9${Number(r.incentive ?? 0).toFixed(2)}` : '--'}
                         </span>
                       </td>
                       <td className="py-4 px-6 text-xs text-neutral-500 dark:text-neutral-400">

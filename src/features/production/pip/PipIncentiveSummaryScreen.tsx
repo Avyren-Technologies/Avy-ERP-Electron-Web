@@ -23,7 +23,7 @@ import {
 } from '@/features/production/pip/api/use-pip-mutations';
 import { showSuccess, showApiError } from '@/lib/toast';
 import type { PipMonthlyReport } from '@/lib/api/pip';
-import { client } from '@/lib/api/client';
+import { exportToExcel, exportToCsv } from '@/lib/export-utils';
 
 /* ── Helpers ── */
 
@@ -205,25 +205,34 @@ export function PipIncentiveSummaryScreen() {
     }
   };
 
-  const handleExportPdf = async () => {
-    try {
-      const response = await client.get('/production/pip/export/monthly-report', {
-        params: { year: selected.year, format: 'pdf' },
-        responseType: 'blob',
+  const handleExport = (format: 'excel' | 'csv') => {
+    // Operator-wise summary export
+    const headers = ['Operator', 'Days Eligible', 'Total Days', 'Total Incentive', 'Avg/Day'];
+    const csvRows = operatorSummary.map((op) => {
+      const total = Number(op.totalIncentive ?? op.total ?? 0);
+      const daysEligible = Number(op.daysEligible ?? op.eligibleDays ?? 0);
+      const totalDays = Number(op.totalDays ?? workingDays);
+      const avg = daysEligible > 0 ? total / daysEligible : 0;
+      return [
+        String(op.operatorName ?? op.name ?? '--'),
+        String(daysEligible),
+        String(totalDays),
+        total.toFixed(2),
+        avg.toFixed(2),
+      ];
+    });
+
+    const fileName = `incentive-summary-${selected.label.replace(/\s+/g, '-')}`;
+
+    if (format === 'excel') {
+      exportToExcel(headers, csvRows, {
+        fileName,
+        sheetName: 'Incentive Summary',
+        title: `Incentive Summary Report - ${selected.label}`,
+        reportDate: `${selected.label}`,
       });
-      const contentType = response.headers['content-type'] || 'text/csv';
-      const blob = new Blob([response.data], { type: contentType });
-      const disposition = response.headers['content-disposition'] || '';
-      const filenameMatch = disposition.match(/filename="?([^"]+)"?/);
-      const filename = filenameMatch?.[1] || `monthly-report-${selected.year}.csv`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      showApiError({ message: 'Export is not available for this report.' });
+    } else {
+      exportToCsv(headers, csvRows, fileName);
     }
   };
 
@@ -255,11 +264,18 @@ export function PipIncentiveSummaryScreen() {
             ))}
           </select>
           <button
-            onClick={handleExportPdf}
+            onClick={() => handleExport('excel')}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-sm font-bold transition-colors"
           >
             <FileText size={16} />
-            PDF
+            Excel
+          </button>
+          <button
+            onClick={() => handleExport('csv')}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-sm font-bold transition-colors"
+          >
+            <FileText size={16} />
+            CSV
           </button>
           {(!status || status === 'DRAFT') && (
             <button

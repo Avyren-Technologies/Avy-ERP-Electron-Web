@@ -51,6 +51,7 @@ function ToggleSwitch({ checked, onChange, disabled }: {
 
 function MethodCard({
   methodNumber,
+  subtitle,
   accent,
   accentBg,
   accentBorder,
@@ -64,6 +65,7 @@ function MethodCard({
   saving,
 }: {
   methodNumber: 1 | 2;
+  subtitle: string;
   accent: string;
   accentBg: string;
   accentBorder: string;
@@ -92,9 +94,14 @@ function MethodCard({
             <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center', enabled ? accentBg : 'bg-neutral-100 dark:bg-neutral-800')}>
               {accentIcon}
             </div>
-            <span className={cn('text-xs font-extrabold uppercase tracking-widest', accent)}>
-              Method {methodNumber}
-            </span>
+            <div>
+              <span className={cn('text-xs font-extrabold uppercase tracking-widest', accent)}>
+                Method {methodNumber}
+              </span>
+              <p className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mt-0.5">
+                {subtitle}
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <span className={cn('text-xs font-bold', enabled ? 'text-success-600 dark:text-success-400' : 'text-neutral-400 dark:text-neutral-500')}>
@@ -276,6 +283,7 @@ export function PipIncentiveConfig() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <MethodCard
           methodNumber={1}
+          subtitle="Excess Ratio Based"
           accent="text-primary-600 dark:text-primary-400"
           accentBg="bg-primary-50 dark:bg-primary-900/20"
           accentBorder="border-primary-200 dark:border-primary-800/50"
@@ -290,6 +298,7 @@ export function PipIncentiveConfig() {
         />
         <MethodCard
           methodNumber={2}
+          subtitle="Percentage-Based Milestone"
           accent="text-amber-600 dark:text-amber-400"
           accentBg="bg-amber-50 dark:bg-amber-900/20"
           accentBorder="border-amber-200 dark:border-amber-800/50"

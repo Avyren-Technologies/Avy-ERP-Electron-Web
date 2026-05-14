@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import {
-  Calendar,
   Download,
   FileText,
   Users,
@@ -13,7 +12,7 @@ import { usePipDailyEntrySummary } from '@/features/production/pip/api/use-pip-q
 import { useCompanyShifts } from '@/features/company-admin/api/use-company-admin-queries';
 import { SkeletonTable } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { client } from '@/lib/api/client';
+import { exportToExcel, exportToCsv } from '@/lib/export-utils';
 
 /* ── Helpers ── */
 
@@ -113,50 +112,29 @@ export function PipDailyReportScreen() {
     : 0;
   const belowTarget = rows.filter((r) => r.completionPct < 100).length;
 
-  // Export helpers
-  const handleExport = async (format: 'pdf' | 'excel') => {
-    try {
-      const params: Record<string, string> = { entryDate, format };
-      if (shiftId) params.shiftId = shiftId;
-      const response = await client.get('/production/pip/export/daily-report', {
-        params,
-        responseType: 'blob',
+  // Export helpers — client-side generation (no backend call)
+  const handleExport = (format: 'excel' | 'csv') => {
+    const headers = ['Operator', 'Employee ID', 'Machine', 'Parts', 'Total Qty', 'Completion %', 'Status', 'Incentive'];
+    const csvRows = rows.map((r) => [
+      r.operatorName,
+      r.employeeId,
+      r.machineCode ?? '',
+      r.parts.map((p) => `${p.partNumber}(${p.qty})`).join(', '),
+      String(r.totalQty),
+      `${r.completionPct.toFixed(1)}%`,
+      r.isEligible ? 'Eligible' : 'Not Eligible',
+      r.incentiveAmount.toFixed(2),
+    ]);
+
+    if (format === 'excel') {
+      exportToExcel(headers, csvRows, {
+        fileName: `daily-production-report-${entryDate}`,
+        sheetName: 'Daily Production',
+        title: 'Daily Production Report',
+        reportDate: entryDate,
       });
-      const contentType = response.headers['content-type'] || (format === 'excel'
-        ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        : 'text/csv');
-      const blob = new Blob([response.data], { type: contentType });
-      // Derive extension from Content-Disposition or content type
-      const disposition = response.headers['content-disposition'] || '';
-      const filenameMatch = disposition.match(/filename="?([^"]+)"?/);
-      const filename = filenameMatch?.[1] || `daily-report-${entryDate}.${format === 'excel' ? 'xlsx' : 'csv'}`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      // Fallback: CSV export from client-side data
-      const headers = ['Operator', 'Employee ID', 'Machine', 'Parts', 'Total Qty', 'Completion %', 'Status', 'Incentive'];
-      const csvRows = rows.map((r) => [
-        r.operatorName,
-        r.employeeId,
-        r.machineCode,
-        r.parts.map((p) => `${p.partNumber}(${p.qty})`).join(' '),
-        String(r.totalQty),
-        `${r.completionPct.toFixed(1)}%`,
-        r.isEligible ? 'Eligible' : 'Not Eligible',
-        `${r.incentiveAmount.toFixed(2)}`,
-      ]);
-      const csv = [headers, ...csvRows].map((row) => row.map((c) => `"${c}"`).join(',')).join('\n');
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `daily-report-${entryDate}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+    } else {
+      exportToCsv(headers, csvRows, `daily-production-report-${entryDate}`);
     }
   };
 
@@ -192,18 +170,18 @@ export function PipDailyReportScreen() {
             ))}
           </select>
           <button
-            onClick={() => handleExport('pdf')}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-sm font-bold transition-colors"
-          >
-            <FileText size={16} />
-            PDF
-          </button>
-          <button
             onClick={() => handleExport('excel')}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-sm font-bold transition-colors"
           >
             <Download size={16} />
             Excel
+          </button>
+          <button
+            onClick={() => handleExport('csv')}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-sm font-bold transition-colors"
+          >
+            <FileText size={16} />
+            CSV
           </button>
         </div>
       </div>

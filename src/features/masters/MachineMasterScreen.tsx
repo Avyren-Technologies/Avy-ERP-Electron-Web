@@ -12,6 +12,8 @@ import {
   Cog,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { exportToExcel } from '@/lib/export-utils';
+import { useCompanyProfile } from '@/features/company-admin/api/use-company-admin-queries';
 import {
   useMachines,
   useMachineCategories,
@@ -239,6 +241,8 @@ export function MachineMasterScreen() {
   const { data: typesData } = useMachineTypes();
   const { data: zonesData } = useMachineZones();
 
+  const { data: profileData } = useCompanyProfile();
+
   const machines: Machine[] = machinesData?.data ?? [];
   const meta = machinesData?.meta;
   const categories: MachineCategory[] = categoriesData?.data ?? [];
@@ -382,24 +386,37 @@ export function MachineMasterScreen() {
   };
 
   const handleExport = () => {
-    const headers = ['Asset Code', 'Asset Name', 'Serial No', 'Category', 'Zone / Area', 'Priority', 'Status'];
+    const headers = [
+      'Asset Code', 'Asset Name', 'Machine Code', 'Serial No', 'Category', 'Type',
+      'Zone / Area', 'Line / Work Center', 'Priority', 'Capacity', 'Power Rating',
+      'Make', 'Model', 'Year', 'Status', 'Idle Reason',
+    ];
     const rows = machines.map((m) => [
       m.assetCode,
       m.assetName,
+      m.machineCode ?? '',
       m.serialNumber ?? '',
       m.category?.name ?? '',
+      m.type?.name ?? '',
       m.zone?.name ?? '',
+      m.lineWorkCenter ?? '',
       m.priority,
+      m.capacity ?? '',
+      m.powerRating ?? '',
+      m.make ?? '',
+      m.model ?? '',
+      m.yearOfManufacture != null ? m.yearOfManufacture : '',
       m.status,
+      m.idleReason ?? '',
     ]);
-    const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'machines-export.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+    const companyName = profileData?.data?.name ?? profileData?.data?.displayName ?? '';
+    exportToExcel(headers, rows, {
+      fileName: 'machines-export',
+      sheetName: 'Machine Master',
+      companyName,
+      title: 'Machine Master Report',
+      reportDate: new Date().toLocaleDateString(),
+    });
   };
 
   const saving = createMutation.isPending || updateMutation.isPending;
