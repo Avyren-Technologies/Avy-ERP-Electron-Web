@@ -303,6 +303,18 @@ function getCurrentWeekEnd(): string {
 
 /* ── Screen ── */
 
+function formatMinutes(mins: number): string {
+    if (mins < 60) return `${mins} Min`;
+    const days = Math.floor(mins / 1440);
+    const hours = Math.floor((mins % 1440) / 60);
+    const remaining = mins % 60;
+    const parts: string[] = [];
+    if (days > 0) parts.push(`${days} Day${days > 1 ? 's' : ''}`);
+    if (hours > 0) parts.push(`${hours} Hr`);
+    if (remaining > 0) parts.push(`${remaining} Min`);
+    return parts.join(' ');
+}
+
 export function AttendanceDashboardScreen() {
     const fmt = useCompanyFormatter();
     const [activeTab, setActiveTab] = useState<'daily' | 'weekly'>('daily');
@@ -762,7 +774,7 @@ export function AttendanceDashboardScreen() {
                                         </td>
                                         <td className="py-3.5 px-5 text-center">
                                             {rec.isLate && rec.lateMinutes ? (
-                                                <span className="text-xs font-semibold text-warning-600 dark:text-warning-400">{rec.lateMinutes}m</span>
+                                                <span className="text-xs font-semibold text-warning-600 dark:text-warning-400">{formatMinutes(rec.lateMinutes)}</span>
                                             ) : rec.isEarlyExit && rec.earlyMinutes ? (
                                                 <span className="text-xs font-semibold text-danger-600 dark:text-danger-400">-{rec.earlyMinutes}m</span>
                                             ) : (
@@ -1160,7 +1172,7 @@ export function AttendanceDashboardScreen() {
                                 {detailRecord.isLate && detailRecord.lateMinutes != null ? (
                                     <div className="bg-warning-50 dark:bg-warning-900/10 rounded-xl p-3 border border-warning-200 dark:border-warning-800/30">
                                         <p className="text-[10px] font-bold text-warning-600 dark:text-warning-400 uppercase tracking-wider mb-1">Late By</p>
-                                        <p className="text-sm font-bold text-warning-700 dark:text-warning-400">{detailRecord.lateMinutes} min</p>
+                                        <p className="text-sm font-bold text-warning-700 dark:text-warning-400">{formatMinutes(detailRecord.lateMinutes!)}</p>
                                     </div>
                                 ) : (
                                     <div className="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-3">
