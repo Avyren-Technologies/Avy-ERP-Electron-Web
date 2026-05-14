@@ -640,7 +640,7 @@ export function PipDailyEntryScreen() {
   const searchOperators = useCallback(async (q: string) => {
     setOperatorLoading(true);
     try {
-      const params: Record<string, unknown> = { limit: 20, status: 'ACTIVE' };
+      const params: Record<string, unknown> = { limit: 100 };
       if (q.trim()) params.search = q;
       const res = await hrApi.listEmployees(params as any);
       setOperatorSearchResults(res.data ?? []);

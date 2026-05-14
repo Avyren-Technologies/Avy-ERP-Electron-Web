@@ -96,7 +96,7 @@ const EMPTY_FORM: MachineFormState = {
   serialNumber: '',
   categoryId: '',
   zoneId: '',
-  priority: 'HIGH',
+  priority: 'MEDIUM',
   status: 'RUNNING',
   typeId: '',
   machineCode: '',
@@ -330,8 +330,9 @@ export function MachineMasterScreen() {
         await updateMutation.mutateAsync({ id: editingId, data: payload });
         showSuccess('Machine Updated', `${form.assetName} has been updated.`);
       } else {
-        await createMutation.mutateAsync(payload);
-        showSuccess('Machine Created', `${form.assetName} has been added.`);
+        const result = await createMutation.mutateAsync(payload);
+        const newAssetCode = result?.data?.assetCode ?? '';
+        showSuccess('Machine Created', `${form.assetName} (${newAssetCode}) has been added.`);
       }
       setModalOpen(false);
     } catch (err) {

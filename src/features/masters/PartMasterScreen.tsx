@@ -335,8 +335,9 @@ export function PartMasterScreen() {
         await updateMutation.mutateAsync({ id: editingId, data: payload });
         showSuccess('Part Updated', `${form.name} has been updated.`);
       } else {
-        await createMutation.mutateAsync(payload);
-        showSuccess('Part Created', `${form.name} has been added.`);
+        const result = await createMutation.mutateAsync(payload);
+        const newPartNumber = result?.data?.partNumber ?? '';
+        showSuccess('Part Created', `${form.name} (${newPartNumber}) has been added.`);
       }
       setModalOpen(false);
     } catch (err) {

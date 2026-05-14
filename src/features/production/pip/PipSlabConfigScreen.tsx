@@ -230,9 +230,10 @@ function EditSlabModal({
 
 function SlabBadge({ tier }: { tier: SlabTier }) {
   const to = tier.toQty != null ? tier.toQty : '\u221e';
+  const label = `${tier.fromQty}\u2013${to}:\u20b9${tier.ratePerPiece}`;
   return (
     <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 text-[10px] font-bold border border-primary-100 dark:border-primary-800/50 whitespace-nowrap">
-      {tier.fromQty}&ndash;{to}:\u20b9{tier.ratePerPiece}
+      {label}
     </span>
   );
 }
