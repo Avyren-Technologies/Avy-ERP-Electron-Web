@@ -706,6 +706,9 @@ export function PipDailyEntryScreen() {
   const [savedOperators, setSavedOperators] = useState<SavedOperatorSummary[]>([]);
   const [savedEntries, setSavedEntries] = useState<SavedEntry[]>([]);
 
+  /* ── Part filter ── */
+  const [partFilter, setPartFilter] = useState('');
+
   /* ── Placeholder message ── */
   const [placeholderMsg, setPlaceholderMsg] = useState<string | null>(null);
 
@@ -778,6 +781,7 @@ export function PipDailyEntryScreen() {
     setSelectedMachine({ id: m.id, assetCode: m.assetCode, assetName: m.assetName });
     setEditingSessionIndex(null);
     setPlaceholderMsg(null);
+    setPartFilter('');
   };
 
   const handleMachineClear = () => {
@@ -1130,8 +1134,35 @@ export function PipDailyEntryScreen() {
           </div>
 
           {/* ── Parts Entry Table ── */}
-          {selectedMachine && partEntries.length > 0 && (
+          {selectedMachine && partEntries.length > 0 && (() => {
+            const filteredParts = partEntries.filter(p => {
+              if (!partFilter.trim()) return true;
+              const q = partFilter.toLowerCase();
+              return p.partNumber?.toLowerCase().includes(q) || p.partName?.toLowerCase().includes(q);
+            });
+
+            return (
             <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-sm border border-neutral-100 dark:border-neutral-800 overflow-hidden">
+              {/* Part filter bar */}
+              {partEntries.length > 3 && (
+                <div className="px-4 pt-4">
+                  <div className="relative max-w-sm mb-3">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                    <input
+                      type="text"
+                      placeholder="Filter parts by name or number..."
+                      value={partFilter}
+                      onChange={(e) => setPartFilter(e.target.value)}
+                      className="w-full pl-9 pr-8 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:text-white placeholder:text-neutral-400"
+                    />
+                    {partFilter && (
+                      <button onClick={() => setPartFilter('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600">
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -1149,7 +1180,15 @@ export function PipDailyEntryScreen() {
                     </tr>
                   </thead>
                   <tbody>
-                    {partEntries.map((entry, idx) => {
+                    {filteredParts.length === 0 && partEntries.length > 0 && (
+                      <tr>
+                        <td colSpan={7} className="px-4 py-6 text-center text-sm text-neutral-400">
+                          No parts match "{partFilter}"
+                        </td>
+                      </tr>
+                    )}
+                    {filteredParts.map((entry) => {
+                      const idx = partEntries.findIndex(p => p.partId === entry.partId);
                       const pct = entry.shiftTargetQty > 0 ? (entry.qtyProduced / entry.shiftTargetQty) * 100 : 0;
                       const partCalc = liveCalcResult.partResults.find(
                         (r) => r.partId === entry.partId && r.machineId === (selectedMachine?.id ?? ''),
@@ -1259,7 +1298,8 @@ export function PipDailyEntryScreen() {
                 </button>
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* ── Placeholder Area ── */}
           {selectedOperator && !selectedMachine && partEntries.length === 0 && (
@@ -1390,63 +1430,45 @@ export function PipDailyEntryScreen() {
             </div>
 
             {/* Part breakdown */}
-            <div className="max-h-[300px] overflow-y-auto">
+            <div className="max-h-[300px] overflow-y-auto px-4 py-2">
               {liveCalcResult.partResults.length === 0 ? (
-                <div className="p-6 text-center text-sm text-neutral-400">
+                <div className="py-4 text-center text-sm text-neutral-400">
                   Select an operator and machine to see live calculations.
                 </div>
               ) : (
-                <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
-                  {liveCalcResult.partResults.map((pr, prIdx) => {
-                    const pct = pr.achievementPct;
-                    return (
-                      <div key={`${pr.partId}-${pr.machineId}-${prIdx}`} className="px-4 py-2.5 flex items-center justify-between">
-                        <div>
-                          <p className="text-xs font-bold text-neutral-700 dark:text-neutral-300">
-                            {pr.partNumber}
-                            {pr.machineCode && (
-                              <span className="text-neutral-400 font-normal ml-1">({pr.machineCode})</span>
-                            )}
-                          </p>
-                          <p className="text-xs text-neutral-500">
-                            {pr.qtyProduced}/{pr.shiftTargetQty}{' '}
-                            <span className={cn('font-bold', pctColor(pct))}>{pct.toFixed(0)}%</span>
-                          </p>
-                        </div>
-                        <span
-                          className={cn(
-                            'text-sm font-bold',
-                            pr.incentiveAmount > 0 ? 'text-success-600 dark:text-success-400' : 'text-neutral-400',
-                          )}
-                        >
-                          {activeMethod ? formatCurrency(pr.incentiveAmount) : '--'}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+                liveCalcResult.partResults.map((part: any) => (
+                  <div key={`${part.partId}-${part.machineId}`} className="flex flex-col gap-0.5 py-2 border-b border-neutral-100 dark:border-neutral-800 last:border-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-primary-950 dark:text-white truncate max-w-[140px]">
+                        {part.partNumber}({part.machineCode})
+                      </span>
+                      <span className={cn("text-xs font-bold tabular-nums", Number(part.incentiveAmount) > 0 ? "text-success-600" : "text-neutral-400")}>
+                        {activeMethod ? `\u20B9${Number(part.incentiveAmount).toFixed(2)}` : '--'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-neutral-500 dark:text-neutral-400">
+                        {Number(part.achievementPct).toFixed(0)}%{'\u2192'}{part.consideredPct ?? 0}%
+                      </span>
+                      <span className="text-[10px] text-neutral-500 dark:text-neutral-400">
+                        {part.appliedSlabLabel && part.appliedSlabLabel !== 'N/A' ? `${part.appliedSlabLabel}: \u20B9${part.appliedRate}/pc` : '\u2014'}
+                      </span>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
 
             {/* Footer */}
-            <div className="px-4 py-3 bg-neutral-50 dark:bg-neutral-800/50 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
-              <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Overall completion</span>
-              <span
-                className={cn(
-                  'px-2.5 py-1 rounded-full text-xs font-bold',
-                  !activeMethod
-                    ? 'bg-neutral-100 text-neutral-500 dark:bg-neutral-700 dark:text-neutral-400'
-                    : liveCalcResult.isEligible
-                      ? 'bg-success-100 text-success-700 dark:bg-success-900/30 dark:text-success-400'
-                      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-                )}
-              >
-                {!activeMethod
-                  ? 'No method'
-                  : liveCalcResult.isEligible
-                    ? `${liveCalcResult.cumulativeRatio.toFixed(1)}% Eligible`
-                    : `${liveCalcResult.cumulativeRatio.toFixed(1)}% -- Need >= 100%`}
-              </span>
+            <div className="px-4 py-3 bg-neutral-50 dark:bg-neutral-800/50 border-t border-neutral-100 dark:border-neutral-800">
+              <div className="flex items-center justify-between mt-2 pt-2 border-t border-neutral-200 dark:border-neutral-700">
+                <span className="text-[10px] font-semibold text-neutral-500">Overall completion</span>
+                <span className={cn("text-[10px] font-bold", liveCalcResult.isEligible ? "text-success-600" : "text-warning-600")}>
+                  {!activeMethod
+                    ? 'No method'
+                    : `${Number(liveCalcResult.cumulativeRatio).toFixed(1)}% ${liveCalcResult.isEligible ? 'Eligible \u2713' : '\u2014 Need \u2265 100%'}`}
+                </span>
+              </div>
             </div>
           </div>
 
