@@ -28,6 +28,8 @@ export interface Part {
   isInventoryItem: boolean;
   preferredVendorId?: string;
   status: string;
+  componentTypeId?: string;
+  componentType?: { id: string; name: string; code?: string };
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

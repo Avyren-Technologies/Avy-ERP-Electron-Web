@@ -160,6 +160,7 @@ function CheckboxDropdown<T extends { id: string }>({
 
 type PartConfigErrors = {
   shiftTargetQty?: string;
+  noTiers?: string;
   tierErrors?: Record<number, string>;
 };
 
@@ -178,7 +179,7 @@ function PartConfigCard({
   onCopyToAll?: () => void;
   totalParts?: number;
   errors?: PartConfigErrors;
-  onClearError?: (field: 'shiftTargetQty' | 'tier', tierIdx?: number) => void;
+  onClearError?: (field: 'shiftTargetQty' | 'noTiers' | 'tier', tierIdx?: number) => void;
 }) {
   const addTier = () => {
     const lastTier = config.slabTiers[config.slabTiers.length - 1];
@@ -320,12 +321,18 @@ function PartConfigCard({
         </div>
         <button
           type="button"
-          onClick={addTier}
+          onClick={() => {
+            addTier();
+            if (onClearError) onClearError('noTiers');
+          }}
           className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
         >
           <Plus size={14} />
           Add Tier
         </button>
+        {errors?.noTiers && (
+          <p className="text-[10px] text-danger-500 font-medium mt-1">{errors.noTiers}</p>
+        )}
         {onCopyToAll && totalParts !== undefined && totalParts >= 2 && (
           <button
             type="button"
@@ -450,30 +457,24 @@ export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: S
 
   /* ── Clear single error ── */
 
-  const makeClearError = (idx: number) => (field: 'shiftTargetQty' | 'tier', tierIdx?: number) => {
+  const clearError = (partIndex: number, field: string, tierIdx?: number) => {
     setConfigErrors(prev => {
-      const partErr = prev[idx];
-      if (!partErr) return prev;
-      if (field === 'shiftTargetQty') {
-        const { shiftTargetQty: _removed, ...rest } = partErr;
-        if (Object.keys(rest).length === 0) {
-          const { [idx]: _removed2, ...remaining } = prev;
-          return remaining;
-        }
-        return { ...prev, [idx]: rest };
-      }
+      const next = { ...prev };
+      if (!next[partIndex]) return prev;
+      const partErr = { ...next[partIndex] };
+      if (field === 'shiftTargetQty') delete partErr.shiftTargetQty;
+      if (field === 'noTiers') delete partErr.noTiers;
       if (field === 'tier' && tierIdx !== undefined && partErr.tierErrors) {
-        const { [tierIdx]: _removed, ...remainingTiers } = partErr.tierErrors;
-        const updatedPartErr = Object.keys(remainingTiers).length === 0
-          ? (() => { const { tierErrors: _t, ...r } = partErr; return r; })()
-          : { ...partErr, tierErrors: remainingTiers };
-        if (Object.keys(updatedPartErr).length === 0) {
-          const { [idx]: _removed2, ...remaining } = prev;
-          return remaining;
-        }
-        return { ...prev, [idx]: updatedPartErr };
+        const te = { ...partErr.tierErrors };
+        delete te[tierIdx];
+        partErr.tierErrors = Object.keys(te).length > 0 ? te : undefined;
       }
-      return prev;
+      if (Object.keys(partErr).filter(k => partErr[k as keyof PartConfigErrors] !== undefined).length === 0) {
+        delete next[partIndex];
+      } else {
+        next[partIndex] = partErr;
+      }
+      return next;
     });
   };
 
@@ -491,12 +492,12 @@ export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: S
       const partErrors: PartConfigErrors = {};
 
       if (!cfg.shiftTargetQty || Number(cfg.shiftTargetQty) < 1) {
-        partErrors.shiftTargetQty = 'Required';
+        partErrors.shiftTargetQty = 'Shift target is required';
         errorCount++;
       }
 
       if (cfg.slabTiers.length === 0) {
-        partErrors.shiftTargetQty = (partErrors.shiftTargetQty ?? '') + ' (add at least one slab tier)';
+        partErrors.noTiers = 'At least one slab tier required';
         errorCount++;
       }
 
@@ -743,7 +744,7 @@ export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: S
                   onCopyToAll={idx === 0 ? copyToAllParts : undefined}
                   totalParts={partConfigs.length}
                   errors={configErrors[idx]}
-                  onClearError={makeClearError(idx)}
+                  onClearError={(field, tierIdx) => clearError(idx, field, tierIdx)}
                 />
               ))}
               {partConfigs.length === 0 && (

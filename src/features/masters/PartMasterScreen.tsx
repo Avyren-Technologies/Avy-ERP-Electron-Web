@@ -282,7 +282,7 @@ export function PartMasterScreen() {
       productModelId: part.productModelId ?? '',
       categoryId: part.categoryId ?? '',
       uomId: part.uomId ?? '',
-      componentTypeId: (part as Record<string, unknown>).componentTypeId as string ?? '',
+      componentTypeId: part.componentTypeId ?? '',
       partType: part.partType,
       hsnCode: part.hsnCode ?? '',
       weight: part.weight != null ? String(part.weight) : '',
@@ -361,7 +361,7 @@ export function PartMasterScreen() {
     const rows = parts.map((p) => [
       p.partNumber,
       p.name,
-      (p as Record<string, unknown> & { componentType?: { name: string } }).componentType?.name ?? '',
+      p.componentType?.name ?? '',
       p.productModel?.name ?? '',
       p.engineeringPartNo ?? '',
       p.category?.name ?? '',
@@ -589,7 +589,7 @@ export function PartMasterScreen() {
                   value={form.componentTypeId}
                   onChange={(v) => {
                     const ct = componentTypes.find((c) => c.id === v);
-                    setForm((p) => ({ ...p, componentTypeId: v, name: ct?.name ?? p.name }));
+                    setForm((p) => ({ ...p, componentTypeId: v, name: !p.name.trim() ? (ct?.name ?? p.name) : p.name }));
                   }}
                   options={componentTypes.filter((c) => c.isActive).map((c) => ({ value: c.id, label: c.name }))}
                   onManage={() => setManageModal('componentType')}
