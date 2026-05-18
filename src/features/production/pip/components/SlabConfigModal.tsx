@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { X, Search, Plus, Trash2, Loader2, ChevronRight, ChevronLeft, Check, Info } from 'lucide-react';
+import { X, Search, Plus, Trash2, Loader2, ChevronRight, ChevronLeft, Check, Info, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBulkCreatePipSlabConfigs } from '@/features/production/pip/api/use-pip-mutations';
 import { showSuccess, showApiError } from '@/lib/toast';
@@ -158,14 +158,27 @@ function CheckboxDropdown<T extends { id: string }>({
 
 /* ── Part Config Card ── */
 
+type PartConfigErrors = {
+  shiftTargetQty?: string;
+  tierErrors?: Record<number, string>;
+};
+
 function PartConfigCard({
   config,
   onChange,
   onRemove,
+  onCopyToAll,
+  totalParts,
+  errors,
+  onClearError,
 }: {
   config: PartConfigForm;
   onChange: (updated: PartConfigForm) => void;
   onRemove: () => void;
+  onCopyToAll?: () => void;
+  totalParts?: number;
+  errors?: PartConfigErrors;
+  onClearError?: (field: 'shiftTargetQty' | 'tier', tierIdx?: number) => void;
 }) {
   const addTier = () => {
     const lastTier = config.slabTiers[config.slabTiers.length - 1];
@@ -180,6 +193,9 @@ function PartConfigCard({
     const tiers = [...config.slabTiers];
     tiers[idx] = { ...tiers[idx], [field]: value };
     onChange({ ...config, slabTiers: tiers });
+    if ((field === 'fromQty' || field === 'ratePerPiece') && onClearError) {
+      onClearError('tier', idx);
+    }
   };
 
   const removeTier = (idx: number) => {
@@ -221,10 +237,21 @@ function PartConfigCard({
           type="number"
           min={1}
           value={config.shiftTargetQty}
-          onChange={(e) => onChange({ ...config, shiftTargetQty: e.target.value })}
+          onChange={(e) => {
+            onChange({ ...config, shiftTargetQty: e.target.value });
+            if (onClearError) onClearError('shiftTargetQty');
+          }}
           placeholder="e.g. 100"
-          className="w-full px-3 py-2.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
+          className={cn(
+            'w-full px-3 py-2.5 bg-white dark:bg-neutral-900 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all',
+            errors?.shiftTargetQty
+              ? 'border-danger-500 ring-1 ring-danger-500/20 focus:ring-danger-500/20'
+              : 'border-neutral-200 dark:border-neutral-700 focus:ring-primary-500/20',
+          )}
         />
+        {errors?.shiftTargetQty && (
+          <p className="text-[10px] text-danger-500 font-medium mt-1">{errors.shiftTargetQty}</p>
+        )}
       </div>
 
       {/* Slab Tiers */}
@@ -234,45 +261,60 @@ function PartConfigCard({
         </p>
         <div className="space-y-2">
           {config.slabTiers.map((tier, idx) => (
-            <div key={idx} className="flex items-center gap-2">
-              <div className="flex-1">
-                <input
-                  type="number"
-                  min={1}
-                  value={tier.fromQty}
-                  onChange={(e) => updateTier(idx, 'fromQty', e.target.value)}
-                  placeholder="From Qty"
-                  className="w-full px-2.5 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
-                />
+            <div key={idx} className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <input
+                    type="number"
+                    min={1}
+                    value={tier.fromQty}
+                    onChange={(e) => updateTier(idx, 'fromQty', e.target.value)}
+                    placeholder="From Qty"
+                    className={cn(
+                      'w-full px-2.5 py-2 bg-white dark:bg-neutral-900 border rounded-lg text-xs focus:outline-none focus:ring-2 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all',
+                      errors?.tierErrors?.[idx]
+                        ? 'border-danger-500 ring-1 ring-danger-500/20 focus:ring-danger-500/20'
+                        : 'border-neutral-200 dark:border-neutral-700 focus:ring-primary-500/20',
+                    )}
+                  />
+                </div>
+                <div className="flex-1">
+                  <input
+                    type="number"
+                    min={0}
+                    value={tier.toQty}
+                    onChange={(e) => updateTier(idx, 'toQty', e.target.value)}
+                    placeholder="To Qty (blank=\u221e)"
+                    className="w-full px-2.5 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
+                  />
+                </div>
+                <div className="flex-1">
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={tier.ratePerPiece}
+                    onChange={(e) => updateTier(idx, 'ratePerPiece', e.target.value)}
+                    placeholder="Rate \u20b9/pc"
+                    className={cn(
+                      'w-full px-2.5 py-2 bg-white dark:bg-neutral-900 border rounded-lg text-xs focus:outline-none focus:ring-2 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all',
+                      errors?.tierErrors?.[idx]
+                        ? 'border-danger-500 ring-1 ring-danger-500/20 focus:ring-danger-500/20'
+                        : 'border-neutral-200 dark:border-neutral-700 focus:ring-primary-500/20',
+                    )}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeTier(idx)}
+                  className="p-1.5 text-neutral-400 hover:text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors shrink-0"
+                >
+                  <X size={14} />
+                </button>
               </div>
-              <div className="flex-1">
-                <input
-                  type="number"
-                  min={0}
-                  value={tier.toQty}
-                  onChange={(e) => updateTier(idx, 'toQty', e.target.value)}
-                  placeholder="To Qty (blank=\u221e)"
-                  className="w-full px-2.5 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
-                />
-              </div>
-              <div className="flex-1">
-                <input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  value={tier.ratePerPiece}
-                  onChange={(e) => updateTier(idx, 'ratePerPiece', e.target.value)}
-                  placeholder="Rate \u20b9/pc"
-                  className="w-full px-2.5 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => removeTier(idx)}
-                className="p-1.5 text-neutral-400 hover:text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors shrink-0"
-              >
-                <X size={14} />
-              </button>
+              {errors?.tierErrors?.[idx] && (
+                <p className="text-[10px] text-danger-500 font-medium pl-0.5">{errors.tierErrors[idx]}</p>
+              )}
             </div>
           ))}
         </div>
@@ -284,6 +326,16 @@ function PartConfigCard({
           <Plus size={14} />
           Add Tier
         </button>
+        {onCopyToAll && totalParts !== undefined && totalParts >= 2 && (
+          <button
+            type="button"
+            onClick={onCopyToAll}
+            className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-primary-600 dark:text-primary-400 hover:underline ml-4"
+          >
+            <Copy size={12} />
+            Copy to All Parts ({totalParts - 1})
+          </button>
+        )}
       </div>
     </div>
   );
@@ -305,6 +357,9 @@ export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: S
 
   // Step 3: Part configs
   const [partConfigs, setPartConfigs] = useState<PartConfigForm[]>([]);
+
+  // Inline validation errors per part config index
+  const [configErrors, setConfigErrors] = useState<Record<number, PartConfigErrors>>({});
 
   /* ── Machine handlers ── */
 
@@ -378,25 +433,90 @@ export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: S
     setStep(3);
   };
 
+  /* ── Copy to All Parts ── */
+
+  const copyToAllParts = () => {
+    if (partConfigs.length < 2) return;
+    const source = partConfigs[0];
+    setPartConfigs(prev => prev.map((cfg, i) =>
+      i === 0 ? cfg : {
+        ...cfg,
+        shiftTargetQty: source.shiftTargetQty,
+        slabTiers: source.slabTiers.map(t => ({ ...t })),
+      }
+    ));
+    showSuccess('Copied', `Configuration copied to ${partConfigs.length - 1} parts`);
+  };
+
+  /* ── Clear single error ── */
+
+  const makeClearError = (idx: number) => (field: 'shiftTargetQty' | 'tier', tierIdx?: number) => {
+    setConfigErrors(prev => {
+      const partErr = prev[idx];
+      if (!partErr) return prev;
+      if (field === 'shiftTargetQty') {
+        const { shiftTargetQty: _removed, ...rest } = partErr;
+        if (Object.keys(rest).length === 0) {
+          const { [idx]: _removed2, ...remaining } = prev;
+          return remaining;
+        }
+        return { ...prev, [idx]: rest };
+      }
+      if (field === 'tier' && tierIdx !== undefined && partErr.tierErrors) {
+        const { [tierIdx]: _removed, ...remainingTiers } = partErr.tierErrors;
+        const updatedPartErr = Object.keys(remainingTiers).length === 0
+          ? (() => { const { tierErrors: _t, ...r } = partErr; return r; })()
+          : { ...partErr, tierErrors: remainingTiers };
+        if (Object.keys(updatedPartErr).length === 0) {
+          const { [idx]: _removed2, ...remaining } = prev;
+          return remaining;
+        }
+        return { ...prev, [idx]: updatedPartErr };
+      }
+      return prev;
+    });
+  };
+
   /* ── Save ── */
 
   const handleSave = async () => {
-    // Validate
-    for (const cfg of partConfigs) {
+    // Clear previous errors
+    setConfigErrors({});
+
+    const errors: Record<number, PartConfigErrors> = {};
+    let errorCount = 0;
+
+    for (let i = 0; i < partConfigs.length; i++) {
+      const cfg = partConfigs[i];
+      const partErrors: PartConfigErrors = {};
+
       if (!cfg.shiftTargetQty || Number(cfg.shiftTargetQty) < 1) {
-        showApiError({ message: `Shift target required for ${cfg.partNumber}` });
-        return;
+        partErrors.shiftTargetQty = 'Required';
+        errorCount++;
       }
+
       if (cfg.slabTiers.length === 0) {
-        showApiError({ message: `At least one slab tier required for ${cfg.partNumber}` });
-        return;
+        partErrors.shiftTargetQty = (partErrors.shiftTargetQty ?? '') + ' (add at least one slab tier)';
+        errorCount++;
       }
-      for (const tier of cfg.slabTiers) {
+
+      const tierErrors: Record<number, string> = {};
+      for (let t = 0; t < cfg.slabTiers.length; t++) {
+        const tier = cfg.slabTiers[t];
         if (!tier.fromQty || !tier.ratePerPiece) {
-          showApiError({ message: `From Qty and Rate are required in all tiers for ${cfg.partNumber}` });
-          return;
+          tierErrors[t] = 'From Qty and Rate required';
+          errorCount++;
         }
       }
+      if (Object.keys(tierErrors).length > 0) partErrors.tierErrors = tierErrors;
+
+      if (Object.keys(partErrors).length > 0) errors[i] = partErrors;
+    }
+
+    if (errorCount > 0) {
+      setConfigErrors(errors);
+      showApiError({ message: `${errorCount} field(s) need attention — check highlighted fields` });
+      return;
     }
 
     const payload = {
@@ -413,13 +533,20 @@ export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: S
     };
 
     try {
-      await bulkCreateMutation.mutateAsync(payload);
+      const result = await bulkCreateMutation.mutateAsync(payload);
       const machineCount = selectedMachineIds.size;
       const partCount = partConfigs.length;
-      showSuccess(
-        'Slab Configs Saved',
-        `${machineCount * partCount} config(s) saved \u2014 ${machineCount} machine(s) \u00d7 ${partCount} part(s)`,
-      );
+      if (result?.data?.skippedCount > 0) {
+        const skippedList = (result.data.skipped ?? [])
+          .map((s: { machineCode: string; partNumber: string }) => `${s.machineCode} + ${s.partNumber}`)
+          .join(', ');
+        showSuccess('Saved with skips', `${result.data.createdCount} created, ${result.data.skippedCount} skipped: ${skippedList}`);
+      } else {
+        showSuccess(
+          'Slab Configs Saved',
+          `${machineCount * partCount} config(s) saved \u2014 ${machineCount} machine(s) \u00d7 ${partCount} part(s)`,
+        );
+      }
       onSaved();
       handleClose();
     } catch (err) {
@@ -432,6 +559,7 @@ export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: S
     setSelectedMachineIds(new Set());
     setSelectedPartIds(new Set());
     setPartConfigs([]);
+    setConfigErrors({});
     onClose();
   };
 
@@ -612,6 +740,10 @@ export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: S
                       return next;
                     });
                   }}
+                  onCopyToAll={idx === 0 ? copyToAllParts : undefined}
+                  totalParts={partConfigs.length}
+                  errors={configErrors[idx]}
+                  onClearError={makeClearError(idx)}
                 />
               ))}
               {partConfigs.length === 0 && (
