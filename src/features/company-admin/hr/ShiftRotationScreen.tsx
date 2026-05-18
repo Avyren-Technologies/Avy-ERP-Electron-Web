@@ -170,14 +170,14 @@ export function ShiftRotationScreen() {
     const executeMutation = useExecuteShiftRotations();
 
     const { data: shiftsData } = useCompanyShifts();
-    const availableShifts: any[] = (shiftsData as any)?.data ?? [];
+    const availableShifts: any[] = ((shiftsData as any)?.data ?? []).filter((s: any) => !s.noShuffle);
     const shiftOptions = availableShifts.map((s: any) => ({
         value: s.id,
         label: s.name,
-        sublabel: `${s.fromTime} — ${s.toTime}`,
+        sublabel: `${s.startTime} — ${s.endTime}`,
     }));
 
-    const { data: empData } = useEmployees();
+    const { data: empData } = useEmployees({ limit: 500 });
     const allEmployees: any[] = (empData as any)?.data ?? [];
     const employeeOptions = allEmployees.map((e: any) => ({
         value: e.id,
