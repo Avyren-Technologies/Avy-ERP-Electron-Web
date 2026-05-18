@@ -25,11 +25,18 @@ import {
   useUpdateMachine,
   useDeleteMachine,
   useCreateMachineCategory,
+  useUpdateMachineCategory,
+  useDeleteMachineCategory,
   useCreateMachineType,
+  useUpdateMachineType,
+  useDeleteMachineType,
   useCreateMachineZone,
+  useUpdateMachineZone,
+  useDeleteMachineZone,
 } from '@/features/masters/api/use-masters-mutations';
 import { SkeletonTable } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ManageModal } from '@/components/ui/ManageModal';
 import { showSuccess, showApiError } from '@/lib/toast';
 import type { Machine, MachineCategory, MachineType, MachineZone } from '@/lib/api/masters';
 
@@ -153,14 +160,14 @@ function FormSelect({ label, value, onChange, options, required }: {
   );
 }
 
-/* ── Dropdown with Create ── */
+/* ── Dropdown with Manage button ── */
 
-function DropdownWithCreate({ label, value, onChange, options, onCreateNew, required }: {
+function DropdownWithManage({ label, value, onChange, options, onManage, required }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   options: { value: string; label: string }[];
-  onCreateNew: () => void;
+  onManage: () => void;
   required?: boolean;
 }) {
   return (
@@ -181,41 +188,11 @@ function DropdownWithCreate({ label, value, onChange, options, onCreateNew, requ
         </select>
         <button
           type="button"
-          onClick={onCreateNew}
+          onClick={onManage}
           className="px-3 py-2.5 rounded-xl border border-primary-200 dark:border-primary-800 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 text-xs font-bold transition-colors whitespace-nowrap"
         >
-          + Manage
+          Manage
         </button>
-      </div>
-    </div>
-  );
-}
-
-/* ── Inline Create Mini-Modal ── */
-
-function InlineCreateModal({ title, fields, onSave, onCancel, saving }: {
-  title: string;
-  fields: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }[];
-  onSave: () => void;
-  onCancel: () => void;
-  saving: boolean;
-}) {
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-sm animate-in fade-in zoom-in-95 duration-200 p-6 space-y-4">
-        <h3 className="text-base font-bold text-primary-950 dark:text-white">{title}</h3>
-        {fields.map((f, i) => (
-          <FormField key={i} label={f.label} value={f.value} onChange={f.onChange} placeholder={f.placeholder} />
-        ))}
-        <div className="flex gap-3 pt-2">
-          <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">
-            Cancel
-          </button>
-          <button onClick={onSave} disabled={saving} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-            {saving && <Loader2 size={14} className="animate-spin" />}
-            {saving ? 'Creating...' : 'Create'}
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -237,9 +214,9 @@ export function MachineMasterScreen() {
   }, [page, search, statusFilter]);
 
   const { data: machinesData, isLoading, isError } = useMachines(queryParams);
-  const { data: categoriesData } = useMachineCategories();
-  const { data: typesData } = useMachineTypes();
-  const { data: zonesData } = useMachineZones();
+  const { data: categoriesData, isLoading: categoriesLoading } = useMachineCategories();
+  const { data: typesData, isLoading: typesLoading } = useMachineTypes();
+  const { data: zonesData, isLoading: zonesLoading } = useMachineZones();
 
   const { data: profileData } = useCompanyProfile();
 
@@ -254,8 +231,14 @@ export function MachineMasterScreen() {
   const updateMutation = useUpdateMachine();
   const deleteMutation = useDeleteMachine();
   const createCategoryMutation = useCreateMachineCategory();
+  const updateCategoryMutation = useUpdateMachineCategory();
+  const deleteCategoryMutation = useDeleteMachineCategory();
   const createTypeMutation = useCreateMachineType();
+  const updateTypeMutation = useUpdateMachineType();
+  const deleteTypeMutation = useDeleteMachineType();
   const createZoneMutation = useCreateMachineZone();
+  const updateZoneMutation = useUpdateMachineZone();
+  const deleteZoneMutation = useDeleteMachineZone();
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -263,10 +246,8 @@ export function MachineMasterScreen() {
   const [form, setForm] = useState<MachineFormState>({ ...EMPTY_FORM });
   const [deleteTarget, setDeleteTarget] = useState<Machine | null>(null);
 
-  // Inline create modals
-  const [inlineCreate, setInlineCreate] = useState<'category' | 'type' | 'zone' | null>(null);
-  const [inlineName, setInlineName] = useState('');
-  const [inlineCode, setInlineCode] = useState('');
+  // ManageModal state
+  const [manageModal, setManageModal] = useState<'category' | 'type' | 'zone' | null>(null);
 
   const openCreate = () => {
     setEditingId(null);
@@ -355,36 +336,6 @@ export function MachineMasterScreen() {
     }
   };
 
-  const handleInlineCreate = async () => {
-    if (!inlineName.trim()) {
-      showApiError({ message: 'Name is required' });
-      return;
-    }
-    try {
-      if (inlineCreate === 'category') {
-        const res = await createCategoryMutation.mutateAsync({ name: inlineName.trim() });
-        const newId = res?.data?.id;
-        if (newId) setForm((p) => ({ ...p, categoryId: newId }));
-        showSuccess('Category Created', `${inlineName} has been added.`);
-      } else if (inlineCreate === 'type') {
-        const res = await createTypeMutation.mutateAsync({ name: inlineName.trim() });
-        const newId = res?.data?.id;
-        if (newId) setForm((p) => ({ ...p, typeId: newId }));
-        showSuccess('Machine Type Created', `${inlineName} has been added.`);
-      } else if (inlineCreate === 'zone') {
-        const res = await createZoneMutation.mutateAsync({ name: inlineName.trim(), code: inlineCode.trim() || undefined });
-        const newId = res?.data?.id;
-        if (newId) setForm((p) => ({ ...p, zoneId: newId }));
-        showSuccess('Zone Created', `${inlineName} has been added.`);
-      }
-      setInlineCreate(null);
-      setInlineName('');
-      setInlineCode('');
-    } catch (err) {
-      showApiError(err);
-    }
-  };
-
   const handleExport = () => {
     const headers = [
       'Asset Code', 'Asset Name', 'Machine Code', 'Serial No', 'Category', 'Type',
@@ -420,7 +371,6 @@ export function MachineMasterScreen() {
   };
 
   const saving = createMutation.isPending || updateMutation.isPending;
-  const inlineSaving = createCategoryMutation.isPending || createTypeMutation.isPending || createZoneMutation.isPending;
   const totalPages = meta?.totalPages ?? 1;
 
   return (
@@ -632,23 +582,23 @@ export function MachineMasterScreen() {
               {/* Row 2: Serial Number + Category */}
               <div className="grid grid-cols-2 gap-4">
                 <FormField label="Serial Number (MFR)" value={form.serialNumber} onChange={(v) => setForm((p) => ({ ...p, serialNumber: v }))} placeholder="e.g. SN-2024-00456" />
-                <DropdownWithCreate
+                <DropdownWithManage
                   label="Asset Category"
                   value={form.categoryId}
                   onChange={(v) => setForm((p) => ({ ...p, categoryId: v }))}
                   options={categories.filter((c) => c.isActive).map((c) => ({ value: c.id, label: c.name }))}
-                  onCreateNew={() => { setInlineCreate('category'); setInlineName(''); setInlineCode(''); }}
+                  onManage={() => setManageModal('category')}
                 />
               </div>
 
               {/* Row 3: Zone + Priority */}
               <div className="grid grid-cols-2 gap-4">
-                <DropdownWithCreate
+                <DropdownWithManage
                   label="Zone / Area"
                   value={form.zoneId}
                   onChange={(v) => setForm((p) => ({ ...p, zoneId: v }))}
                   options={zones.filter((z) => z.isActive).map((z) => ({ value: z.id, label: z.name }))}
-                  onCreateNew={() => { setInlineCreate('zone'); setInlineName(''); setInlineCode(''); }}
+                  onManage={() => setManageModal('zone')}
                 />
                 <FormSelect label="Priority" value={form.priority} onChange={(v) => setForm((p) => ({ ...p, priority: v }))} options={PRIORITY_OPTIONS} />
               </div>
@@ -659,12 +609,12 @@ export function MachineMasterScreen() {
               </div>
 
               {/* Row 5: Machine Type */}
-              <DropdownWithCreate
+              <DropdownWithManage
                 label="Machine Type"
                 value={form.typeId}
                 onChange={(v) => setForm((p) => ({ ...p, typeId: v }))}
                 options={machineTypes.filter((t) => t.isActive).map((t) => ({ value: t.id, label: t.name }))}
-                onCreateNew={() => { setInlineCreate('type'); setInlineName(''); setInlineCode(''); }}
+                onManage={() => setManageModal('type')}
               />
 
               {/* Additional Fields */}
@@ -705,41 +655,87 @@ export function MachineMasterScreen() {
         </div>
       )}
 
-      {/* ── Inline Create Modals ── */}
-      {inlineCreate === 'category' && (
-        <InlineCreateModal
-          title="New Machine Category"
-          fields={[
-            { label: 'Name', value: inlineName, onChange: setInlineName, placeholder: 'e.g. CNC Machines' },
-          ]}
-          onSave={handleInlineCreate}
-          onCancel={() => setInlineCreate(null)}
-          saving={inlineSaving}
-        />
-      )}
-      {inlineCreate === 'type' && (
-        <InlineCreateModal
-          title="New Machine Type"
-          fields={[
-            { label: 'Name', value: inlineName, onChange: setInlineName, placeholder: 'e.g. Lathe' },
-          ]}
-          onSave={handleInlineCreate}
-          onCancel={() => setInlineCreate(null)}
-          saving={inlineSaving}
-        />
-      )}
-      {inlineCreate === 'zone' && (
-        <InlineCreateModal
-          title="New Zone / Area"
-          fields={[
-            { label: 'Name', value: inlineName, onChange: setInlineName, placeholder: 'e.g. Shop Floor A' },
-            { label: 'Code', value: inlineCode, onChange: setInlineCode, placeholder: 'e.g. SFA (optional)' },
-          ]}
-          onSave={handleInlineCreate}
-          onCancel={() => setInlineCreate(null)}
-          saving={inlineSaving}
-        />
-      )}
+      {/* ── ManageModal: Machine Category ── */}
+      <ManageModal
+        open={manageModal === 'category'}
+        onClose={() => setManageModal(null)}
+        title="Manage Machine Categories"
+        items={categories.map((c) => ({ id: c.id, name: c.name }))}
+        isLoading={categoriesLoading}
+        createFields={[
+          { key: 'name', label: 'Name', placeholder: 'e.g. CNC', required: true },
+        ]}
+        onCreate={async (values) => {
+          const res = await createCategoryMutation.mutateAsync({ name: values.name });
+          const newId = res?.data?.id;
+          if (newId) setForm((p) => ({ ...p, categoryId: newId }));
+        }}
+        onUpdate={async (id, values) => {
+          await updateCategoryMutation.mutateAsync({ id, data: { name: values.name } });
+        }}
+        onDelete={async (id) => {
+          await deleteCategoryMutation.mutateAsync(id);
+          if (form.categoryId === id) setForm((p) => ({ ...p, categoryId: '' }));
+        }}
+        isCreating={createCategoryMutation.isPending}
+        isUpdating={updateCategoryMutation.isPending}
+        isDeleting={deleteCategoryMutation.isPending}
+      />
+
+      {/* ── ManageModal: Machine Zone ── */}
+      <ManageModal
+        open={manageModal === 'zone'}
+        onClose={() => setManageModal(null)}
+        title="Manage Machine Zones"
+        items={zones.map((z) => ({ id: z.id, name: z.name, code: z.code }))}
+        isLoading={zonesLoading}
+        createFields={[
+          { key: 'name', label: 'Name', placeholder: 'e.g. Zone A', required: true },
+          { key: 'code', label: 'Code', placeholder: 'e.g. ZN-A' },
+        ]}
+        onCreate={async (values) => {
+          const res = await createZoneMutation.mutateAsync({ name: values.name, ...(values.code ? { code: values.code } : {}) });
+          const newId = res?.data?.id;
+          if (newId) setForm((p) => ({ ...p, zoneId: newId }));
+        }}
+        onUpdate={async (id, values) => {
+          await updateZoneMutation.mutateAsync({ id, data: { name: values.name } });
+        }}
+        onDelete={async (id) => {
+          await deleteZoneMutation.mutateAsync(id);
+          if (form.zoneId === id) setForm((p) => ({ ...p, zoneId: '' }));
+        }}
+        isCreating={createZoneMutation.isPending}
+        isUpdating={updateZoneMutation.isPending}
+        isDeleting={deleteZoneMutation.isPending}
+      />
+
+      {/* ── ManageModal: Machine Type ── */}
+      <ManageModal
+        open={manageModal === 'type'}
+        onClose={() => setManageModal(null)}
+        title="Manage Machine Types"
+        items={machineTypes.map((t) => ({ id: t.id, name: t.name }))}
+        isLoading={typesLoading}
+        createFields={[
+          { key: 'name', label: 'Name', placeholder: 'e.g. Lathe', required: true },
+        ]}
+        onCreate={async (values) => {
+          const res = await createTypeMutation.mutateAsync({ name: values.name });
+          const newId = res?.data?.id;
+          if (newId) setForm((p) => ({ ...p, typeId: newId }));
+        }}
+        onUpdate={async (id, values) => {
+          await updateTypeMutation.mutateAsync({ id, data: { name: values.name } });
+        }}
+        onDelete={async (id) => {
+          await deleteTypeMutation.mutateAsync(id);
+          if (form.typeId === id) setForm((p) => ({ ...p, typeId: '' }));
+        }}
+        isCreating={createTypeMutation.isPending}
+        isUpdating={updateTypeMutation.isPending}
+        isDeleting={deleteTypeMutation.isPending}
+      />
 
       {/* ── Delete Confirmation ── */}
       {deleteTarget && (
