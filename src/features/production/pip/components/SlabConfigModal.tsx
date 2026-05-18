@@ -537,11 +537,12 @@ export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: S
       const result = await bulkCreateMutation.mutateAsync(payload);
       const machineCount = selectedMachineIds.size;
       const partCount = partConfigs.length;
-      if (result?.data?.skippedCount > 0) {
-        const skippedList = (result.data.skipped ?? [])
-          .map((s: { machineCode: string; partNumber: string }) => `${s.machineCode} + ${s.partNumber}`)
+      const rd = result?.data;
+      if (rd && rd.skippedCount > 0) {
+        const skippedList = (rd.skipped ?? [])
+          .map((s) => `${s.machineCode} + ${s.partNumber}`)
           .join(', ');
-        showSuccess('Saved with skips', `${result.data.createdCount} created, ${result.data.skippedCount} skipped: ${skippedList}`);
+        showSuccess('Saved with skips', `${rd.createdCount} created, ${rd.skippedCount} skipped: ${skippedList}`);
       } else {
         showSuccess(
           'Slab Configs Saved',

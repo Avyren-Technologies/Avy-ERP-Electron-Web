@@ -55,6 +55,13 @@ export interface PipDailyEntry {
   approvedAt?: string;
   createdAt: string;
   updatedAt: string;
+  // Included relations (populated by backend when listing entries)
+  operator?: { id: string; firstName: string; lastName: string; employeeId: string };
+  slabConfig?: {
+    id: string;
+    machine?: { id: string; assetCode: string; assetName: string };
+    part?: { id: string; partNumber: string; name: string };
+  };
 }
 
 export interface PipIncentiveConfig {
@@ -150,7 +157,7 @@ async function createSlabConfig(data: Record<string, unknown>): Promise<ApiRespo
     return response.data;
 }
 
-async function bulkCreateSlabConfigs(data: Record<string, unknown>): Promise<ApiResponse<{ created: number }>> {
+async function bulkCreateSlabConfigs(data: Record<string, unknown>): Promise<ApiResponse<{ createdCount: number; skippedCount: number; skipped: { machineCode: string; partNumber: string; reason: string }[] }>> {
     const response = await client.post('/production/pip/slab-configs/bulk', data);
     return response.data;
 }
