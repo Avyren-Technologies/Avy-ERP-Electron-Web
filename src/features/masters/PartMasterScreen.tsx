@@ -14,19 +14,29 @@ import {
 import { cn } from '@/lib/utils';
 import { exportToExcel } from '@/lib/export-utils';
 import { useCompanyProfile } from '@/features/company-admin/api/use-company-admin-queries';
-import { useParts, usePartCategories, useProductModels, useUoms } from '@/features/masters/api/use-masters-queries';
+import { useParts, usePartCategories, useProductModels, useUoms, useComponentTypes } from '@/features/masters/api/use-masters-queries';
 import {
   useCreatePart,
   useUpdatePart,
   useDeletePart,
   useCreatePartCategory,
+  useUpdatePartCategory,
+  useDeletePartCategory,
   useCreateProductModel,
+  useUpdateProductModel,
+  useDeleteProductModel,
   useCreateUom,
+  useUpdateUom,
+  useDeleteUom,
+  useCreateComponentType,
+  useUpdateComponentType,
+  useDeleteComponentType,
 } from '@/features/masters/api/use-masters-mutations';
 import { SkeletonTable } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ManageModal } from '@/components/ui/ManageModal';
 import { showSuccess, showApiError } from '@/lib/toast';
-import type { Part, PartCategory, ProductModel, UnitOfMeasure } from '@/lib/api/masters';
+import type { Part, PartCategory, ProductModel, UnitOfMeasure, PartComponentType } from '@/lib/api/masters';
 
 /* ── Constants ── */
 
@@ -62,6 +72,7 @@ interface PartFormState {
   productModelId: string;
   categoryId: string;
   uomId: string;
+  componentTypeId: string;
   partType: string;
   hsnCode: string;
   weight: string;
@@ -83,6 +94,7 @@ const EMPTY_FORM: PartFormState = {
   productModelId: '',
   categoryId: '',
   uomId: '',
+  componentTypeId: '',
   partType: 'FINISH_PART',
   hsnCode: '',
   weight: '',
@@ -162,14 +174,14 @@ function FormToggle({ label, description, checked, onChange }: {
   );
 }
 
-/* ── Inline Create Dropdown ── */
+/* ── Dropdown with Manage button ── */
 
-function DropdownWithCreate({ label, value, onChange, options, onCreateNew, required }: {
+function DropdownWithManage({ label, value, onChange, options, onManage, required }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   options: { value: string; label: string }[];
-  onCreateNew: () => void;
+  onManage: () => void;
   required?: boolean;
 }) {
   return (
@@ -190,41 +202,11 @@ function DropdownWithCreate({ label, value, onChange, options, onCreateNew, requ
         </select>
         <button
           type="button"
-          onClick={onCreateNew}
+          onClick={onManage}
           className="px-3 py-2.5 rounded-xl border border-primary-200 dark:border-primary-800 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 text-xs font-bold transition-colors whitespace-nowrap"
         >
-          + New
+          Manage
         </button>
-      </div>
-    </div>
-  );
-}
-
-/* ── Inline Create Mini-Modal ── */
-
-function InlineCreateModal({ title, fields, onSave, onCancel, saving }: {
-  title: string;
-  fields: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }[];
-  onSave: () => void;
-  onCancel: () => void;
-  saving: boolean;
-}) {
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-sm animate-in fade-in zoom-in-95 duration-200 p-6 space-y-4">
-        <h3 className="text-base font-bold text-primary-950 dark:text-white">{title}</h3>
-        {fields.map((f, i) => (
-          <FormField key={i} label={f.label} value={f.value} onChange={f.onChange} placeholder={f.placeholder} />
-        ))}
-        <div className="flex gap-3 pt-2">
-          <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">
-            Cancel
-          </button>
-          <button onClick={onSave} disabled={saving} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-            {saving && <Loader2 size={14} className="animate-spin" />}
-            {saving ? 'Creating...' : 'Create'}
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -246,9 +228,10 @@ export function PartMasterScreen() {
   }, [page, search, statusFilter]);
 
   const { data: partsData, isLoading, isError } = useParts(queryParams);
-  const { data: categoriesData } = usePartCategories();
-  const { data: modelsData } = useProductModels();
-  const { data: uomsData } = useUoms();
+  const { data: categoriesData, isLoading: categoriesLoading } = usePartCategories();
+  const { data: modelsData, isLoading: modelsLoading } = useProductModels();
+  const { data: uomsData, isLoading: uomsLoading } = useUoms();
+  const { data: componentTypesData, isLoading: componentTypesLoading } = useComponentTypes();
   const { data: profileData } = useCompanyProfile();
 
   const parts: Part[] = partsData?.data ?? [];
@@ -256,14 +239,24 @@ export function PartMasterScreen() {
   const categories: PartCategory[] = categoriesData?.data ?? [];
   const productModels: ProductModel[] = modelsData?.data ?? [];
   const uoms: UnitOfMeasure[] = uomsData?.data ?? [];
+  const componentTypes: PartComponentType[] = componentTypesData?.data ?? [];
 
   // Mutations
   const createMutation = useCreatePart();
   const updateMutation = useUpdatePart();
   const deleteMutation = useDeletePart();
   const createCategoryMutation = useCreatePartCategory();
+  const updateCategoryMutation = useUpdatePartCategory();
+  const deleteCategoryMutation = useDeletePartCategory();
   const createModelMutation = useCreateProductModel();
+  const updateModelMutation = useUpdateProductModel();
+  const deleteModelMutation = useDeleteProductModel();
   const createUomMutation = useCreateUom();
+  const updateUomMutation = useUpdateUom();
+  const deleteUomMutation = useDeleteUom();
+  const createComponentTypeMutation = useCreateComponentType();
+  const updateComponentTypeMutation = useUpdateComponentType();
+  const deleteComponentTypeMutation = useDeleteComponentType();
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -271,10 +264,8 @@ export function PartMasterScreen() {
   const [form, setForm] = useState<PartFormState>({ ...EMPTY_FORM });
   const [deleteTarget, setDeleteTarget] = useState<Part | null>(null);
 
-  // Inline create modals
-  const [inlineCreate, setInlineCreate] = useState<'category' | 'model' | 'uom' | null>(null);
-  const [inlineName, setInlineName] = useState('');
-  const [inlineCode, setInlineCode] = useState('');
+  // ManageModal state
+  const [manageModal, setManageModal] = useState<'category' | 'model' | 'uom' | 'componentType' | null>(null);
 
   const openCreate = () => {
     setEditingId(null);
@@ -291,6 +282,7 @@ export function PartMasterScreen() {
       productModelId: part.productModelId ?? '',
       categoryId: part.categoryId ?? '',
       uomId: part.uomId ?? '',
+      componentTypeId: (part as Record<string, unknown>).componentTypeId as string ?? '',
       partType: part.partType,
       hsnCode: part.hsnCode ?? '',
       weight: part.weight != null ? String(part.weight) : '',
@@ -309,7 +301,7 @@ export function PartMasterScreen() {
 
   const handleSave = async () => {
     if (!form.name.trim()) {
-      showApiError({ message: 'Component / Part name is required' });
+      showApiError({ message: 'Part name is required' });
       return;
     }
     try {
@@ -328,6 +320,7 @@ export function PartMasterScreen() {
       if (form.productModelId) payload.productModelId = form.productModelId;
       if (form.categoryId) payload.categoryId = form.categoryId;
       if (form.uomId) payload.uomId = form.uomId;
+      if (form.componentTypeId) payload.componentTypeId = form.componentTypeId;
       if (form.hsnCode) payload.hsnCode = form.hsnCode.trim();
       if (form.weight) payload.weight = parseFloat(form.weight);
       if (form.dimensions) payload.dimensions = form.dimensions.trim();
@@ -359,45 +352,16 @@ export function PartMasterScreen() {
     }
   };
 
-  const handleInlineCreate = async () => {
-    if (!inlineName.trim()) {
-      showApiError({ message: 'Name is required' });
-      return;
-    }
-    try {
-      if (inlineCreate === 'category') {
-        const res = await createCategoryMutation.mutateAsync({ name: inlineName.trim(), code: inlineCode.trim() || undefined });
-        const newId = res?.data?.id;
-        if (newId) setForm((p) => ({ ...p, categoryId: newId }));
-        showSuccess('Category Created', `${inlineName} has been added.`);
-      } else if (inlineCreate === 'model') {
-        const res = await createModelMutation.mutateAsync({ name: inlineName.trim(), code: inlineCode.trim() || undefined });
-        const newId = res?.data?.id;
-        if (newId) setForm((p) => ({ ...p, productModelId: newId }));
-        showSuccess('Product Model Created', `${inlineName} has been added.`);
-      } else if (inlineCreate === 'uom') {
-        const res = await createUomMutation.mutateAsync({ name: inlineName.trim(), abbreviation: inlineCode.trim() });
-        const newId = res?.data?.id;
-        if (newId) setForm((p) => ({ ...p, uomId: newId }));
-        showSuccess('UOM Created', `${inlineName} has been added.`);
-      }
-      setInlineCreate(null);
-      setInlineName('');
-      setInlineCode('');
-    } catch (err) {
-      showApiError(err);
-    }
-  };
-
   const handleExport = () => {
     const headers = [
-      'Part No', 'Name', 'Product Model', 'Engineering Part No', 'Category', 'UOM',
+      'Part No', 'Name', 'Component Type', 'Product Model', 'Engineering Part No', 'Category', 'UOM',
       'Part Type', 'HSN Code', 'Weight (kg)', 'Dimensions', 'Revision', 'Drawing Reference',
       'Status', 'Batch Tracked', 'Serial Tracked', 'BOM Enabled', 'QC Required', 'Inventory Item',
     ];
     const rows = parts.map((p) => [
       p.partNumber,
       p.name,
+      (p as Record<string, unknown> & { componentType?: { name: string } }).componentType?.name ?? '',
       p.productModel?.name ?? '',
       p.engineeringPartNo ?? '',
       p.category?.name ?? '',
@@ -426,7 +390,6 @@ export function PartMasterScreen() {
   };
 
   const saving = createMutation.isPending || updateMutation.isPending;
-  const inlineSaving = createCategoryMutation.isPending || createModelMutation.isPending || createUomMutation.isPending;
   const totalPages = meta?.totalPages ?? 1;
 
   return (
@@ -560,7 +523,7 @@ export function PartMasterScreen() {
         {meta && totalPages > 1 && (
           <div className="flex items-center justify-between px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
             <p className="text-xs text-neutral-500 dark:text-neutral-400">
-              Showing {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, meta.total)} of {meta.total}
+              Showing {((page - 1) * PAGE_SIZE) + 1}--{Math.min(page * PAGE_SIZE, meta.total)} of {meta.total}
             </p>
             <div className="flex items-center gap-1">
               <button
@@ -619,21 +582,36 @@ export function PartMasterScreen() {
               </button>
             </div>
             <div className="p-6 overflow-y-auto flex-1 space-y-5">
-              {/* Row 1: Name + Product Model */}
+              {/* Row 1: Component Type + Part Name */}
               <div className="grid grid-cols-2 gap-4">
-                <FormField label="Component / Part" value={form.name} onChange={(v) => setForm((p) => ({ ...p, name: v }))} placeholder="e.g. Crankshaft Assembly" required />
-                <DropdownWithCreate
+                <DropdownWithManage
+                  label="Component Type"
+                  value={form.componentTypeId}
+                  onChange={(v) => {
+                    const ct = componentTypes.find((c) => c.id === v);
+                    setForm((p) => ({ ...p, componentTypeId: v, name: ct?.name ?? p.name }));
+                  }}
+                  options={componentTypes.filter((c) => c.isActive).map((c) => ({ value: c.id, label: c.name }))}
+                  onManage={() => setManageModal('componentType')}
+                  required
+                />
+                <FormField label="Part Name" value={form.name} onChange={(v) => setForm((p) => ({ ...p, name: v }))} placeholder="e.g. Crankshaft Assembly" required />
+              </div>
+
+              {/* Row 2: Product Model + Engineering Part No */}
+              <div className="grid grid-cols-2 gap-4">
+                <DropdownWithManage
                   label="Product Model"
                   value={form.productModelId}
                   onChange={(v) => setForm((p) => ({ ...p, productModelId: v }))}
                   options={productModels.filter((m) => m.isActive).map((m) => ({ value: m.id, label: m.name }))}
-                  onCreateNew={() => { setInlineCreate('model'); setInlineName(''); setInlineCode(''); }}
+                  onManage={() => setManageModal('model')}
                 />
+                <FormField label="Engineering Part No" value={form.engineeringPartNo} onChange={(v) => setForm((p) => ({ ...p, engineeringPartNo: v }))} placeholder="e.g. ENG-CS-001" />
               </div>
 
-              {/* Row 2: Engineering Part No + Status */}
+              {/* Row 3: Status + Part Number */}
               <div className="grid grid-cols-2 gap-4">
-                <FormField label="Engineering Part No" value={form.engineeringPartNo} onChange={(v) => setForm((p) => ({ ...p, engineeringPartNo: v }))} placeholder="e.g. ENG-CS-001" />
                 <FormSelect
                   label="Status"
                   value={form.status}
@@ -644,26 +622,24 @@ export function PartMasterScreen() {
                     { value: 'DISCONTINUED', label: 'Discontinued' },
                   ]}
                 />
+                <FormField label="Part Number" value={form.partNumber} onChange={(v) => setForm((p) => ({ ...p, partNumber: v }))} placeholder={editingId ? 'Part number' : 'Leave blank to auto-generate from Number Series'} />
               </div>
-
-              {/* Row 3: Part Number (full width — auto-generated if left blank) */}
-              <FormField label="Part Number" value={form.partNumber} onChange={(v) => setForm((p) => ({ ...p, partNumber: v }))} placeholder={editingId ? 'Part number' : 'Leave blank to auto-generate from Number Series'} />
 
               {/* Row 4: Category + UOM + Part Type */}
               <div className="grid grid-cols-3 gap-4">
-                <DropdownWithCreate
+                <DropdownWithManage
                   label="Category"
                   value={form.categoryId}
                   onChange={(v) => setForm((p) => ({ ...p, categoryId: v }))}
                   options={categories.filter((c) => c.isActive).map((c) => ({ value: c.id, label: c.name }))}
-                  onCreateNew={() => { setInlineCreate('category'); setInlineName(''); setInlineCode(''); }}
+                  onManage={() => setManageModal('category')}
                 />
-                <DropdownWithCreate
+                <DropdownWithManage
                   label="Unit of Measure"
                   value={form.uomId}
                   onChange={(v) => setForm((p) => ({ ...p, uomId: v }))}
                   options={uoms.filter((u) => u.isActive).map((u) => ({ value: u.id, label: `${u.name} (${u.abbreviation})` }))}
-                  onCreateNew={() => { setInlineCreate('uom'); setInlineName(''); setInlineCode(''); }}
+                  onManage={() => setManageModal('uom')}
                 />
                 <FormSelect label="Part Type" value={form.partType} onChange={(v) => setForm((p) => ({ ...p, partType: v }))} options={PART_TYPE_OPTIONS} />
               </div>
@@ -706,43 +682,115 @@ export function PartMasterScreen() {
         </div>
       )}
 
-      {/* ── Inline Create Modals ── */}
-      {inlineCreate === 'category' && (
-        <InlineCreateModal
-          title="New Part Category"
-          fields={[
-            { label: 'Name', value: inlineName, onChange: setInlineName, placeholder: 'e.g. Engine Components' },
-            { label: 'Code', value: inlineCode, onChange: setInlineCode, placeholder: 'e.g. ENG (optional)' },
-          ]}
-          onSave={handleInlineCreate}
-          onCancel={() => setInlineCreate(null)}
-          saving={inlineSaving}
-        />
-      )}
-      {inlineCreate === 'model' && (
-        <InlineCreateModal
-          title="New Product Model"
-          fields={[
-            { label: 'Name', value: inlineName, onChange: setInlineName, placeholder: 'e.g. Model X-100' },
-            { label: 'Code', value: inlineCode, onChange: setInlineCode, placeholder: 'e.g. X100 (optional)' },
-          ]}
-          onSave={handleInlineCreate}
-          onCancel={() => setInlineCreate(null)}
-          saving={inlineSaving}
-        />
-      )}
-      {inlineCreate === 'uom' && (
-        <InlineCreateModal
-          title="New Unit of Measure"
-          fields={[
-            { label: 'Name', value: inlineName, onChange: setInlineName, placeholder: 'e.g. Kilogram' },
-            { label: 'Abbreviation', value: inlineCode, onChange: setInlineCode, placeholder: 'e.g. kg' },
-          ]}
-          onSave={handleInlineCreate}
-          onCancel={() => setInlineCreate(null)}
-          saving={inlineSaving}
-        />
-      )}
+      {/* ── ManageModal: Category ── */}
+      <ManageModal
+        open={manageModal === 'category'}
+        onClose={() => setManageModal(null)}
+        title="Manage Part Categories"
+        items={categories.map((c) => ({ id: c.id, name: c.name, code: c.code }))}
+        isLoading={categoriesLoading}
+        createFields={[
+          { key: 'name', label: 'Name', placeholder: 'e.g. Engine Components' },
+        ]}
+        onCreate={async (values) => {
+          const res = await createCategoryMutation.mutateAsync({ name: values.name });
+          const newId = res?.data?.id;
+          if (newId) setForm((p) => ({ ...p, categoryId: newId }));
+        }}
+        onUpdate={async (id, values) => {
+          await updateCategoryMutation.mutateAsync({ id, data: { name: values.name } });
+        }}
+        onDelete={async (id) => {
+          await deleteCategoryMutation.mutateAsync(id);
+          if (form.categoryId === id) setForm((p) => ({ ...p, categoryId: '' }));
+        }}
+        isCreating={createCategoryMutation.isPending}
+        isUpdating={updateCategoryMutation.isPending}
+        isDeleting={deleteCategoryMutation.isPending}
+      />
+
+      {/* ── ManageModal: Product Model ── */}
+      <ManageModal
+        open={manageModal === 'model'}
+        onClose={() => setManageModal(null)}
+        title="Manage Product Models"
+        items={productModels.map((m) => ({ id: m.id, name: m.name, code: m.code }))}
+        isLoading={modelsLoading}
+        createFields={[
+          { key: 'name', label: 'Name', placeholder: 'e.g. Model X-100' },
+        ]}
+        onCreate={async (values) => {
+          const res = await createModelMutation.mutateAsync({ name: values.name });
+          const newId = res?.data?.id;
+          if (newId) setForm((p) => ({ ...p, productModelId: newId }));
+        }}
+        onUpdate={async (id, values) => {
+          await updateModelMutation.mutateAsync({ id, data: { name: values.name } });
+        }}
+        onDelete={async (id) => {
+          await deleteModelMutation.mutateAsync(id);
+          if (form.productModelId === id) setForm((p) => ({ ...p, productModelId: '' }));
+        }}
+        isCreating={createModelMutation.isPending}
+        isUpdating={updateModelMutation.isPending}
+        isDeleting={deleteModelMutation.isPending}
+      />
+
+      {/* ── ManageModal: UOM ── */}
+      <ManageModal
+        open={manageModal === 'uom'}
+        onClose={() => setManageModal(null)}
+        title="Manage Units of Measure"
+        items={uoms.map((u) => ({ id: u.id, name: u.name, abbreviation: u.abbreviation }))}
+        isLoading={uomsLoading}
+        createFields={[
+          { key: 'name', label: 'Name', placeholder: 'e.g. Kilogram' },
+          { key: 'abbreviation', label: 'Abbreviation', placeholder: 'e.g. kg' },
+        ]}
+        onCreate={async (values) => {
+          const res = await createUomMutation.mutateAsync({ name: values.name, abbreviation: values.abbreviation });
+          const newId = res?.data?.id;
+          if (newId) setForm((p) => ({ ...p, uomId: newId }));
+        }}
+        onUpdate={async (id, values) => {
+          await updateUomMutation.mutateAsync({ id, data: { name: values.name } });
+        }}
+        onDelete={async (id) => {
+          await deleteUomMutation.mutateAsync(id);
+          if (form.uomId === id) setForm((p) => ({ ...p, uomId: '' }));
+        }}
+        isCreating={createUomMutation.isPending}
+        isUpdating={updateUomMutation.isPending}
+        isDeleting={deleteUomMutation.isPending}
+      />
+
+      {/* ── ManageModal: Component Type ── */}
+      <ManageModal
+        open={manageModal === 'componentType'}
+        onClose={() => setManageModal(null)}
+        title="Manage Component Types"
+        items={componentTypes.map((ct) => ({ id: ct.id, name: ct.name }))}
+        isLoading={componentTypesLoading}
+        createFields={[
+          { key: 'name', label: 'Name', placeholder: 'e.g. Crankshaft' },
+        ]}
+        onCreate={async (values) => {
+          const res = await createComponentTypeMutation.mutateAsync({ name: values.name });
+          const newId = res?.data?.id;
+          const newName = res?.data?.name ?? values.name;
+          if (newId) setForm((p) => ({ ...p, componentTypeId: newId, name: newName }));
+        }}
+        onUpdate={async (id, values) => {
+          await updateComponentTypeMutation.mutateAsync({ id, data: { name: values.name } });
+        }}
+        onDelete={async (id) => {
+          await deleteComponentTypeMutation.mutateAsync(id);
+          if (form.componentTypeId === id) setForm((p) => ({ ...p, componentTypeId: '', name: '' }));
+        }}
+        isCreating={createComponentTypeMutation.isPending}
+        isUpdating={updateComponentTypeMutation.isPending}
+        isDeleting={deleteComponentTypeMutation.isPending}
+      />
 
       {/* ── Delete Confirmation ── */}
       {deleteTarget && (

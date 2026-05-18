@@ -135,6 +135,39 @@ export function useDeleteUom() {
   });
 }
 
+// ── Part Component Type ──
+
+export function useCreateComponentType() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Record<string, unknown>) => partApi.createComponentType(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: mastersKeys.componentTypes() });
+    },
+  });
+}
+
+export function useUpdateComponentType() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
+      partApi.updateComponentType(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: mastersKeys.componentTypes() });
+    },
+  });
+}
+
+export function useDeleteComponentType() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => partApi.deleteComponentType(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: mastersKeys.componentTypes() });
+    },
+  });
+}
+
 // ── Machine CRUD ──
 
 export function useCreateMachine() {

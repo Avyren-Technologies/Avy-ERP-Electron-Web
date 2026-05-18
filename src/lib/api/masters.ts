@@ -57,6 +57,13 @@ export interface UnitOfMeasure {
   isActive: boolean;
 }
 
+export interface PartComponentType {
+  id: string;
+  companyId: string;
+  name: string;
+  isActive: boolean;
+}
+
 export interface Machine {
   id: string;
   companyId: string;
@@ -196,6 +203,26 @@ async function deleteUom(id: string): Promise<ApiResponse<void>> {
     return response.data;
 }
 
+async function listComponentTypes(): Promise<ApiResponse<PartComponentType[]>> {
+    const response = await client.get('/masters/parts/component-types/list');
+    return response.data;
+}
+
+async function createComponentType(data: Record<string, unknown>): Promise<ApiResponse<PartComponentType>> {
+    const response = await client.post('/masters/parts/component-types', data);
+    return response.data;
+}
+
+async function updateComponentType(id: string, data: Record<string, unknown>): Promise<ApiResponse<PartComponentType>> {
+    const response = await client.patch(`/masters/parts/component-types/${id}`, data);
+    return response.data;
+}
+
+async function deleteComponentType(id: string): Promise<ApiResponse<void>> {
+    const response = await client.delete(`/masters/parts/component-types/${id}`);
+    return response.data;
+}
+
 export const partApi = {
     listParts,
     getPart,
@@ -214,6 +241,10 @@ export const partApi = {
     createUom,
     updateUom,
     deleteUom,
+    listComponentTypes,
+    createComponentType,
+    updateComponentType,
+    deleteComponentType,
 };
 
 // ---------- Machine API ----------

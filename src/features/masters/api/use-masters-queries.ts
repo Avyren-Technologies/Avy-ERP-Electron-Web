@@ -9,6 +9,7 @@ export const mastersKeys = {
   partCategories: () => [...mastersKeys.all, 'part-categories'] as const,
   productModels: () => [...mastersKeys.all, 'product-models'] as const,
   uoms: () => [...mastersKeys.all, 'uoms'] as const,
+  componentTypes: () => [...mastersKeys.all, 'component-types'] as const,
   // Machines
   machines: (params?: Record<string, unknown>) => [...mastersKeys.all, 'machines', params] as const,
   machine: (id: string) => [...mastersKeys.all, 'machine', id] as const,
@@ -52,6 +53,13 @@ export function useUoms() {
   return useQuery({
     queryKey: mastersKeys.uoms(),
     queryFn: () => partApi.listUoms(),
+  });
+}
+
+export function useComponentTypes() {
+  return useQuery({
+    queryKey: mastersKeys.componentTypes(),
+    queryFn: () => partApi.listComponentTypes(),
   });
 }
 
