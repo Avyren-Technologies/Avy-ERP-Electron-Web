@@ -1,5 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { hrApi } from '@/lib/api/hr';
+
+/** Page size for employee pickers (assign modals, async selects). */
+export const EMPLOYEE_PICKER_PAGE_SIZE = 25;
 
 export const hrKeys = {
     all: ['hr'] as const,
@@ -115,6 +118,27 @@ export function useEmployees(params?: Record<string, unknown>) {
     return useQuery({
         queryKey: hrKeys.employees(params),
         queryFn: () => hrApi.listEmployees(params as any),
+    });
+}
+
+/** Infinite employee list for pickers — scroll/search loads additional pages. */
+export function useEmployeesInfinite(search: string, enabled = true) {
+    const trimmed = search.trim();
+    return useInfiniteQuery({
+        queryKey: [...hrKeys.all, 'employees-infinite', trimmed] as const,
+        queryFn: ({ pageParam }) =>
+            hrApi.listEmployees({
+                page: pageParam,
+                limit: EMPLOYEE_PICKER_PAGE_SIZE,
+                search: trimmed || undefined,
+            }),
+        initialPageParam: 1,
+        getNextPageParam: (lastPage) => {
+            const meta = lastPage?.meta;
+            if (!meta) return undefined;
+            return meta.page < meta.totalPages ? meta.page + 1 : undefined;
+        },
+        enabled,
     });
 }
 

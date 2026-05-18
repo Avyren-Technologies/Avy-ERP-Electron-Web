@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     RotateCcw,
@@ -24,7 +24,7 @@ import {
     useExecuteShiftRotations,
 } from "@/features/company-admin/api/use-shift-rotation-mutations";
 import { useCompanyShifts } from "@/features/company-admin/api/use-company-admin-queries";
-import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
+import { useEmployeesInfinite } from "@/features/company-admin/api/use-hr-queries";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -155,6 +155,8 @@ export function ShiftRotationScreen() {
     const [detailTarget, setDetailTarget] = useState<any>(null);
     const [assignModalOpen, setAssignModalOpen] = useState(false);
     const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
+    const [assignEmployeeSearch, setAssignEmployeeSearch] = useState("");
+    const [debouncedAssignSearch, setDebouncedAssignSearch] = useState("");
     const [executeResult, setExecuteResult] = useState<any>(null);
     const [activeTab, setActiveTab] = useState<'schedules' | 'overview'>('schedules');
     const [overviewSearch, setOverviewSearch] = useState("");
@@ -177,16 +179,43 @@ export function ShiftRotationScreen() {
         sublabel: `${s.startTime} — ${s.endTime}`,
     }));
 
-    const { data: empData } = useEmployees({ limit: 500 });
-    const allEmployees: any[] = (empData as any)?.data ?? [];
-    const employeeOptions = allEmployees.map((e: any) => ({
-        value: e.id,
-        label: `${e.firstName} ${e.lastName}`,
-        sublabel: e.employeeId,
-    }));
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedAssignSearch(assignEmployeeSearch), 300);
+        return () => clearTimeout(timer);
+    }, [assignEmployeeSearch]);
 
-    // Build a lookup map for employee names
-    const employeeMap = new Map(allEmployees.map((e: any) => [e.id, `${e.firstName} ${e.lastName} (${e.employeeId})`]));
+    useEffect(() => {
+        if (!assignModalOpen) {
+            setAssignEmployeeSearch("");
+            setDebouncedAssignSearch("");
+        }
+    }, [assignModalOpen]);
+
+    const employeesInfinite = useEmployeesInfinite(debouncedAssignSearch, assignModalOpen);
+
+    const employeeOptions = useMemo(() => {
+        const seen = new Set<string>();
+        const opts: { value: string; label: string; sublabel?: string }[] = [];
+        for (const page of employeesInfinite.data?.pages ?? []) {
+            const list = (page as { data?: { id: string; firstName?: string; lastName?: string; employeeId?: string }[] })?.data ?? [];
+            for (const e of list) {
+                if (!e.id || seen.has(e.id)) continue;
+                seen.add(e.id);
+                opts.push({
+                    value: e.id,
+                    label: `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim(),
+                    sublabel: e.employeeId,
+                });
+            }
+        }
+        return opts;
+    }, [employeesInfinite.data]);
+
+    const handleAssignLoadMore = useCallback(() => {
+        if (employeesInfinite.hasNextPage && !employeesInfinite.isFetchingNextPage) {
+            void employeesInfinite.fetchNextPage();
+        }
+    }, [employeesInfinite]);
 
     const schedules: any[] = (data as any)?.data ?? [];
 
@@ -686,7 +715,7 @@ export function ShiftRotationScreen() {
                                 <div className="space-y-2">
                                     {(detailTarget.assignedEmployees ?? []).map((emp: any) => (
                                         <div key={emp.id ?? emp.employeeId} className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-neutral-800 rounded-xl">
-                                            <span className="text-sm font-medium text-primary-950 dark:text-white">{emp.name ?? emp.employeeName ?? employeeMap.get(emp.id ?? emp.employeeId) ?? emp.id}</span>
+                                            <span className="text-sm font-medium text-primary-950 dark:text-white">{emp.name ?? emp.employeeName ?? emp.id}</span>
                                             <button
                                                 onClick={() => handleRemoveEmployee(detailTarget.id, emp.id ?? emp.employeeId)}
                                                 className="p-1 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg"
@@ -726,6 +755,12 @@ export function ShiftRotationScreen() {
                                 onMultiChange={setSelectedEmployeeIds}
                                 options={employeeOptions}
                                 placeholder="Search employees..."
+                                serverSearch
+                                onSearchChange={setAssignEmployeeSearch}
+                                onLoadMore={handleAssignLoadMore}
+                                hasMore={employeesInfinite.hasNextPage}
+                                isLoading={employeesInfinite.isLoading}
+                                isFetchingMore={employeesInfinite.isFetchingNextPage}
                             />
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">

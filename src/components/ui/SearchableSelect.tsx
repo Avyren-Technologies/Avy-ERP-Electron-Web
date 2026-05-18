@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
-import { Search, X, ChevronDown, Plus } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Search, X, ChevronDown, Plus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface SearchableSelectOption {
@@ -25,6 +25,14 @@ interface SearchableSelectProps {
     onMultiChange?: (values: string[]) => void;
     /** Tooltip text shown on hover */
     tooltip?: string;
+    /** Server-driven search (parent filters via API; no client-side filter) */
+    serverSearch?: boolean;
+    onSearchChange?: (term: string) => void;
+    /** Infinite scroll — fetch next page when near bottom */
+    onLoadMore?: () => void;
+    hasMore?: boolean;
+    isLoading?: boolean;
+    isFetchingMore?: boolean;
 }
 
 export function SearchableSelect({
@@ -41,23 +49,34 @@ export function SearchableSelect({
     selectedValues = [],
     onMultiChange,
     tooltip,
+    serverSearch = false,
+    onSearchChange,
+    onLoadMore,
+    hasMore = false,
+    isLoading = false,
+    isFetchingMore = false,
 }: SearchableSelectProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [openUpward, setOpenUpward] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
 
+    const clearSearch = useCallback(() => {
+        setSearchTerm("");
+        onSearchChange?.("");
+    }, [onSearchChange]);
+
     // Close on outside click
     useEffect(() => {
         function handleClick(e: MouseEvent) {
             if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
                 setIsOpen(false);
-                setSearchTerm("");
+                clearSearch();
             }
         }
         document.addEventListener("mousedown", handleClick);
         return () => document.removeEventListener("mousedown", handleClick);
-    }, []);
+    }, [clearSearch]);
 
     useEffect(() => {
         if (!isOpen || !containerRef.current) return;
@@ -68,11 +87,21 @@ export function SearchableSelect({
         setOpenUpward(spaceBelow < estimatedDropdownHeight && spaceAbove > spaceBelow);
     }, [isOpen, options.length]);
 
-    const filtered = options.filter(
-        (o) =>
-            o.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (o.sublabel && o.sublabel.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    const filtered = serverSearch
+        ? options
+        : options.filter(
+              (o) =>
+                  o.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  (o.sublabel && o.sublabel.toLowerCase().includes(searchTerm.toLowerCase()))
+          );
+
+    const handleOptionsScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        if (!onLoadMore || !hasMore || isFetchingMore) return;
+        const el = e.currentTarget;
+        if (el.scrollHeight - el.scrollTop - el.clientHeight < 48) {
+            onLoadMore();
+        }
+    };
 
     const selected = options.find((o) => o.value === value);
 
@@ -89,7 +118,7 @@ export function SearchableSelect({
         } else {
             onChange(optValue);
             setIsOpen(false);
-            setSearchTerm("");
+            clearSearch();
         }
     };
 
@@ -144,12 +173,15 @@ export function SearchableSelect({
                                 type="text"
                                 autoFocus
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onChange={(e) => {
+                                    setSearchTerm(e.target.value);
+                                    onSearchChange?.(e.target.value);
+                                }}
                                 placeholder="Search..."
                                 className="w-full pl-8 pr-3 py-1.5 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary-500/20 dark:text-white"
                             />
                             {searchTerm && (
-                                <button onClick={() => setSearchTerm("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600">
+                                <button onClick={clearSearch} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600">
                                     <X size={12} />
                                 </button>
                             )}
@@ -157,7 +189,7 @@ export function SearchableSelect({
                     </div>
 
                     {/* Options */}
-                    <div className="overflow-y-auto max-h-52">
+                    <div className="overflow-y-auto max-h-52" onScroll={handleOptionsScroll}>
                         {!multiple && (
                             <button
                                 type="button"
@@ -194,8 +226,20 @@ export function SearchableSelect({
                                 </button>
                             );
                         })}
-                        {filtered.length === 0 && (
+                        {isLoading && filtered.length === 0 && (
+                            <div className="px-3 py-4 flex items-center justify-center gap-2 text-sm text-neutral-400">
+                                <Loader2 size={14} className="animate-spin" />
+                                Loading...
+                            </div>
+                        )}
+                        {!isLoading && filtered.length === 0 && (
                             <div className="px-3 py-4 text-sm text-neutral-400 text-center">No results found</div>
+                        )}
+                        {isFetchingMore && (
+                            <div className="px-3 py-2 flex items-center justify-center gap-2 text-xs text-neutral-400">
+                                <Loader2 size={12} className="animate-spin" />
+                                Loading more...
+                            </div>
                         )}
                     </div>
 
@@ -204,7 +248,7 @@ export function SearchableSelect({
                         <div className="border-t border-neutral-100 dark:border-neutral-700 p-1.5">
                             <button
                                 type="button"
-                                onClick={() => { onCreateNew(); setIsOpen(false); setSearchTerm(""); }}
+                                onClick={() => { onCreateNew(); setIsOpen(false); clearSearch(); }}
                                 className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 font-semibold transition-colors"
                             >
                                 <Plus size={14} />
@@ -218,7 +262,7 @@ export function SearchableSelect({
                         <div className="border-t border-neutral-100 dark:border-neutral-700 p-2">
                             <button
                                 type="button"
-                                onClick={() => { setIsOpen(false); setSearchTerm(""); }}
+                                onClick={() => { setIsOpen(false); clearSearch(); }}
                                 className="w-full py-2 rounded-xl bg-primary-600 text-white text-sm font-bold hover:bg-primary-700 transition-colors"
                             >
                                 Done ({selectedValues.length} selected)
