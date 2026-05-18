@@ -282,10 +282,12 @@ export function PipSlabConfigScreen() {
   };
 
   const handleExport = () => {
-    const headers = ['Machine Code', 'Machine Name', 'Part No', 'Part Name', 'Shift Target', 'Slab Tiers', 'Status'];
+    const headers = ['Machine Code', 'Machine Name', 'Operation Code', 'Operation Name', 'Part No', 'Part Name', 'Shift Target', 'Slab Tiers', 'Status'];
     const rows = slabConfigs.map((c) => [
       c.machine?.assetCode ?? '',
       c.machine?.assetName ?? '',
+      c.operation?.code ?? '',
+      c.operation?.name ?? '',
       c.part?.partNumber ?? '',
       c.part?.name ?? '',
       c.shiftTargetQty,
@@ -313,7 +315,7 @@ export function PipSlabConfigScreen() {
             Slab Configuration
           </h1>
           <p className="text-neutral-500 dark:text-neutral-400 mt-1">
-            Define incentive rules per machine-part combination
+            Define incentive rules per machine-operation-part combination
           </p>
         </div>
         <button
@@ -329,7 +331,7 @@ export function PipSlabConfigScreen() {
       <div className="flex items-start gap-3 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800/50 rounded-2xl p-5">
         <Info className="w-5 h-5 text-primary-600 dark:text-primary-400 mt-0.5 shrink-0" />
         <p className="text-sm text-primary-800 dark:text-primary-300 leading-relaxed">
-          Select a machine, then tick one or more parts. For each part set the shift target qty and add slab tiers with rates. On save each part is stored as its own row below.
+          Select machine(s), operation(s), and part(s). For each part set the shift target qty and add slab tiers with rates. On save each combination is stored as its own row below.
         </p>
       </div>
 
@@ -340,7 +342,7 @@ export function PipSlabConfigScreen() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400 dark:text-neutral-500" />
             <input
               type="text"
-              placeholder="Search by machine code, part no or name..."
+              placeholder="Search by machine code, operation, part no or name..."
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -371,10 +373,11 @@ export function PipSlabConfigScreen() {
           <SkeletonTable rows={8} cols={7} />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[1000px]">
+            <table className="w-full text-left border-collapse min-w-[1100px]">
               <thead>
                 <tr className="bg-neutral-50/50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
                   <th className="py-4 px-6 font-bold">Machine</th>
+                  <th className="py-4 px-6 font-bold">Operation</th>
                   <th className="py-4 px-6 font-bold">Part No</th>
                   <th className="py-4 px-6 font-bold">Part Name</th>
                   <th className="py-4 px-6 font-bold">Shift Target</th>
@@ -397,6 +400,17 @@ export function PipSlabConfigScreen() {
                         </span>
                         <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
                           {config.machine?.assetName ?? ''}
+                        </p>
+                      </div>
+                    </td>
+                    {/* Operation */}
+                    <td className="py-4 px-6">
+                      <div>
+                        <span className="inline-block px-2 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 font-mono text-[10px] font-bold">
+                          {config.operation?.code ?? '--'}
+                        </span>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                          {config.operation?.name ?? ''}
                         </p>
                       </div>
                     </td>
@@ -461,7 +475,7 @@ export function PipSlabConfigScreen() {
                 ))}
                 {slabConfigs.length === 0 && !isLoading && (
                   <tr>
-                    <td colSpan={7}>
+                    <td colSpan={8}>
                       <EmptyState
                         icon="list"
                         title="No slab configurations found"

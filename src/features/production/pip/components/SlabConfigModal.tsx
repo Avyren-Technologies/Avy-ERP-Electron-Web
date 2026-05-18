@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { X, Search, Plus, Trash2, Loader2, ChevronRight, ChevronLeft, Check, Info, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBulkCreatePipSlabConfigs } from '@/features/production/pip/api/use-pip-mutations';
+import { useOperations } from '@/features/production/pip/api/use-pip-queries';
 import { showSuccess, showApiError } from '@/lib/toast';
 import type { Part, Machine } from '@/lib/api/masters';
 
@@ -58,7 +59,7 @@ function CheckboxDropdown<T extends { id: string }>({
     const lower = searchTerm.toLowerCase();
     return items.filter((item) => {
       const m = item as unknown as Record<string, unknown>;
-      const text = [m.assetCode, m.assetName, m.partNumber, m.name].filter(Boolean).join(' ').toLowerCase();
+      const text = [m.assetCode, m.assetName, m.partNumber, m.name, m.code, m.operationNumber].filter(Boolean).join(' ').toLowerCase();
       return text.includes(lower);
     });
   }, [items, searchTerm]);
@@ -353,16 +354,23 @@ function PartConfigCard({
 export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: SlabConfigModalProps) {
   const bulkCreateMutation = useBulkCreatePipSlabConfigs();
 
+  // Operations query
+  const { data: operationsData } = useOperations({ status: 'ACTIVE', limit: 500 });
+  const operations = (operationsData as any)?.data ?? [];
+
   // Step state
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
   // Step 1: Machine selection
   const [selectedMachineIds, setSelectedMachineIds] = useState<Set<string>>(new Set());
 
-  // Step 2: Part selection
+  // Step 2: Operation selection
+  const [selectedOperationIds, setSelectedOperationIds] = useState<Set<string>>(new Set());
+
+  // Step 3: Part selection
   const [selectedPartIds, setSelectedPartIds] = useState<Set<string>>(new Set());
 
-  // Step 3: Part configs
+  // Step 4: Part configs
   const [partConfigs, setPartConfigs] = useState<PartConfigForm[]>([]);
 
   // Inline validation errors per part config index
@@ -384,6 +392,25 @@ export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: S
       setSelectedMachineIds(new Set());
     } else {
       setSelectedMachineIds(new Set(machines.map((m) => m.id)));
+    }
+  };
+
+  /* ── Operation handlers ── */
+
+  const toggleOperation = (id: string) => {
+    setSelectedOperationIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllOperations = () => {
+    if (selectedOperationIds.size === operations.length) {
+      setSelectedOperationIds(new Set());
+    } else {
+      setSelectedOperationIds(new Set(operations.map((o: any) => o.id)));
     }
   };
 
@@ -417,6 +444,14 @@ export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: S
   };
 
   const goToStep3 = () => {
+    if (selectedOperationIds.size === 0) {
+      showApiError({ message: 'Select at least one operation' });
+      return;
+    }
+    setStep(3);
+  };
+
+  const goToStep4 = () => {
     if (selectedPartIds.size === 0) {
       showApiError({ message: 'Select at least one part' });
       return;
@@ -437,7 +472,7 @@ export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: S
       );
     });
     setPartConfigs(configs);
-    setStep(3);
+    setStep(4);
   };
 
   /* ── Copy to All Parts ── */
@@ -522,6 +557,7 @@ export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: S
 
     const payload = {
       machineIds: Array.from(selectedMachineIds),
+      operationIds: Array.from(selectedOperationIds),
       configs: partConfigs.map((cfg) => ({
         partId: cfg.partId,
         shiftTargetQty: Number(cfg.shiftTargetQty),
@@ -536,17 +572,18 @@ export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: S
     try {
       const result = await bulkCreateMutation.mutateAsync(payload);
       const machineCount = selectedMachineIds.size;
+      const operationCount = selectedOperationIds.size;
       const partCount = partConfigs.length;
       const rd = result?.data;
       if (rd && rd.skippedCount > 0) {
         const skippedList = (rd.skipped ?? [])
-          .map((s) => `${s.machineCode} + ${s.partNumber}`)
+          .map((s: any) => `${s.machineCode} + ${s.partNumber}`)
           .join(', ');
         showSuccess('Saved with skips', `${rd.createdCount} created, ${rd.skippedCount} skipped: ${skippedList}`);
       } else {
         showSuccess(
           'Slab Configs Saved',
-          `${machineCount * partCount} config(s) saved \u2014 ${machineCount} machine(s) \u00d7 ${partCount} part(s)`,
+          `${machineCount * operationCount * partCount} config(s) saved \u2014 ${machineCount} machine(s) \u00d7 ${operationCount} operation(s) \u00d7 ${partCount} part(s)`,
         );
       }
       onSaved();
@@ -559,6 +596,7 @@ export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: S
   const handleClose = () => {
     setStep(1);
     setSelectedMachineIds(new Set());
+    setSelectedOperationIds(new Set());
     setSelectedPartIds(new Set());
     setPartConfigs([]);
     setConfigErrors({});
@@ -577,8 +615,8 @@ export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: S
           <div>
             <h2 className="text-lg font-bold text-primary-950 dark:text-white">Add Slab Configuration</h2>
             <p className="text-xs text-neutral-400 mt-0.5">
-              Step {step} of 3 &mdash;{' '}
-              {step === 1 ? 'Select Machines' : step === 2 ? 'Select Parts' : 'Set Targets & Slabs'}
+              Step {step} of 4 &mdash;{' '}
+              {step === 1 ? 'Select Machines' : step === 2 ? 'Select Operations' : step === 3 ? 'Select Parts' : 'Set Targets & Slabs'}
             </p>
           </div>
           <button
@@ -592,7 +630,7 @@ export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: S
         {/* Step Indicator */}
         <div className="px-6 pt-4">
           <div className="flex items-center gap-2">
-            {[1, 2, 3].map((s) => (
+            {[1, 2, 3, 4].map((s) => (
               <div key={s} className="flex items-center gap-2 flex-1">
                 <div
                   className={cn(
@@ -604,7 +642,7 @@ export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: S
                 >
                   {step > s ? <Check size={14} /> : s}
                 </div>
-                {s < 3 && (
+                {s < 4 && (
                   <div
                     className={cn(
                       'h-0.5 flex-1 rounded-full transition-colors',
@@ -673,8 +711,60 @@ export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: S
             </>
           )}
 
-          {/* Step 2: Parts */}
+          {/* Step 2: Operations */}
           {step === 2 && (
+            <>
+              <CheckboxDropdown
+                label="Operations"
+                items={operations}
+                selectedIds={selectedOperationIds}
+                onToggle={toggleOperation}
+                onSelectAll={selectAllOperations}
+                searchPlaceholder="Search by code, name or number..."
+                renderItem={(op: any) => (
+                  <div className="text-left">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 font-mono">
+                        {op.code}
+                      </span>
+                      <span className="text-sm font-medium text-neutral-900 dark:text-white">{op.name}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400">
+                        {op.processType}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              />
+
+              {/* Selected Chips */}
+              {selectedOperationIds.size > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {Array.from(selectedOperationIds).map((id) => {
+                    const op = operations.find((x: any) => x.id === id);
+                    if (!op) return null;
+                    return (
+                      <span
+                        key={id}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 text-xs font-bold border border-primary-100 dark:border-primary-800/50"
+                      >
+                        {op.code}
+                        <button
+                          type="button"
+                          onClick={() => toggleOperation(id)}
+                          className="hover:text-danger-500 transition-colors"
+                        >
+                          <X size={12} />
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Step 3: Parts */}
+          {step === 3 && (
             <>
               <CheckboxDropdown
                 label="Parts"
@@ -722,8 +812,8 @@ export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: S
             </>
           )}
 
-          {/* Step 3: Config per Part */}
-          {step === 3 && (
+          {/* Step 4: Config per Part */}
+          {step === 4 && (
             <div className="space-y-4">
               {partConfigs.map((cfg, idx) => (
                 <PartConfigCard
@@ -763,7 +853,7 @@ export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: S
             {step > 1 && (
               <button
                 type="button"
-                onClick={() => setStep((s) => (s - 1) as 1 | 2 | 3)}
+                onClick={() => setStep((s) => (s - 1) as 1 | 2 | 3 | 4)}
                 className="inline-flex items-center gap-1.5 py-2.5 px-4 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
               >
                 <ChevronLeft size={16} />
@@ -778,9 +868,9 @@ export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: S
             >
               Cancel
             </button>
-            {step < 3 ? (
+            {step < 4 ? (
               <button
-                onClick={step === 1 ? goToStep2 : goToStep3}
+                onClick={step === 1 ? goToStep2 : step === 2 ? goToStep3 : goToStep4}
                 className="inline-flex items-center gap-1.5 py-2.5 px-5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors shadow-md shadow-primary-500/20"
               >
                 Next
