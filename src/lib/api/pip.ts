@@ -9,6 +9,19 @@ export interface SlabTier {
   ratePerPiece: number;
 }
 
+export interface Operation {
+  id: string;
+  companyId: string;
+  code: string;
+  operationNumber: string;
+  name: string;
+  processType: string;
+  status: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PipSlabConfig {
   id: string;
   companyId: string;
@@ -17,6 +30,8 @@ export interface PipSlabConfig {
   machine?: { id: string; assetCode: string; assetName: string };
   partId: string;
   part?: { id: string; partNumber: string; name: string };
+  operationId: string;
+  operation?: { id: string; code: string; name: string; operationNumber: string; processType: string };
   shiftTargetQty: number;
   slabTiers: SlabTier[];
   isActive: boolean;
@@ -36,6 +51,8 @@ export interface PipDailyEntry {
   machineId: string;
   partId: string;
   slabConfigId?: string;
+  operationId?: string;
+  operation?: { id: string; code: string; name: string };
   qtyProduced: number;
   shiftTargetQty: number;
   achievementPct: number;
@@ -252,6 +269,32 @@ async function reversePayrollMerge(id: string): Promise<ApiResponse<Record<strin
     return response.data;
 }
 
+// Operations
+async function listOperations(params?: Record<string, unknown>): Promise<ApiResponse<Operation[]>> {
+    const response = await client.get('/production/pip/operations', { params });
+    return response.data;
+}
+
+async function getOperation(id: string): Promise<ApiResponse<Operation>> {
+    const response = await client.get(`/production/pip/operations/${id}`);
+    return response.data;
+}
+
+async function createOperation(data: Record<string, unknown>): Promise<ApiResponse<Operation>> {
+    const response = await client.post('/production/pip/operations', data);
+    return response.data;
+}
+
+async function updateOperation(id: string, data: Record<string, unknown>): Promise<ApiResponse<Operation>> {
+    const response = await client.patch(`/production/pip/operations/${id}`, data);
+    return response.data;
+}
+
+async function deleteOperation(id: string): Promise<ApiResponse<void>> {
+    const response = await client.delete(`/production/pip/operations/${id}`);
+    return response.data;
+}
+
 export const pipApi = {
     getConfig,
     updateConfig,
@@ -276,4 +319,9 @@ export const pipApi = {
     mergeToPayroll,
     previewPayrollMerge,
     reversePayrollMerge,
+    listOperations,
+    getOperation,
+    createOperation,
+    updateOperation,
+    deleteOperation,
 };

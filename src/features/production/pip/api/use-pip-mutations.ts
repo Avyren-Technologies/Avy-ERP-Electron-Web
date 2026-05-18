@@ -158,3 +158,29 @@ export function useReversePipPayrollMerge() {
     },
   });
 }
+
+// ── Operations ──
+
+export function useCreateOperation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Record<string, unknown>) => pipApi.createOperation(data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: pipKeys.operations() }); },
+  });
+}
+
+export function useUpdateOperation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => pipApi.updateOperation(id, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: pipKeys.operations() }); },
+  });
+}
+
+export function useDeleteOperation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => pipApi.deleteOperation(id),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: pipKeys.operations() }); },
+  });
+}

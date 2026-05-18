@@ -17,6 +17,9 @@ export const pipKeys = {
     params ? ([...pipKeys.all, 'monthly-reports', params] as const) : ([...pipKeys.all, 'monthly-reports'] as const),
   monthlyReport: (id: string) => [...pipKeys.all, 'monthly-report', id] as const,
   payrollMergePreview: (id: string) => [...pipKeys.all, 'merge-preview', id] as const,
+  operations: (params?: Record<string, unknown>) =>
+    params ? ([...pipKeys.all, 'operations', params] as const) : ([...pipKeys.all, 'operations'] as const),
+  operation: (id: string) => [...pipKeys.all, 'operation', id] as const,
 };
 
 export function usePipConfig() {
@@ -81,6 +84,21 @@ export function usePipPayrollMergePreview(id: string) {
   return useQuery({
     queryKey: pipKeys.payrollMergePreview(id),
     queryFn: () => pipApi.previewPayrollMerge(id),
+    enabled: !!id,
+  });
+}
+
+export function useOperations(params?: Record<string, unknown>) {
+  return useQuery({
+    queryKey: pipKeys.operations(params),
+    queryFn: () => pipApi.listOperations(params),
+  });
+}
+
+export function useOperation(id: string) {
+  return useQuery({
+    queryKey: pipKeys.operation(id),
+    queryFn: () => pipApi.getOperation(id),
     enabled: !!id,
   });
 }
