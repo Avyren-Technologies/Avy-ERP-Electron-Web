@@ -39,16 +39,25 @@ interface PartEntry {
   partNumber: string;
   partName: string;
   slabConfigId: string;
+  operationId: string | null;
   shiftTargetQty: number;
   slabTiers: SlabTier[];
   qtyProduced: number;
   ncCount: number;
 }
 
+interface OperationOption {
+  id: string;
+  code: string;
+  name: string;
+}
+
 interface SessionMachine {
   machineId: string;
   assetCode: string;
   assetName: string;
+  selectedOperationId: string | null;
+  selectedOperationLabel: string | null;
   entries: PartEntry[];
 }
 
@@ -78,6 +87,8 @@ interface SavedEntry {
   employeeId: string;
   machineCode: string;
   machineName: string;
+  operationCode: string | null;
+  operationName: string | null;
   partNumber: string;
   partName: string;
   qty: number;
@@ -654,6 +665,10 @@ export function PipDailyEntryScreen() {
   /* ── Machine selection ── */
   const [selectedMachine, setSelectedMachine] = useState<SelectedMachine | null>(null);
 
+  /* ── Operation selection ── */
+  const [machineOperations, setMachineOperations] = useState<OperationOption[]>([]);
+  const [selectedOperationId, setSelectedOperationId] = useState<string | null>(null);
+
   // Build machine list: machines from Machine Master that have active slab configs (BR-15)
   const allMachines = allMachinesData?.data ?? [];
   const machinesWithSlabs = useMemo(() => {
@@ -676,27 +691,77 @@ export function PipDailyEntryScreen() {
   /* ── Parts entry for current machine ── */
   const [partEntries, setPartEntries] = useState<PartEntry[]>([]);
 
+  // When machine changes, extract unique operations from slab configs
   useEffect(() => {
     if (!selectedMachine) {
+      setMachineOperations([]);
+      setSelectedOperationId(null);
       setPartEntries([]);
       return;
     }
     const machineSlabs = slabConfigs.filter((sc) => sc.machineId === selectedMachine.id && sc.isActive);
+    // Extract unique operations
+    const opMap = new Map<string, OperationOption>();
+    for (const sc of machineSlabs) {
+      if (sc.operationId && sc.operation && !opMap.has(sc.operationId)) {
+        opMap.set(sc.operationId, {
+          id: sc.operationId,
+          code: sc.operation.code,
+          name: sc.operation.name,
+        });
+      }
+    }
+    const ops = Array.from(opMap.values());
+    setMachineOperations(ops);
+
+    // Auto-select if only one operation (or none — legacy configs without operation)
+    if (ops.length === 1) {
+      setSelectedOperationId(ops[0].id);
+    } else if (ops.length === 0) {
+      // No operations on slab configs — derive parts directly (legacy fallback)
+      setSelectedOperationId(null);
+      setPartEntries(
+        machineSlabs.map((sc) => ({
+          partId: sc.partId,
+          partNumber: sc.part?.partNumber ?? '',
+          partName: sc.part?.name ?? '',
+          slabConfigId: sc.id,
+          operationId: sc.operationId ?? null,
+          shiftTargetQty: sc.shiftTargetQty,
+          slabTiers: sc.slabTiers,
+          qtyProduced: 0,
+          ncCount: 0,
+        })),
+      );
+      setTimeout(() => firstQtyRef.current?.focus(), 100);
+    } else {
+      // Multiple operations — wait for user to pick
+      setSelectedOperationId(null);
+      setPartEntries([]);
+    }
+  }, [selectedMachine, slabConfigs]);
+
+  // When operation is selected, derive parts filtered by that operation
+  useEffect(() => {
+    if (!selectedMachine || !selectedOperationId) return;
+    const filteredSlabs = slabConfigs.filter(
+      (sc) => sc.machineId === selectedMachine.id && sc.isActive && sc.operationId === selectedOperationId,
+    );
     setPartEntries(
-      machineSlabs.map((sc) => ({
+      filteredSlabs.map((sc) => ({
         partId: sc.partId,
         partNumber: sc.part?.partNumber ?? '',
         partName: sc.part?.name ?? '',
         slabConfigId: sc.id,
+        operationId: sc.operationId ?? null,
         shiftTargetQty: sc.shiftTargetQty,
         slabTiers: sc.slabTiers,
         qtyProduced: 0,
         ncCount: 0,
       })),
     );
-    // Focus first qty input after a tick
     setTimeout(() => firstQtyRef.current?.focus(), 100);
-  }, [selectedMachine, slabConfigs]);
+  }, [selectedMachine, selectedOperationId, slabConfigs]);
 
   /* ── Session accumulator ── */
   const [session, setSession] = useState<SessionMachine[]>([]);
@@ -770,6 +835,8 @@ export function PipDailyEntryScreen() {
   const handleOperatorClear = () => {
     setSelectedOperator(null);
     setSelectedMachine(null);
+    setSelectedOperationId(null);
+    setMachineOperations([]);
     setPartEntries([]);
     setSession([]);
     setPlaceholderMsg(null);
@@ -779,6 +846,8 @@ export function PipDailyEntryScreen() {
     const m = machinesWithSlabs.find((mc) => mc.id === item.id);
     if (!m) return;
     setSelectedMachine({ id: m.id, assetCode: m.assetCode, assetName: m.assetName });
+    setSelectedOperationId(null);
+    setMachineOperations([]);
     setEditingSessionIndex(null);
     setPlaceholderMsg(null);
     setPartFilter('');
@@ -786,7 +855,14 @@ export function PipDailyEntryScreen() {
 
   const handleMachineClear = () => {
     setSelectedMachine(null);
+    setSelectedOperationId(null);
+    setMachineOperations([]);
     setPartEntries([]);
+  };
+
+  const handleSelectOperation = (opId: string) => {
+    setSelectedOperationId(opId);
+    setPartFilter('');
   };
 
   const handleQtyChange = (index: number, value: string) => {
@@ -809,10 +885,13 @@ export function PipDailyEntryScreen() {
 
   const handleAddToSession = () => {
     if (!selectedMachine || partEntries.length === 0) return;
+    const selectedOp = machineOperations.find((o) => o.id === selectedOperationId);
     const newEntry: SessionMachine = {
       machineId: selectedMachine.id,
       assetCode: selectedMachine.assetCode,
       assetName: selectedMachine.assetName,
+      selectedOperationId: selectedOperationId,
+      selectedOperationLabel: selectedOp ? `${selectedOp.code} — ${selectedOp.name}` : null,
       entries: [...partEntries],
     };
 
@@ -828,6 +907,8 @@ export function PipDailyEntryScreen() {
     }
 
     setSelectedMachine(null);
+    setSelectedOperationId(null);
+    setMachineOperations([]);
     setPartEntries([]);
     setPlaceholderMsg(`${newEntry.assetCode} ${newEntry.assetName} added -- Type next machine above, or click Save entries below.`);
     setTimeout(() => machineInputRef.current?.focus(), 50);
@@ -836,6 +917,10 @@ export function PipDailyEntryScreen() {
   const handleEditSession = (index: number) => {
     const sm = session[index];
     setSelectedMachine({ id: sm.machineId, assetCode: sm.assetCode, assetName: sm.assetName });
+    // Restore operation selection — the useEffect for machine will recalculate machineOperations,
+    // but we also need to restore the selectedOperationId. We set it directly; the part-derivation
+    // effect will be overridden by the explicit setPartEntries below.
+    setSelectedOperationId(sm.selectedOperationId);
     setPartEntries(sm.entries.map((e) => ({ ...e })));
     setEditingSessionIndex(index);
   };
@@ -846,6 +931,8 @@ export function PipDailyEntryScreen() {
 
   const handleChangeMachine = () => {
     setSelectedMachine(null);
+    setSelectedOperationId(null);
+    setMachineOperations([]);
     setPartEntries([]);
     setEditingSessionIndex(null);
     setTimeout(() => machineInputRef.current?.focus(), 50);
@@ -854,6 +941,8 @@ export function PipDailyEntryScreen() {
   const handleClearAll = () => {
     setSelectedOperator(null);
     setSelectedMachine(null);
+    setSelectedOperationId(null);
+    setMachineOperations([]);
     setPartEntries([]);
     setSession([]);
     setEditingSessionIndex(null);
@@ -869,6 +958,7 @@ export function PipDailyEntryScreen() {
         machineId: sm.machineId,
         partId: e.partId,
         slabConfigId: e.slabConfigId,
+        operationId: e.operationId ?? sm.selectedOperationId ?? undefined,
         qtyProduced: e.qtyProduced,
         shiftTargetQty: e.shiftTargetQty,
         ncCount: e.ncCount,
@@ -904,6 +994,9 @@ export function PipDailyEntryScreen() {
           const partCalc = liveCalcResult.partResults.find(
             (r) => r.partId === e.partId && r.machineId === sm.machineId,
           );
+          // Resolve operation label from the session-level selection
+          const opLabel = sm.selectedOperationLabel;
+          const opParts = opLabel?.split(' — ') ?? [null, null];
           setSavedEntries((prev) => [
             ...prev,
             {
@@ -911,6 +1004,8 @@ export function PipDailyEntryScreen() {
               employeeId: selectedOperator.employeeId,
               machineCode: sm.assetCode,
               machineName: sm.assetName,
+              operationCode: opParts[0] ?? null,
+              operationName: opParts[1] ?? null,
               partNumber: e.partNumber,
               partName: e.partName,
               qty: e.qtyProduced,
@@ -1109,8 +1204,13 @@ export function PipDailyEntryScreen() {
                   </div>
                   <div>
                     <p className="text-sm font-bold text-primary-700 dark:text-primary-300">{selectedOperator.name}</p>
-                    <p className="text-xs text-primary-500 dark:text-primary-400">
+                    <p className="text-xs text-primary-500 dark:text-primary-400 flex items-center gap-1.5">
                       {selectedMachine.assetCode} -- {selectedMachine.assetName}
+                      {selectedOperationId && machineOperations.find((o) => o.id === selectedOperationId) && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-accent-100 dark:bg-accent-900/30 text-accent-700 dark:text-accent-300 text-[10px] font-bold">
+                          {machineOperations.find((o) => o.id === selectedOperationId)!.code}
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -1132,6 +1232,40 @@ export function PipDailyEntryScreen() {
               </div>
             )}
           </div>
+
+          {/* ── Operation Selector (when machine has multiple operations) ── */}
+          {selectedMachine && machineOperations.length > 1 && (
+            <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-sm border border-neutral-100 dark:border-neutral-800 p-4">
+              <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                Select Operation
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {machineOperations.map((op) => (
+                  <button
+                    key={op.id}
+                    onClick={() => handleSelectOperation(op.id)}
+                    className={cn(
+                      'px-3 py-1.5 rounded-lg text-xs font-bold border transition-all',
+                      selectedOperationId === op.id
+                        ? 'bg-primary-600 text-white border-primary-600'
+                        : 'bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border-neutral-200 dark:border-neutral-700 hover:border-primary-400',
+                    )}
+                  >
+                    {op.code} — {op.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Prompt to select operation ── */}
+          {selectedMachine && machineOperations.length > 1 && !selectedOperationId && (
+            <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-sm border border-neutral-100 dark:border-neutral-800 p-8 text-center">
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                This machine has {machineOperations.length} operations configured. Select an operation above to load its parts.
+              </p>
+            </div>
+          )}
 
           {/* ── Parts Entry Table ── */}
           {selectedMachine && partEntries.length > 0 && (() => {
@@ -1336,6 +1470,11 @@ export function PipDailyEntryScreen() {
                       <span className="text-sm font-bold text-neutral-900 dark:text-white">
                         {sm.assetCode} -- {sm.assetName}
                       </span>
+                      {sm.selectedOperationLabel && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-accent-50 dark:bg-accent-900/30 text-accent-700 dark:text-accent-300 text-[10px] font-bold">
+                          {sm.selectedOperationLabel}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-1">
                       <button
@@ -1541,6 +1680,7 @@ export function PipDailyEntryScreen() {
                 <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Operator</th>
                   <th className="text-left px-3 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Machine</th>
+                  <th className="text-left px-3 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Operation</th>
                   <th className="text-left px-3 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Part</th>
                   <th className="text-center px-3 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Qty</th>
                   <th className="text-center px-3 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Target</th>
@@ -1563,6 +1703,20 @@ export function PipDailyEntryScreen() {
                       <td className="px-3 py-3">
                         <p className="font-medium text-neutral-900 dark:text-white text-sm">{se.machineCode}</p>
                         <p className="text-xs text-neutral-500">{se.machineName}</p>
+                      </td>
+                      <td className="px-3 py-3">
+                        {se.operationCode ? (
+                          <>
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-accent-50 dark:bg-accent-900/30 text-accent-700 dark:text-accent-300 text-xs font-bold">
+                              {se.operationCode}
+                            </span>
+                            {se.operationName && (
+                              <p className="text-[10px] text-neutral-500 mt-0.5">{se.operationName}</p>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-xs text-neutral-400">--</span>
+                        )}
                       </td>
                       <td className="px-3 py-3">
                         <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-xs font-bold">
@@ -1608,6 +1762,18 @@ export function PipDailyEntryScreen() {
                         </p>
                         {entry.slabConfig?.machine?.assetCode && (
                           <p className="text-[10px] text-neutral-400">{entry.slabConfig.machine.assetCode}</p>
+                        )}
+                      </td>
+                      <td className="px-3 py-3">
+                        {entry.operation ? (
+                          <>
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-accent-50 dark:bg-accent-900/30 text-accent-700 dark:text-accent-300 text-xs font-bold">
+                              {entry.operation.code}
+                            </span>
+                            <p className="text-[10px] text-neutral-400 mt-0.5">{entry.operation.name}</p>
+                          </>
+                        ) : (
+                          <span className="text-xs text-neutral-400">--</span>
                         )}
                       </td>
                       <td className="px-3 py-3">
