@@ -128,6 +128,11 @@ interface CalcPartResult {
   shiftTargetQty: number;
   achievementPct: number;
   incentiveAmount: number;
+  consideredPct: number;
+  earningQty: number;
+  appliedRate: number;
+  appliedSlabLabel: string;
+  milestone?: number;
 }
 
 function getSlabRate(slabTiers: SlabTier[], qty: number): number {
@@ -157,6 +162,10 @@ function calculateIncentiveLocal(
         ...p,
         achievementPct: p.shiftTargetQty > 0 ? (p.qtyProduced / p.shiftTargetQty) * 100 : 0,
         incentiveAmount: 0,
+        consideredPct: 0,
+        earningQty: 0,
+        appliedRate: 0,
+        appliedSlabLabel: 'N/A',
       })),
     };
   }
@@ -184,6 +193,10 @@ function calculateIncentiveLocal(
           ...p,
           achievementPct: p.shiftTargetQty > 0 ? (p.qtyProduced / p.shiftTargetQty) * 100 : 0,
           incentiveAmount: 0,
+          consideredPct: 0,
+          earningQty: 0,
+          appliedRate: 0,
+          appliedSlabLabel: 'N/A',
         })),
       };
     }
@@ -224,6 +237,10 @@ function calculateIncentiveLocal(
         ...p,
         achievementPct: p.shiftTargetQty > 0 ? (p.qtyProduced / p.shiftTargetQty) * 100 : 0,
         incentiveAmount,
+        consideredPct: 100,
+        earningQty,
+        appliedRate: p.slabTiers.length > 0 ? p.slabTiers[0].ratePerPiece : 0,
+        appliedSlabLabel: earningQty > 0 && p.slabTiers.length > 0 ? 'Slab 1' : 'N/A',
       });
     }
 
@@ -237,6 +254,10 @@ function calculateIncentiveLocal(
         ...p,
         achievementPct: p.shiftTargetQty > 0 ? (p.qtyProduced / p.shiftTargetQty) * 100 : 0,
         incentiveAmount: 0,
+        consideredPct: 100,
+        earningQty: 0,
+        appliedRate: 0,
+        appliedSlabLabel: 'N/A',
       }),
     };
   }
@@ -273,6 +294,7 @@ function calculateIncentiveLocal(
         incentiveAmount += slab1Earning * slab1Rate;
       }
       totalIncentive += incentiveAmount;
+      const slab1Rate = p.slabTiers.length > 0 ? p.slabTiers[0].ratePerPiece : 0;
       partResults.push({
         partId: p.partId,
         partNumber: p.partNumber,
@@ -283,6 +305,11 @@ function calculateIncentiveLocal(
         shiftTargetQty: p.shiftTargetQty,
         achievementPct: p.pct,
         incentiveAmount,
+        consideredPct: p.milestone,
+        milestone: p.milestone,
+        earningQty: p.milestone > 0 ? p.remainingQty : 0,
+        appliedRate: slab1Rate,
+        appliedSlabLabel: slab1Rate > 0 && p.milestone > 0 ? 'Slab 1' : 'N/A',
       });
     }
 
@@ -303,6 +330,10 @@ function calculateIncentiveLocal(
       ...p,
       achievementPct: p.shiftTargetQty > 0 ? (p.qtyProduced / p.shiftTargetQty) * 100 : 0,
       incentiveAmount: 0,
+      consideredPct: 0,
+      earningQty: 0,
+      appliedRate: 0,
+      appliedSlabLabel: 'N/A',
     })),
   };
 }
