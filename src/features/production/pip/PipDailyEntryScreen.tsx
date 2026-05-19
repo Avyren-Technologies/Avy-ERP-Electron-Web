@@ -350,6 +350,7 @@ function calculateIncentiveLocal(
         machineCode: p.machineCode,
         qtyProduced: p.qtyProduced,
         shiftTargetQty: p.shiftTargetQty,
+        slabTiers: p.slabTiers,
         achievementPct: p.pct,
         incentiveAmount,
         consideredPct: p.milestone,
@@ -1832,8 +1833,8 @@ export function PipDailyEntryScreen() {
                         <>
                           {liveCalcResult.partResults.map((part: CalcPartResult, idx: number) => {
                             const pct = Math.round(part.achievementPct);
-                            const cumBefore = part.cumRatioBefore ?? 0;
-                            const cumAfter = part.cumRatioAfter ?? 0;
+                            const cumBefore = Math.round(part.cumRatioBefore ?? 0);
+                            const cumAfter = Math.round(part.cumRatioAfter ?? 0);
                             const slab1Rate = part.appliedRate ?? 0;
                             const belowEarn = part.belowTargetEarning ?? 0;
                             const belowAmt = part.belowTargetAmount ?? 0;
