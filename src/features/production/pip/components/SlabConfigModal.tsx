@@ -729,7 +729,7 @@ export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: S
                       </span>
                       <span className="text-sm font-medium text-neutral-900 dark:text-white">{op.name}</span>
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400">
-                        {op.processType}
+                        {op.processCategory?.name ?? op.processType ?? ''}
                       </span>
                     </div>
                   </div>

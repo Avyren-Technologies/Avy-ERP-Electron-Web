@@ -15,11 +15,21 @@ export interface Operation {
   code: string;
   operationNumber: string;
   name: string;
-  processType: string;
+  processType?: string;  // legacy, keep for backward compat
+  processCategoryId?: string;
+  processCategory?: { id: string; name: string; code?: string };
   status: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ProcessCategory {
+  id: string;
+  companyId: string;
+  name: string;
+  code?: string;
+  isActive: boolean;
 }
 
 export interface PipSlabConfig {
@@ -31,7 +41,7 @@ export interface PipSlabConfig {
   partId: string;
   part?: { id: string; partNumber: string; name: string };
   operationId: string;
-  operation?: { id: string; code: string; name: string; operationNumber: string; processType: string };
+  operation?: { id: string; code: string; name: string; operationNumber: string; processType?: string; processCategoryId?: string; processCategory?: { id: string; name: string } };
   shiftTargetQty: number;
   slabTiers: SlabTier[];
   isActive: boolean;
@@ -269,6 +279,27 @@ async function reversePayrollMerge(id: string): Promise<ApiResponse<Record<strin
     return response.data;
 }
 
+// Process Categories
+async function listProcessCategories(params?: Record<string, unknown>): Promise<ApiResponse<ProcessCategory[]>> {
+    const response = await client.get('/production/pip/process-categories', { params });
+    return response.data;
+}
+
+async function createProcessCategory(data: Record<string, unknown>): Promise<ApiResponse<ProcessCategory>> {
+    const response = await client.post('/production/pip/process-categories', data);
+    return response.data;
+}
+
+async function updateProcessCategory(id: string, data: Record<string, unknown>): Promise<ApiResponse<ProcessCategory>> {
+    const response = await client.patch(`/production/pip/process-categories/${id}`, data);
+    return response.data;
+}
+
+async function deleteProcessCategory(id: string): Promise<ApiResponse<void>> {
+    const response = await client.delete(`/production/pip/process-categories/${id}`);
+    return response.data;
+}
+
 // Operations
 async function listOperations(params?: Record<string, unknown>): Promise<ApiResponse<Operation[]>> {
     const response = await client.get('/production/pip/operations', { params });
@@ -319,6 +350,10 @@ export const pipApi = {
     mergeToPayroll,
     previewPayrollMerge,
     reversePayrollMerge,
+    listProcessCategories,
+    createProcessCategory,
+    updateProcessCategory,
+    deleteProcessCategory,
     listOperations,
     getOperation,
     createOperation,

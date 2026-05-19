@@ -20,6 +20,7 @@ export const pipKeys = {
   operations: (params?: Record<string, unknown>) =>
     params ? ([...pipKeys.all, 'operations', params] as const) : ([...pipKeys.all, 'operations'] as const),
   operation: (id: string) => [...pipKeys.all, 'operation', id] as const,
+  processCategories: () => [...pipKeys.all, 'process-categories'] as const,
 };
 
 export function usePipConfig() {
@@ -100,5 +101,12 @@ export function useOperation(id: string) {
     queryKey: pipKeys.operation(id),
     queryFn: () => pipApi.getOperation(id),
     enabled: !!id,
+  });
+}
+
+export function useProcessCategories() {
+  return useQuery({
+    queryKey: pipKeys.processCategories(),
+    queryFn: () => pipApi.listProcessCategories(),
   });
 }

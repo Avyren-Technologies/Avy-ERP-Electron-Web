@@ -8,41 +8,35 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  Settings2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useOperations } from '@/features/production/pip/api/use-pip-queries';
+import { useOperations, useProcessCategories } from '@/features/production/pip/api/use-pip-queries';
 import {
   useCreateOperation,
   useUpdateOperation,
   useDeleteOperation,
+  useCreateProcessCategory,
+  useUpdateProcessCategory,
+  useDeleteProcessCategory,
 } from '@/features/production/pip/api/use-pip-mutations';
 import { SkeletonTable } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ManageModal } from '@/components/ui/ManageModal';
 import { showSuccess, showApiError } from '@/lib/toast';
-import type { Operation } from '@/lib/api/pip';
+import type { Operation, ProcessCategory } from '@/lib/api/pip';
 
 /* ── Constants ── */
 
 const PAGE_SIZE = 20;
 
-const PROCESS_TYPES = ['MACHINING', 'MOULDING', 'ASSEMBLY', 'INSPECTION', 'FINISHING', 'PACKAGING'] as const;
-type ProcessType = (typeof PROCESS_TYPES)[number];
-
-const PROCESS_TYPE_STYLES: Record<ProcessType, string> = {
-  MACHINING: 'bg-primary-50 text-primary-700 border-primary-100 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50',
-  MOULDING: 'bg-violet-50 text-violet-700 border-violet-100 dark:bg-violet-900/20 dark:text-violet-400 dark:border-violet-800/50',
-  ASSEMBLY: 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800/50',
-  INSPECTION: 'bg-success-50 text-success-700 border-success-100 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50',
-  FINISHING: 'bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800/80 dark:text-neutral-400 dark:border-neutral-700',
-  PACKAGING: 'bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800/80 dark:text-neutral-400 dark:border-neutral-700',
-};
+const PROCESS_CATEGORY_BADGE = 'bg-primary-50 text-primary-700 border-primary-100 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50';
 
 /* ── Create/Edit Modal ── */
 
 interface OperationFormState {
-  operationNumber: string;
   name: string;
-  processType: ProcessType;
+  processCategoryId: string;
   status: 'ACTIVE' | 'INACTIVE';
 }
 
@@ -50,27 +44,26 @@ function OperationModal({
   operation,
   onClose,
   onSaved,
+  processCategories,
+  onManageCategories,
 }: {
   operation: Operation | null; // null = create mode
   onClose: () => void;
   onSaved: () => void;
+  processCategories: ProcessCategory[];
+  onManageCategories: () => void;
 }) {
   const isEdit = !!operation;
   const createMutation = useCreateOperation();
   const updateMutation = useUpdateOperation();
 
   const [form, setForm] = useState<OperationFormState>({
-    operationNumber: operation?.operationNumber ?? '',
     name: operation?.name ?? '',
-    processType: (operation?.processType as ProcessType) ?? 'MACHINING',
+    processCategoryId: operation?.processCategoryId ?? '',
     status: (operation?.status as 'ACTIVE' | 'INACTIVE') ?? 'ACTIVE',
   });
 
   const handleSave = async () => {
-    if (!form.operationNumber.trim()) {
-      showApiError({ message: 'Operation Number is required' });
-      return;
-    }
     if (!form.name.trim()) {
       showApiError({ message: 'Operation Name is required' });
       return;
@@ -81,18 +74,16 @@ function OperationModal({
         await updateMutation.mutateAsync({
           id: operation.id,
           data: {
-            operationNumber: form.operationNumber.trim(),
             name: form.name.trim(),
-            processType: form.processType,
+            processCategoryId: form.processCategoryId || undefined,
             status: form.status,
           },
         });
         showSuccess('Operation Updated', 'Operation has been updated successfully.');
       } else {
         await createMutation.mutateAsync({
-          operationNumber: form.operationNumber.trim(),
           name: form.name.trim(),
-          processType: form.processType,
+          processCategoryId: form.processCategoryId || undefined,
         });
         showSuccess('Operation Created', 'New operation has been created successfully.');
       }
@@ -128,17 +119,18 @@ function OperationModal({
 
         {/* Body */}
         <div className="p-6 overflow-y-auto flex-1 space-y-5">
-          {/* Operation Number */}
+          {/* Operation Number (read-only / auto-generated) */}
           <div>
             <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
-              Operation Number <span className="text-danger-500">*</span>
+              Operation Number
             </label>
             <input
               type="text"
-              value={form.operationNumber}
-              onChange={(e) => setForm((f) => ({ ...f, operationNumber: e.target.value }))}
-              placeholder="e.g. OP-101"
-              className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
+              value={isEdit ? (operation?.operationNumber ?? '') : ''}
+              readOnly
+              disabled
+              placeholder="Auto Generated via Number Series"
+              className="w-full px-3 py-2.5 bg-neutral-100 dark:bg-neutral-800/60 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm text-neutral-500 dark:text-neutral-400 cursor-not-allowed transition-all"
             />
           </div>
 
@@ -156,19 +148,30 @@ function OperationModal({
             />
           </div>
 
-          {/* Process Type */}
+          {/* Process Category */}
           <div>
-            <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
-              Process Type <span className="text-danger-500">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                Process Category
+              </label>
+              <button
+                type="button"
+                onClick={onManageCategories}
+                className="inline-flex items-center gap-1 text-[10px] font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
+              >
+                <Settings2 size={12} />
+                Manage
+              </button>
+            </div>
             <select
-              value={form.processType}
-              onChange={(e) => setForm((f) => ({ ...f, processType: e.target.value as ProcessType }))}
+              value={form.processCategoryId}
+              onChange={(e) => setForm((f) => ({ ...f, processCategoryId: e.target.value }))}
               className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
             >
-              {PROCESS_TYPES.map((pt) => (
-                <option key={pt} value={pt}>
-                  {pt.charAt(0) + pt.slice(1).toLowerCase()}
+              <option value="">-- None --</option>
+              {processCategories.map((pc) => (
+                <option key={pc.id} value={pc.id}>
+                  {pc.name}{pc.code ? ` (${pc.code})` : ''}
                 </option>
               ))}
             </select>
@@ -232,6 +235,14 @@ export function PipOperationMasterScreen() {
   const meta = opData?.meta;
 
   const deleteMutation = useDeleteOperation();
+
+  // Process categories
+  const { data: pcData, isLoading: pcLoading } = useProcessCategories();
+  const processCategories: ProcessCategory[] = pcData?.data ?? [];
+  const createPcMutation = useCreateProcessCategory();
+  const updatePcMutation = useUpdateProcessCategory();
+  const deletePcMutation = useDeleteProcessCategory();
+  const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false);
 
   // Modal state
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -309,7 +320,7 @@ export function PipOperationMasterScreen() {
                   <th className="py-4 px-6 font-bold">Operation Code</th>
                   <th className="py-4 px-6 font-bold">Operation Number</th>
                   <th className="py-4 px-6 font-bold">Operation Name</th>
-                  <th className="py-4 px-6 font-bold">Process Type</th>
+                  <th className="py-4 px-6 font-bold">Process Category</th>
                   <th className="py-4 px-6 font-bold">Status</th>
                   <th className="py-4 px-6 font-bold text-right">Actions</th>
                 </tr>
@@ -334,17 +345,20 @@ export function PipOperationMasterScreen() {
                     <td className="py-4 px-6 font-bold text-primary-950 dark:text-white">
                       {op.name}
                     </td>
-                    {/* Process Type */}
+                    {/* Process Category */}
                     <td className="py-4 px-6">
-                      <span
-                        className={cn(
-                          'inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded border',
-                          PROCESS_TYPE_STYLES[op.processType as ProcessType] ??
-                            'bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800/80 dark:text-neutral-400 dark:border-neutral-700',
-                        )}
-                      >
-                        {op.processType}
-                      </span>
+                      {(op.processCategory?.name ?? op.processType) ? (
+                        <span
+                          className={cn(
+                            'inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded border',
+                            PROCESS_CATEGORY_BADGE,
+                          )}
+                        >
+                          {op.processCategory?.name ?? op.processType}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-neutral-400">--</span>
+                      )}
                     </td>
                     {/* Status */}
                     <td className="py-4 px-6">
@@ -456,6 +470,8 @@ export function PipOperationMasterScreen() {
           operation={null}
           onClose={() => setAddModalOpen(false)}
           onSaved={() => {}}
+          processCategories={processCategories}
+          onManageCategories={() => setManageCategoriesOpen(true)}
         />
       )}
 
@@ -465,8 +481,38 @@ export function PipOperationMasterScreen() {
           operation={editingOperation}
           onClose={() => setEditingOperation(null)}
           onSaved={() => {}}
+          processCategories={processCategories}
+          onManageCategories={() => setManageCategoriesOpen(true)}
         />
       )}
+
+      {/* Manage Process Categories Modal */}
+      <ManageModal
+        open={manageCategoriesOpen}
+        onClose={() => setManageCategoriesOpen(false)}
+        title="Process Categories"
+        items={processCategories.map((pc) => ({ id: pc.id, name: pc.name, code: pc.code ?? null }))}
+        isLoading={pcLoading}
+        createFields={[
+          { key: 'name', label: 'Name', placeholder: 'e.g. Machining', required: true },
+          { key: 'code', label: 'Code', placeholder: 'e.g. MACH' },
+        ]}
+        onCreate={async (values) => {
+          await createPcMutation.mutateAsync({ name: values.name, code: values.code || undefined });
+          showSuccess('Created', 'Process category created.');
+        }}
+        onUpdate={async (id, values) => {
+          await updatePcMutation.mutateAsync({ id, data: { name: values.name } });
+          showSuccess('Updated', 'Process category updated.');
+        }}
+        onDelete={async (id) => {
+          await deletePcMutation.mutateAsync(id);
+          showSuccess('Deleted', 'Process category deleted.');
+        }}
+        isCreating={createPcMutation.isPending}
+        isUpdating={updatePcMutation.isPending}
+        isDeleting={deletePcMutation.isPending}
+      />
 
       {/* Delete Confirmation */}
       {deleteTarget && (

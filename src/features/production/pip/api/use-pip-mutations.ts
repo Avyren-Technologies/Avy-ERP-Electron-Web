@@ -159,6 +159,32 @@ export function useReversePipPayrollMerge() {
   });
 }
 
+// ── Process Categories ──
+
+export function useCreateProcessCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Record<string, unknown>) => pipApi.createProcessCategory(data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: pipKeys.processCategories() }); },
+  });
+}
+
+export function useUpdateProcessCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => pipApi.updateProcessCategory(id, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: pipKeys.processCategories() }); },
+  });
+}
+
+export function useDeleteProcessCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => pipApi.deleteProcessCategory(id),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: pipKeys.processCategories() }); },
+  });
+}
+
 // ── Operations ──
 
 export function useCreateOperation() {

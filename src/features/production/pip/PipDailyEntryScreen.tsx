@@ -18,6 +18,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { usePipConfig, usePipSlabConfigs, usePipDailyEntries } from '@/features/production/pip/api/use-pip-queries';
 import { useSavePipDailyEntries } from '@/features/production/pip/api/use-pip-mutations';
 import { useCompanyShifts } from '@/features/company-admin/api/use-company-admin-queries';
@@ -1236,25 +1237,17 @@ export function PipDailyEntryScreen() {
           {/* ── Operation Selector (when machine has multiple operations) ── */}
           {selectedMachine && machineOperations.length > 1 && (
             <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-sm border border-neutral-100 dark:border-neutral-800 p-4">
-              <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
-                Select Operation
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {machineOperations.map((op) => (
-                  <button
-                    key={op.id}
-                    onClick={() => handleSelectOperation(op.id)}
-                    className={cn(
-                      'px-3 py-1.5 rounded-lg text-xs font-bold border transition-all',
-                      selectedOperationId === op.id
-                        ? 'bg-primary-600 text-white border-primary-600'
-                        : 'bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border-neutral-200 dark:border-neutral-700 hover:border-primary-400',
-                    )}
-                  >
-                    {op.code} — {op.name}
-                  </button>
-                ))}
-              </div>
+              <SearchableSelect
+                label="Select Operation"
+                value={selectedOperationId ?? ''}
+                onChange={(v) => handleSelectOperation(v)}
+                options={machineOperations.map((op) => ({
+                  value: op.id,
+                  label: op.name,
+                  sublabel: op.code,
+                }))}
+                placeholder="Select operation..."
+              />
             </div>
           )}
 
