@@ -1672,26 +1672,41 @@ export function PipDailyEntryScreen() {
                   Select an operator and machine to see live calculations.
                 </div>
               ) : (
-                liveCalcResult.partResults.map((part: any) => (
-                  <div key={`${part.partId}-${part.machineId}`} className="flex flex-col gap-0.5 py-2 border-b border-neutral-100 dark:border-neutral-800 last:border-0">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-primary-950 dark:text-white truncate max-w-[140px]">
-                        {part.partNumber}({part.machineCode})
-                      </span>
-                      <span className={cn("text-xs font-bold tabular-nums", Number(part.incentiveAmount) > 0 ? "text-success-600" : "text-neutral-400")}>
-                        {activeMethod ? `\u20B9${Number(part.incentiveAmount).toFixed(2)}` : '--'}
-                      </span>
+                liveCalcResult.partResults.map((part: any) => {
+                  const pct = Number(part.achievementPct).toFixed(0);
+                  const qty = part.qtyProduced ?? 0;
+                  const target = part.shiftTargetQty ?? 0;
+                  const inc = Number(part.incentiveAmount);
+                  const isMethod2 = activeMethod?.number === 2;
+
+                  return (
+                    <div key={`${part.partId}-${part.machineId}`} className="flex flex-col gap-0.5 py-2.5 border-b border-neutral-100 dark:border-neutral-800 last:border-0">
+                      {/* Row 1: Part identifier + incentive amount */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-primary-950 dark:text-white truncate max-w-[160px]">
+                          {part.partNumber}({part.machineCode})
+                        </span>
+                        <span className={cn("text-xs font-bold tabular-nums", inc > 0 ? "text-success-600" : "text-neutral-400")}>
+                          {activeMethod ? `\u20B9${inc.toFixed(2)}` : '--'}
+                        </span>
+                      </div>
+                      {/* Row 2: Production info — method-specific */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-neutral-500 dark:text-neutral-400">
+                          {isMethod2
+                            ? `${pct}% \u2192 ${part.consideredPct ?? 0}% slab`
+                            : `${qty}/${target} \u00b7 ${pct}%`
+                          }
+                        </span>
+                        <span className="text-[10px] text-neutral-500 dark:text-neutral-400">
+                          {part.appliedSlabLabel && part.appliedSlabLabel !== 'N/A'
+                            ? `${part.appliedSlabLabel}: \u20B9${part.appliedRate}/pc`
+                            : part.earningQty > 0 ? `${part.earningQty} pcs earn` : '\u2014'}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-neutral-500 dark:text-neutral-400">
-                        {Number(part.achievementPct).toFixed(0)}%{'\u2192'}{part.consideredPct ?? 0}%
-                      </span>
-                      <span className="text-[10px] text-neutral-500 dark:text-neutral-400">
-                        {part.appliedSlabLabel && part.appliedSlabLabel !== 'N/A' ? `${part.appliedSlabLabel}: \u20B9${part.appliedRate}/pc` : '\u2014'}
-                      </span>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
 
@@ -1702,7 +1717,9 @@ export function PipDailyEntryScreen() {
                 <span className={cn("text-[10px] font-bold", liveCalcResult.isEligible ? "text-success-600" : "text-warning-600")}>
                   {!activeMethod
                     ? 'No method'
-                    : `${Number(liveCalcResult.cumulativeRatio).toFixed(1)}% ${liveCalcResult.isEligible ? 'Eligible \u2713' : '\u2014 Need \u2265 100%'}`}
+                    : activeMethod.number === 2
+                      ? `${Number(liveCalcResult.cumulativeRatio).toFixed(0)}% milestones ${liveCalcResult.isEligible ? '\u2713' : '\u2014 Need \u2265 100%'}`
+                      : `${Number(liveCalcResult.cumulativeRatio).toFixed(1)}% ${liveCalcResult.isEligible ? 'Eligible \u2713' : '\u2014 Need > 100%'}`}
                 </span>
               </div>
               {activeMethod?.number === 1 && !liveCalcResult.isEligible && liveCalcResult.partResults.length > 0 && (() => {
