@@ -691,10 +691,9 @@ export function MachineMasterScreen() {
         isLoading={zonesLoading}
         createFields={[
           { key: 'name', label: 'Name', placeholder: 'e.g. Zone A', required: true },
-          { key: 'code', label: 'Code', placeholder: 'e.g. ZN-A' },
         ]}
         onCreate={async (values) => {
-          const res = await createZoneMutation.mutateAsync({ name: values.name, ...(values.code ? { code: values.code } : {}) });
+          const res = await createZoneMutation.mutateAsync({ name: values.name });
           const newId = res?.data?.id;
           if (newId) setForm((p) => ({ ...p, zoneId: newId }));
         }}

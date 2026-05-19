@@ -1694,8 +1694,8 @@ export function PipDailyEntryScreen() {
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] text-neutral-500 dark:text-neutral-400">
                           {isMethod2
-                            ? `${pct}% \u2192 ${part.consideredPct ?? 0}% slab`
-                            : `${qty}/${target} \u00b7 ${pct}%`
+                            ? <>Achieved <span className="font-semibold text-neutral-700 dark:text-neutral-300">{pct}%</span> {'\u2192'} <span className="font-semibold text-neutral-700 dark:text-neutral-300">{part.consideredPct ?? 0}%</span> slab</>
+                            : <>{qty}/{target} {'\u00b7'} Produced <span className="font-semibold text-neutral-700 dark:text-neutral-300">{pct}%</span></>
                           }
                         </span>
                         <span className="text-[10px] text-neutral-500 dark:text-neutral-400">
@@ -1712,15 +1712,19 @@ export function PipDailyEntryScreen() {
 
             {/* Footer */}
             <div className="px-4 py-3 bg-neutral-50 dark:bg-neutral-800/50 border-t border-neutral-100 dark:border-neutral-800">
-              <div className="flex items-center justify-between mt-2 pt-2 border-t border-neutral-200 dark:border-neutral-700">
-                <span className="text-[10px] font-semibold text-neutral-500">Overall completion</span>
-                <span className={cn("text-[10px] font-bold", liveCalcResult.isEligible ? "text-success-600" : "text-warning-600")}>
-                  {!activeMethod
-                    ? 'No method'
-                    : activeMethod.number === 2
-                      ? `${Number(liveCalcResult.cumulativeRatio).toFixed(0)}% milestones ${liveCalcResult.isEligible ? '\u2713' : '\u2014 Need \u2265 100%'}`
-                      : `${Number(liveCalcResult.cumulativeRatio).toFixed(1)}% ${liveCalcResult.isEligible ? 'Eligible \u2713' : '\u2014 Need > 100%'}`}
-                </span>
+              <div className="flex flex-col gap-1 mt-2 pt-2 border-t border-neutral-200 dark:border-neutral-700">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-semibold text-neutral-500">
+                    {!activeMethod ? 'Overall' : activeMethod.number === 2 ? 'Milestone total' : 'Cumulative ratio'}
+                  </span>
+                  <span className={cn("text-[10px] font-bold", liveCalcResult.isEligible ? "text-success-600" : "text-warning-600")}>
+                    {!activeMethod
+                      ? 'No method'
+                      : activeMethod.number === 2
+                        ? `${Number(liveCalcResult.cumulativeRatio).toFixed(0)}% milestones ${liveCalcResult.isEligible ? '\u2713' : '\u2014 Need \u2265 100%'}`
+                        : `${Number(liveCalcResult.cumulativeRatio).toFixed(1)}% ${liveCalcResult.isEligible ? 'Eligible \u2713' : '\u2014 Need > 100%'}`}
+                  </span>
+                </div>
               </div>
               {activeMethod?.number === 1 && !liveCalcResult.isEligible && liveCalcResult.partResults.length > 0 && (() => {
                 const deficit = 1.0 - (liveCalcResult.cumulativeRatio / 100);
