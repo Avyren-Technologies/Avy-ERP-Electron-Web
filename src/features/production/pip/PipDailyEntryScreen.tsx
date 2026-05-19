@@ -1258,7 +1258,7 @@ export function PipDailyEntryScreen() {
                         : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
                     )}
                   >
-                    {liveCalcResult.cumulativeRatio.toFixed(1)}%
+                    Actual: {liveCalcResult.cumulativeRatio.toFixed(1)}%
                   </span>
                   <span className="text-lg font-bold text-primary-700 dark:text-primary-300">
                     {formatCurrency(liveCalcResult.totalIncentive)}
@@ -1426,7 +1426,11 @@ export function PipDailyEntryScreen() {
                           {/* Incentive */}
                           <td className="text-right px-4 py-3">
                             <span className={cn('font-bold text-sm', incentive > 0 ? 'text-success-600 dark:text-success-400' : 'text-neutral-400')}>
-                              {activeMethod ? formatCurrency(incentive) : '--'}
+                              {!activeMethod
+                                ? '--'
+                                : activeMethod.number === 1 && !liveCalcResult.isEligible
+                                  ? '\u2014'
+                                  : formatCurrency(incentive)}
                             </span>
                           </td>
                         </tr>
@@ -1598,6 +1602,13 @@ export function PipDailyEntryScreen() {
                 </div>
               ))}
 
+              {/* ── Pre-save confirmation line ── */}
+              {activeMethod && (
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2 text-center">
+                  Save entries for {selectedOperator?.name ?? 'operator'} — {formatCurrency(liveCalcResult.totalIncentive)} incentive · {activeMethod.name}
+                </p>
+              )}
+
               {/* ── Save Operator Button ── */}
               <button
                 ref={saveButtonRef}
@@ -1694,6 +1705,17 @@ export function PipDailyEntryScreen() {
                     : `${Number(liveCalcResult.cumulativeRatio).toFixed(1)}% ${liveCalcResult.isEligible ? 'Eligible \u2713' : '\u2014 Need \u2265 100%'}`}
                 </span>
               </div>
+              {activeMethod?.number === 1 && !liveCalcResult.isEligible && liveCalcResult.partResults.length > 0 && (() => {
+                const deficit = 1.0 - (liveCalcResult.cumulativeRatio / 100);
+                const hint = liveCalcResult.partResults.find((p) => p.shiftTargetQty > 0);
+                if (!hint || deficit <= 0) return null;
+                const morePcs = Math.ceil(deficit * hint.shiftTargetQty);
+                return (
+                  <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-1.5 text-center">
+                    {morePcs} more pcs of {hint.partNumber} to unlock incentive
+                  </p>
+                );
+              })()}
             </div>
           </div>
 

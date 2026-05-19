@@ -231,6 +231,18 @@ export function PipIncentiveCalculator() {
   const [partRows, setPartRows] = useState<PartRow[]>([{ partId: '', qty: '' }]);
   const [result, setResult] = useState<CalculationResult | null>(null);
 
+  // Duplicate detection: set of partIds that appear more than once
+  const duplicatePartIds = useMemo<Set<string>>(() => {
+    const seen = new Set<string>();
+    const dupes = new Set<string>();
+    for (const row of partRows) {
+      if (!row.partId) continue;
+      if (seen.has(row.partId)) dupes.add(row.partId);
+      else seen.add(row.partId);
+    }
+    return dupes;
+  }, [partRows]);
+
   const addPartRow = () => setPartRows((r) => [...r, { partId: '', qty: '' }]);
   const removePartRow = (idx: number) => setPartRows((r) => r.filter((_, i) => i !== idx));
   const updatePartRow = (idx: number, field: keyof PartRow, value: string) => {
@@ -373,37 +385,61 @@ export function PipIncentiveCalculator() {
                 </button>
               </div>
               <div className="space-y-3">
-                {partRows.map((row, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <select
-                      value={row.partId}
-                      onChange={(e) => updatePartRow(idx, 'partId', e.target.value)}
-                      className="flex-1 px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
-                    >
-                      <option value="">Select part...</option>
-                      {partOptions.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.label}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="number"
-                      min={0}
-                      value={row.qty}
-                      onChange={(e) => updatePartRow(idx, 'qty', e.target.value)}
-                      placeholder="Qty"
-                      className="w-28 px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
-                    />
-                    <button
-                      onClick={() => removePartRow(idx)}
-                      disabled={partRows.length <= 1}
-                      className="p-2 text-neutral-400 hover:text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors disabled:opacity-30 disabled:pointer-events-none"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                ))}
+                {partRows.map((row, idx) => {
+                  const isDuplicate = row.partId !== '' && duplicatePartIds.has(row.partId);
+                  const duplicatePartLabel = isDuplicate
+                    ? (partOptions.find((p) => p.id === row.partId)?.label ?? row.partId)
+                    : '';
+                  return (
+                    <div key={idx} className="space-y-1">
+                      <div className={cn('flex items-center gap-2 rounded-xl', isDuplicate && 'ring-2 ring-amber-400 dark:ring-amber-500')}>
+                        <select
+                          value={row.partId}
+                          onChange={(e) => updatePartRow(idx, 'partId', e.target.value)}
+                          className={cn(
+                            'flex-1 px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all',
+                            isDuplicate
+                              ? 'border-amber-400 dark:border-amber-500 bg-amber-50 dark:bg-amber-900/20'
+                              : 'border-neutral-200 dark:border-neutral-700',
+                          )}
+                        >
+                          <option value="">Select part...</option>
+                          {partOptions.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.label}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          type="number"
+                          min={0}
+                          value={row.qty}
+                          onChange={(e) => updatePartRow(idx, 'qty', e.target.value)}
+                          placeholder="Qty"
+                          className={cn(
+                            'w-28 px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border rounded-xl text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all',
+                            isDuplicate
+                              ? 'border-amber-400 dark:border-amber-500 bg-amber-50 dark:bg-amber-900/20'
+                              : 'border-neutral-200 dark:border-neutral-700',
+                          )}
+                        />
+                        <button
+                          onClick={() => removePartRow(idx)}
+                          disabled={partRows.length <= 1}
+                          className="p-2 text-neutral-400 hover:text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                      {isDuplicate && (
+                        <p className="text-[11px] text-amber-600 dark:text-amber-400 pl-1 flex items-center gap-1">
+                          <AlertTriangle size={11} />
+                          {duplicatePartLabel} is already in this calculation — duplicate parts will skew the ratio
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
