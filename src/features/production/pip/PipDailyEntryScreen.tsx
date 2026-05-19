@@ -808,6 +808,7 @@ export function PipDailyEntryScreen() {
   const [editingSessionIndex, setEditingSessionIndex] = useState<number | null>(null);
 
   /* ── Saved operators ── */
+  const [showCalcNote, setShowCalcNote] = useState(false);
   const [savedOperators, setSavedOperators] = useState<SavedOperatorSummary[]>([]);
   const [savedEntries, setSavedEntries] = useState<SavedEntry[]>([]);
 
@@ -1761,6 +1762,40 @@ export function PipDailyEntryScreen() {
                   </p>
                 );
               })()}
+              {/* Calculation explanation */}
+              {activeMethod && liveCalcResult.partResults.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-neutral-200 dark:border-neutral-700">
+                  <button
+                    type="button"
+                    onClick={() => setShowCalcNote(!showCalcNote)}
+                    className="text-[10px] text-primary-500 hover:text-primary-600 font-medium flex items-center gap-1"
+                  >
+                    {showCalcNote ? '\u25BE' : '\u25B8'} How is this calculated?
+                  </button>
+                  {showCalcNote && (
+                    <div className="mt-1.5 text-[10px] text-neutral-500 dark:text-neutral-400 space-y-0.5 leading-relaxed">
+                      {activeMethod.number === 1 ? (
+                        <>
+                          <p>1. Each part&apos;s completion = Qty {'\u00F7'} Target</p>
+                          <p>2. Parts processed in entry order, cumulative ratio = sum of completions</p>
+                          <p>3. Must reach {'\u2265'} 100% cumulative for any incentive</p>
+                          <p>4. Parts consumed reaching 100% earn {'\u20B9'}0</p>
+                          <p>5. Part crossing 100%: only qty past threshold earns</p>
+                          <p>6. Parts after 100%: full qty earns {'\u2014'} below target @ Slab 1, above target @ slab tiers</p>
+                        </>
+                      ) : (
+                        <>
+                          <p>1. Each part&apos;s % rounded down to nearest milestone (25/50/75/100%)</p>
+                          <p>2. Milestone qty = milestone% {'\u00D7'} target (counted toward completion)</p>
+                          <p>3. Earning qty = produced {'\u2212'} milestone qty</p>
+                          <p>4. All earning qty earns at Slab 1 rate</p>
+                          <p>5. Sum of milestones must be {'\u2265'} 100% for eligibility</p>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
