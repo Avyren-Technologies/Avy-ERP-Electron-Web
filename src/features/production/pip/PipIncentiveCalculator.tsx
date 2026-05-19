@@ -127,21 +127,21 @@ function calcSampleCase(
   if (methodNumber === 1) {
     if (cumulativePct < 100) return { completion: cumulativePct, eligible: false, incentive: 0 };
     let totalIncentive = 0;
-    const sorted = [...inputs].sort(
-      (a, b) => a.qtyProduced / (a.shiftTargetQty || 1) - b.qtyProduced / (b.shiftTargetQty || 1),
-    );
     let runningRatio = 0;
-    for (const p of sorted) {
+    for (const p of inputs) {
       const pctContrib = p.shiftTargetQty > 0 ? p.qtyProduced / p.shiftTargetQty : 0;
       const prev = runningRatio;
       runningRatio += pctContrib;
       let earningQty = 0;
       if (prev >= 1) {
+        // Case B: already past 100% — full qty earns
         earningQty = p.qtyProduced;
       } else if (runningRatio > 1) {
+        // Case C: this part crosses 100% — only qty past threshold earns
         const needed = (1 - prev) * p.shiftTargetQty;
         earningQty = Math.max(0, p.qtyProduced - Math.ceil(needed));
       }
+      // Case A: runningRatio <= 1 — earningQty stays 0
       const excessAboveTarget = Math.max(0, p.qtyProduced - p.shiftTargetQty);
       const slab1Earning = Math.max(0, earningQty - excessAboveTarget);
       const slab1Rate = p.slabTiers.length > 0 ? p.slabTiers[0].ratePerPiece : 0;
@@ -157,19 +157,16 @@ function calcSampleCase(
     const partCalcs = inputs.map((p) => {
       const pct = p.shiftTargetQty > 0 ? (p.qtyProduced / p.shiftTargetQty) * 100 : 0;
       const milestone = milestones.find((m) => pct >= m) ?? 0;
-      const milestoneQty = Math.floor((milestone / 100) * p.shiftTargetQty);
+      const milestoneQty = Math.round((milestone / 100) * p.shiftTargetQty);
       const remainingQty = Math.max(0, p.qtyProduced - milestoneQty);
       totalMilestonePct += milestone;
       return { ...p, milestone, milestoneQty, remainingQty };
     });
     const milestoneEligible = totalMilestonePct >= 100;
     for (const p of partCalcs) {
-      if (milestoneEligible && p.remainingQty > 0) {
-        const excessAboveTarget = Math.max(0, p.qtyProduced - p.shiftTargetQty);
-        if (excessAboveTarget > 0) totalIncentive += getSlabRate(p.slabTiers, excessAboveTarget);
-        const slab1Earning = Math.max(0, p.remainingQty - excessAboveTarget);
+      if (milestoneEligible && p.milestone > 0 && p.remainingQty > 0) {
         const slab1Rate = p.slabTiers.length > 0 ? p.slabTiers[0].ratePerPiece : 0;
-        totalIncentive += slab1Earning * slab1Rate;
+        totalIncentive += p.remainingQty * slab1Rate;
       }
     }
     return { completion: totalMilestonePct, eligible: milestoneEligible, incentive: totalIncentive };
