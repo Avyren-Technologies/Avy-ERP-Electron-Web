@@ -185,15 +185,15 @@ function DropdownWithManage({ label, value, onChange, options, onManage, require
   required?: boolean;
 }) {
   return (
-    <div>
+    <div className="min-w-0">
       <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
         {label}{required && <span className="text-danger-500 ml-0.5">*</span>}
       </label>
-      <div className="flex gap-2">
+      <div className="flex min-w-0 gap-2">
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="flex-1 px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+          className="min-w-0 flex-1 px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
         >
           <option value="">Select...</option>
           {options.map((o) => (
@@ -203,7 +203,7 @@ function DropdownWithManage({ label, value, onChange, options, onManage, require
         <button
           type="button"
           onClick={onManage}
-          className="px-3 py-2.5 rounded-xl border border-primary-200 dark:border-primary-800 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 text-xs font-bold transition-colors whitespace-nowrap"
+          className="shrink-0 px-3 py-2.5 rounded-xl border border-primary-200 dark:border-primary-800 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 text-xs font-bold transition-colors whitespace-nowrap"
         >
           Manage
         </button>
