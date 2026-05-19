@@ -215,8 +215,8 @@ function calculateIncentiveLocal(
 
       let earningQty = 0;
       if (prevRunning >= 1) {
-        // Already past 100% — all qty earns
-        earningQty = p.qtyProduced;
+        // Already past 100% — only excess above target earns
+        earningQty = Math.max(0, p.qtyProduced - p.shiftTargetQty);
       } else if (runningRatio > 1) {
         // This part pushes past 100%
         const neededToReach100 = (1 - prevRunning) * p.shiftTargetQty;
