@@ -6,15 +6,12 @@ import {
   Loader2,
   X,
   Search,
-  Download,
   ChevronLeft,
   ChevronRight,
   Info,
-  Settings2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { exportToExcel } from '@/lib/export-utils';
-import { useCompanyProfile } from '@/features/company-admin/api/use-company-admin-queries';
+import { ExportMenu } from '@/components/analytics/ExportMenu';
 import { usePipSlabConfigs } from '@/features/production/pip/api/use-pip-queries';
 import {
   useUpdatePipSlabConfig,
@@ -256,8 +253,6 @@ export function PipSlabConfigScreen() {
   const { data: partsData } = useParts({ limit: 500, status: 'ACTIVE' });
   const { data: machinesData } = useMachines({ limit: 500 });
 
-  const { data: profileData } = useCompanyProfile();
-
   const slabConfigs: PipSlabConfig[] = slabData?.data ?? [];
   const meta = slabData?.meta;
   const allParts: Part[] = partsData?.data ?? [];
@@ -279,29 +274,6 @@ export function PipSlabConfigScreen() {
     } catch (err) {
       showApiError(err);
     }
-  };
-
-  const handleExport = () => {
-    const headers = ['Machine Code', 'Machine Name', 'Operation Code', 'Operation Name', 'Part No', 'Part Name', 'Shift Target', 'Slab Tiers', 'Status'];
-    const rows = slabConfigs.map((c) => [
-      c.machine?.assetCode ?? '',
-      c.machine?.assetName ?? '',
-      c.operation?.code ?? '',
-      c.operation?.name ?? '',
-      c.part?.partNumber ?? '',
-      c.part?.name ?? '',
-      c.shiftTargetQty,
-      c.slabTiers.map((t) => `${t.fromQty}-${t.toQty ?? '\u221e'}@\u20b9${t.ratePerPiece}`).join('; '),
-      c.isActive ? 'Active' : 'Inactive',
-    ]);
-    const companyName = profileData?.data?.name ?? profileData?.data?.displayName ?? '';
-    exportToExcel(headers, rows, {
-      fileName: 'slab-configs-export',
-      sheetName: 'Slab Configuration',
-      companyName,
-      title: 'Slab Configuration Report',
-      reportDate: new Date().toLocaleDateString(),
-    });
   };
 
   const totalPages = meta?.totalPages ?? 1;
@@ -351,13 +323,7 @@ export function PipSlabConfigScreen() {
               className="w-full pl-11 pr-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
             />
           </div>
-          <button
-            onClick={handleExport}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-sm font-bold transition-colors"
-          >
-            <Download size={16} />
-            Export
-          </button>
+          <ExportMenu reportType="pip-slab-config" filters={{}} />
         </div>
       </div>
 

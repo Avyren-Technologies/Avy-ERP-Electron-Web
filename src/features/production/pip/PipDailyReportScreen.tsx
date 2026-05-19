@@ -1,7 +1,5 @@
 import { useState, useMemo } from 'react';
 import {
-  Download,
-  FileText,
   Users,
   TrendingUp,
   AlertTriangle,
@@ -12,7 +10,7 @@ import { usePipDailyEntrySummary } from '@/features/production/pip/api/use-pip-q
 import { useCompanyShifts } from '@/features/company-admin/api/use-company-admin-queries';
 import { SkeletonTable } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { exportToExcel, exportToCsv } from '@/lib/export-utils';
+import { ExportMenu } from '@/components/analytics/ExportMenu';
 
 /* ── Helpers ── */
 
@@ -112,32 +110,6 @@ export function PipDailyReportScreen() {
     : 0;
   const belowTarget = rows.filter((r) => r.completionPct < 100).length;
 
-  // Export helpers — client-side generation (no backend call)
-  const handleExport = (format: 'excel' | 'csv') => {
-    const headers = ['Operator', 'Employee ID', 'Machine', 'Parts', 'Total Qty', 'Completion %', 'Status', 'Incentive'];
-    const csvRows = rows.map((r) => [
-      r.operatorName,
-      r.employeeId,
-      r.machineCode ?? '',
-      r.parts.map((p) => `${p.partNumber}(${p.qty})`).join(', '),
-      String(r.totalQty),
-      `${r.completionPct.toFixed(1)}%`,
-      r.isEligible ? 'Eligible' : 'Not Eligible',
-      r.incentiveAmount.toFixed(2),
-    ]);
-
-    if (format === 'excel') {
-      exportToExcel(headers, csvRows, {
-        fileName: `daily-production-report-${entryDate}`,
-        sheetName: 'Daily Production',
-        title: 'Daily Production Report',
-        reportDate: entryDate,
-      });
-    } else {
-      exportToCsv(headers, csvRows, `daily-production-report-${entryDate}`);
-    }
-  };
-
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header */}
@@ -169,20 +141,14 @@ export function PipDailyReportScreen() {
               </option>
             ))}
           </select>
-          <button
-            onClick={() => handleExport('excel')}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-sm font-bold transition-colors"
-          >
-            <Download size={16} />
-            Excel
-          </button>
-          <button
-            onClick={() => handleExport('csv')}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-sm font-bold transition-colors"
-          >
-            <FileText size={16} />
-            CSV
-          </button>
+          <ExportMenu
+            reportType="pip-daily-production"
+            filters={{
+              dateFrom: entryDate,
+              dateTo: entryDate,
+              ...(shiftId ? { shiftId } : {}),
+            }}
+          />
         </div>
       </div>
 

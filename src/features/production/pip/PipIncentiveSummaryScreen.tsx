@@ -23,7 +23,7 @@ import {
 } from '@/features/production/pip/api/use-pip-mutations';
 import { showSuccess, showApiError } from '@/lib/toast';
 import type { PipMonthlyReport } from '@/lib/api/pip';
-import { exportToExcel, exportToCsv } from '@/lib/export-utils';
+import { ExportMenu } from '@/components/analytics/ExportMenu';
 
 /* ── Helpers ── */
 
@@ -205,37 +205,6 @@ export function PipIncentiveSummaryScreen() {
     }
   };
 
-  const handleExport = (format: 'excel' | 'csv') => {
-    // Operator-wise summary export
-    const headers = ['Operator', 'Days Eligible', 'Total Days', 'Total Incentive', 'Avg/Day'];
-    const csvRows = operatorSummary.map((op) => {
-      const total = Number(op.totalIncentive ?? op.total ?? 0);
-      const daysEligible = Number(op.daysEligible ?? op.eligibleDays ?? 0);
-      const totalDays = Number(op.totalDays ?? workingDays);
-      const avg = daysEligible > 0 ? total / daysEligible : 0;
-      return [
-        String(op.operatorName ?? op.name ?? '--'),
-        String(daysEligible),
-        String(totalDays),
-        total.toFixed(2),
-        avg.toFixed(2),
-      ];
-    });
-
-    const fileName = `incentive-summary-${selected.label.replace(/\s+/g, '-')}`;
-
-    if (format === 'excel') {
-      exportToExcel(headers, csvRows, {
-        fileName,
-        sheetName: 'Incentive Summary',
-        title: `Incentive Summary Report - ${selected.label}`,
-        reportDate: `${selected.label}`,
-      });
-    } else {
-      exportToCsv(headers, csvRows, fileName);
-    }
-  };
-
   const isSubmitting = generateMutation.isPending || submitMutation.isPending;
   const isMerging = mergeMutation.isPending;
 
@@ -263,20 +232,13 @@ export function PipIncentiveSummaryScreen() {
               </option>
             ))}
           </select>
-          <button
-            onClick={() => handleExport('excel')}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-sm font-bold transition-colors"
-          >
-            <FileText size={16} />
-            Excel
-          </button>
-          <button
-            onClick={() => handleExport('csv')}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-sm font-bold transition-colors"
-          >
-            <FileText size={16} />
-            CSV
-          </button>
+          <ExportMenu
+            reportType="pip-incentive-summary"
+            filters={{
+              month: selected.month,
+              year: selected.year,
+            }}
+          />
           {(!status || status === 'DRAFT') && (
             <button
               onClick={handleGenerateAndSubmit}
