@@ -201,64 +201,63 @@ function calculateIncentiveLocal(
       };
     }
 
-    // Find how much each part contributes past 100%
-    // Sort by achievement ascending — last parts "push past" the threshold
-    const sorted = [...parts].sort(
-      (a, b) => (a.qtyProduced / (a.shiftTargetQty || 1)) - (b.qtyProduced / (b.shiftTargetQty || 1)),
-    );
-
+    // Process parts in entry order (no sorting) — matches HTML prototype
     let runningRatio = 0;
-    for (const p of sorted) {
+    for (const p of parts) {
       const pctContribution = p.shiftTargetQty > 0 ? p.qtyProduced / p.shiftTargetQty : 0;
       const prevRunning = runningRatio;
       runningRatio += pctContribution;
 
       let earningQty = 0;
-      if (prevRunning >= 1) {
-        // Already past 100% — only excess above target earns
-        earningQty = Math.max(0, p.qtyProduced - p.shiftTargetQty);
-      } else if (runningRatio > 1) {
-        // This part pushes past 100%
-        const neededToReach100 = (1 - prevRunning) * p.shiftTargetQty;
-        earningQty = Math.max(0, p.qtyProduced - Math.ceil(neededToReach100));
-      }
+      let incentiveAmount = 0;
 
-      // For excess above individual target, use full slab tiers
-      const excessAboveTarget = Math.max(0, p.qtyProduced - p.shiftTargetQty);
-      // Earning qty from excess ratio
-      const slab1Earning = Math.max(0, earningQty - excessAboveTarget);
-      const slab1Rate = p.slabTiers.length > 0 ? p.slabTiers[0].ratePerPiece : 0;
-      const slab1Amount = slab1Earning * slab1Rate;
-      const excessAmount = excessAboveTarget > 0 ? getSlabRate(p.slabTiers, excessAboveTarget) : 0;
-      const incentiveAmount = slab1Amount + excessAmount;
+      if (runningRatio <= 1) {
+        // Case A — below 100%, no incentive
+        earningQty = 0;
+      } else if (prevRunning >= 1) {
+        // Case B — already past 100%, full qty earns
+        //   below-target → Slab 1, above-target → slab tiers
+        earningQty = p.qtyProduced;
+        const excessAboveTarget = Math.max(0, p.qtyProduced - p.shiftTargetQty);
+        const belowTarget = p.qtyProduced - excessAboveTarget;
+        const slab1Rate = p.slabTiers.length > 0 ? p.slabTiers[0].ratePerPiece : 0;
+        incentiveAmount = belowTarget * slab1Rate;
+        if (excessAboveTarget > 0) {
+          incentiveAmount += getSlabRate(p.slabTiers, excessAboveTarget);
+        }
+      } else {
+        // Case C — crosses 100%
+        const neededToReach100 = Math.ceil((1 - prevRunning) * p.shiftTargetQty);
+        earningQty = Math.max(0, p.qtyProduced - neededToReach100);
+        if (earningQty > 0) {
+          const excessAboveTarget = Math.max(0, p.qtyProduced - p.shiftTargetQty);
+          const earningBelowTarget = Math.max(0, earningQty - excessAboveTarget);
+          const earningAboveTarget = Math.max(0, earningQty - earningBelowTarget);
+          const slab1Rate = p.slabTiers.length > 0 ? p.slabTiers[0].ratePerPiece : 0;
+          incentiveAmount = earningBelowTarget * slab1Rate;
+          if (earningAboveTarget > 0) {
+            incentiveAmount += getSlabRate(p.slabTiers, earningAboveTarget);
+          }
+        }
+      }
 
       totalIncentive += incentiveAmount;
       partResults.push({
         ...p,
         achievementPct: p.shiftTargetQty > 0 ? (p.qtyProduced / p.shiftTargetQty) * 100 : 0,
         incentiveAmount,
-        consideredPct: 100,
+        consideredPct: isEligible ? 100 : 0,
         earningQty,
         appliedRate: p.slabTiers.length > 0 ? p.slabTiers[0].ratePerPiece : 0,
         appliedSlabLabel: earningQty > 0 && p.slabTiers.length > 0 ? 'Slab 1' : 'N/A',
       });
     }
 
-    // Reorder to original order
-    const resultMap = new Map(partResults.map((r) => [r.partId + r.machineId, r]));
     return {
       totalIncentive,
       cumulativeRatio: cumulativePct,
       isEligible: true,
-      partResults: parts.map((p) => resultMap.get(p.partId + p.machineId) ?? {
-        ...p,
-        achievementPct: p.shiftTargetQty > 0 ? (p.qtyProduced / p.shiftTargetQty) * 100 : 0,
-        incentiveAmount: 0,
-        consideredPct: 100,
-        earningQty: 0,
-        appliedRate: 0,
-        appliedSlabLabel: 'N/A',
-      }),
+      partResults,
     };
   }
 
@@ -272,7 +271,7 @@ function calculateIncentiveLocal(
     const partCalcs = parts.map((p) => {
       const pct = p.shiftTargetQty > 0 ? (p.qtyProduced / p.shiftTargetQty) * 100 : 0;
       const milestone = milestones.find((m) => pct >= m) ?? 0;
-      const milestoneQty = Math.floor((milestone / 100) * p.shiftTargetQty);
+      const milestoneQty = Math.round((milestone / 100) * p.shiftTargetQty);
       const remainingQty = Math.max(0, p.qtyProduced - milestoneQty);
       return { ...p, pct, milestone, milestoneQty, remainingQty };
     });
@@ -282,16 +281,10 @@ function calculateIncentiveLocal(
 
     for (const p of partCalcs) {
       let incentiveAmount = 0;
-      if (milestoneEligible && p.remainingQty > 0) {
-        // Excess above target uses full slab tiers
-        const excessAboveTarget = Math.max(0, p.qtyProduced - p.shiftTargetQty);
-        if (excessAboveTarget > 0) {
-          incentiveAmount += getSlabRate(p.slabTiers, excessAboveTarget);
-        }
-        // Remaining qty (between milestone and target) earns slab 1 rate
-        const slab1Earning = Math.max(0, p.remainingQty - excessAboveTarget);
+      if (milestoneEligible && p.milestone > 0 && p.remainingQty > 0) {
+        // Method 2: ALL earning qty earns at Slab 1 rate only
         const slab1Rate = p.slabTiers.length > 0 ? p.slabTiers[0].ratePerPiece : 0;
-        incentiveAmount += slab1Earning * slab1Rate;
+        incentiveAmount = p.remainingQty * slab1Rate;
       }
       totalIncentive += incentiveAmount;
       const slab1Rate = p.slabTiers.length > 0 ? p.slabTiers[0].ratePerPiece : 0;
