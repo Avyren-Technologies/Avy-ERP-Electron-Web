@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -19,15 +19,16 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
-import { usePipConfig, usePipSlabConfigs, usePipDailyEntries } from '@/features/production/pip/api/use-pip-queries';
-import { useSavePipDailyEntries } from '@/features/production/pip/api/use-pip-mutations';
+import { ManageModal } from '@/components/ui/ManageModal';
+import { usePipConfig, usePipSlabConfigs, usePipDailyEntries, useDowntimeReasons } from '@/features/production/pip/api/use-pip-queries';
+import { useSavePipDailyEntries, useCreateDowntimeReason, useUpdateDowntimeReason, useDeleteDowntimeReason } from '@/features/production/pip/api/use-pip-mutations';
 import { useCompanyShifts } from '@/features/company-admin/api/use-company-admin-queries';
 import { useMachines } from '@/features/masters/api/use-masters-queries';
 import { SkeletonTable } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { showSuccess, showApiError } from '@/lib/toast';
 import { hrApi } from '@/lib/api/hr';
-import type { PipIncentiveConfig, PipSlabConfig, SlabTier, CalculationResult } from '@/lib/api/pip';
+import type { PipIncentiveConfig, PipSlabConfig, SlabTier, CalculationResult, DowntimeReason } from '@/lib/api/pip';
 import type { CompanyShift } from '@/lib/api/company-admin';
 import type { Employee } from '@/lib/api/hr';
 
@@ -45,6 +46,8 @@ interface PartEntry {
   slabTiers: SlabTier[];
   qtyProduced: number;
   ncCount: number;
+  downtimeReasonId: string;
+  downtimeMinutes: number;
 }
 
 interface OperationOption {
@@ -588,6 +591,14 @@ export function PipDailyEntryScreen() {
   const slabConfigs: PipSlabConfig[] = slabData?.data ?? [];
   const shifts: CompanyShift[] = shiftsData?.data ?? [];
 
+  /* ── Downtime reasons ── */
+  const { data: downtimeReasonsData, isLoading: downtimeReasonsLoading } = useDowntimeReasons();
+  const downtimeReasons: DowntimeReason[] = downtimeReasonsData?.data ?? [];
+  const createDtMutation = useCreateDowntimeReason();
+  const updateDtMutation = useUpdateDowntimeReason();
+  const deleteDtMutation = useDeleteDowntimeReason();
+  const [manageDowntimeOpen, setManageDowntimeOpen] = useState(false);
+
   /* ── Derived: active method ── */
   const activeMethod = useMemo(() => {
     if (!config) return null;
@@ -732,6 +743,8 @@ export function PipDailyEntryScreen() {
           slabTiers: sc.slabTiers,
           qtyProduced: 0,
           ncCount: 0,
+          downtimeReasonId: '',
+          downtimeMinutes: 0,
         })),
       );
       setTimeout(() => firstQtyRef.current?.focus(), 100);
@@ -759,6 +772,8 @@ export function PipDailyEntryScreen() {
         slabTiers: sc.slabTiers,
         qtyProduced: 0,
         ncCount: 0,
+        downtimeReasonId: '',
+        downtimeMinutes: 0,
       })),
     );
     setTimeout(() => firstQtyRef.current?.focus(), 100);
@@ -884,6 +899,23 @@ export function PipDailyEntryScreen() {
     });
   };
 
+  const handleDowntimeReasonChange = (index: number, reasonId: string) => {
+    setPartEntries((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], downtimeReasonId: reasonId };
+      return next;
+    });
+  };
+
+  const handleDowntimeMinutesChange = (index: number, value: string) => {
+    const num = parseInt(value, 10);
+    setPartEntries((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], downtimeMinutes: isNaN(num) ? 0 : Math.max(0, num) };
+      return next;
+    });
+  };
+
   const handleAddToSession = () => {
     if (!selectedMachine || partEntries.length === 0) return;
     const selectedOp = machineOperations.find((o) => o.id === selectedOperationId);
@@ -963,6 +995,8 @@ export function PipDailyEntryScreen() {
         qtyProduced: e.qtyProduced,
         shiftTargetQty: e.shiftTargetQty,
         ncCount: e.ncCount,
+        downtimeReasonId: e.downtimeReasonId || undefined,
+        downtimeMinutes: e.downtimeMinutes || undefined,
       })),
     );
 
@@ -1323,7 +1357,8 @@ export function PipDailyEntryScreen() {
                       const incentive = partCalc?.incentiveAmount ?? 0;
 
                       return (
-                        <tr key={entry.partId} className="border-b border-neutral-50 dark:border-neutral-800/50 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
+                        <React.Fragment key={entry.partId}>
+                        <tr className="border-b border-neutral-50 dark:border-neutral-800/50 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
                           {/* Part */}
                           <td className="px-4 py-3">
                             <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-xs font-bold mr-2">
@@ -1395,6 +1430,64 @@ export function PipDailyEntryScreen() {
                             </span>
                           </td>
                         </tr>
+                        {/* Downtime/Idle Reason Row */}
+                        <tr className="border-b border-neutral-100 dark:border-neutral-800/50 bg-neutral-50/30 dark:bg-neutral-800/20">
+                          <td colSpan={7} className="px-4 py-2">
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <span className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider whitespace-nowrap">
+                                Downtime / Idle
+                              </span>
+                              {/* Downtime Reason dropdown */}
+                              <div className="flex items-center gap-1.5 min-w-[180px]">
+                                <select
+                                  value={entry.downtimeReasonId}
+                                  onChange={(e) => handleDowntimeReasonChange(idx, e.target.value)}
+                                  className="flex-1 px-2 py-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white"
+                                >
+                                  <option value="">-- No Reason --</option>
+                                  {downtimeReasons.filter(dr => dr.isActive).map(dr => (
+                                    <option key={dr.id} value={dr.id}>{dr.name}{dr.code ? ` (${dr.code})` : ''}</option>
+                                  ))}
+                                </select>
+                                <button
+                                  type="button"
+                                  onClick={() => setManageDowntimeOpen(true)}
+                                  className="text-[10px] font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 whitespace-nowrap transition-colors"
+                                >
+                                  Manage
+                                </button>
+                              </div>
+                              {/* Duration presets */}
+                              <div className="flex items-center gap-1">
+                                {[5, 10, 15, 30, 45, 60, 90, 120].map(mins => (
+                                  <button
+                                    key={mins}
+                                    type="button"
+                                    onClick={() => handleDowntimeMinutesChange(idx, String(mins))}
+                                    className={cn(
+                                      'px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors',
+                                      entry.downtimeMinutes === mins
+                                        ? 'bg-primary-600 text-white border-primary-600'
+                                        : 'bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border-neutral-200 dark:border-neutral-700 hover:border-primary-400 hover:text-primary-600',
+                                    )}
+                                  >
+                                    {mins}m
+                                  </button>
+                                ))}
+                              </div>
+                              {/* Custom minutes input */}
+                              <input
+                                type="number"
+                                min={0}
+                                value={entry.downtimeMinutes || ''}
+                                onChange={(e) => handleDowntimeMinutesChange(idx, e.target.value)}
+                                placeholder="min"
+                                className="w-16 text-center px-1.5 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white"
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                        </React.Fragment>
                       );
                     })}
                   </tbody>
@@ -1641,6 +1734,33 @@ export function PipDailyEntryScreen() {
           </div>
         </div>
       </div>
+
+      {/* ── Manage Downtime Reasons Modal ── */}
+      <ManageModal
+        open={manageDowntimeOpen}
+        onClose={() => setManageDowntimeOpen(false)}
+        title="Downtime / Idle Reasons"
+        items={downtimeReasons.map((dr) => ({ id: dr.id, name: dr.name, code: dr.code ?? null }))}
+        isLoading={downtimeReasonsLoading}
+        createFields={[
+          { key: 'name', label: 'Name', placeholder: 'e.g. Power Failure', required: true },
+        ]}
+        onCreate={async (values) => {
+          await createDtMutation.mutateAsync({ name: values.name });
+          showSuccess('Created', 'Downtime reason created.');
+        }}
+        onUpdate={async (id, values) => {
+          await updateDtMutation.mutateAsync({ id, data: { name: values.name } });
+          showSuccess('Updated', 'Downtime reason updated.');
+        }}
+        onDelete={async (id) => {
+          await deleteDtMutation.mutateAsync(id);
+          showSuccess('Deleted', 'Downtime reason deleted.');
+        }}
+        isCreating={createDtMutation.isPending}
+        isUpdating={updateDtMutation.isPending}
+        isDeleting={deleteDtMutation.isPending}
+      />
 
       {/* ═══════ TODAY'S SAVED ENTRIES TABLE (Full Width) ═══════ */}
       <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-sm border border-neutral-100 dark:border-neutral-800 overflow-hidden">

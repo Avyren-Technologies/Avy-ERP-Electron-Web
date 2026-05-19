@@ -185,6 +185,32 @@ export function useDeleteProcessCategory() {
   });
 }
 
+// ── Downtime Reasons ──
+
+export function useCreateDowntimeReason() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Record<string, unknown>) => pipApi.createDowntimeReason(data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: pipKeys.downtimeReasons() }); },
+  });
+}
+
+export function useUpdateDowntimeReason() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => pipApi.updateDowntimeReason(id, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: pipKeys.downtimeReasons() }); },
+  });
+}
+
+export function useDeleteDowntimeReason() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => pipApi.deleteDowntimeReason(id),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: pipKeys.downtimeReasons() }); },
+  });
+}
+
 // ── Operations ──
 
 export function useCreateOperation() {

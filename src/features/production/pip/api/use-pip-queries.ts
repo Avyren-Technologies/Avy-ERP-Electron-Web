@@ -21,6 +21,8 @@ export const pipKeys = {
     params ? ([...pipKeys.all, 'operations', params] as const) : ([...pipKeys.all, 'operations'] as const),
   operation: (id: string) => [...pipKeys.all, 'operation', id] as const,
   processCategories: () => [...pipKeys.all, 'process-categories'] as const,
+  downtimeReasons: (params?: Record<string, unknown>) =>
+    params ? ([...pipKeys.all, 'downtime-reasons', params] as const) : ([...pipKeys.all, 'downtime-reasons'] as const),
 };
 
 export function usePipConfig() {
@@ -108,5 +110,12 @@ export function useProcessCategories() {
   return useQuery({
     queryKey: pipKeys.processCategories(),
     queryFn: () => pipApi.listProcessCategories(),
+  });
+}
+
+export function useDowntimeReasons(params?: Record<string, unknown>) {
+  return useQuery({
+    queryKey: pipKeys.downtimeReasons(params),
+    queryFn: () => pipApi.listDowntimeReasons(params),
   });
 }

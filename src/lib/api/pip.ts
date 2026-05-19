@@ -13,7 +13,6 @@ export interface Operation {
   id: string;
   companyId: string;
   code: string;
-  operationNumber: string;
   name: string;
   processType?: string;  // legacy, keep for backward compat
   processCategoryId?: string;
@@ -32,6 +31,14 @@ export interface ProcessCategory {
   isActive: boolean;
 }
 
+export interface DowntimeReason {
+  id: string;
+  companyId: string;
+  name: string;
+  code?: string;
+  isActive: boolean;
+}
+
 export interface PipSlabConfig {
   id: string;
   companyId: string;
@@ -41,7 +48,7 @@ export interface PipSlabConfig {
   partId: string;
   part?: { id: string; partNumber: string; name: string };
   operationId: string;
-  operation?: { id: string; code: string; name: string; operationNumber: string; processType?: string; processCategoryId?: string; processCategory?: { id: string; name: string } };
+  operation?: { id: string; code: string; name: string; processType?: string; processCategoryId?: string; processCategory?: { id: string; name: string } };
   shiftTargetQty: number;
   slabTiers: SlabTier[];
   isActive: boolean;
@@ -68,6 +75,9 @@ export interface PipDailyEntry {
   achievementPct: number;
   ncCount: number;
   ncReason?: string;
+  downtimeReasonId?: string;
+  downtimeMinutes?: number;
+  downtimeReason?: { id: string; name: string; code?: string };
   methodUsed?: string;
   methodNumber?: number;
   cumulativeRatio?: number;
@@ -300,6 +310,27 @@ async function deleteProcessCategory(id: string): Promise<ApiResponse<void>> {
     return response.data;
 }
 
+// Downtime Reasons
+async function listDowntimeReasons(params?: Record<string, unknown>): Promise<ApiResponse<DowntimeReason[]>> {
+    const response = await client.get('/production/pip/downtime-reasons', { params });
+    return response.data;
+}
+
+async function createDowntimeReason(data: Record<string, unknown>): Promise<ApiResponse<DowntimeReason>> {
+    const response = await client.post('/production/pip/downtime-reasons', data);
+    return response.data;
+}
+
+async function updateDowntimeReason(id: string, data: Record<string, unknown>): Promise<ApiResponse<DowntimeReason>> {
+    const response = await client.patch(`/production/pip/downtime-reasons/${id}`, data);
+    return response.data;
+}
+
+async function deleteDowntimeReason(id: string): Promise<ApiResponse<void>> {
+    const response = await client.delete(`/production/pip/downtime-reasons/${id}`);
+    return response.data;
+}
+
 // Operations
 async function listOperations(params?: Record<string, unknown>): Promise<ApiResponse<Operation[]>> {
     const response = await client.get('/production/pip/operations', { params });
@@ -354,6 +385,10 @@ export const pipApi = {
     createProcessCategory,
     updateProcessCategory,
     deleteProcessCategory,
+    listDowntimeReasons,
+    createDowntimeReason,
+    updateDowntimeReason,
+    deleteDowntimeReason,
     listOperations,
     getOperation,
     createOperation,

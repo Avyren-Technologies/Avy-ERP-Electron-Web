@@ -59,7 +59,7 @@ function CheckboxDropdown<T extends { id: string }>({
     const lower = searchTerm.toLowerCase();
     return items.filter((item) => {
       const m = item as unknown as Record<string, unknown>;
-      const text = [m.assetCode, m.assetName, m.partNumber, m.name, m.code, m.operationNumber].filter(Boolean).join(' ').toLowerCase();
+      const text = [m.assetCode, m.assetName, m.partNumber, m.name, m.code].filter(Boolean).join(' ').toLowerCase();
       return text.includes(lower);
     });
   }, [items, searchTerm]);
@@ -720,7 +720,7 @@ export function SlabConfigModal({ isOpen, onClose, onSaved, machines, parts }: S
                 selectedIds={selectedOperationIds}
                 onToggle={toggleOperation}
                 onSelectAll={selectAllOperations}
-                searchPlaceholder="Search by code, name or number..."
+                searchPlaceholder="Search by code or name..."
                 renderItem={(op: any) => (
                   <div className="text-left">
                     <div className="flex items-center gap-2">

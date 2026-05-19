@@ -119,19 +119,20 @@ function OperationModal({
 
         {/* Body */}
         <div className="p-6 overflow-y-auto flex-1 space-y-5">
-          {/* Operation Number (read-only / auto-generated) */}
+          {/* Code (auto-generated) */}
           <div>
             <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
-              Operation Number
+              Code
             </label>
-            <input
-              type="text"
-              value={isEdit ? (operation?.operationNumber ?? '') : ''}
-              readOnly
-              disabled
-              placeholder="Auto Generated via Number Series"
-              className="w-full px-3 py-2.5 bg-neutral-100 dark:bg-neutral-800/60 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm text-neutral-500 dark:text-neutral-400 cursor-not-allowed transition-all"
-            />
+            {isEdit ? (
+              <span className="inline-block px-2.5 py-1 rounded-lg bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 font-mono text-xs font-bold border border-primary-100 dark:border-primary-800/50">
+                {operation?.code}
+              </span>
+            ) : (
+              <span className="inline-flex items-center px-2.5 py-1.5 rounded-lg bg-neutral-100 dark:bg-neutral-800/60 text-neutral-500 dark:text-neutral-400 text-xs font-medium border border-neutral-200 dark:border-neutral-700">
+                Auto Generated
+              </span>
+            )}
           </div>
 
           {/* Operation Name */}
@@ -290,7 +291,7 @@ export function PipOperationMasterScreen() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400 dark:text-neutral-500" />
             <input
               type="text"
-              placeholder="Search by code, name or operation number..."
+              placeholder="Search by code or name..."
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -317,9 +318,8 @@ export function PipOperationMasterScreen() {
             <table className="w-full text-left border-collapse min-w-[800px]">
               <thead>
                 <tr className="bg-neutral-50/50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
-                  <th className="py-4 px-6 font-bold">Operation Code</th>
-                  <th className="py-4 px-6 font-bold">Operation Number</th>
-                  <th className="py-4 px-6 font-bold">Operation Name</th>
+                  <th className="py-4 px-6 font-bold">Code</th>
+                  <th className="py-4 px-6 font-bold">Name</th>
                   <th className="py-4 px-6 font-bold">Process Category</th>
                   <th className="py-4 px-6 font-bold">Status</th>
                   <th className="py-4 px-6 font-bold text-right">Actions</th>
@@ -331,17 +331,13 @@ export function PipOperationMasterScreen() {
                     key={op.id}
                     className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors"
                   >
-                    {/* Operation Code */}
+                    {/* Code */}
                     <td className="py-4 px-6">
                       <span className="inline-block px-2.5 py-1 rounded-lg bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 font-mono text-xs font-bold border border-primary-100 dark:border-primary-800/50">
                         {op.code}
                       </span>
                     </td>
-                    {/* Operation Number */}
-                    <td className="py-4 px-6 text-neutral-700 dark:text-neutral-300 font-medium">
-                      {op.operationNumber}
-                    </td>
-                    {/* Operation Name */}
+                    {/* Name */}
                     <td className="py-4 px-6 font-bold text-primary-950 dark:text-white">
                       {op.name}
                     </td>
@@ -396,7 +392,7 @@ export function PipOperationMasterScreen() {
                 ))}
                 {operations.length === 0 && !isLoading && (
                   <tr>
-                    <td colSpan={6}>
+                    <td colSpan={5}>
                       <EmptyState
                         icon="list"
                         title="No operations found"
@@ -495,10 +491,9 @@ export function PipOperationMasterScreen() {
         isLoading={pcLoading}
         createFields={[
           { key: 'name', label: 'Name', placeholder: 'e.g. Machining', required: true },
-          { key: 'code', label: 'Code', placeholder: 'e.g. MACH' },
         ]}
         onCreate={async (values) => {
-          await createPcMutation.mutateAsync({ name: values.name, code: values.code || undefined });
+          await createPcMutation.mutateAsync({ name: values.name });
           showSuccess('Created', 'Process category created.');
         }}
         onUpdate={async (id, values) => {
