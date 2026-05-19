@@ -277,7 +277,7 @@ const PipDailyReportScreen = lazyNamed(() => import("./features/production/pip/P
 const PipIncentiveSummaryScreen = lazyNamed(() => import("./features/production/pip/PipIncentiveSummaryScreen"), "PipIncentiveSummaryScreen");
 const PipIncentiveConfig = lazyNamed(() => import("./features/production/pip/PipIncentiveConfig"), "PipIncentiveConfig");
 const PipOperationMasterScreen = lazyNamed(() => import("./features/production/pip/PipOperationMasterScreen"), "PipOperationMasterScreen");
-const PipReportsHubScreen = lazy(() => import("@/features/production/pip/PipReportsHubScreen"));
+const PipReportsHubScreen = lazyNamed(() => import("./features/production/pip/PipReportsHubScreen"), "PipReportsHubScreen");
 
 // ─── Operations Modules ───
 const InventoryScreen = lazyNamed(() => import("./features/inventory/InventoryScreen"), "InventoryScreen");
@@ -591,7 +591,7 @@ function App() {
         <Route path="company/production/pip/daily-report" element={<RequirePermission permission="production.pip:read"><PipDailyReportScreen /></RequirePermission>} />
         <Route path="company/production/pip/summary-report" element={<RequirePermission permission="production.pip:read"><PipIncentiveSummaryScreen /></RequirePermission>} />
         <Route path="company/production/pip/operations" element={<RequirePermission permission="production.pip:read"><PipOperationMasterScreen /></RequirePermission>} />
-        <Route path="company/production/pip/reports" element={<RequirePermission permission="production.pip:read"><Suspense fallback={<PageLoader />}><PipReportsHubScreen /></Suspense></RequirePermission>} />
+        <Route path="company/production/pip/reports" element={<RequirePermission permission="production.pip:read"><PipReportsHubScreen /></RequirePermission>} />
         <Route path="company/production/pip/config" element={<RequirePermission permission="production.pip:configure"><PipIncentiveConfig /></RequirePermission>} />
         {/* Operations module routes */}
         <Route path="inventory" element={<RequireRole roles={['super-admin', 'company-admin']}><InventoryScreen /></RequireRole>} />

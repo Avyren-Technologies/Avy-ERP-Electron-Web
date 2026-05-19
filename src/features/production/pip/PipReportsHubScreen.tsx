@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
+import { DateTime } from 'luxon';
 import {
   FileSpreadsheet,
   ChevronDown,
@@ -25,28 +26,14 @@ const PIP_REPORTS = [
   { key: 'pip-slab-config', title: 'Slab Configuration', description: 'Current slab configs with tier details', sheets: 2 },
 ];
 
-function formatDate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
 /* ── Screen ── */
 
 export function PipReportsHubScreen() {
   const fmt = useCompanyFormatter();
 
-  // Date range filter
-  const today = useMemo(() => formatDate(new Date()), []);
-  const thirtyDaysAgo = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 30);
-    return formatDate(d);
-  }, []);
-
-  const [dateFrom, setDateFrom] = useState(thirtyDaysAgo);
-  const [dateTo, setDateTo] = useState(today);
+  // Date range filter — computed once on mount (stable default values)
+  const [dateFrom, setDateFrom] = useState(() => DateTime.now().minus({ days: 30 }).toISODate()!);
+  const [dateTo, setDateTo] = useState(() => DateTime.now().toISODate()!);
   const [historyOpen, setHistoryOpen] = useState(false);
 
   // Rate limit info
@@ -109,7 +96,11 @@ export function PipReportsHubScreen() {
         </div>
       </div>
 
-      {/* Report Cards Grid */}
+      {/* Report Cards Grid
+          All reports receive dateFrom/dateTo — the backend's buildPipWhere()
+          normalizes these into the appropriate date range for each report type.
+          Month-based reports (incentive-summary, payroll-merge) and snapshot
+          reports (slab-config) handle the date params gracefully server-side. */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {PIP_REPORTS.map((report) => (
           <div
@@ -192,7 +183,7 @@ export function PipReportsHubScreen() {
                   <tbody className="text-sm">
                     {history.slice(0, 20).map((item: Record<string, unknown>, idx: number) => (
                       <tr
-                        key={idx}
+                        key={typeof item.id === 'string' || typeof item.id === 'number' ? item.id : idx}
                         className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors"
                       >
                         <td className="py-3 px-6 font-bold text-primary-950 dark:text-white text-xs">
