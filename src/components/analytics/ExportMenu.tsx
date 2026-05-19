@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Download, FileSpreadsheet, FileText, File } from 'lucide-react';
+import { Download, FileSpreadsheet, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { analyticsApi } from '@/lib/api/analytics';
 import { showSuccess, showApiError } from '@/lib/toast';
@@ -9,12 +9,11 @@ interface ExportMenuProps {
   filters: Record<string, unknown>;
 }
 
-type ExportFormat = 'xlsx' | 'pdf' | 'csv';
+type ExportFormat = 'excel' | 'pdf';
 
 const formatOptions: { format: ExportFormat; label: string; description: string; icon: typeof FileSpreadsheet; iconColor: string; iconBg: string }[] = [
-  { format: 'xlsx', label: 'Excel', description: '.xlsx with formatting', icon: FileSpreadsheet, iconColor: 'text-emerald-600', iconBg: 'bg-emerald-50 dark:bg-emerald-900/20' },
+  { format: 'excel', label: 'Excel', description: '.xlsx with formatting', icon: FileSpreadsheet, iconColor: 'text-emerald-600', iconBg: 'bg-emerald-50 dark:bg-emerald-900/20' },
   { format: 'pdf', label: 'PDF', description: '.pdf summary report', icon: FileText, iconColor: 'text-red-500', iconBg: 'bg-red-50 dark:bg-red-900/20' },
-  { format: 'csv', label: 'CSV', description: '.csv raw data', icon: File, iconColor: 'text-blue-500', iconBg: 'bg-blue-50 dark:bg-blue-900/20' },
 ];
 
 export function ExportMenu({ reportType, filters }: ExportMenuProps) {
@@ -43,13 +42,14 @@ export function ExportMenu({ reportType, filters }: ExportMenuProps) {
 
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${reportType}-report.${format}`;
+      const ext = format === 'pdf' ? 'pdf' : 'xlsx';
+      link.download = `${reportType}-report.${ext}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      showSuccess(`${format.toUpperCase()} report downloaded`);
+      showSuccess(`${ext.toUpperCase()} report downloaded`);
     } catch (err) {
       showApiError(err);
     } finally {
