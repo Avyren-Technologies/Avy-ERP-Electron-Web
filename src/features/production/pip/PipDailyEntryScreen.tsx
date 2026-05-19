@@ -118,6 +118,13 @@ interface CalcPartInput {
   slabTiers: SlabTier[];
 }
 
+interface SlabTierBreakdownItem {
+  label: string;
+  pcs: number;
+  rate: number;
+  amount: number;
+}
+
 interface CalcPartResult {
   partId: string;
   partNumber: string;
@@ -126,6 +133,7 @@ interface CalcPartResult {
   machineCode: string;
   qtyProduced: number;
   shiftTargetQty: number;
+  slabTiers: SlabTier[];
   achievementPct: number;
   incentiveAmount: number;
   consideredPct: number;
@@ -137,6 +145,11 @@ interface CalcPartResult {
   cumRatioBefore?: number;
   cumRatioAfter?: number;
   piecesNeeded?: number;
+  belowTargetEarning?: number;
+  belowTargetAmount?: number;
+  aboveTargetEarning?: number;
+  aboveTargetBreakdown?: SlabTierBreakdownItem[];
+  aboveTargetAmount?: number;
 }
 
 function getSlabRate(slabTiers: SlabTier[], qty: number): number {
@@ -151,6 +164,22 @@ function getSlabRate(slabTiers: SlabTier[], qty: number): number {
     remaining -= pcs;
   }
   return total;
+}
+
+function getSlabBreakdown(slabTiers: SlabTier[], qty: number): SlabTierBreakdownItem[] {
+  if (!slabTiers.length || qty <= 0) return [];
+  const items: SlabTierBreakdownItem[] = [];
+  let remaining = qty;
+  slabTiers.forEach((tier, idx) => {
+    if (remaining <= 0) return;
+    const tierRange = tier.toQty != null ? tier.toQty - tier.fromQty + 1 : remaining;
+    const pcs = Math.min(remaining, tierRange);
+    const amount = Math.round(pcs * tier.ratePerPiece * 100) / 100;
+    const range = tier.toQty != null ? `${tier.fromQty}\u2013${tier.toQty}` : `${tier.fromQty}+`;
+    items.push({ label: `Slab ${idx + 1} (${range})`, pcs, rate: tier.ratePerPiece, amount });
+    remaining -= pcs;
+  });
+  return items;
 }
 
 function calculateIncentiveLocal(
@@ -216,36 +245,43 @@ function calculateIncentiveLocal(
       let incentiveAmount = 0;
       let caseType: 'A' | 'B' | 'C' = 'A';
       let piecesNeeded = 0;
+      let belowTargetEarning = 0;
+      let belowTargetAmount = 0;
+      let aboveTargetEarning = 0;
+      let aboveTargetAmount = 0;
+      let aboveTargetBreakdown: SlabTierBreakdownItem[] = [];
+
+      const slab1Rate = p.slabTiers.length > 0 ? p.slabTiers[0].ratePerPiece : 0;
 
       if (runningRatio <= 1) {
-        // Case A — below 100%, no incentive
         caseType = 'A';
         earningQty = 0;
       } else if (prevRunning >= 1) {
-        // Case B — already past 100%, full qty earns
-        //   below-target → Slab 1, above-target → slab tiers
         caseType = 'B';
         earningQty = p.qtyProduced;
-        const excessAboveTarget = Math.max(0, p.qtyProduced - p.shiftTargetQty);
-        const belowTarget = p.qtyProduced - excessAboveTarget;
-        const slab1Rate = p.slabTiers.length > 0 ? p.slabTiers[0].ratePerPiece : 0;
-        incentiveAmount = belowTarget * slab1Rate;
-        if (excessAboveTarget > 0) {
-          incentiveAmount += getSlabRate(p.slabTiers, excessAboveTarget);
+        aboveTargetEarning = Math.max(0, p.qtyProduced - p.shiftTargetQty);
+        belowTargetEarning = p.qtyProduced - aboveTargetEarning;
+        belowTargetAmount = Math.round(belowTargetEarning * slab1Rate * 100) / 100;
+        incentiveAmount = belowTargetAmount;
+        if (aboveTargetEarning > 0) {
+          aboveTargetBreakdown = getSlabBreakdown(p.slabTiers, aboveTargetEarning);
+          aboveTargetAmount = aboveTargetBreakdown.reduce((s, t) => s + t.amount, 0);
+          incentiveAmount += aboveTargetAmount;
         }
       } else {
-        // Case C — crosses 100%
         caseType = 'C';
         piecesNeeded = Math.ceil((1 - prevRunning) * p.shiftTargetQty);
         earningQty = Math.max(0, p.qtyProduced - piecesNeeded);
         if (earningQty > 0) {
-          const excessAboveTarget = Math.max(0, p.qtyProduced - p.shiftTargetQty);
-          const earningBelowTarget = Math.max(0, earningQty - excessAboveTarget);
-          const earningAboveTarget = Math.max(0, earningQty - earningBelowTarget);
-          const slab1Rate = p.slabTiers.length > 0 ? p.slabTiers[0].ratePerPiece : 0;
-          incentiveAmount = earningBelowTarget * slab1Rate;
-          if (earningAboveTarget > 0) {
-            incentiveAmount += getSlabRate(p.slabTiers, earningAboveTarget);
+          const excessAbove = Math.max(0, p.qtyProduced - p.shiftTargetQty);
+          belowTargetEarning = Math.max(0, earningQty - excessAbove);
+          aboveTargetEarning = Math.max(0, earningQty - belowTargetEarning);
+          belowTargetAmount = Math.round(belowTargetEarning * slab1Rate * 100) / 100;
+          incentiveAmount = belowTargetAmount;
+          if (aboveTargetEarning > 0) {
+            aboveTargetBreakdown = getSlabBreakdown(p.slabTiers, aboveTargetEarning);
+            aboveTargetAmount = aboveTargetBreakdown.reduce((s, t) => s + t.amount, 0);
+            incentiveAmount += aboveTargetAmount;
           }
         }
       }
@@ -254,15 +290,20 @@ function calculateIncentiveLocal(
       partResults.push({
         ...p,
         achievementPct: p.shiftTargetQty > 0 ? (p.qtyProduced / p.shiftTargetQty) * 100 : 0,
-        incentiveAmount,
+        incentiveAmount: Math.round(incentiveAmount * 100) / 100,
         consideredPct: isEligible ? 100 : 0,
         earningQty,
-        appliedRate: p.slabTiers.length > 0 ? p.slabTiers[0].ratePerPiece : 0,
+        appliedRate: slab1Rate,
         appliedSlabLabel: earningQty > 0 && p.slabTiers.length > 0 ? 'Slab 1' : 'N/A',
         caseType,
         cumRatioBefore: Math.round(prevRunning * 1000) / 10,
         cumRatioAfter: Math.round(runningRatio * 1000) / 10,
         piecesNeeded,
+        belowTargetEarning,
+        belowTargetAmount,
+        aboveTargetEarning,
+        aboveTargetBreakdown,
+        aboveTargetAmount,
       });
     }
 
@@ -1781,62 +1822,126 @@ export function PipDailyEntryScreen() {
                   <button
                     type="button"
                     onClick={() => setShowCalcNote(!showCalcNote)}
-                    className="text-[10px] text-primary-500 hover:text-primary-600 font-medium flex items-center gap-1"
+                    className="text-[10px] text-primary-500 hover:text-primary-600 dark:text-primary-400 font-medium flex items-center gap-1"
                   >
                     {showCalcNote ? '\u25BE' : '\u25B8'} How is this calculated?
                   </button>
                   {showCalcNote && (
-                    <div className="mt-2 space-y-2.5">
+                    <div className="mt-2 space-y-3">
                       {activeMethod.number === 1 ? (
                         <>
-                          {/* Method 1 dynamic breakdown */}
                           {liveCalcResult.partResults.map((part: CalcPartResult, idx: number) => {
                             const pct = Math.round(part.achievementPct);
+                            const cumBefore = part.cumRatioBefore ?? 0;
                             const cumAfter = part.cumRatioAfter ?? 0;
                             const slab1Rate = part.appliedRate ?? 0;
-                            const excessAbove = Math.max(0, part.qtyProduced - part.shiftTargetQty);
-                            const belowTarget = part.qtyProduced - excessAbove;
+                            const belowEarn = part.belowTargetEarning ?? 0;
+                            const belowAmt = part.belowTargetAmount ?? 0;
+                            const aboveEarn = part.aboveTargetEarning ?? 0;
+                            const aboveAmt = part.aboveTargetAmount ?? 0;
+                            const aboveBk = part.aboveTargetBreakdown ?? [];
                             return (
-                              <div key={`${part.partId}-${part.machineId}-${idx}`} className="rounded-lg bg-neutral-100/60 dark:bg-neutral-800/40 px-2.5 py-2">
-                                <p className="text-[10px] font-bold text-primary-700 dark:text-primary-400">
-                                  {part.partNumber}({part.machineCode}) {'\u2014'} {part.qtyProduced}/{part.shiftTargetQty} = {pct}%
-                                </p>
-                                <div className="mt-1 text-[9px] text-neutral-500 dark:text-neutral-400 space-y-0.5 leading-relaxed">
+                              <div key={`br-${part.partId}-${part.machineId}-${idx}`} className="rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+                                {/* Part header */}
+                                <div className="px-3 py-1.5 bg-primary-50 dark:bg-primary-900/20 border-b border-neutral-200 dark:border-neutral-700">
+                                  <p className="text-[10px] font-bold text-primary-700 dark:text-primary-300">
+                                    {part.partNumber}({part.machineCode})
+                                    <span className="ml-1.5 font-normal text-neutral-500 dark:text-neutral-400">{part.qtyProduced}/{part.shiftTargetQty} = {pct}%</span>
+                                  </p>
+                                </div>
+                                <div className="px-3 py-2 text-[9px] leading-[1.6] text-neutral-600 dark:text-neutral-400 space-y-1">
+                                  {/* Slab config for this part */}
+                                  {part.slabTiers.length > 0 && (
+                                    <p className="text-neutral-400 dark:text-neutral-500">
+                                      Slab tiers: {part.slabTiers.map((t, i) => (
+                                        <span key={i}>
+                                          {i > 0 ? ', ' : ''}
+                                          <span className="font-medium text-neutral-500 dark:text-neutral-400">₹{t.ratePerPiece}/pc</span>
+                                          <span className="text-neutral-400"> ({t.fromQty}{t.toQty != null ? `\u2013${t.toQty}` : '+'})</span>
+                                        </span>
+                                      ))}
+                                    </p>
+                                  )}
+
                                   {part.caseType === 'A' && (
                                     <>
-                                      <p>Cumulative after this part: <span className="font-semibold text-amber-600">{cumAfter}%</span> {'\u2014'} still below 100%</p>
-                                      <p>This part is consumed reaching the threshold. <span className="font-semibold">Earns ₹0</span></p>
+                                      <p>
+                                        Cumulative ratio: {cumBefore > 0 ? `${cumBefore}%` : '0%'} + {pct}% = <span className="font-semibold text-amber-600">{cumAfter}%</span>
+                                        <span className="text-amber-500"> — still below 100%</span>
+                                      </p>
+                                      <p>All {part.qtyProduced} pcs used toward reaching 100%. <span className="font-bold text-neutral-500">Incentive: ₹0.00</span></p>
                                     </>
                                   )}
+
                                   {part.caseType === 'C' && (
                                     <>
-                                      <p>Cumulative crosses 100% at this part: <span className="font-semibold text-success-600">{cumAfter}%</span></p>
-                                      <p>{part.piecesNeeded} pcs consumed to reach 100%, <span className="font-semibold">{part.earningQty} pcs earn</span></p>
-                                      {part.earningQty > 0 && excessAbove > 0 && (
-                                        <p>{Math.max(0, part.earningQty - excessAbove)} pcs below target {'\u00D7'} ₹{slab1Rate} (Slab 1) + {Math.min(part.earningQty, excessAbove)} pcs above target @ slab tiers = <span className="font-semibold text-success-600">₹{part.incentiveAmount.toFixed(2)}</span></p>
-                                      )}
-                                      {part.earningQty > 0 && excessAbove === 0 && (
-                                        <p>{part.earningQty} pcs {'\u00D7'} ₹{slab1Rate} (Slab 1) = <span className="font-semibold text-success-600">₹{part.incentiveAmount.toFixed(2)}</span></p>
+                                      <p>
+                                        Cumulative ratio: {cumBefore > 0 ? `${cumBefore}%` : '0%'} + {pct}% = <span className="font-semibold text-success-600">{cumAfter}%</span>
+                                        <span className="text-success-600"> — crosses 100% here!</span>
+                                      </p>
+                                      <p>
+                                        <span className="font-medium">{part.piecesNeeded} pcs</span> used to fill the 100% gap
+                                        {' \u2192 '}<span className="font-bold">{part.earningQty} pcs earn incentive</span>
+                                      </p>
+                                      {part.earningQty > 0 && (
+                                        <div className="mt-1 pl-2 border-l-2 border-primary-200 dark:border-primary-800 space-y-0.5">
+                                          {belowEarn > 0 && (
+                                            <p>Below target: {belowEarn} pcs {'\u00D7'} ₹{slab1Rate} (Slab 1) = <span className="font-semibold">₹{belowAmt.toFixed(2)}</span></p>
+                                          )}
+                                          {aboveEarn > 0 && aboveBk.length > 0 && (
+                                            <>
+                                              <p className="font-medium">Above target ({aboveEarn} pcs across slab tiers):</p>
+                                              {aboveBk.map((t, ti) => (
+                                                <p key={ti} className="pl-2">{t.pcs} pcs {'\u00D7'} ₹{t.rate} <span className="text-neutral-400">({t.label})</span> = ₹{t.amount.toFixed(2)}</p>
+                                              ))}
+                                            </>
+                                          )}
+                                          <p className="font-bold text-success-600 pt-0.5">Part total: ₹{part.incentiveAmount.toFixed(2)}</p>
+                                        </div>
                                       )}
                                     </>
                                   )}
+
                                   {part.caseType === 'B' && (
                                     <>
-                                      <p>Already past 100% (cumulative: <span className="font-semibold text-success-600">{cumAfter}%</span>) {'\u2014'} <span className="font-semibold">all {part.qtyProduced} pcs earn</span></p>
-                                      {excessAbove > 0 ? (
-                                        <p>{belowTarget} pcs below target {'\u00D7'} ₹{slab1Rate} (Slab 1) + {excessAbove} pcs above target @ slab tiers = <span className="font-semibold text-success-600">₹{part.incentiveAmount.toFixed(2)}</span></p>
-                                      ) : (
-                                        <p>{part.qtyProduced} pcs {'\u00D7'} ₹{slab1Rate} (Slab 1) = <span className="font-semibold text-success-600">₹{part.incentiveAmount.toFixed(2)}</span></p>
-                                      )}
+                                      <p>
+                                        Cumulative was already <span className="font-semibold text-success-600">{cumBefore}%</span> before this part
+                                        {' \u2192 '}<span className="font-bold">all {part.qtyProduced} pcs earn incentive</span>
+                                      </p>
+                                      <div className="mt-1 pl-2 border-l-2 border-primary-200 dark:border-primary-800 space-y-0.5">
+                                        {belowEarn > 0 && (
+                                          <p>Below target: {belowEarn} pcs {'\u00D7'} ₹{slab1Rate} (Slab 1) = <span className="font-semibold">₹{belowAmt.toFixed(2)}</span></p>
+                                        )}
+                                        {aboveEarn > 0 && aboveBk.length > 0 && (
+                                          <>
+                                            <p className="font-medium">Above target ({aboveEarn} pcs across slab tiers):</p>
+                                            {aboveBk.map((t, ti) => (
+                                              <p key={ti} className="pl-2">{t.pcs} pcs {'\u00D7'} ₹{t.rate} <span className="text-neutral-400">({t.label})</span> = ₹{t.amount.toFixed(2)}</p>
+                                            ))}
+                                          </>
+                                        )}
+                                        {aboveEarn === 0 && belowEarn === part.qtyProduced && (
+                                          <p>{part.qtyProduced} pcs {'\u00D7'} ₹{slab1Rate} (Slab 1) = <span className="font-semibold">₹{part.incentiveAmount.toFixed(2)}</span></p>
+                                        )}
+                                        <p className="font-bold text-success-600 pt-0.5">Part total: ₹{part.incentiveAmount.toFixed(2)}</p>
+                                      </div>
                                     </>
                                   )}
                                 </div>
                               </div>
                             );
                           })}
-                          <div className="text-[9px] text-neutral-400 dark:text-neutral-500 italic px-1">
-                            Parts processed in entry order. Cumulative ratio must reach {'\u2265'} 100% for incentive.
+
+                          {/* Grand total */}
+                          <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-800">
+                            <span className="text-[10px] font-bold text-success-700 dark:text-success-400">Grand Total</span>
+                            <span className="text-[10px] font-bold text-success-700 dark:text-success-400">
+                              {liveCalcResult.partResults.map((p) => `₹${p.incentiveAmount.toFixed(2)}`).join(' + ')} = ₹{liveCalcResult.totalIncentive.toFixed(2)}
+                            </span>
                           </div>
+                          <p className="text-[8px] text-neutral-400 dark:text-neutral-500 italic px-1 leading-relaxed">
+                            Parts processed in entry order. Cumulative ratio must reach {'\u2265'} 100% for any incentive. Below-target earning at Slab 1 rate, above-target walks through configured slab tiers.
+                          </p>
                         </>
                       ) : (
                         <>
@@ -1848,30 +1953,46 @@ export function PipDailyEntryScreen() {
                             const earning = part.earningQty;
                             const slab1Rate = part.appliedRate ?? 0;
                             return (
-                              <div key={`${part.partId}-${part.machineId}-${idx}`} className="rounded-lg bg-neutral-100/60 dark:bg-neutral-800/40 px-2.5 py-2">
-                                <p className="text-[10px] font-bold text-primary-700 dark:text-primary-400">
-                                  {part.partNumber}({part.machineCode}) {'\u2014'} {part.qtyProduced}/{part.shiftTargetQty} = {pct}%
-                                </p>
-                                <div className="mt-1 text-[9px] text-neutral-500 dark:text-neutral-400 space-y-0.5 leading-relaxed">
-                                  <p>Actual {pct}% {'\u2192'} rounded down to <span className="font-semibold">{milestone}% milestone</span></p>
-                                  <p>Milestone qty = {milestone}% {'\u00D7'} {part.shiftTargetQty} = {milestoneQty} pcs counted</p>
-                                  <p>Earning qty = {part.qtyProduced} {'\u2212'} {milestoneQty} = <span className="font-semibold">{earning} pcs</span></p>
+                              <div key={`br-${part.partId}-${part.machineId}-${idx}`} className="rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+                                <div className="px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 border-b border-neutral-200 dark:border-neutral-700">
+                                  <p className="text-[10px] font-bold text-amber-700 dark:text-amber-300">
+                                    {part.partNumber}({part.machineCode})
+                                    <span className="ml-1.5 font-normal text-neutral-500 dark:text-neutral-400">{part.qtyProduced}/{part.shiftTargetQty} = {pct}%</span>
+                                  </p>
+                                </div>
+                                <div className="px-3 py-2 text-[9px] leading-[1.6] text-neutral-600 dark:text-neutral-400 space-y-1">
+                                  {part.slabTiers.length > 0 && (
+                                    <p className="text-neutral-400 dark:text-neutral-500">Slab 1 rate: <span className="font-medium text-neutral-500">₹{slab1Rate}/pc</span></p>
+                                  )}
+                                  <p>Actual {pct}% {'\u2192'} rounded down to <span className="font-semibold text-amber-600">{milestone}% milestone</span></p>
+                                  <p>Milestone qty: {milestone}% of {part.shiftTargetQty} = <span className="font-medium">{milestoneQty} pcs</span> counted toward completion</p>
+                                  <p>Earning qty: {part.qtyProduced} {'\u2212'} {milestoneQty} = <span className="font-bold">{earning} pcs</span></p>
                                   {earning > 0 && liveCalcResult.isEligible && (
-                                    <p>{earning} pcs {'\u00D7'} ₹{slab1Rate} (Slab 1) = <span className="font-semibold text-success-600">₹{part.incentiveAmount.toFixed(2)}</span></p>
+                                    <div className="pl-2 border-l-2 border-amber-200 dark:border-amber-800">
+                                      <p>{earning} pcs {'\u00D7'} ₹{slab1Rate} (Slab 1) = <span className="font-bold text-success-600">₹{part.incentiveAmount.toFixed(2)}</span></p>
+                                    </div>
                                   )}
                                   {earning > 0 && !liveCalcResult.isEligible && (
-                                    <p className="text-amber-500">Milestones total &lt; 100% {'\u2014'} not eligible</p>
+                                    <p className="text-amber-500 font-medium">Milestones total is {liveCalcResult.cumulativeRatio}% — need {'\u2265'} 100% to earn</p>
                                   )}
                                   {milestone === 0 && (
-                                    <p className="text-amber-500">Below 25% {'\u2014'} no milestone contribution</p>
+                                    <p className="text-amber-500">Below 25% threshold — no milestone contribution</p>
                                   )}
                                 </div>
                               </div>
                             );
                           })}
-                          <div className="text-[9px] text-neutral-400 dark:text-neutral-500 italic px-1">
-                            Sum of milestones must reach {'\u2265'} 100% for eligibility. Earning qty earns at Slab 1 rate.
-                          </div>
+                          {liveCalcResult.isEligible && (
+                            <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-800">
+                              <span className="text-[10px] font-bold text-success-700 dark:text-success-400">Grand Total</span>
+                              <span className="text-[10px] font-bold text-success-700 dark:text-success-400">
+                                {liveCalcResult.partResults.filter((p) => p.incentiveAmount > 0).map((p) => `₹${p.incentiveAmount.toFixed(2)}`).join(' + ')} = ₹{liveCalcResult.totalIncentive.toFixed(2)}
+                              </span>
+                            </div>
+                          )}
+                          <p className="text-[8px] text-neutral-400 dark:text-neutral-500 italic px-1 leading-relaxed">
+                            Each part rounded to nearest milestone (25/50/75/100%). Milestones must sum to {'\u2265'} 100%. All earning qty at Slab 1 rate.
+                          </p>
                         </>
                       )}
                     </div>
