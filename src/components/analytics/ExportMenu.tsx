@@ -50,8 +50,13 @@ export function ExportMenu({ reportType, filters }: ExportMenuProps) {
       URL.revokeObjectURL(url);
 
       showSuccess(`${ext.toUpperCase()} report downloaded`);
-    } catch (err) {
-      showApiError(err);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.response?.data?.error || '';
+      if (msg === 'RATE_LIMIT_EXCEEDED' || msg.includes('rate limit')) {
+        showApiError({ response: { data: { message: 'You have reached the export limit (50 per hour). Please wait a while and try again.' } } });
+      } else {
+        showApiError(err);
+      }
     } finally {
       setExporting(false);
     }
