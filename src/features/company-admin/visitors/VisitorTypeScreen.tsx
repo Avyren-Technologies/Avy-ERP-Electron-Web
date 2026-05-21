@@ -95,6 +95,7 @@ const EMPTY_FORM = {
     requireHostApproval: true,
     requireSafetyInduction: false,
     requireNda: false,
+    requirePreArrivalForm: false,
     requireEscort: false,
     defaultMaxDurationMinutes: "",
     safetyInductionId: "",
@@ -145,6 +146,7 @@ export function VisitorTypeScreen() {
             requireHostApproval: t.requireHostApproval ?? true,
             requireSafetyInduction: t.requireSafetyInduction ?? false,
             requireNda: t.requireNda ?? false,
+            requirePreArrivalForm: t.requirePreArrivalForm ?? false,
             requireEscort: t.requireEscort ?? false,
             defaultMaxDurationMinutes: String(t.defaultMaxDurationMinutes ?? ""),
             safetyInductionId: t.safetyInductionId ?? "",
@@ -163,6 +165,7 @@ export function VisitorTypeScreen() {
                 requireHostApproval: form.requireHostApproval,
                 requireSafetyInduction: form.requireSafetyInduction,
                 requireNda: form.requireNda,
+                requirePreArrivalForm: form.requirePreArrivalForm,
                 requireEscort: form.requireEscort,
                 defaultMaxDurationMinutes: form.defaultMaxDurationMinutes ? Number(form.defaultMaxDurationMinutes) : undefined,
                 safetyInductionId: form.requireSafetyInduction && form.safetyInductionId ? form.safetyInductionId : null,
@@ -270,6 +273,7 @@ export function VisitorTypeScreen() {
                                     <th className="py-4 px-6 font-bold text-center">Approval</th>
                                     <th className="py-4 px-6 font-bold text-center">Induction</th>
                                     <th className="py-4 px-6 font-bold text-center">NDA</th>
+                                    <th className="py-4 px-6 font-bold text-center whitespace-nowrap">Pre-Arrival</th>
                                     <th className="py-4 px-6 font-bold text-center">Escort</th>
                                     <th className="py-4 px-6 font-bold text-center">Status</th>
                                     <th className="py-4 px-6 font-bold text-right">Actions</th>
@@ -295,6 +299,7 @@ export function VisitorTypeScreen() {
                                         <td className="py-4 px-6 text-center"><YesNoBadge enabled={t.requireHostApproval} /></td>
                                         <td className="py-4 px-6 text-center"><YesNoBadge enabled={t.requireSafetyInduction} /></td>
                                         <td className="py-4 px-6 text-center"><YesNoBadge enabled={t.requireNda} /></td>
+                                        <td className="py-4 px-6 text-center"><YesNoBadge enabled={t.requirePreArrivalForm} /></td>
                                         <td className="py-4 px-6 text-center"><YesNoBadge enabled={t.requireEscort} /></td>
                                         <td className="py-4 px-6 text-center">
                                             <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border", t.isActive !== false ? "bg-success-50 text-success-700 border-success-200" : "bg-neutral-100 text-neutral-500 border-neutral-200")}>
@@ -389,6 +394,7 @@ export function VisitorTypeScreen() {
                                     </div>
                                 )}
                                 <ToggleSwitch label="Require NDA Signing" checked={form.requireNda} onChange={(v) => updateField("requireNda", v)} />
+                                <ToggleSwitch label="Require Pre-Arrival Form" checked={form.requirePreArrivalForm} onChange={(v) => updateField("requirePreArrivalForm", v)} />
                                 <ToggleSwitch label="Require Escort" checked={form.requireEscort} onChange={(v) => updateField("requireEscort", v)} />
                             </div>
                         </div>

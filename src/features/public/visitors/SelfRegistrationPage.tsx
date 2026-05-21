@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import QRCode from 'react-qr-code';
 import { publicApi } from '@/lib/api/public-client';
+import { resolveNdaTemplateContent, renderNdaMarkdown } from '@/lib/nda-markdown';
 import { showSuccess, showApiError } from '@/lib/toast';
 
 const PURPOSE_OPTIONS = [
@@ -52,7 +53,9 @@ export function SelfRegistrationPage() {
   const [visitorMobile, setVisitorMobile] = useState('');
   const [visitorEmail, setVisitorEmail] = useState('');
   const [visitorCompany, setVisitorCompany] = useState('');
+  const [visitorDesignation, setVisitorDesignation] = useState('');
   const [purpose, setPurpose] = useState('');
+  const [purposeNotes, setPurposeNotes] = useState('');
   const [hostEmployeeId, setHostEmployeeId] = useState('');
   const [hostSearch, setHostSearch] = useState('');
   const [hostDropdownOpen, setHostDropdownOpen] = useState(false);
@@ -88,21 +91,70 @@ export function SelfRegistrationPage() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Determine if NDA/induction is required based on config mode + selected visitor type
-  const selectedType = formConfig?.visitorTypes.find(vt => vt.id === visitorTypeId);
+  // Effective visitor type: explicit selection, or sole type when dropdown is hidden
+  const effectiveVisitorType = useMemo(() => {
+    if (!formConfig?.visitorTypes.length) return undefined;
+    if (visitorTypeId) {
+      return formConfig.visitorTypes.find((vt) => vt.id === visitorTypeId);
+    }
+    if (formConfig.visitorTypes.length === 1) {
+      return formConfig.visitorTypes[0];
+    }
+    return undefined;
+  }, [formConfig?.visitorTypes, visitorTypeId]);
+
+  // Auto-select when only one visitor type (dropdown is not shown)
+  useEffect(() => {
+    if (formConfig?.visitorTypes.length === 1 && !visitorTypeId) {
+      setVisitorTypeId(formConfig.visitorTypes[0]!.id);
+    }
+  }, [formConfig?.visitorTypes, visitorTypeId]);
+
+  const typesRequiringNda = useMemo(
+    () => formConfig?.visitorTypes.filter((vt) => vt.requireNda) ?? [],
+    [formConfig?.visitorTypes],
+  );
+  const typesRequiringInduction = useMemo(
+    () => formConfig?.visitorTypes.filter((vt) => vt.requireSafetyInduction) ?? [],
+    [formConfig?.visitorTypes],
+  );
+
   const ndaNeeded = formConfig?.config.ndaRequired === 'ALWAYS'
-    || (formConfig?.config.ndaRequired === 'PER_VISITOR_TYPE' && selectedType?.requireNda);
+    || (formConfig?.config.ndaRequired === 'PER_VISITOR_TYPE' && !!effectiveVisitorType?.requireNda);
+  /** Show NDA block whenever company uses NDA (not NEVER), including before visitor type is chosen */
+  const showNdaSection = formConfig?.config.ndaRequired === 'ALWAYS'
+    || (formConfig?.config.ndaRequired === 'PER_VISITOR_TYPE' && typesRequiringNda.length > 0);
+  const ndaPendingTypeSelection = showNdaSection
+    && formConfig?.config.ndaRequired === 'PER_VISITOR_TYPE'
+    && !effectiveVisitorType?.requireNda;
+
   const inductionNeeded = formConfig?.config.safetyInductionRequired === 'ALWAYS'
-    || (formConfig?.config.safetyInductionRequired === 'PER_VISITOR_TYPE' && selectedType?.requireSafetyInduction);
+    || (formConfig?.config.safetyInductionRequired === 'PER_VISITOR_TYPE' && !!effectiveVisitorType?.requireSafetyInduction);
+  const showInductionHint = formConfig?.config.safetyInductionRequired === 'PER_VISITOR_TYPE'
+    && typesRequiringInduction.length > 0
+    && !inductionNeeded;
+  const visitorTypeRequired = formConfig
+    ? (formConfig.visitorTypes.length > 1
+      && (formConfig.config.ndaRequired === 'PER_VISITOR_TYPE' && typesRequiringNda.length > 0
+        || formConfig.config.safetyInductionRequired === 'PER_VISITOR_TYPE' && typesRequiringInduction.length > 0))
+    : false;
 
   // Get applicable inductions (linked to visitor type, or all if ALWAYS mode)
   const applicableInductions = useMemo(() => {
     if (!inductionNeeded || !formConfig?.safetyInductions?.length) return [];
-    if (selectedType?.safetyInductionId) {
-      return formConfig.safetyInductions.filter(si => si.id === selectedType.safetyInductionId);
+    if (effectiveVisitorType?.safetyInductionId) {
+      return formConfig.safetyInductions.filter(si => si.id === effectiveVisitorType.safetyInductionId);
     }
     return formConfig.safetyInductions;
-  }, [inductionNeeded, formConfig?.safetyInductions, selectedType?.safetyInductionId]);
+  }, [inductionNeeded, formConfig?.safetyInductions, effectiveVisitorType?.safetyInductionId]);
+
+  const companyDisplayName = formConfig?.company.displayName || formConfig?.company.name || '';
+  const ndaHtml = useMemo(() => {
+    if (!showNdaSection || !formConfig) return '';
+    return renderNdaMarkdown(
+      resolveNdaTemplateContent(formConfig.config.ndaTemplateContent, companyDisplayName),
+    );
+  }, [showNdaSection, formConfig, formConfig?.config.ndaTemplateContent, companyDisplayName]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,6 +162,11 @@ export function SelfRegistrationPage() {
 
     if (!visitorName.trim() || !visitorMobile.trim() || !purpose) {
       showApiError({ response: { data: { message: 'Please fill in all required fields.' } } });
+      return;
+    }
+
+    if (visitorTypeRequired && !visitorTypeId && !effectiveVisitorType?.id) {
+      showApiError({ response: { data: { message: 'Please select a visitor type to continue.' } } });
       return;
     }
 
@@ -149,14 +206,21 @@ export function SelfRegistrationPage() {
 
     setSubmitting(true);
     try {
+      // Extract gate code from URL params if present (gate-specific QR)
+      const urlParams = new URLSearchParams(window.location.search);
+      const gateCode = urlParams.get('gate') || undefined;
+
       const res = await publicApi.post(`/public/visit/register/${plantCode}`, {
         visitorName: visitorName.trim(),
         visitorMobile: visitorMobile.trim(),
         visitorEmail: visitorEmail.trim() || undefined,
         visitorCompany: visitorCompany.trim() || undefined,
+        visitorDesignation: visitorDesignation.trim() || undefined,
         purpose,
+        purposeNotes: purposeNotes.trim() || undefined,
         hostEmployeeId: hostEmployeeId || undefined,
-        visitorTypeId: visitorTypeId || undefined,
+        visitorTypeId: visitorTypeId || effectiveVisitorType?.id || undefined,
+        gateCode,
         ndaSigned: ndaNeeded ? ndaAccepted : undefined,
         inductionCompleted: inductionCompleted || undefined,
         inductionScore,
@@ -270,8 +334,6 @@ export function SelfRegistrationPage() {
     );
   }
 
-  const companyDisplayName = formConfig.company.displayName || formConfig.company.name;
-
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-lg mx-auto">
@@ -340,6 +402,20 @@ export function SelfRegistrationPage() {
               value={visitorCompany}
               onChange={(e) => setVisitorCompany(e.target.value)}
               placeholder="Enter your company name"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="visitorDesignation" className="block text-sm font-medium text-gray-700 mb-1">
+              Designation / Job Title
+            </label>
+            <input
+              id="visitorDesignation"
+              type="text"
+              value={visitorDesignation}
+              onChange={(e) => setVisitorDesignation(e.target.value)}
+              placeholder="e.g. Manager, Director"
               className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition"
             />
           </div>
@@ -422,24 +498,45 @@ export function SelfRegistrationPage() {
             )}
           </div>
 
-          {formConfig.visitorTypes.length > 1 && (
+          {formConfig.visitorTypes.length > 1 ? (
             <div>
               <label htmlFor="visitorTypeId" className="block text-sm font-medium text-gray-700 mb-1">
-                Visitor Type
+                Visitor Type {visitorTypeRequired && <span className="text-red-500">*</span>}
               </label>
               <select
                 id="visitorTypeId"
                 value={visitorTypeId}
-                onChange={(e) => setVisitorTypeId(e.target.value)}
+                required={visitorTypeRequired}
+                onChange={(e) => {
+                  setVisitorTypeId(e.target.value);
+                  setNdaAccepted(false);
+                  setInductionAcknowledged(false);
+                  setQuizAnswers({});
+                }}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition bg-white"
               >
                 <option value="">Select type...</option>
                 {formConfig.visitorTypes.map((vt) => (
-                  <option key={vt.id} value={vt.id}>{vt.name}</option>
+                  <option key={vt.id} value={vt.id}>
+                    {vt.name}
+                    {vt.requireNda ? ' (NDA required)' : ''}
+                    {vt.requireSafetyInduction ? ' (Safety induction)' : ''}
+                  </option>
                 ))}
               </select>
+              {visitorTypeRequired && !visitorTypeId && (
+                <p className="text-xs text-amber-700 mt-1.5">
+                  Select your visitor type to complete required agreements
+                  {typesRequiringNda.length > 0 && ` (NDA: ${typesRequiringNda.map((t) => t.name).join(', ')})`}.
+                </p>
+              )}
             </div>
-          )}
+          ) : formConfig.visitorTypes.length === 1 ? (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
+              <p className="text-xs font-medium text-gray-500 mb-0.5">Visitor Type</p>
+              <p className="text-sm text-gray-800">{formConfig.visitorTypes[0]!.name}</p>
+            </div>
+          ) : null}
 
           {/* Safety Induction Section */}
           {inductionNeeded && applicableInductions.length > 0 && (
@@ -543,28 +640,44 @@ export function SelfRegistrationPage() {
             </div>
           )}
 
-          {/* NDA Section */}
-          {ndaNeeded && formConfig.config.ndaTemplateContent && (
+          {/* NDA Section — visible whenever company NDA policy is active */}
+          {showNdaSection && (
             <div className="border border-blue-200 bg-blue-50 rounded-xl p-4 space-y-3">
               <h3 className="text-sm font-bold text-blue-800 uppercase tracking-wide flex items-center gap-2">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                 Non-Disclosure Agreement
               </h3>
-              <div className="bg-white border border-blue-100 rounded-lg p-3 max-h-48 overflow-y-auto">
-                <p className="text-xs text-gray-700 whitespace-pre-wrap">{formConfig.config.ndaTemplateContent}</p>
-              </div>
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={ndaAccepted}
-                  onChange={(e) => setNdaAccepted(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-sm text-blue-800">
-                  I have read, understood, and agree to the Non-Disclosure Agreement. <span className="text-red-500">*</span>
-                </span>
-              </label>
+              {ndaPendingTypeSelection && (
+                <p className="text-xs text-blue-700 bg-blue-100/80 border border-blue-200 rounded-lg px-3 py-2">
+                  Select visitor type <strong>{typesRequiringNda.map((t) => t.name).join(' or ')}</strong> above, then accept the NDA below.
+                </p>
+              )}
+              <div
+                className="bg-white border border-blue-100 rounded-lg p-3 max-h-48 overflow-y-auto text-sm text-gray-700 prose prose-sm max-w-none"
+                dangerouslySetInnerHTML={{ __html: ndaHtml }}
+              />
+              {ndaNeeded ? (
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={ndaAccepted}
+                    onChange={(e) => setNdaAccepted(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-blue-800">
+                    I have read, understood, and agree to the Non-Disclosure Agreement. <span className="text-red-500">*</span>
+                  </span>
+                </label>
+              ) : effectiveVisitorType && !effectiveVisitorType.requireNda ? (
+                <p className="text-xs text-gray-600">No NDA acceptance is required for the selected visitor type.</p>
+              ) : null}
             </div>
+          )}
+
+          {showInductionHint && (
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              Safety induction may be required for: {typesRequiringInduction.map((t) => t.name).join(', ')}. Select your visitor type if applicable.
+            </p>
           )}
 
           {/* Privacy Consent */}

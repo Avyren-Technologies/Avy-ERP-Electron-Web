@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 import QRCodeReact from "react-qr-code";
-import { useDashboardToday, useDashboardOnSite, useVisitByCode } from "@/features/company-admin/api/use-visitor-queries";
+import { useDashboardToday, useDashboardOnSite, useVisitByCode, useVmsConfig, useGates } from "@/features/company-admin/api/use-visitor-queries";
 import { useCheckInVisit, useCheckOutVisit, useCreateVisit, useCheckWatchlist } from "@/features/company-admin/api/use-visitor-mutations";
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
@@ -57,6 +57,12 @@ export function GateCheckInScreen() {
     // Badge QR modal state after check-in
     const [checkedInBadge, setCheckedInBadge] = useState<{ visitorName: string; badgeNumber: string; visitCode: string } | null>(null);
 
+    // Pre-check-in modal state
+    const [pendingCheckIn, setPendingCheckIn] = useState<any>(null);
+    const [preCheckIdType, setPreCheckIdType] = useState("");
+    const [preCheckIdNumber, setPreCheckIdNumber] = useState("");
+    const [preCheckGateId, setPreCheckGateId] = useState("");
+
     // QR Scanner state
     const [showQrScanner, setShowQrScanner] = useState(false);
     const qrScannerRef = useRef<Html5Qrcode | null>(null);
@@ -75,6 +81,11 @@ export function GateCheckInScreen() {
     const todayQuery = useDashboardToday();
     const onSiteQuery = useDashboardOnSite();
     const codeQuery = useVisitByCode(searchCode);
+    const configQuery = useVmsConfig();
+    const gatesQuery = useGates();
+
+    const vmsConfig = configQuery.data?.data;
+    const gatesList: any[] = (gatesQuery.data?.data ?? []).filter((g: any) => g.isActive !== false);
 
     const todayData = todayQuery.data?.data ?? {};
     const expectedVisitors: any[] = (todayData.visitors ?? todayData.visits ?? []).filter(
@@ -177,20 +188,41 @@ export function GateCheckInScreen() {
         }
     };
 
+    // Requirement logic: mirrors backend logic
+    const getRequirements = (visit: any) => {
+        const vt = visit?.visitorType;
+        const photoRequired = vmsConfig?.photoCapture === "ALWAYS" || (vmsConfig?.photoCapture === "PER_VISITOR_TYPE" && vt?.requirePhoto);
+        const idRequired = vmsConfig?.idVerification === "ALWAYS" || (vmsConfig?.idVerification === "PER_VISITOR_TYPE" && vt?.requireIdVerification);
+        const preArrivalRequired = vmsConfig?.preArrivalForm === "ALWAYS" || (vmsConfig?.preArrivalForm === "PER_VISITOR_TYPE" && vt?.requirePreArrivalForm);
+        return { photoRequired: !!photoRequired, idRequired: !!idRequired, preArrivalRequired: !!preArrivalRequired };
+    };
+
+    // Open pre-check-in modal instead of directly checking in
+    const openPreCheckIn = (visit: any) => {
+        setPreCheckIdType("");
+        setPreCheckIdNumber("");
+        setPreCheckGateId(visit?.gateId ?? visit?.checkInGateId ?? "");
+        setPendingCheckIn(visit);
+    };
+
     const handleCheckIn = async (id: string) => {
+        // Find the visit data and open pre-check-in modal
+        const visit = expectedVisitors.find((v: any) => v.id === id) ?? foundVisit;
+        if (visit) openPreCheckIn(visit);
+    };
+
+    const handlePreCheckInSubmit = async () => {
+        if (!pendingCheckIn?.id) return;
         try {
-            setActionId(id);
+            setActionId(pendingCheckIn.id);
             const checkInData: Record<string, unknown> = {};
             if (visitorPhoto) checkInData.visitorPhoto = visitorPhoto;
-            // checkInGateId is required by the backend -- use the visit's assigned gate or first location gate
-            const visit = expectedVisitors.find((v: any) => v.id === id) ?? foundVisit;
-            if (visit?.gateId) {
-                checkInData.checkInGateId = visit.gateId;
-            } else if (visit?.checkInGateId) {
-                checkInData.checkInGateId = visit.checkInGateId;
-            }
+            if (preCheckIdType) checkInData.governmentIdType = preCheckIdType;
+            if (preCheckIdNumber.trim()) checkInData.governmentIdNumber = preCheckIdNumber.trim();
+            if (pendingCheckIn?.gateId) checkInData.checkInGateId = pendingCheckIn.gateId;
+
             const result = await checkInMutation.mutateAsync({
-                id,
+                id: pendingCheckIn.id,
                 data: Object.keys(checkInData).length > 0 ? checkInData : undefined,
             });
             const badgeNo = result?.data?.badgeNumber;
@@ -202,14 +234,13 @@ export function GateCheckInScreen() {
             }
             showSuccess("Checked In", badgeNo ? `Badge: ${badgeNo}` : "Visitor has been checked in successfully.");
 
-            // Show badge QR modal
-            const visitData = expectedVisitors.find((v: any) => v.id === id) ?? foundVisit;
             setCheckedInBadge({
-                visitorName: visitData?.visitorName ?? "Visitor",
+                visitorName: pendingCheckIn?.visitorName ?? "Visitor",
                 badgeNumber: badgeNo ?? "",
-                visitCode: visitData?.visitCode ?? "",
+                visitCode: pendingCheckIn?.visitCode ?? "",
             });
 
+            setPendingCheckIn(null);
             setSearchCode("");
             setVisitCode("");
             setVisitorPhoto(null);
@@ -436,7 +467,7 @@ export function GateCheckInScreen() {
 
             {/* Webcam Photo Capture Modal */}
             {showPhotoCamera && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
                     <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
                             <h2 className="text-lg font-bold text-primary-950 dark:text-white flex items-center gap-2"><Camera size={18} /> Capture Visitor Photo</h2>
@@ -562,6 +593,147 @@ export function GateCheckInScreen() {
                     </div>
                 </div>
             )}
+
+            {/* Pre-Check-In Modal */}
+            {pendingCheckIn && (() => {
+                const reqs = getRequirements(pendingCheckIn);
+                const approvalPending = pendingCheckIn.approvalStatus === "PENDING";
+                const approvalRejected = pendingCheckIn.approvalStatus === "REJECTED";
+                const preArrivalPending = reqs.preArrivalRequired && !pendingCheckIn.preArrivalSubmittedAt;
+                const hasBlocker = approvalPending || approvalRejected || preArrivalPending;
+                const photoSatisfied = !!visitorPhoto || !!pendingCheckIn.visitorPhoto;
+                const idSatisfied = (!!preCheckIdType && !!preCheckIdNumber.trim()) || !!pendingCheckIn.governmentIdType;
+                const canSubmit = !hasBlocker && (!reqs.photoRequired || photoSatisfied) && (!reqs.idRequired || idSatisfied);
+                return (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                        <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-lg animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
+                                <h2 className="text-lg font-bold text-primary-950 dark:text-white flex items-center gap-2"><LogIn size={18} /> Pre-Check-In</h2>
+                                <button onClick={() => setPendingCheckIn(null)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"><X size={18} /></button>
+                            </div>
+                            <div className="p-6 space-y-5 overflow-y-auto min-h-0">
+                                {/* Visitor Info */}
+                                <div className="flex items-center gap-3 p-4 bg-neutral-50 dark:bg-neutral-800 rounded-xl">
+                                    <div className="w-10 h-10 rounded-full bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center text-sm font-bold text-primary-700 dark:text-primary-400">
+                                        {(pendingCheckIn.visitorName || "?")[0]?.toUpperCase()}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-bold text-primary-950 dark:text-white truncate">{pendingCheckIn.visitorName}</p>
+                                        <p className="text-xs text-neutral-500 dark:text-neutral-400">{pendingCheckIn.visitorCompany || "No company"} &middot; {pendingCheckIn.visitCode}</p>
+                                    </div>
+                                    {pendingCheckIn.visitorType?.name && (
+                                        <span className="text-[10px] font-bold px-2 py-1 rounded-md" style={{ backgroundColor: (pendingCheckIn.visitorType.badgeColour ?? "#4F46E5") + "15", color: pendingCheckIn.visitorType.badgeColour ?? "#4F46E5" }}>{pendingCheckIn.visitorType.name}</span>
+                                    )}
+                                </div>
+
+                                {/* Approval Blocker */}
+                                {(approvalPending || approvalRejected) && (
+                                    <div className={`p-5 rounded-xl border-2 text-center ${approvalRejected ? "border-danger-300 bg-danger-50 dark:bg-danger-900/10" : "border-warning-300 bg-warning-50 dark:bg-warning-900/10"}`}>
+                                        <div className={`w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center ${approvalRejected ? "bg-danger-100" : "bg-warning-100"}`}>
+                                            {approvalRejected
+                                                ? <XCircle size={24} className="text-danger-600" />
+                                                : <Clock size={24} className="text-warning-600" />
+                                            }
+                                        </div>
+                                        <h3 className={`text-sm font-bold ${approvalRejected ? "text-danger-700" : "text-warning-700"}`}>
+                                            {approvalRejected ? "Visit Rejected" : "Awaiting Host Approval"}
+                                        </h3>
+                                        <p className={`text-xs mt-1 ${approvalRejected ? "text-danger-600" : "text-warning-600"}`}>
+                                            {approvalRejected
+                                                ? "This visit has been rejected by the host employee. The visitor cannot be checked in."
+                                                : "The host employee has not yet approved this visit. Please ask the visitor to contact their host or wait for approval."}
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Pre-Arrival Form Blocker */}
+                                {preArrivalPending && !approvalPending && !approvalRejected && (
+                                    <div className="p-5 rounded-xl border-2 border-warning-300 bg-warning-50 dark:bg-warning-900/10 text-center">
+                                        <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-warning-100 flex items-center justify-center">
+                                            <svg className="w-6 h-6 text-warning-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        </div>
+                                        <h3 className="text-sm font-bold text-warning-700">Pre-Arrival Form Required</h3>
+                                        <p className="text-xs text-warning-600 mt-1 mb-4">
+                                            This visitor must complete the pre-arrival form before check-in. Ask them to check their invitation email or scan the QR code below.
+                                        </p>
+                                        <div className="inline-block bg-white p-4 rounded-xl border border-neutral-200">
+                                            <QRCodeReact value={`${window.location.origin}/visit/${pendingCheckIn.visitCode}`} size={150} />
+                                            <p className="text-[10px] text-neutral-500 mt-2">Scan to open Pre-Arrival Form</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Photo & ID sections — only when no blockers */}
+                                {!hasBlocker && (<>
+                                {/* Photo Section */}
+                                <div className={`p-4 rounded-xl border ${reqs.photoRequired && !photoSatisfied ? "border-danger-300 bg-danger-50/30 dark:bg-danger-900/10" : "border-neutral-200 dark:border-neutral-700"}`}>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <label className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Visitor Photo {reqs.photoRequired ? "" : "(Optional)"}</label>
+                                        {reqs.photoRequired && <span className="text-[10px] font-bold text-danger-600 bg-danger-50 px-2 py-0.5 rounded">Required</span>}
+                                    </div>
+                                    {visitorPhoto ? (
+                                        <div className="flex items-center gap-3">
+                                            <img src={visitorPhoto} alt="Visitor" className="w-14 h-14 rounded-full object-cover border-2 border-success-200" />
+                                            <span className="text-xs text-success-600 font-medium flex-1">Photo captured</span>
+                                            <button type="button" onClick={startPhotoCamera} className="text-xs text-primary-600 hover:text-primary-700 font-semibold">Retake</button>
+                                            <button type="button" onClick={() => setVisitorPhoto(null)} className="text-xs text-danger-500 hover:text-danger-700 font-semibold">Remove</button>
+                                        </div>
+                                    ) : pendingCheckIn.visitorPhoto ? (
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs text-success-600 font-medium bg-success-50 px-3 py-1.5 rounded-lg">Photo already on file</span>
+                                            <button type="button" onClick={startPhotoCamera} className="text-xs text-primary-600 hover:text-primary-700 font-semibold">Take New</button>
+                                        </div>
+                                    ) : (
+                                        <button type="button" onClick={startPhotoCamera} className="flex items-center gap-2 px-4 py-2.5 border border-dashed border-primary-300 dark:border-primary-700 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900/20 text-sm text-primary-700 dark:text-primary-400 font-semibold transition-colors w-full justify-center">
+                                            <Camera className="w-4 h-4" /> Capture Photo
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* ID Verification Section */}
+                                {vmsConfig?.idVerification !== "NEVER" && (
+                                    <div className={`p-4 rounded-xl border ${reqs.idRequired && !idSatisfied ? "border-danger-300 bg-danger-50/30 dark:bg-danger-900/10" : "border-neutral-200 dark:border-neutral-700"}`}>
+                                        <div className="flex items-center justify-between mb-3">
+                                            <label className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">ID Verification {reqs.idRequired ? "" : "(Optional)"}</label>
+                                            {reqs.idRequired && <span className="text-[10px] font-bold text-danger-600 bg-danger-50 px-2 py-0.5 rounded">Required</span>}
+                                        </div>
+                                        {pendingCheckIn.governmentIdType ? (
+                                            <p className="text-xs text-success-600 font-medium bg-success-50 px-3 py-1.5 rounded-lg inline-block">ID verified: {pendingCheckIn.governmentIdType} — {pendingCheckIn.governmentIdNumber}</p>
+                                        ) : (
+                                            <div className="space-y-3">
+                                                <select value={preCheckIdType} onChange={e => setPreCheckIdType(e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
+                                                    <option value="">Select ID type...</option>
+                                                    <option value="AADHAAR">Aadhaar Card</option>
+                                                    <option value="PAN">PAN Card</option>
+                                                    <option value="PASSPORT">Passport</option>
+                                                    <option value="DRIVING_LICENSE">Driving License</option>
+                                                    <option value="VOTER_ID">Voter ID</option>
+                                                </select>
+                                                <input type="text" value={preCheckIdNumber} onChange={e => setPreCheckIdNumber(e.target.value.toUpperCase())} placeholder="Enter ID number" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Gate is auto-assigned from the QR code scanned at the gate */}
+                                </>)}
+                            </div>
+                            <div className="px-6 py-4 border-t border-neutral-100 dark:border-neutral-800 space-y-2">
+                                {!canSubmit && <p className="text-xs text-danger-500 text-center">{approvalPending ? "Check-in blocked — awaiting host approval" : approvalRejected ? "Check-in blocked — visit rejected" : preArrivalPending ? "Check-in blocked — pre-arrival form not completed" : "Please complete all required fields before check-in"}</p>}
+                                <div className="flex gap-3">
+                                    <button onClick={() => setPendingCheckIn(null)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
+                                    <button onClick={handlePreCheckInSubmit} disabled={!canSubmit || actionId === pendingCheckIn.id} className="flex-[2] py-2.5 rounded-xl bg-success-600 hover:bg-success-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                                        {actionId === pendingCheckIn.id ? <Loader2 size={14} className="animate-spin" /> : <LogIn size={14} />}
+                                        Complete Check-In
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* Walk-In Modal */}
             {showWalkIn && (

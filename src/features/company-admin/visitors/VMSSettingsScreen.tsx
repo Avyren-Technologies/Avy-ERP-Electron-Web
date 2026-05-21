@@ -11,6 +11,7 @@ import { useVmsConfig } from "@/features/company-admin/api/use-visitor-queries";
 import { useUpdateVmsConfig } from "@/features/company-admin/api/use-visitor-mutations";
 import { useCanPerform } from "@/hooks/useCanPerform";
 import { showSuccess, showApiError } from "@/lib/toast";
+import { DEFAULT_NDA_TEMPLATE, renderNdaMarkdown } from "@/lib/nda-markdown";
 
 /* ── Toggle ── */
 
@@ -111,56 +112,6 @@ function SectionCard({ title, children }: { title: string; children: React.React
     );
 }
 
-const DEFAULT_NDA_TEMPLATE = `# Non-Disclosure Agreement
-
-## Confidentiality Obligation
-
-By entering the premises of **[Company Name]**, I ("the Visitor") acknowledge and agree to the following:
-
-1. **Confidential Information**: Any information, whether written, oral, or visual, that I may access, observe, or receive during my visit is considered confidential.
-
-2. **Non-Disclosure**: I agree not to disclose, publish, or otherwise reveal any confidential information to any third party during or after my visit without prior written consent.
-
-3. **No Recording**: I will not photograph, video record, or make audio recordings of any area, equipment, process, or document without explicit written permission.
-
-4. **Return of Materials**: I will return any documents, materials, or equipment provided to me during the visit before leaving the premises.
-
-5. **Duration**: This obligation of confidentiality shall remain in effect indefinitely and shall survive the conclusion of my visit.
-
-6. **Acknowledgement**: I understand that violation of this agreement may result in legal action.
-
-**By signing below (or accepting digitally), I confirm that I have read, understood, and agree to the terms above.**`;
-
-/** Simple markdown-to-HTML for preview (handles headings, bold, lists, paragraphs) */
-function renderMarkdown(md: string): string {
-    return md
-        .split("\n\n")
-        .map((block) => {
-            const trimmed = block.trim();
-            if (!trimmed) return "";
-            // Headings
-            if (trimmed.startsWith("## ")) return `<h2 style="font-size:1.25rem;font-weight:700;margin:1rem 0 0.5rem">${inlineMd(trimmed.slice(3))}</h2>`;
-            if (trimmed.startsWith("# ")) return `<h1 style="font-size:1.5rem;font-weight:700;margin:1rem 0 0.5rem">${inlineMd(trimmed.slice(2))}</h1>`;
-            // Numbered list
-            const lines = trimmed.split("\n");
-            if (/^\d+\.\s/.test(lines[0] ?? "")) {
-                const items = lines.map((l) => `<li style="margin-bottom:0.25rem">${inlineMd(l.replace(/^\d+\.\s*/, ""))}</li>`).join("");
-                return `<ol style="list-style:decimal;padding-left:1.5rem;margin:0.5rem 0">${items}</ol>`;
-            }
-            // Bullet list
-            if (lines[0]?.startsWith("- ")) {
-                const items = lines.map((l) => `<li style="margin-bottom:0.25rem">${inlineMd(l.replace(/^-\s*/, ""))}</li>`).join("");
-                return `<ul style="list-style:disc;padding-left:1.5rem;margin:0.5rem 0">${items}</ul>`;
-            }
-            return `<p style="margin:0.5rem 0">${inlineMd(trimmed)}</p>`;
-        })
-        .join("");
-}
-
-function inlineMd(text: string): string {
-    return text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>");
-}
-
 /* ── Screen ── */
 
 export function VMSSettingsScreen() {
@@ -237,6 +188,7 @@ export function VMSSettingsScreen() {
                     <RequirementSetting label="ID Verification" description="When to require visitor ID verification" value={config.idVerification ?? "PER_VISITOR_TYPE"} onChange={(v) => updateField("idVerification", v)} disabled={!canConfigure} />
                     <RequirementSetting label="Safety Induction" description="When to require safety induction before entry" value={config.safetyInduction ?? "PER_VISITOR_TYPE"} onChange={(v) => updateField("safetyInduction", v)} disabled={!canConfigure} />
                     <RequirementSetting label="NDA Required" description="When to require visitors to sign an NDA" value={config.ndaRequired ?? "PER_VISITOR_TYPE"} onChange={(v) => updateField("ndaRequired", v)} disabled={!canConfigure} />
+                    <RequirementSetting label="Pre-Arrival Form" description="When to require visitors to complete the pre-arrival form before check-in" value={config.preArrivalForm ?? "PER_VISITOR_TYPE"} onChange={(v) => updateField("preArrivalForm", v)} disabled={!canConfigure} />
                 </SectionCard>
 
                 <SectionCard title="Badges">
@@ -309,7 +261,7 @@ export function VMSSettingsScreen() {
                             {ndaPreview ? (
                                 <div
                                     className="prose prose-sm max-w-none bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-5 text-primary-950 dark:text-white"
-                                    dangerouslySetInnerHTML={{ __html: renderMarkdown(config.ndaTemplateContent || DEFAULT_NDA_TEMPLATE) }}
+                                    dangerouslySetInnerHTML={{ __html: renderNdaMarkdown(config.ndaTemplateContent || DEFAULT_NDA_TEMPLATE) }}
                                 />
                             ) : (
                                 <textarea

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { publicApi } from '@/lib/api/public-client';
+import { resolveNdaTemplateContent, renderNdaMarkdown } from '@/lib/nda-markdown';
 import { showSuccess, showApiError } from '@/lib/toast';
 
 interface VisitDetails {
@@ -18,33 +19,6 @@ interface VisitDetails {
   ndaTemplateContent?: string | null;
 }
 
-/** Simple markdown-to-HTML for NDA preview */
-function renderNdaMarkdown(md: string): string {
-  return md
-    .split("\n\n")
-    .map((block) => {
-      const trimmed = block.trim();
-      if (!trimmed) return "";
-      if (trimmed.startsWith("## ")) return `<h2 style="font-size:1.1rem;font-weight:700;margin:0.75rem 0 0.4rem">${ndaInline(trimmed.slice(3))}</h2>`;
-      if (trimmed.startsWith("# ")) return `<h1 style="font-size:1.25rem;font-weight:700;margin:0.75rem 0 0.4rem">${ndaInline(trimmed.slice(2))}</h1>`;
-      const lines = trimmed.split("\n");
-      if (/^\d+\.\s/.test(lines[0] ?? "")) {
-        const items = lines.map((l) => `<li style="margin-bottom:0.2rem">${ndaInline(l.replace(/^\d+\.\s*/, ""))}</li>`).join("");
-        return `<ol style="list-style:decimal;padding-left:1.5rem;margin:0.4rem 0">${items}</ol>`;
-      }
-      if (lines[0]?.startsWith("- ")) {
-        const items = lines.map((l) => `<li style="margin-bottom:0.2rem">${ndaInline(l.replace(/^-\s*/, ""))}</li>`).join("");
-        return `<ul style="list-style:disc;padding-left:1.5rem;margin:0.4rem 0">${items}</ul>`;
-      }
-      return `<p style="margin:0.4rem 0">${ndaInline(trimmed)}</p>`;
-    })
-    .join("");
-}
-
-function ndaInline(text: string): string {
-  return text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>");
-}
-
 export function PreArrivalFormPage() {
   const { visitCode } = useParams<{ visitCode: string }>();
   const [visit, setVisit] = useState<VisitDetails | null>(null);
@@ -53,6 +27,8 @@ export function PreArrivalFormPage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [visitorDesignation, setVisitorDesignation] = useState('');
+  const [purposeNotes, setPurposeNotes] = useState('');
   const [vehicleRegNumber, setVehicleRegNumber] = useState('');
   const [vehicleType, setVehicleType] = useState('');
   const [emergencyContact, setEmergencyContact] = useState('');
@@ -85,6 +61,8 @@ export function PreArrivalFormPage() {
     setSubmitting(true);
     try {
       await publicApi.post(`/public/visit/${visitCode}/pre-arrival`, {
+        visitorDesignation: visitorDesignation || undefined,
+        purposeNotes: purposeNotes || undefined,
         vehicleRegNumber: vehicleRegNumber || undefined,
         vehicleType: vehicleType || undefined,
         emergencyContact: emergencyContact || undefined,
@@ -161,7 +139,7 @@ export function PreArrivalFormPage() {
             </div>
             <div>
               <span className="text-gray-500">Expected Date</span>
-              <p className="font-medium text-gray-800">{visit.expectedDate}</p>
+              <p className="font-medium text-gray-800">{new Date(visit.expectedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
             </div>
             <div>
               <span className="text-gray-500">Purpose</span>
@@ -195,6 +173,36 @@ export function PreArrivalFormPage() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-b-2xl shadow-lg px-6 py-6 space-y-5">
+          <div>
+            <label htmlFor="visitorDesignation" className="block text-sm font-medium text-gray-700 mb-1">
+              Your Designation / Job Title
+            </label>
+            <input
+              id="visitorDesignation"
+              type="text"
+              value={visitorDesignation}
+              onChange={(e) => setVisitorDesignation(e.target.value)}
+              placeholder="e.g. Senior Manager, Director"
+              maxLength={200}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="purposeNotes" className="block text-sm font-medium text-gray-700 mb-1">
+              Additional Notes / Agenda
+            </label>
+            <textarea
+              id="purposeNotes"
+              value={purposeNotes}
+              onChange={(e) => setPurposeNotes(e.target.value)}
+              placeholder="Any additional details about your visit..."
+              maxLength={1000}
+              rows={3}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition resize-none"
+            />
+          </div>
+
           <div>
             <label htmlFor="vehicleRegNumber" className="block text-sm font-medium text-gray-700 mb-1">
               Vehicle Registration Number
@@ -242,16 +250,17 @@ export function PreArrivalFormPage() {
             <div className="space-y-3">
               <div>
                 <h3 className="text-sm font-semibold text-gray-800 mb-2">Non-Disclosure Agreement</h3>
-                {visit.ndaTemplateContent ? (
-                  <div
-                    className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-700 max-h-64 overflow-y-auto"
-                    dangerouslySetInnerHTML={{ __html: renderNdaMarkdown(visit.ndaTemplateContent) }}
-                  />
-                ) : (
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-600">
-                    By entering the premises, you acknowledge and agree to maintain confidentiality of any information accessed during your visit. You agree not to disclose, photograph, or record any confidential information without prior written consent.
-                  </div>
-                )}
+                <div
+                  className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-700 max-h-64 overflow-y-auto"
+                  dangerouslySetInnerHTML={{
+                    __html: renderNdaMarkdown(
+                      resolveNdaTemplateContent(
+                        visit.ndaTemplateContent,
+                        visit.company?.displayName || visit.company?.name || 'the facility',
+                      ),
+                    ),
+                  }}
+                />
               </div>
               <label className="flex items-start gap-3 cursor-pointer">
                 <input

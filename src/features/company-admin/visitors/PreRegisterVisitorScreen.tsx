@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import {
     Loader2,
     ArrowLeft,
@@ -9,9 +9,10 @@ import {
     Mail,
     FileText,
     Car,
-    MapPin,
     Briefcase,
-    Camera,
+    Upload,
+    ImageIcon,
+    X,
 } from "lucide-react";
 import { useCreateVisit } from "@/features/company-admin/api/use-visitor-mutations";
 import { useVisitorTypes, useGates } from "@/features/company-admin/api/use-visitor-queries";
@@ -146,6 +147,178 @@ const PURPOSE_OPTIONS = [
     { value: "OTHER", label: "Other" },
 ];
 
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024;
+
+async function processVisitorPhotoFile(file: File): Promise<string> {
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+        throw new Error("Please upload a JPEG, PNG, or WebP image.");
+    }
+    if (file.size > MAX_PHOTO_SIZE_BYTES) {
+        throw new Error("Image must be 5 MB or smaller.");
+    }
+
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("Failed to read image file."));
+        reader.readAsDataURL(file);
+    });
+
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            const maxDim = 480;
+            let { width, height } = img;
+            if (width > maxDim || height > maxDim) {
+                const scale = maxDim / Math.max(width, height);
+                width = Math.round(width * scale);
+                height = Math.round(height * scale);
+            }
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) {
+                reject(new Error("Failed to process image."));
+                return;
+            }
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL("image/jpeg", 0.82));
+        };
+        img.onerror = () => reject(new Error("Invalid image file."));
+        img.src = dataUrl;
+    });
+}
+
+function VisitorPhotoUpload({
+    photo,
+    onPhotoChange,
+    isProcessing,
+    onProcessingChange,
+}: {
+    photo: string | null;
+    onPhotoChange: (dataUrl: string | null) => void;
+    isProcessing: boolean;
+    onProcessingChange: (v: boolean) => void;
+}) {
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isDragging, setIsDragging] = useState(false);
+
+    const handleFile = useCallback(async (file: File | undefined) => {
+        if (!file) return;
+        onProcessingChange(true);
+        try {
+            const dataUrl = await processVisitorPhotoFile(file);
+            onPhotoChange(dataUrl);
+        } catch (err) {
+            showApiError(err);
+        } finally {
+            onProcessingChange(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+        }
+    }, [onPhotoChange, onProcessingChange]);
+
+    const onDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(false);
+        const file = e.dataTransfer.files?.[0];
+        void handleFile(file);
+    }, [handleFile]);
+
+    if (photo) {
+        return (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-2xl border border-primary-200/60 dark:border-primary-800/40 bg-primary-50/30 dark:bg-primary-900/10">
+                <img
+                    src={photo}
+                    alt="Visitor"
+                    className="w-28 h-28 rounded-2xl object-cover border-2 border-white dark:border-neutral-800 shadow-md shrink-0"
+                />
+                <div className="flex-1 space-y-2 min-w-0">
+                    <p className="text-sm font-semibold text-primary-950 dark:text-white">Photo uploaded</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                        This photo will be used for gate identification when the visitor arrives.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                        <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isProcessing}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-neutral-800 border border-primary-200 dark:border-primary-800 text-primary-600 dark:text-primary-400 text-xs font-bold hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-colors disabled:opacity-50"
+                        >
+                            {isProcessing ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                            Replace
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => onPhotoChange(null)}
+                            disabled={isProcessing}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-danger-50 dark:bg-danger-900/20 text-danger-600 text-xs font-bold hover:bg-danger-100 dark:hover:bg-danger-900/30 transition-colors disabled:opacity-50"
+                        >
+                            <X size={12} />
+                            Remove
+                        </button>
+                    </div>
+                </div>
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept={ACCEPTED_IMAGE_TYPES.join(",")}
+                    className="hidden"
+                    onChange={(e) => void handleFile(e.target.files?.[0])}
+                />
+            </div>
+        );
+    }
+
+    return (
+        <div
+            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+            onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
+            onDrop={onDrop}
+            className={`relative rounded-2xl border-2 border-dashed transition-all ${
+                isDragging
+                    ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20"
+                    : "border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30 hover:border-primary-300 dark:hover:border-primary-700"
+            }`}
+        >
+            <div className="flex flex-col items-center justify-center gap-3 px-6 py-10 text-center">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isDragging ? "bg-primary-100 dark:bg-primary-900/40" : "bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700"}`}>
+                    {isProcessing ? (
+                        <Loader2 size={24} className="animate-spin text-primary-500" />
+                    ) : (
+                        <ImageIcon size={24} className="text-primary-500" />
+                    )}
+                </div>
+                <div>
+                    <p className="text-sm font-semibold text-primary-950 dark:text-white">
+                        {isProcessing ? "Processing image..." : "Upload visitor photo"}
+                    </p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 max-w-sm">
+                        Drag and drop an image here, or browse from your device. JPEG, PNG, or WebP up to 5 MB.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isProcessing}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold shadow-sm shadow-primary-500/20 transition-colors disabled:opacity-50"
+                >
+                    <Upload size={16} />
+                    Choose file
+                </button>
+            </div>
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept={ACCEPTED_IMAGE_TYPES.join(",")}
+                className="hidden"
+                onChange={(e) => void handleFile(e.target.files?.[0])}
+            />
+        </div>
+    );
+}
+
 const EMPTY_FORM = {
     visitorName: "",
     visitorMobile: "",
@@ -177,9 +350,7 @@ export function PreRegisterVisitorScreen() {
     const [form, setForm] = useState({ ...EMPTY_FORM });
     const [countryCode, setCountryCode] = useState("+91");
     const [visitorPhoto, setVisitorPhoto] = useState<string | null>(null);
-    const [showCamera, setShowCamera] = useState(false);
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [isPhotoProcessing, setIsPhotoProcessing] = useState(false);
 
     const visitorTypes: any[] = visitorTypesQuery.data?.data ?? [];
     const gates: any[] = gatesQuery.data?.data ?? [];
@@ -189,47 +360,6 @@ export function PreRegisterVisitorScreen() {
     const filteredGates = gates.filter((g: any) => !form.plantId || g.plantId === form.plantId);
 
     const updateField = (key: string, value: string) => setForm((p) => ({ ...p, [key]: value }));
-
-    /* ── Webcam functions ── */
-
-    const startCamera = async () => {
-        setShowCamera(true);
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: 320, height: 320 } });
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                videoRef.current.play();
-            }
-        } catch (err) {
-            showApiError(err);
-            setShowCamera(false);
-        }
-    };
-
-    const capturePhoto = () => {
-        if (!videoRef.current || !canvasRef.current) return;
-        const canvas = canvasRef.current;
-        canvas.width = 320;
-        canvas.height = 320;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-        ctx.drawImage(videoRef.current, 0, 0, 320, 320);
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
-        setVisitorPhoto(dataUrl);
-        stopCamera();
-    };
-
-    const stopCamera = () => {
-        if (videoRef.current?.srcObject) {
-            (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
-            videoRef.current.srcObject = null;
-        }
-        setShowCamera(false);
-    };
-
-    const removePhoto = () => {
-        setVisitorPhoto(null);
-    };
 
     const handleSubmit = async () => {
         try {
@@ -374,31 +504,15 @@ export function PreRegisterVisitorScreen() {
                 />
 
                 <SectionLabel title="Visitor Photo" />
-                <div className="space-y-3">
-                    {visitorPhoto ? (
-                        <div className="flex items-center gap-4">
-                            <img src={visitorPhoto} alt="Visitor" className="w-24 h-24 rounded-full object-cover border-2 border-primary-200" />
-                            <div className="flex gap-2">
-                                <button type="button" onClick={startCamera} className="px-3 py-1.5 rounded-lg bg-primary-50 text-primary-600 text-xs font-bold hover:bg-primary-100 transition-colors">Retake</button>
-                                <button type="button" onClick={removePhoto} className="px-3 py-1.5 rounded-lg bg-danger-50 text-danger-600 text-xs font-bold hover:bg-danger-100 transition-colors">Remove</button>
-                            </div>
-                        </div>
-                    ) : showCamera ? (
-                        <div className="space-y-3">
-                            <video ref={videoRef} className="w-80 h-60 rounded-xl bg-black object-cover" autoPlay muted />
-                            <canvas ref={canvasRef} className="hidden" />
-                            <div className="flex gap-2">
-                                <button type="button" onClick={capturePhoto} className="px-4 py-2 rounded-xl bg-primary-600 text-white text-sm font-bold hover:bg-primary-700 transition-colors">Capture</button>
-                                <button type="button" onClick={stopCamera} className="px-4 py-2 rounded-xl border border-neutral-200 text-neutral-600 text-sm font-bold hover:bg-neutral-50 transition-colors">Cancel</button>
-                            </div>
-                        </div>
-                    ) : (
-                        <button type="button" onClick={startCamera} className="flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed border-primary-200 bg-primary-50/50 text-primary-600 text-sm font-semibold hover:bg-primary-100/50 transition-colors w-full justify-center">
-                            <Camera size={18} />
-                            Open Webcam to Capture Photo
-                        </button>
-                    )}
-                </div>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 -mt-2">
+                    Optional — upload a photo of the visitor for gate security (they do not need to be present now).
+                </p>
+                <VisitorPhotoUpload
+                    photo={visitorPhoto}
+                    onPhotoChange={setVisitorPhoto}
+                    isProcessing={isPhotoProcessing}
+                    onProcessingChange={setIsPhotoProcessing}
+                />
 
                 {/* Actions */}
                 <div className="flex gap-3 pt-4 border-t border-neutral-100 dark:border-neutral-800">
@@ -410,7 +524,7 @@ export function PreRegisterVisitorScreen() {
                     </a>
                     <button
                         onClick={handleSubmit}
-                        disabled={saving || !form.visitorName || !form.visitorMobile || !form.visitorTypeId || !form.purpose || !form.expectedDate || !form.plantId}
+                        disabled={saving || isPhotoProcessing || !form.visitorName || !form.visitorMobile || !form.visitorTypeId || !form.purpose || !form.expectedDate || !form.plantId}
                         className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                         {saving && <Loader2 size={14} className="animate-spin" />}
