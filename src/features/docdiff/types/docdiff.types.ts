@@ -121,10 +121,40 @@ export interface ModelOption {
 }
 
 export const DEFAULT_MODEL_PROVIDER = "google";
-export const DEFAULT_MODEL_NAME = "gemini-2.5-flash";
+export const DEFAULT_MODEL_NAME = "gemini-3.1-pro-preview";
 
 export const MODEL_OPTIONS: ModelOption[] = [
   // ── Google Gemini (Primary Provider) ─────────────────────────────────
+  {
+    provider: "google",
+    model: "gemini-3.1-pro-preview",
+    label: "Gemini 3.1 Pro Preview",
+    description: "Best accuracy — strongest Gemini model for complex multimodal document comparison",
+  },
+  {
+    provider: "google",
+    model: "gemini-3-pro-preview",
+    label: "Gemini 3 Pro Preview",
+    description: "High-accuracy Gemini 3 reasoning with vision support",
+  },
+  {
+    provider: "google",
+    model: "gemini-3-flash-preview",
+    label: "Gemini 3 Flash Preview",
+    description: "Fast Gemini 3 model with strong multimodal reasoning",
+  },
+  {
+    provider: "google",
+    model: "gemini-3.1-flash-lite",
+    label: "Gemini 3.1 Flash-Lite",
+    description: "Cost-efficient Gemini 3.1 model for high-volume comparisons",
+  },
+  {
+    provider: "google",
+    model: "gemini-3.5-flash",
+    label: "Gemini 3.5 Flash",
+    description: "Latest Flash model available from your Gemini API account",
+  },
   {
     provider: "google",
     model: "gemini-2.5-flash",

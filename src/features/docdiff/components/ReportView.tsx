@@ -1,14 +1,20 @@
+import { useState } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
+  Check,
   Download,
+  FileSpreadsheet,
   FileText,
+  Loader2,
+  Mail,
   PlusCircle,
   Printer,
 } from "lucide-react";
 import axios from "axios";
 import { useReport } from "../api/use-docdiff-queries";
-import { showApiError } from "@/lib/toast";
+import { docdiffApi } from "../api/docdiff-api";
+import { showApiError, showSuccess } from "@/lib/toast";
 
 interface Props {
   jobId: string;
@@ -19,6 +25,9 @@ interface Props {
 export function ReportView({ jobId, onBackToViewer, onNewComparison }: Props) {
   const { data, isLoading, isError } = useReport(jobId);
   const report = data?.data;
+  const [excelLoading, setExcelLoading] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   if (isLoading) {
     return (
@@ -65,7 +74,8 @@ export function ReportView({ jobId, onBackToViewer, onNewComparison }: Props) {
     try {
       const tokensRaw = localStorage.getItem("auth_tokens");
       const token = tokensRaw ? JSON.parse(tokensRaw).accessToken : null;
-      const baseUrl = import.meta.env.VITE_DOCDIFF_API_URL || "http://localhost:8000/api/v1";
+      const baseUrl =
+        import.meta.env.VITE_DOCDIFF_API_URL || "http://localhost:8000/api/v1";
 
       const response = await axios.get(`${baseUrl}/jobs/${jobId}/report/pdf`, {
         responseType: "blob",
@@ -83,6 +93,40 @@ export function ReportView({ jobId, onBackToViewer, onNewComparison }: Props) {
       URL.revokeObjectURL(url);
     } catch (err) {
       showApiError(err);
+    }
+  };
+
+  const handleDownloadExcel = async () => {
+    setExcelLoading(true);
+    try {
+      const response = await docdiffApi.downloadReportExcel(jobId);
+      const url = URL.createObjectURL(response.data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "docdiff-report.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      showApiError(err);
+    } finally {
+      setExcelLoading(false);
+    }
+  };
+
+  const handleEmailReport = async () => {
+    setEmailLoading(true);
+    try {
+      const result = await docdiffApi.emailReport(jobId);
+      const sentTo = result?.data?.email || "configured address";
+      showSuccess(`Report emailed to ${sentTo}`);
+      setEmailSent(true);
+      setTimeout(() => setEmailSent(false), 5000);
+    } catch (err) {
+      showApiError(err);
+    } finally {
+      setEmailLoading(false);
     }
   };
 
@@ -126,6 +170,7 @@ export function ReportView({ jobId, onBackToViewer, onNewComparison }: Props) {
             <PlusCircle className="h-3.5 w-3.5" />
             New Comparison
           </button>
+
           {report.report_html && (
             <button
               type="button"
@@ -143,16 +188,52 @@ export function ReportView({ jobId, onBackToViewer, onNewComparison }: Props) {
               Print
             </button>
           )}
-          {report.report_pdf_path && (
-            <button
-              type="button"
-              onClick={handleDownloadPdf}
-              className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 transition-colors"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Download PDF
-            </button>
-          )}
+
+          {/* Excel Download */}
+          <button
+            type="button"
+            onClick={handleDownloadExcel}
+            disabled={excelLoading}
+            className="flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50"
+          >
+            {excelLoading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="h-3.5 w-3.5" />
+            )}
+            Excel
+          </button>
+
+          {/* Email Report */}
+          <button
+            type="button"
+            onClick={handleEmailReport}
+            disabled={emailLoading || emailSent}
+            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
+              emailSent
+                ? "border-green-300 bg-green-50 text-green-700"
+                : "border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100"
+            }`}
+          >
+            {emailLoading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : emailSent ? (
+              <Check className="h-3.5 w-3.5" />
+            ) : (
+              <Mail className="h-3.5 w-3.5" />
+            )}
+            {emailSent ? "Sent!" : "Email Report"}
+          </button>
+
+          {/* PDF Download */}
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 transition-colors"
+          >
+            <Download className="h-3.5 w-3.5" />
+            PDF
+          </button>
         </div>
       </div>
 
@@ -183,15 +264,13 @@ export function ReportView({ jobId, onBackToViewer, onNewComparison }: Props) {
           <div className="flex flex-col items-center justify-center h-32 text-neutral-400 gap-2">
             <FileText className="h-8 w-8" />
             <p className="text-sm">Report HTML not available</p>
-            {report.report_pdf_path && (
-              <button
-                type="button"
-                onClick={handleDownloadPdf}
-                className="text-sm text-indigo-600 hover:text-indigo-800 underline"
-              >
-                Download PDF instead
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              className="text-sm text-indigo-600 hover:text-indigo-800 underline"
+            >
+              Download PDF instead
+            </button>
           </div>
         )}
       </div>

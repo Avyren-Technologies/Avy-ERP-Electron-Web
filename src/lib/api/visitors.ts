@@ -30,6 +30,11 @@ async function getVisitByCode(code: string): Promise<ApiResponse<any>> {
     return response.data;
 }
 
+async function gateLookup(code: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/visitors/visits/gate-lookup/${code}`);
+    return response.data;
+}
+
 async function createVisit(data: any): Promise<ApiResponse<any>> {
     const response = await client.post('/visitors/visits', data);
     return response.data;
@@ -429,6 +434,7 @@ export const visitorsApi = {
     listVisits,
     getVisit,
     getVisitByCode,
+    gateLookup,
     createVisit,
     updateVisit,
     deleteVisit,

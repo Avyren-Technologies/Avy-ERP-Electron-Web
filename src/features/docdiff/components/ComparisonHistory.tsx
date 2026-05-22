@@ -1,12 +1,14 @@
 import {
   Download,
   ExternalLink,
+  FileSpreadsheet,
   FileText,
   PlusCircle,
   RefreshCw,
 } from "lucide-react";
 import { useJobs } from "../api/use-docdiff-queries";
 import { docdiffClient } from "../api/docdiff-client";
+import { docdiffApi } from "../api/docdiff-api";
 import { showApiError } from "@/lib/toast";
 import type { JobStatus } from "../types/docdiff.types";
 
@@ -217,29 +219,52 @@ export function ComparisonHistory({ onSelectJob, onNewComparison }: Props) {
                             </button>
                           )}
                           {job.status === "completed" && (
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                try {
-                                  const response = await docdiffClient.get(`/jobs/${job.id}/report/pdf`, { responseType: "blob" });
-                                  const rawData = response.data as unknown;
-                                  const blob = rawData instanceof Blob ? rawData : new Blob([rawData as BlobPart], { type: "application/pdf" });
-                                  const url = URL.createObjectURL(blob);
-                                  const a = document.createElement("a");
-                                  a.href = url;
-                                  a.download = "docdiff-report.pdf";
-                                  a.click();
-                                  URL.revokeObjectURL(url);
-                                } catch (err) {
-                                  showApiError(err);
-                                }
-                              }}
-                              className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-100 transition-colors"
-                              title="Download report PDF"
-                            >
-                              <Download className="h-3.5 w-3.5" />
-                              PDF
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  try {
+                                    const response = await docdiffClient.get(`/jobs/${job.id}/report/pdf`, { responseType: "blob" });
+                                    const rawData = response.data as unknown;
+                                    const blob = rawData instanceof Blob ? rawData : new Blob([rawData as BlobPart], { type: "application/pdf" });
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement("a");
+                                    a.href = url;
+                                    a.download = "docdiff-report.pdf";
+                                    a.click();
+                                    URL.revokeObjectURL(url);
+                                  } catch (err) {
+                                    showApiError(err);
+                                  }
+                                }}
+                                className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-100 transition-colors"
+                                title="Download report PDF"
+                              >
+                                <Download className="h-3.5 w-3.5" />
+                                PDF
+                              </button>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  try {
+                                    const response = await docdiffApi.downloadReportExcel(job.id);
+                                    const url = URL.createObjectURL(response.data);
+                                    const a = document.createElement("a");
+                                    a.href = url;
+                                    a.download = "docdiff-report.xlsx";
+                                    a.click();
+                                    URL.revokeObjectURL(url);
+                                  } catch (err) {
+                                    showApiError(err);
+                                  }
+                                }}
+                                className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-50 transition-colors"
+                                title="Download report Excel"
+                              >
+                                <FileSpreadsheet className="h-3.5 w-3.5" />
+                                Excel
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>

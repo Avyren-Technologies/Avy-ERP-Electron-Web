@@ -20,7 +20,8 @@ import {
 import { Html5Qrcode } from "html5-qrcode";
 import QRCodeReact from "react-qr-code";
 import { useDashboardToday, useDashboardOnSite, useVisitByCode, useVmsConfig, useGates } from "@/features/company-admin/api/use-visitor-queries";
-import { useCheckInVisit, useCheckOutVisit, useCreateVisit, useCheckWatchlist } from "@/features/company-admin/api/use-visitor-mutations";
+import { useCheckInVisit, useCheckInRecurringPass, useCheckOutVisit, useCreateVisit, useCheckWatchlist } from "@/features/company-admin/api/use-visitor-mutations";
+import { visitorsApi } from "@/lib/api/visitors";
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
@@ -34,6 +35,7 @@ import { VisitStatusBadge } from "@/features/company-admin/visitors/components/V
 export function GateCheckInScreen() {
     const fmt = useCompanyFormatter();
     const checkInMutation = useCheckInVisit();
+    const recurringPassCheckInMutation = useCheckInRecurringPass();
     const checkOutMutation = useCheckOutVisit();
     const createMutation = useCreateVisit();
     const checkWatchlist = useCheckWatchlist();
@@ -59,6 +61,7 @@ export function GateCheckInScreen() {
 
     // Pre-check-in modal state
     const [pendingCheckIn, setPendingCheckIn] = useState<any>(null);
+    const [passInfo, setPassInfo] = useState<{ type: string; data: any } | null>(null);
     const [preCheckIdType, setPreCheckIdType] = useState("");
     const [preCheckIdNumber, setPreCheckIdNumber] = useState("");
     const [preCheckGateId, setPreCheckGateId] = useState("");
@@ -116,9 +119,18 @@ export function GateCheckInScreen() {
                         if (codeMatch) code = codeMatch[0]!;
 
                         setVisitCode(code.toUpperCase());
-                        setSearchCode(code.toUpperCase());
                         stopQrScanner();
                         showSuccess("QR Scanned", `Code: ${code.toUpperCase()}`);
+                        // Use unified lookup after setting code
+                        visitorsApi.gateLookup(code.toUpperCase()).then((result) => {
+                            const entityType = result?.data?.type;
+                            const entity = result?.data?.data;
+                            if (entityType === "visit") {
+                                setSearchCode(code.toUpperCase());
+                            } else if (entityType === "recurring_pass" || entityType === "vehicle_pass" || entityType === "material_pass") {
+                                setPassInfo({ type: entityType, data: entity });
+                            }
+                        }).catch(() => showWarning("Not Found", "No visit or pass found for scanned code"));
                     },
                     () => { /* ignore scan failures */ },
                 );
@@ -182,9 +194,28 @@ export function GateCheckInScreen() {
         setShowPhotoCamera(false);
     }, []);
 
-    const handleLookupCode = () => {
-        if (visitCode.trim()) {
-            setSearchCode(visitCode.trim());
+    const [lookupLoading, setLookupLoading] = useState(false);
+
+    const handleLookupCode = async () => {
+        if (!visitCode.trim()) return;
+        setLookupLoading(true);
+        setSearchCode(""); // Clear old visit-by-code query
+        setPassInfo(null);
+        try {
+            const result = await visitorsApi.gateLookup(visitCode.trim());
+            const entityType = result?.data?.type;
+            const entity = result?.data?.data;
+            if (!entity?.id) { showWarning("Not Found", "No visit or pass found for this code"); return; }
+
+            if (entityType === "visit") {
+                setSearchCode(visitCode.trim()); // trigger useVisitByCode for display
+            } else if (entityType === "recurring_pass" || entityType === "vehicle_pass" || entityType === "material_pass") {
+                setPassInfo({ type: entityType, data: entity });
+            }
+        } catch {
+            showWarning("Not Found", "No visit or pass found for this code");
+        } finally {
+            setLookupLoading(false);
         }
     };
 
@@ -341,10 +372,10 @@ export function GateCheckInScreen() {
                         />
                         <button
                             onClick={handleLookupCode}
-                            disabled={!visitCode.trim() || codeQuery.isFetching}
+                            disabled={!visitCode.trim() || codeQuery.isFetching || lookupLoading}
                             className="w-full py-3 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                         >
-                            {codeQuery.isFetching ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+                            {(codeQuery.isFetching || lookupLoading) ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
                             Look Up
                         </button>
                         <div className="text-center">
@@ -421,9 +452,9 @@ export function GateCheckInScreen() {
                         </div>
                     )}
 
-                    {searchCode && !codeQuery.isFetching && !foundVisit && (
+                    {searchCode && !codeQuery.isFetching && !foundVisit && !passInfo && (
                         <div className="mt-4 p-4 bg-warning-50 dark:bg-warning-900/10 border border-warning-200 dark:border-warning-800/50 rounded-xl text-sm text-warning-700 dark:text-warning-400 font-medium">
-                            No visit found for code "{searchCode}". Check the code or register as walk-in.
+                            No visit found for code &quot;{searchCode}&quot;. Check the code or register as walk-in.
                         </div>
                     )}
 
@@ -734,6 +765,72 @@ export function GateCheckInScreen() {
                     </div>
                 );
             })()}
+
+            {/* Pass Info Modal — recurring, vehicle, material passes */}
+            {passInfo && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in-95 duration-200">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
+                            <h2 className="text-lg font-bold text-primary-950 dark:text-white">
+                                {passInfo.type === "recurring_pass" ? "Recurring Pass" : passInfo.type === "vehicle_pass" ? "Vehicle Pass" : "Material Pass"}
+                            </h2>
+                            <button onClick={() => setPassInfo(null)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"><X size={18} /></button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div className="p-4 bg-neutral-50 dark:bg-neutral-800 rounded-xl">
+                                <p className="text-xs text-neutral-500 font-mono">{passInfo.data.passNumber}</p>
+                                {passInfo.type === "recurring_pass" && (
+                                    <>
+                                        <p className="text-base font-bold text-primary-950 dark:text-white mt-1">{passInfo.data.visitorName}</p>
+                                        {passInfo.data.visitorCompany && <p className="text-xs text-neutral-500">{passInfo.data.visitorCompany}</p>}
+                                        <div className="flex gap-2 mt-2">
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary-50 text-primary-700">{passInfo.data.passType}</span>
+                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${passInfo.data.status === "ACTIVE" ? "bg-success-50 text-success-700" : "bg-danger-50 text-danger-700"}`}>{passInfo.data.status}</span>
+                                        </div>
+                                        {passInfo.data.validFrom && <p className="text-xs text-neutral-500 mt-2">Valid: {fmt.date(passInfo.data.validFrom)} — {fmt.date(passInfo.data.validUntil)}</p>}
+                                    </>
+                                )}
+                                {passInfo.type === "vehicle_pass" && (
+                                    <>
+                                        <p className="text-base font-bold text-primary-950 dark:text-white mt-1">{passInfo.data.vehicleRegNumber}</p>
+                                        <p className="text-xs text-neutral-500">{passInfo.data.vehicleType} — Driver: {passInfo.data.driverName}</p>
+                                    </>
+                                )}
+                                {passInfo.type === "material_pass" && (
+                                    <>
+                                        <p className="text-base font-bold text-primary-950 dark:text-white mt-1">{passInfo.data.description}</p>
+                                        <p className="text-xs text-neutral-500">{passInfo.data.type} — Qty: {passInfo.data.quantityIssued} — {passInfo.data.returnStatus}</p>
+                                    </>
+                                )}
+                            </div>
+
+                            {passInfo.type === "recurring_pass" && passInfo.data.status === "ACTIVE" && (
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            const result = await recurringPassCheckInMutation.mutateAsync({ id: passInfo.data.id, data: passInfo.data.gateId ? { gateId: passInfo.data.gateId } : {} });
+                                            const badgeNo = result?.data?.badgeNumber;
+                                            showSuccess("Checked In", badgeNo ? `Badge: ${badgeNo}` : "Recurring pass visitor checked in");
+                                            setPassInfo(null);
+                                            setVisitCode("");
+                                        } catch (err) { showApiError(err); }
+                                    }}
+                                    disabled={recurringPassCheckInMutation.isPending}
+                                    className="w-full py-2.5 rounded-xl bg-success-600 hover:bg-success-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    {recurringPassCheckInMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <LogIn size={14} />}
+                                    Check In via Recurring Pass
+                                </button>
+                            )}
+                            {(passInfo.type === "vehicle_pass" || passInfo.type === "material_pass") && (
+                                <p className="text-xs text-neutral-500 text-center">This is a {passInfo.type === "vehicle_pass" ? "vehicle" : "material"} gate pass. No visitor check-in is needed.</p>
+                            )}
+
+                            <button onClick={() => setPassInfo(null)} className="w-full py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-600 hover:bg-neutral-50 transition-colors">Close</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Walk-In Modal */}
             {showWalkIn && (

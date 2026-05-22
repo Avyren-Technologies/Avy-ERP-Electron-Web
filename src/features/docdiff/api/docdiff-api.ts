@@ -103,4 +103,21 @@ export const docdiffApi = {
 
   getReportPdfUrl: (jobId: string) =>
     `${docdiffClient.defaults.baseURL}/jobs/${jobId}/report/pdf`,
+
+  downloadReportExcel: async (jobId: string) => {
+    const tokensRaw = localStorage.getItem("auth_tokens");
+    const token = tokensRaw ? JSON.parse(tokensRaw).accessToken : null;
+    const baseUrl =
+      import.meta.env.VITE_DOCDIFF_API_URL || "http://localhost:8000/api/v1";
+    return axios.get(`${baseUrl}/jobs/${jobId}/report/excel`, {
+      responseType: "blob",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  },
+
+  emailReport: (jobId: string, email?: string) =>
+    docdiffClient.post<unknown, ApiResponse<{ email: string }>>(
+      `/jobs/${jobId}/report/email`,
+      { email: email || null },
+    ),
 };
