@@ -64,18 +64,25 @@ export async function initWebPushNotifications(): Promise<string | null> {
       return null;
     }
 
-    // Get FCM token
+    // Get FCM token — pass config via query string so the SW initializes Firebase
+    // synchronously on first load (required for push event handlers).
     const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY || '';
-    const swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    const swUrl = new URL('/firebase-messaging-sw.js', window.location.origin);
+    swUrl.searchParams.set('apiKey', firebaseConfig.apiKey);
+    if (firebaseConfig.authDomain) swUrl.searchParams.set('authDomain', firebaseConfig.authDomain);
+    if (firebaseConfig.projectId) swUrl.searchParams.set('projectId', firebaseConfig.projectId);
+    if (firebaseConfig.storageBucket) swUrl.searchParams.set('storageBucket', firebaseConfig.storageBucket);
+    if (firebaseConfig.messagingSenderId) swUrl.searchParams.set('messagingSenderId', firebaseConfig.messagingSenderId);
+    if (firebaseConfig.appId) swUrl.searchParams.set('appId', firebaseConfig.appId);
 
-    // Wait for the service worker to be fully active before posting config
-    const activeSw = await waitForActiveWorker(swRegistration);
+    const swPath = `${swUrl.pathname}${swUrl.search}`;
+    const existing = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
+    if (existing?.active?.scriptURL && !existing.active.scriptURL.includes('apiKey=')) {
+      await existing.unregister();
+    }
 
-    // Post Firebase config to service worker for background message handling
-    activeSw.postMessage({
-      type: 'FIREBASE_CONFIG',
-      config: firebaseConfig,
-    });
+    const swRegistration = await navigator.serviceWorker.register(swPath);
+    await waitForActiveWorker(swRegistration);
 
     const token = await getToken(messaging, {
       vapidKey,

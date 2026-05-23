@@ -168,14 +168,14 @@ export function PMCalendarScreen() {
                                         key={idx}
                                         onClick={() => setSelectedDate(dateStr)}
                                         className={cn(
-                                            "relative min-h-[80px] p-2 rounded-xl border text-left transition-all",
+                                            "relative flex min-h-[80px] items-center justify-center rounded-xl border p-2 transition-all",
                                             isCurrentMonth ? "bg-white dark:bg-neutral-900" : "bg-neutral-50/50 dark:bg-neutral-800/30",
                                             isSelected ? "border-primary-400 dark:border-primary-600 ring-2 ring-primary-500/20" : "border-neutral-100 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-600",
                                             isToday && "ring-2 ring-primary-500/30"
                                         )}
                                     >
                                         <span className={cn(
-                                            "text-sm font-bold",
+                                            "text-sm font-bold leading-none",
                                             isCurrentMonth ? "text-neutral-900 dark:text-white" : "text-neutral-300 dark:text-neutral-600",
                                             isToday && "text-primary-600 dark:text-primary-400"
                                         )}>
@@ -183,7 +183,7 @@ export function PMCalendarScreen() {
                                         </span>
                                         {count > 0 && (
                                             <div className={cn(
-                                                "mt-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md text-center",
+                                                "absolute bottom-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-bold px-1.5 py-0.5 rounded-md text-center",
                                                 hasOverdue
                                                     ? "bg-danger-100 text-danger-700 dark:bg-danger-900/30 dark:text-danger-400"
                                                     : "bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
