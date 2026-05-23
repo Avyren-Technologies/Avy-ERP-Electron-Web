@@ -237,10 +237,10 @@ export function JobPlansScreen() {
                                         <td className="py-4 px-6 text-center font-mono text-xs">{p.estimatedHours != null ? Number(p.estimatedHours) : "---"}</td>
                                         <td className="py-4 px-6 text-center">
                                             <div className="flex items-center justify-center gap-1.5">
-                                                {p.permitRequired && <Shield size={14} className="text-warning-500" title="Permit Required" />}
-                                                {p.photoRequired && <Camera size={14} className="text-primary-500" title="Photo Required" />}
-                                                {p.signatureRequired && <PenTool size={14} className="text-accent-500" title="Signature Required" />}
-                                                {p.checklistTemplateId && <ClipboardList size={14} className="text-success-500" title="Has Checklist" />}
+                                                {p.permitRequired && <span title="Permit Required"><Shield size={14} className="text-warning-500" /></span>}
+                                                {p.photoRequired && <span title="Photo Required"><Camera size={14} className="text-primary-500" /></span>}
+                                                {p.signatureRequired && <span title="Signature Required"><PenTool size={14} className="text-accent-500" /></span>}
+                                                {p.checklistTemplateId && <span title="Has Checklist"><ClipboardList size={14} className="text-success-500" /></span>}
                                             </div>
                                         </td>
                                         <td className="py-4 px-6"><StatusBadge active={p.isActive ?? true} /></td>
