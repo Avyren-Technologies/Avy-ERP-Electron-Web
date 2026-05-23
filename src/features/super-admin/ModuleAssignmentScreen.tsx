@@ -21,7 +21,7 @@ const MODULES_DB = [
     { id: "security", name: "Security & Access", icon: ShieldCheck, color: "from-indigo-500 to-indigo-600", required: true, dependsOn: [] },
     { id: "hr", name: "HR Management", icon: Users, color: "from-blue-500 to-blue-600", required: false, dependsOn: ["masters", "security"] },
     { id: "production", name: "Production Console", icon: Factory, color: "from-orange-500 to-orange-600", required: false, dependsOn: ["masters", "inventory"] },
-    { id: "machine", name: "Machine Maintenance", icon: HeartPulse, color: "from-rose-500 to-rose-600", required: false, dependsOn: ["masters"] },
+    { id: "machine", name: "Asset Maintenance", icon: HeartPulse, color: "from-rose-500 to-rose-600", required: false, dependsOn: ["masters"] },
     { id: "inventory", name: "Inventory", icon: Boxes, color: "from-emerald-500 to-emerald-600", required: false, dependsOn: ["masters"] },
     { id: "vendor", name: "Vendor Logistics", icon: Truck, color: "from-cyan-500 to-cyan-600", required: false, dependsOn: ["masters", "inventory"] },
     { id: "sales", name: "Sales & Invoicing", icon: FileText, color: "from-violet-500 to-violet-600", required: false, dependsOn: ["masters", "inventory"] },

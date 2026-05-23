@@ -87,6 +87,7 @@ export function RoleManagementScreen() {
     const IMPLEMENTED_MODULES = useMemo(() => new Set([
         'hr', 'visitors', 'ess', 'attendance', 'user', 'role', 'company',
         'analytics', 'reports', 'audit', 'billing', 'docdiff', 'production', 'masters',
+        'maintenance',
     ]), []);
 
     const catalogueModules = useMemo(() => {

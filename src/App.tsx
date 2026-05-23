@@ -285,6 +285,51 @@ const ProductionScreen = lazyNamed(() => import("./features/production/Productio
 const MaintenanceScreen = lazyNamed(() => import("./features/maintenance/MaintenanceScreen"), "MaintenanceScreen");
 const WorkOrdersScreen = lazyNamed(() => import("./features/maintenance/WorkOrdersScreen"), "WorkOrdersScreen");
 const MachineRegistryScreen = lazyNamed(() => import("./features/maintenance/MachineRegistryScreen"), "MachineRegistryScreen");
+const MaintenanceDashboardScreen = lazyNamed(() => import("./features/maintenance/dashboard/MaintenanceDashboardScreen"), "MaintenanceDashboardScreen");
+
+// ─── Maintenance Config ───
+const FailureCodesScreen = lazyNamed(() => import("./features/maintenance/config/FailureCodesScreen"), "FailureCodesScreen");
+const StrategiesScreen = lazyNamed(() => import("./features/maintenance/config/StrategiesScreen"), "StrategiesScreen");
+const JobPlansScreen = lazyNamed(() => import("./features/maintenance/config/JobPlansScreen"), "JobPlansScreen");
+const ChecklistTemplatesScreen = lazyNamed(() => import("./features/maintenance/config/ChecklistTemplatesScreen"), "ChecklistTemplatesScreen");
+const MaintenanceConfigScreen = lazyNamed(() => import("./features/maintenance/config/MaintenanceConfigScreen"), "MaintenanceConfigScreen");
+
+// ─── Maintenance: Assets & Work Requests ───
+const AssetRegisterScreen = lazyNamed(() => import("./features/maintenance/assets/AssetRegisterScreen"), "AssetRegisterScreen");
+const AssetDetailScreen = lazyNamed(() => import("./features/maintenance/assets/AssetDetailScreen"), "AssetDetailScreen");
+const AssetHierarchyScreen = lazyNamed(() => import("./features/maintenance/assets/AssetHierarchyScreen"), "AssetHierarchyScreen");
+const WorkRequestListScreen = lazyNamed(() => import("./features/maintenance/work-requests/WorkRequestListScreen"), "WorkRequestListScreen");
+const WorkRequestDetailScreen = lazyNamed(() => import("./features/maintenance/work-requests/WorkRequestDetailScreen"), "WorkRequestDetailScreen");
+const WorkRequestCreateScreen = lazyNamed(() => import("./features/maintenance/work-requests/WorkRequestCreateScreen"), "WorkRequestCreateScreen");
+
+// ─── Maintenance: Work Orders & PM Schedules ───
+const WorkOrderListScreen = lazyNamed(() => import("./features/maintenance/work-orders/WorkOrderListScreen"), "WorkOrderListScreen");
+const WorkOrderDetailScreen = lazyNamed(() => import("./features/maintenance/work-orders/WorkOrderDetailScreen"), "WorkOrderDetailScreen");
+const WorkOrderCreateScreen = lazyNamed(() => import("./features/maintenance/work-orders/WorkOrderCreateScreen"), "WorkOrderCreateScreen");
+const WorkOrderBoardScreen = lazyNamed(() => import("./features/maintenance/work-orders/WorkOrderBoardScreen"), "WorkOrderBoardScreen");
+const PMScheduleListScreen = lazyNamed(() => import("./features/maintenance/pm-schedule/PMScheduleListScreen"), "PMScheduleListScreen");
+const PMScheduleDetailScreen = lazyNamed(() => import("./features/maintenance/pm-schedule/PMScheduleDetailScreen"), "PMScheduleDetailScreen");
+const PMScheduleCreateScreen = lazyNamed(() => import("./features/maintenance/pm-schedule/PMScheduleCreateScreen"), "PMScheduleCreateScreen");
+const PMCalendarScreen = lazyNamed(() => import("./features/maintenance/pm-schedule/PMCalendarScreen"), "PMCalendarScreen");
+
+// ─── Maintenance: Breakdowns, Downtime, Contracts ───
+const BreakdownListScreen = lazyNamed(() => import("./features/maintenance/breakdown/BreakdownListScreen"), "BreakdownListScreen");
+const BreakdownLogScreen = lazyNamed(() => import("./features/maintenance/breakdown/BreakdownLogScreen"), "BreakdownLogScreen");
+const DowntimeHistoryScreen = lazyNamed(() => import("./features/maintenance/downtime/DowntimeHistoryScreen"), "DowntimeHistoryScreen");
+const ContractListScreen = lazyNamed(() => import("./features/maintenance/contracts/ContractListScreen"), "ContractListScreen");
+const ContractDetailScreen = lazyNamed(() => import("./features/maintenance/contracts/ContractDetailScreen"), "ContractDetailScreen");
+
+// ─── Maintenance: PTW, Shutdown ───
+const PTWListScreen = lazyNamed(() => import("./features/maintenance/ptw/PTWListScreen"), "PTWListScreen");
+const PTWDetailScreen = lazyNamed(() => import("./features/maintenance/ptw/PTWDetailScreen"), "PTWDetailScreen");
+const ShutdownListScreen = lazyNamed(() => import("./features/maintenance/shutdown/ShutdownListScreen"), "ShutdownListScreen");
+const ShutdownDetailScreen = lazyNamed(() => import("./features/maintenance/shutdown/ShutdownDetailScreen"), "ShutdownDetailScreen");
+const ShutdownProgressScreen = lazyNamed(() => import("./features/maintenance/shutdown/ShutdownProgressScreen"), "ShutdownProgressScreen");
+
+// ─── Maintenance: Analytics, Reliability, Reports ───
+const MaintenanceAnalyticsScreen = lazyNamed(() => import("./features/maintenance/analytics/MaintenanceAnalyticsScreen"), "MaintenanceAnalyticsScreen");
+const ReliabilityDashboardScreen = lazyNamed(() => import("./features/maintenance/analytics/ReliabilityDashboardScreen"), "ReliabilityDashboardScreen");
+const MaintenanceReportsScreen = lazyNamed(() => import("./features/maintenance/reports/MaintenanceReportsScreen"), "MaintenanceReportsScreen");
 
 // Placeholder components to prevent router crashes before we build them
 const Placeholder = ({ name }: { name: string }) => (
@@ -596,9 +641,42 @@ function App() {
         {/* Operations module routes */}
         <Route path="inventory" element={<RequireRole roles={['super-admin', 'company-admin']}><InventoryScreen /></RequireRole>} />
         <Route path="production" element={<RequireRole roles={['super-admin', 'company-admin']}><ProductionScreen /></RequireRole>} />
-        <Route path="maintenance" element={<RequireRole roles={['super-admin', 'company-admin']}><MaintenanceScreen /></RequireRole>} />
+        <Route path="maintenance" element={<Navigate to="maintenance/dashboard" replace />} />
+        <Route path="maintenance/dashboard" element={<RequirePermission permission="maintenance:read"><MaintenanceDashboardScreen /></RequirePermission>} />
+        <Route path="maintenance/assets" element={<RequirePermission permission="maintenance.assets:read"><AssetRegisterScreen /></RequirePermission>} />
+        <Route path="maintenance/assets/hierarchy" element={<RequirePermission permission="maintenance.assets:read"><AssetHierarchyScreen /></RequirePermission>} />
+        <Route path="maintenance/assets/:id" element={<RequirePermission permission="maintenance.assets:read"><AssetDetailScreen /></RequirePermission>} />
+        <Route path="maintenance/work-requests" element={<RequirePermission permission="maintenance.work-orders:read"><WorkRequestListScreen /></RequirePermission>} />
+        <Route path="maintenance/work-requests/new" element={<RequirePermission permission="maintenance.work-orders:create"><WorkRequestCreateScreen /></RequirePermission>} />
+        <Route path="maintenance/work-requests/:id" element={<RequirePermission permission="maintenance.work-orders:read"><WorkRequestDetailScreen /></RequirePermission>} />
+        <Route path="maintenance/work-orders" element={<RequirePermission permission="maintenance.work-orders:read"><WorkOrderListScreen /></RequirePermission>} />
+        <Route path="maintenance/work-orders/new" element={<RequirePermission permission="maintenance.work-orders:create"><WorkOrderCreateScreen /></RequirePermission>} />
+        <Route path="maintenance/work-orders/board" element={<RequirePermission permission="maintenance.work-orders:read"><WorkOrderBoardScreen /></RequirePermission>} />
+        <Route path="maintenance/work-orders/:id" element={<RequirePermission permission="maintenance.work-orders:read"><WorkOrderDetailScreen /></RequirePermission>} />
+        <Route path="maintenance/pm-schedules" element={<RequirePermission permission="maintenance.work-orders:read"><PMScheduleListScreen /></RequirePermission>} />
+        <Route path="maintenance/pm-schedules/new" element={<RequirePermission permission="maintenance.work-orders:create"><PMScheduleCreateScreen /></RequirePermission>} />
+        <Route path="maintenance/pm-schedules/:id" element={<RequirePermission permission="maintenance.work-orders:read"><PMScheduleDetailScreen /></RequirePermission>} />
+        <Route path="maintenance/pm-calendar" element={<RequirePermission permission="maintenance.work-orders:read"><PMCalendarScreen /></RequirePermission>} />
+        <Route path="maintenance/breakdowns" element={<RequirePermission permission="maintenance.work-orders:read"><BreakdownListScreen /></RequirePermission>} />
+        <Route path="maintenance/breakdowns/log" element={<RequirePermission permission="maintenance.work-orders:create"><BreakdownLogScreen /></RequirePermission>} />
+        <Route path="maintenance/downtime" element={<RequirePermission permission="maintenance.work-orders:read"><DowntimeHistoryScreen /></RequirePermission>} />
+        <Route path="maintenance/contracts" element={<RequirePermission permission="maintenance:read"><ContractListScreen /></RequirePermission>} />
+        <Route path="maintenance/contracts/:id" element={<RequirePermission permission="maintenance:read"><ContractDetailScreen /></RequirePermission>} />
+        <Route path="maintenance/ptw" element={<RequirePermission permission="maintenance:read"><PTWListScreen /></RequirePermission>} />
+        <Route path="maintenance/ptw/:id" element={<RequirePermission permission="maintenance:read"><PTWDetailScreen /></RequirePermission>} />
+        <Route path="maintenance/shutdown" element={<RequirePermission permission="maintenance:read"><ShutdownListScreen /></RequirePermission>} />
+        <Route path="maintenance/shutdown/:id" element={<RequirePermission permission="maintenance:read"><ShutdownDetailScreen /></RequirePermission>} />
+        <Route path="maintenance/shutdown/:id/progress" element={<RequirePermission permission="maintenance:read"><ShutdownProgressScreen /></RequirePermission>} />
+        <Route path="maintenance/analytics" element={<RequirePermission permission="maintenance:read"><MaintenanceAnalyticsScreen /></RequirePermission>} />
+        <Route path="maintenance/reliability" element={<RequirePermission permission="maintenance:read"><ReliabilityDashboardScreen /></RequirePermission>} />
+        <Route path="maintenance/reports" element={<RequirePermission permission="maintenance:read"><MaintenanceReportsScreen /></RequirePermission>} />
         <Route path="maintenance/orders" element={<RequireRole roles={['super-admin', 'company-admin']}><WorkOrdersScreen /></RequireRole>} />
         <Route path="maintenance/machines" element={<RequireRole roles={['super-admin', 'company-admin']}><MachineRegistryScreen /></RequireRole>} />
+        <Route path="maintenance/config/failure-codes" element={<RequirePermission permission="maintenance:configure"><FailureCodesScreen /></RequirePermission>} />
+        <Route path="maintenance/config/strategies" element={<RequirePermission permission="maintenance:configure"><StrategiesScreen /></RequirePermission>} />
+        <Route path="maintenance/config/job-plans" element={<RequirePermission permission="maintenance:configure"><JobPlansScreen /></RequirePermission>} />
+        <Route path="maintenance/config/checklists" element={<RequirePermission permission="maintenance:configure"><ChecklistTemplatesScreen /></RequirePermission>} />
+        <Route path="maintenance/config" element={<RequirePermission permission="maintenance:configure"><MaintenanceConfigScreen /></RequirePermission>} />
         {/* Super-admin + company-admin routes */}
         <Route path="modules" element={<RequirePermission permission={['platform:admin', 'company:read']}><ModuleCatalogueScreen /></RequirePermission>} />
         <Route path="monitor" element={<RequirePermission permission={['platform:admin', 'company:read']}><PlatformMonitorScreen /></RequirePermission>} />
