@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
 import {
     ArrowLeft,
@@ -24,6 +25,8 @@ import { useCanPerform } from "@/hooks/useCanPerform";
 import { AssetStatusBadge } from "@/features/maintenance/shared/AssetStatusBadge";
 import { CriticalityBadge } from "@/features/maintenance/shared/CriticalityBadge";
 import { showSuccess, showApiError } from "@/lib/toast";
+import { useAuthStore, getDisplayName } from "@/store/useAuthStore";
+import { platformUsersApi } from "@/lib/api/platform-users";
 
 const TABS = [
     { key: "overview", label: "Overview", icon: LayoutDashboard },
@@ -43,6 +46,7 @@ export function AssetDetailScreen() {
     const fmt = useCompanyFormatter();
     const canEdit = useCanPerform("maintenance.assets:update");
     const canDelete = useCanPerform("maintenance.assets:delete");
+    const currentUser = useAuthStore((s) => s.user);
 
     const [activeTab, setActiveTab] = useState<TabKey>("overview");
     const [transferModalOpen, setTransferModalOpen] = useState(false);
@@ -54,10 +58,10 @@ export function AssetDetailScreen() {
     const [transferForm, setTransferForm] = useState({ newLocationId: "", reason: "" });
 
     // Meter form
-    const [meterForm, setMeterForm] = useState({ name: "", unit: "", readingType: "CUMULATIVE" });
+    const [meterForm, setMeterForm] = useState({ label: "", unit: "", meterType: "RUNTIME_HOURS", isCumulative: true, currentValue: 0 });
 
     // Reading form
-    const [readingForm, setReadingForm] = useState({ value: "", readingDate: "", notes: "" });
+    const [readingForm, setReadingForm] = useState({ value: "", isReset: false });
 
     // Queries
     const { data: assetData, isLoading, isError } = useAsset(id!);
@@ -101,12 +105,21 @@ export function AssetDetailScreen() {
     };
 
     const handleAddMeter = async () => {
-        if (!meterForm.name || !meterForm.unit) return;
+        if (!meterForm.label || !meterForm.unit) return;
         try {
-            await addMeterMutation.mutateAsync({ assetId: id!, data: meterForm });
+            await addMeterMutation.mutateAsync({
+                assetId: id!,
+                data: {
+                    label: meterForm.label,
+                    unit: meterForm.unit,
+                    meterType: meterForm.meterType,
+                    isCumulative: meterForm.isCumulative,
+                    currentValue: Number(meterForm.currentValue || 0),
+                }
+            });
             showSuccess("Meter Added", "New meter has been added to this asset.");
             setMeterModalOpen(false);
-            setMeterForm({ name: "", unit: "", readingType: "CUMULATIVE" });
+            setMeterForm({ label: "", unit: "", meterType: "RUNTIME_HOURS", isCumulative: true, currentValue: 0 });
         } catch (err) {
             showApiError(err);
         }
@@ -118,11 +131,11 @@ export function AssetDetailScreen() {
             await logReadingMutation.mutateAsync({
                 assetId: id!,
                 meterId: selectedMeterId,
-                data: { value: Number(readingForm.value), readingDate: readingForm.readingDate || undefined, notes: readingForm.notes || undefined },
+                data: { value: Number(readingForm.value), isReset: readingForm.isReset },
             });
             showSuccess("Reading Logged", "Meter reading has been recorded.");
             setReadingModalOpen(false);
-            setReadingForm({ value: "", readingDate: "", notes: "" });
+            setReadingForm({ value: "", isReset: false });
         } catch (err) {
             showApiError(err);
         }
@@ -223,7 +236,7 @@ export function AssetDetailScreen() {
 
             {/* Tab Content */}
             <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm overflow-hidden">
-                {activeTab === "overview" && <OverviewTab asset={asset} fmt={fmt} />}
+                {activeTab === "overview" && <OverviewTab asset={asset} fmt={fmt} locations={locations} />}
                 {activeTab === "meters" && (
                     <MetersTab
                         meters={meters}
@@ -236,7 +249,7 @@ export function AssetDetailScreen() {
                         fmt={fmt}
                     />
                 )}
-                {activeTab === "history" && <HistoryTab history={history} fmt={fmt} />}
+                {activeTab === "history" && <HistoryTab history={history} fmt={fmt} currentUser={currentUser} />}
                 {activeTab === "documents" && <DocumentsTab />}
                 {activeTab === "cost" && <CostTab asset={asset} />}
             </div>
@@ -286,11 +299,11 @@ export function AssetDetailScreen() {
                 <SimpleModal title="Add Meter" onClose={() => setMeterModalOpen(false)}>
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Meter Name <span className="text-red-500">*</span></label>
+                            <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Meter Label <span className="text-red-500">*</span></label>
                             <input
                                 type="text"
-                                value={meterForm.name}
-                                onChange={(e) => setMeterForm((p) => ({ ...p, name: e.target.value }))}
+                                value={meterForm.label}
+                                onChange={(e) => setMeterForm((p) => ({ ...p, label: e.target.value }))}
                                 placeholder="e.g. Runtime Hours"
                                 className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
                             />
@@ -305,23 +318,51 @@ export function AssetDetailScreen() {
                                 className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
                             />
                         </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Meter Type</label>
+                                <select
+                                    value={meterForm.meterType}
+                                    onChange={(e) => setMeterForm((p) => ({ ...p, meterType: e.target.value }))}
+                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                                >
+                                    <option value="RUNTIME_HOURS">Runtime Hours</option>
+                                    <option value="CYCLE_COUNT">Cycle Count</option>
+                                    <option value="MILEAGE">Mileage</option>
+                                    <option value="OUTPUT_UNITS">Output Units</option>
+                                    <option value="ENERGY_KWH">Energy (kWh)</option>
+                                    <option value="TEMPERATURE">Temperature</option>
+                                    <option value="PRESSURE">Pressure</option>
+                                    <option value="VIBRATION">Vibration</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Behavior</label>
+                                <select
+                                    value={meterForm.isCumulative ? "true" : "false"}
+                                    onChange={(e) => setMeterForm((p) => ({ ...p, isCumulative: e.target.value === "true" }))}
+                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                                >
+                                    <option value="true">Cumulative (Increases)</option>
+                                    <option value="false">Gauge (Fluctuates)</option>
+                                </select>
+                            </div>
+                        </div>
                         <div>
-                            <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Reading Type</label>
-                            <select
-                                value={meterForm.readingType}
-                                onChange={(e) => setMeterForm((p) => ({ ...p, readingType: e.target.value }))}
-                                className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
-                            >
-                                <option value="CUMULATIVE">Cumulative</option>
-                                <option value="GAUGE">Gauge</option>
-                                <option value="CHARACTERISTIC">Characteristic</option>
-                            </select>
+                            <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Initial Value</label>
+                            <input
+                                type="number"
+                                value={meterForm.currentValue}
+                                onChange={(e) => setMeterForm((p) => ({ ...p, currentValue: Number(e.target.value || 0) }))}
+                                placeholder="0"
+                                className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
+                            />
                         </div>
                         <div className="flex justify-end gap-2">
                             <button onClick={() => setMeterModalOpen(false)} className="px-4 py-2 text-sm font-medium rounded-xl border border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
                             <button
                                 onClick={handleAddMeter}
-                                disabled={addMeterMutation.isPending || !meterForm.name || !meterForm.unit}
+                                disabled={addMeterMutation.isPending || !meterForm.label || !meterForm.unit}
                                 className="px-6 py-2 text-sm font-bold rounded-xl bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 transition-colors flex items-center gap-2"
                             >
                                 {addMeterMutation.isPending && <Loader2 size={14} className="animate-spin" />}
@@ -346,24 +387,22 @@ export function AssetDetailScreen() {
                                 className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
                             />
                         </div>
-                        <div>
-                            <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Reading Date</label>
+                        <div className="flex items-start gap-3 p-3 rounded-xl bg-warning-50 dark:bg-warning-900/10 border border-warning-200 dark:border-warning-800/50">
                             <input
-                                type="date"
-                                value={readingForm.readingDate}
-                                onChange={(e) => setReadingForm((p) => ({ ...p, readingDate: e.target.value }))}
-                                className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                                type="checkbox"
+                                id="isResetCheck"
+                                checked={readingForm.isReset}
+                                onChange={(e) => setReadingForm((p) => ({ ...p, isReset: e.target.checked }))}
+                                className="mt-0.5 w-4 h-4 rounded accent-warning-500 cursor-pointer shrink-0"
                             />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Notes</label>
-                            <textarea
-                                value={readingForm.notes}
-                                onChange={(e) => setReadingForm((p) => ({ ...p, notes: e.target.value }))}
-                                placeholder="Optional notes..."
-                                rows={2}
-                                className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all resize-none"
-                            />
+                            <div>
+                                <label htmlFor="isResetCheck" className="block text-xs font-bold text-warning-700 dark:text-warning-400 cursor-pointer">
+                                    Meter reset / replacement
+                                </label>
+                                <p className="text-[11px] text-warning-600 dark:text-warning-500 mt-0.5">
+                                    Check this if the meter was reset or replaced. Allows the reading value to be lower than the current value.
+                                </p>
+                            </div>
                         </div>
                         <div className="flex justify-end gap-2">
                             <button onClick={() => setReadingModalOpen(false)} className="px-4 py-2 text-sm font-medium rounded-xl border border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
@@ -385,7 +424,7 @@ export function AssetDetailScreen() {
 
 /* ── Overview Tab ── */
 
-function OverviewTab({ asset, fmt }: { asset: any; fmt: any }) {
+function OverviewTab({ asset, fmt, locations }: { asset: any; fmt: any; locations: any[] }) {
     return (
         <div className="p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -393,7 +432,7 @@ function OverviewTab({ asset, fmt }: { asset: any; fmt: any }) {
                 <InfoCard title="Identity">
                     <InfoRow label="Asset Number" value={asset.assetNumber} />
                     <InfoRow label="Name" value={asset.name} />
-                    <InfoRow label="Asset Code" value={asset.assetCode} />
+                    <InfoRow label="Asset Code" value={asset.assetCode || asset.assetNumber} />
                     <InfoRow label="Serial Number" value={asset.serialNumber} />
                     <InfoRow label="Class" value={(asset.assetClass || "").replace(/_/g, " ")} />
                 </InfoCard>
@@ -402,14 +441,14 @@ function OverviewTab({ asset, fmt }: { asset: any; fmt: any }) {
                 <InfoCard title="Classification">
                     <InfoRow label="Category" value={asset.category?.name} />
                     <InfoRow label="Sub-Category" value={asset.subCategory?.name} />
-                    <InfoRow label="Type" value={asset.type?.name} />
+                    <InfoRow label="Type" value={asset.assetType?.name} />
                     <InfoRow label="Ownership" value={(asset.ownership || "").replace(/_/g, " ")} />
                     <InfoRow label="Bottleneck" value={asset.isBottleneck ? "Yes" : "No"} />
                 </InfoCard>
 
                 {/* Location Card */}
                 <InfoCard title="Location">
-                    <InfoRow label="Location" value={asset.location?.name} />
+                    <InfoRow label="Location" value={locations.find((l: any) => l.id === asset.locationId)?.name || asset.location?.name} />
                     <InfoRow label="Department" value={asset.department?.name} />
                     <InfoRow label="Floor / Zone" value={asset.floorZone} />
                 </InfoCard>
@@ -511,7 +550,7 @@ function MetersTab({ meters, readings, selectedMeterId, onSelectMeter, onAddMete
                                 )}
                             </div>
                             <p className="text-[10px] text-neutral-400 mt-2">
-                                Type: {(m.readingType || "").replace(/_/g, " ")}
+                                Type: {(m.meterType || "").replace(/_/g, " ")}
                                 {m.lastReadingDate && ` | Last: ${fmt.date(m.lastReadingDate)}`}
                             </p>
                         </div>
@@ -530,18 +569,31 @@ function MetersTab({ meters, readings, selectedMeterId, onSelectMeter, onAddMete
                                     <th className="py-3 px-4 font-bold">Date</th>
                                     <th className="py-3 px-4 font-bold">Value</th>
                                     <th className="py-3 px-4 font-bold">Delta</th>
-                                    <th className="py-3 px-4 font-bold">Notes</th>
+                                    <th className="py-3 px-4 font-bold">Source</th>
                                 </tr>
                             </thead>
                             <tbody className="text-sm">
-                                {readings.map((r: any, idx: number) => (
-                                    <tr key={r.id || idx} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0">
-                                        <td className="py-3 px-4 text-neutral-600 dark:text-neutral-400 text-xs">{r.readingDate ? fmt.date(r.readingDate) : fmt.date(r.createdAt)}</td>
-                                        <td className="py-3 px-4 font-bold text-neutral-900 dark:text-white">{Number(r.value).toLocaleString()}</td>
-                                        <td className="py-3 px-4 text-neutral-500 dark:text-neutral-400">{r.delta != null ? `+${Number(r.delta).toLocaleString()}` : "---"}</td>
-                                        <td className="py-3 px-4 text-neutral-500 dark:text-neutral-400 text-xs">{r.notes || "---"}</td>
-                                    </tr>
-                                ))}
+                                {readings.map((r: any, idx: number) => {
+                                    const delta = r.previousValue != null
+                                        ? Number(r.value) - Number(r.previousValue)
+                                        : null;
+                                    return (
+                                        <tr key={r.id || idx} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0">
+                                            <td className="py-3 px-4 text-neutral-600 dark:text-neutral-400 text-xs">{r.createdAt ? fmt.date(r.createdAt) : "---"}</td>
+                                            <td className="py-3 px-4 font-bold text-neutral-900 dark:text-white">{Number(r.value).toLocaleString()}</td>
+                                            <td className="py-3 px-4">
+                                                {r.isReset ? (
+                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-warning-50 text-warning-700 border border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50">RESET</span>
+                                                ) : delta != null ? (
+                                                    <span className={delta >= 0 ? "text-success-600 dark:text-success-400" : "text-danger-600 dark:text-danger-400"}>
+                                                        {delta >= 0 ? "+" : ""}{Number(delta).toLocaleString()}
+                                                    </span>
+                                                ) : "---"}
+                                            </td>
+                                            <td className="py-3 px-4 text-neutral-500 dark:text-neutral-400 text-xs">{r.source || "MANUAL"}</td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
@@ -553,7 +605,73 @@ function MetersTab({ meters, readings, selectedMeterId, onSelectMeter, onAddMete
 
 /* ── History Tab ── */
 
-function HistoryTab({ history, fmt }: { history: any[]; fmt: any }) {
+/** Resolves an actor's display name from their userId.
+ *  - If actorId matches the logged-in user → use local store (no network).
+ *  - Otherwise, fetches via platformUsersApi.getUserById (cached by React Query).
+ */
+function UserName({ actorId, currentUser }: { actorId: string | null | undefined; currentUser: any }) {
+    const isCurrentUser = !!actorId && currentUser?.id === actorId;
+    const { data } = useQuery({
+        queryKey: ["platform-user", actorId],
+        queryFn: () => platformUsersApi.getUserById(actorId!),
+        enabled: !!actorId && !isCurrentUser,
+        staleTime: 5 * 60 * 1000,
+        retry: 1,
+    });
+
+    if (!actorId) return <span className="italic text-neutral-400">System</span>;
+
+    if (isCurrentUser) {
+        return <span>{getDisplayName(currentUser)}</span>;
+    }
+
+    const fetched = data?.data;
+    if (fetched) {
+        const name = `${fetched.firstName ?? ""} ${fetched.lastName ?? ""}`.trim() || fetched.email;
+        return <span>{name}</span>;
+    }
+
+    return <span className="italic text-neutral-400">User #{actorId.slice(-6)}</span>;
+}
+
+/** Build a human-readable description from the raw event fields. */
+function buildEventDescription(event: any): string {
+    if (event.description) return event.description;
+    if (event.notes) return event.notes;
+
+    const meta = event.metadata as any;
+    const nv = event.newValue as any;
+    const ov = event.oldValue as any;
+
+    switch (event.eventType) {
+        case "CREATED":
+            return "Asset was registered in the system.";
+        case "STATUS_CHANGED": {
+            const from = (ov?.operationalStatus || ov?.status || "").replace(/_/g, " ");
+            const to = (nv?.operationalStatus || nv?.status || "").replace(/_/g, " ");
+            if (from && to) return `Status changed from ${from} to ${to}.`;
+            if (to) return `Status changed to ${to}.`;
+            return "Asset status was updated.";
+        }
+        case "TRANSFERRED": {
+            const loc = meta?.toLocationName || nv?.locationName || "";
+            return loc ? `Asset transferred to ${loc}.` : "Asset was transferred to a new location.";
+        }
+        case "RETIRED":
+            return "Asset was retired and soft-deleted.";
+        case "READING_LOGGED": {
+            const val = meta?.value ?? nv?.value;
+            const unit = meta?.unit || "";
+            const isReset = meta?.isReset || nv?.isReset;
+            if (isReset) return `Meter reset. New reading: ${val}${unit ? ` ${unit}` : ""}.`;
+            return val != null ? `Meter reading logged: ${val}${unit ? ` ${unit}` : ""}.` : "Meter reading logged.";
+        }
+        default:
+            return "---";
+    }
+}
+
+function HistoryTab({ history, fmt, currentUser }: { history: any[]; fmt: any; currentUser: any }) {
     return (
         <div className="p-6">
             <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-4">Maintenance History</h3>
@@ -574,10 +692,11 @@ function HistoryTab({ history, fmt }: { history: any[]; fmt: any }) {
                                     </span>
                                     <span className="text-[10px] text-neutral-400">{fmt.dateTime(event.createdAt || event.eventDate)}</span>
                                 </div>
-                                <p className="text-xs text-neutral-500 dark:text-neutral-400">{event.description || event.notes || "---"}</p>
-                                {event.performedBy && (
-                                    <p className="text-[10px] text-neutral-400 mt-1">By: {event.performedBy}</p>
-                                )}
+                                <p className="text-xs text-neutral-500 dark:text-neutral-400">{buildEventDescription(event)}</p>
+                                <p className="text-[10px] text-neutral-400 mt-1 flex items-center gap-1">
+                                    <span>By:</span>
+                                    <UserName actorId={event.actorId} currentUser={currentUser} />
+                                </p>
                             </div>
                         </div>
                     ))}

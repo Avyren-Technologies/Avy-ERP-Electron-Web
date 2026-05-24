@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
     Package,
     Search,
@@ -48,6 +49,7 @@ import { ManageModal } from "@/components/ui/ManageModal";
 import { AssetStatusBadge } from "@/features/maintenance/shared/AssetStatusBadge";
 import { CriticalityBadge } from "@/features/maintenance/shared/CriticalityBadge";
 import { showSuccess, showApiError } from "@/lib/toast";
+import { toast } from "sonner";
 
 /* ── Constants ── */
 
@@ -144,6 +146,7 @@ export function AssetRegisterScreen() {
     const fmt = useCompanyFormatter();
     const canCreate = useCanPerform("maintenance.assets:create");
     const canDelete = useCanPerform("maintenance.assets:delete");
+    const [searchParams, setSearchParams] = useSearchParams();
 
     // Filters
     const [search, setSearch] = useState("");
@@ -273,6 +276,19 @@ export function AssetRegisterScreen() {
         setForm({ ...EMPTY_FORM });
         setModalOpen(true);
     };
+
+    useEffect(() => {
+        if (searchParams.get("new") === "true") {
+            if (canCreate) {
+                openAdd();
+            }
+            setSearchParams((prev) => {
+                const next = new URLSearchParams(prev);
+                next.delete("new");
+                return next;
+            }, { replace: true });
+        }
+    }, [searchParams, canCreate, setSearchParams]);
 
     const openEdit = (asset: any) => {
         setEditingAsset(asset);
@@ -576,7 +592,7 @@ export function AssetRegisterScreen() {
                                             <AssetStatusBadge operationalStatus={a.operationalStatus} maintenanceStatus={a.maintenanceStatus} />
                                         </td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">
-                                            {a.location?.name || "---"}
+                                            {locations.find((l: any) => l.id === a.locationId)?.name || a.location?.name || "---"}
                                         </td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">
                                             {a.category?.name || "---"}
@@ -730,7 +746,19 @@ export function AssetRegisterScreen() {
                                     <div>
                                         <div className="flex items-center justify-between mb-1">
                                             <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Sub-Category</label>
-                                            <button type="button" onClick={() => setManageSubCategoryOpen(true)} className="text-xs font-bold text-primary-600 hover:text-primary-700">+ New</button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (!form.categoryId) {
+                                                        toast.error("Please select a Category first to manage sub-categories.");
+                                                    } else {
+                                                        setManageSubCategoryOpen(true);
+                                                    }
+                                                }}
+                                                className="text-xs font-bold text-primary-600 hover:text-primary-700"
+                                            >
+                                                + New
+                                            </button>
                                         </div>
                                         <select
                                             value={form.subCategoryId}
@@ -884,7 +912,7 @@ export function AssetRegisterScreen() {
                 createFields={[
                     { key: "name", label: "Sub-Category Name", placeholder: "e.g. Pumps", required: true },
                 ]}
-                onCreate={async (vals) => { await createSubCategoryMutation.mutateAsync({ name: vals.name }); }}
+                onCreate={async (vals) => { await createSubCategoryMutation.mutateAsync({ name: vals.name, categoryId: form.categoryId }); }}
                 onUpdate={async (id, vals) => { await updateSubCategoryMutation.mutateAsync({ id, data: { name: vals.name } }); }}
                 onDelete={async (id) => { await deleteSubCategoryMutation.mutateAsync(id); }}
                 isCreating={createSubCategoryMutation.isPending}

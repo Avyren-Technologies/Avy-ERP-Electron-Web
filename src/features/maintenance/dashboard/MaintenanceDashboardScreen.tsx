@@ -336,7 +336,7 @@ export function MaintenanceDashboardScreen() {
                         title="Register New Asset"
                         description="Add a new asset to the registry"
                         icon={Wrench}
-                        onClick={() => navigate("/app/maintenance")}
+                        onClick={() => navigate("/app/maintenance/assets?new=true")}
                         color="accent"
                     />
                     <QuickActionCard
