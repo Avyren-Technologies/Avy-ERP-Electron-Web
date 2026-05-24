@@ -78,6 +78,22 @@ export const maintenanceApi = {
     updateAssetType: (id: string, data: any) => client.patch(`/maintenance/assets/types/${id}`, data).then((r) => r.data),
     deleteAssetType: (id: string) => client.delete(`/maintenance/assets/types/${id}`).then((r) => r.data),
 
+    // ── Asset Class / Ownership / PTW Class Options ──
+    listAssetClassOptions: () => client.get('/maintenance/assets/asset-class-options/list').then((r) => r.data),
+    createAssetClassOption: (data: any) => client.post('/maintenance/assets/asset-class-options', data).then((r) => r.data),
+    updateAssetClassOption: (id: string, data: any) => client.patch(`/maintenance/assets/asset-class-options/${id}`, data).then((r) => r.data),
+    deleteAssetClassOption: (id: string) => client.delete(`/maintenance/assets/asset-class-options/${id}`).then((r) => r.data),
+
+    listOwnershipOptions: () => client.get('/maintenance/assets/ownership-options/list').then((r) => r.data),
+    createOwnershipOption: (data: any) => client.post('/maintenance/assets/ownership-options', data).then((r) => r.data),
+    updateOwnershipOption: (id: string, data: any) => client.patch(`/maintenance/assets/ownership-options/${id}`, data).then((r) => r.data),
+    deleteOwnershipOption: (id: string) => client.delete(`/maintenance/assets/ownership-options/${id}`).then((r) => r.data),
+
+    listPTWClassOptions: () => client.get('/maintenance/assets/ptw-class-options/list').then((r) => r.data),
+    createPTWClassOption: (data: any) => client.post('/maintenance/assets/ptw-class-options', data).then((r) => r.data),
+    updatePTWClassOption: (id: string, data: any) => client.patch(`/maintenance/assets/ptw-class-options/${id}`, data).then((r) => r.data),
+    deletePTWClassOption: (id: string) => client.delete(`/maintenance/assets/ptw-class-options/${id}`).then((r) => r.data),
+
     // ── Meters & Readings ──
     listMeters: (assetId: string) => client.get(`/maintenance/assets/${assetId}/meters`).then((r) => r.data),
     addMeter: (assetId: string, data: any) => client.post(`/maintenance/assets/${assetId}/meters`, data).then((r) => r.data),

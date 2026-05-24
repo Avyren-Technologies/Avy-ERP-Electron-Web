@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
     Package,
     Search,
@@ -11,9 +11,10 @@ import {
     Loader2,
     RefreshCw,
     Settings2,
+    ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAssets, useAssetCategories, useAssetSubCategories, useAssetTypes } from "@/features/maintenance/api/use-maintenance-queries";
+import { useAssets, useAssetCategories, useAssetSubCategories, useAssetTypes, useAssetClassOptions, useOwnershipOptions, usePTWClassOptions } from "@/features/maintenance/api/use-maintenance-queries";
 import {
     useCreateAsset,
     useUpdateAsset,
@@ -28,6 +29,15 @@ import {
     useCreateAssetType,
     useUpdateAssetType,
     useDeleteAssetType,
+    useCreateAssetClassOption,
+    useUpdateAssetClassOption,
+    useDeleteAssetClassOption,
+    useCreateOwnershipOption,
+    useUpdateOwnershipOption,
+    useDeleteOwnershipOption,
+    useCreatePTWClassOption,
+    useUpdatePTWClassOption,
+    useDeletePTWClassOption,
 } from "@/features/maintenance/api/use-maintenance-mutations";
 import { useCompanyLocations } from "@/features/company-admin/api/use-company-admin-queries";
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
@@ -41,8 +51,7 @@ import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Constants ── */
 
-const ASSET_CLASS_OPTIONS = [
-    { value: "", label: "All Classes" },
+const ASSET_CLASS_FALLBACK = [
     { value: "MACHINE", label: "Machine" },
     { value: "VEHICLE", label: "Vehicle" },
     { value: "BUILDING", label: "Building" },
@@ -82,15 +91,14 @@ const MAINTENANCE_STATUS_OPTIONS = [
     { value: "CLOSED", label: "Closed" },
 ];
 
-const OWNERSHIP_OPTIONS = [
+const OWNERSHIP_FALLBACK = [
     { value: "OWNED", label: "Owned" },
     { value: "LEASED", label: "Leased" },
     { value: "AMC_MANAGED", label: "AMC Managed" },
     { value: "CUSTOMER_SITE", label: "Customer Site" },
 ];
 
-const PTW_CLASS_OPTIONS = [
-    { value: "", label: "None" },
+const PTW_CLASS_FALLBACK = [
     { value: "HOT_WORK", label: "Hot Work" },
     { value: "CONFINED_SPACE", label: "Confined Space" },
     { value: "ELECTRICAL_ISOLATION", label: "Electrical Isolation" },
@@ -157,6 +165,21 @@ export function AssetRegisterScreen() {
     const [manageCategoryOpen, setManageCategoryOpen] = useState(false);
     const [manageSubCategoryOpen, setManageSubCategoryOpen] = useState(false);
     const [manageTypeOpen, setManageTypeOpen] = useState(false);
+    const [manageAssetClassOpen, setManageAssetClassOpen] = useState(false);
+    const [manageOwnershipOpen, setManageOwnershipOpen] = useState(false);
+    const [managePTWClassOpen, setManagePTWClassOpen] = useState(false);
+    const [manageMenuOpen, setManageMenuOpen] = useState(false);
+    const manageMenuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (manageMenuRef.current && !manageMenuRef.current.contains(e.target as Node)) {
+                setManageMenuOpen(false);
+            }
+        };
+        if (manageMenuOpen) document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [manageMenuOpen]);
 
     // Queries
     const params: Record<string, unknown> = { page, limit: 25 };
@@ -172,6 +195,9 @@ export function AssetRegisterScreen() {
     const categoriesQuery = useAssetCategories();
     const subCategoriesQuery = useAssetSubCategories(form.categoryId ? { categoryId: form.categoryId } : undefined);
     const typesQuery = useAssetTypes();
+    const assetClassOptionsQuery = useAssetClassOptions();
+    const ownershipOptionsQuery = useOwnershipOptions();
+    const ptwClassOptionsQuery = usePTWClassOptions();
 
     const assets: any[] = data?.data ?? [];
     const meta = data?.meta ?? {};
@@ -179,6 +205,20 @@ export function AssetRegisterScreen() {
     const categories: any[] = categoriesQuery.data?.data ?? [];
     const subCategories: any[] = subCategoriesQuery.data?.data ?? [];
     const types: any[] = typesQuery.data?.data ?? [];
+    const assetClassOpts: any[] = assetClassOptionsQuery.data?.data ?? [];
+    const ownershipOpts: any[] = ownershipOptionsQuery.data?.data ?? [];
+    const ptwClassOpts: any[] = ptwClassOptionsQuery.data?.data ?? [];
+
+    // Build dropdown options from DB or fallback
+    const ASSET_CLASS_OPTIONS = assetClassOpts.length > 0
+        ? [{ value: "", label: "All Classes" }, ...assetClassOpts.map((o: any) => ({ value: o.name, label: o.name }))]
+        : [{ value: "", label: "All Classes" }, ...ASSET_CLASS_FALLBACK];
+    const OWNERSHIP_OPTIONS = ownershipOpts.length > 0
+        ? ownershipOpts.map((o: any) => ({ value: o.name, label: o.name }))
+        : OWNERSHIP_FALLBACK;
+    const PTW_CLASS_OPTIONS = ptwClassOpts.length > 0
+        ? [{ value: "", label: "None" }, ...ptwClassOpts.map((o: any) => ({ value: o.name, label: o.name }))]
+        : [{ value: "", label: "None" }, ...PTW_CLASS_FALLBACK];
 
     // Mutations
     const createMutation = useCreateAsset();
@@ -200,6 +240,21 @@ export function AssetRegisterScreen() {
     const createTypeMutation = useCreateAssetType();
     const updateTypeMutation = useUpdateAssetType();
     const deleteTypeMutation = useDeleteAssetType();
+
+    // Asset Class Option mutations
+    const createAssetClassOptionMutation = useCreateAssetClassOption();
+    const updateAssetClassOptionMutation = useUpdateAssetClassOption();
+    const deleteAssetClassOptionMutation = useDeleteAssetClassOption();
+
+    // Ownership Option mutations
+    const createOwnershipOptionMutation = useCreateOwnershipOption();
+    const updateOwnershipOptionMutation = useUpdateOwnershipOption();
+    const deleteOwnershipOptionMutation = useDeleteOwnershipOption();
+
+    // PTW Class Option mutations
+    const createPTWClassOptionMutation = useCreatePTWClassOption();
+    const updatePTWClassOptionMutation = useUpdatePTWClassOption();
+    const deletePTWClassOptionMutation = useDeletePTWClassOption();
 
     const hasFilters = assetClass || criticality || operationalStatus || maintenanceStatus || locationId;
 
@@ -322,13 +377,57 @@ export function AssetRegisterScreen() {
                         <RefreshCw className={cn("w-4 h-4", syncMutation.isPending && "animate-spin")} />
                         Sync Machines
                     </button>
-                    <button
-                        onClick={() => setManageCategoryOpen(true)}
-                        className="inline-flex items-center gap-2 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 px-4 py-2.5 rounded-xl font-bold text-sm transition-all"
-                    >
-                        <Settings2 className="w-4 h-4" />
-                        Manage
-                    </button>
+                    <div className="relative" ref={manageMenuRef}>
+                        <button
+                            onClick={() => setManageMenuOpen((p) => !p)}
+                            className="inline-flex items-center gap-2 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 px-4 py-2.5 rounded-xl font-bold text-sm transition-all"
+                        >
+                            <Settings2 className="w-4 h-4" />
+                            Manage
+                            <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", manageMenuOpen && "rotate-180")} />
+                        </button>
+                        {manageMenuOpen && (
+                            <div className="absolute right-0 top-full mt-1 z-50 w-52 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-lg py-1 animate-in fade-in zoom-in-95 duration-150">
+                                <button
+                                    onClick={() => { setManageCategoryOpen(true); setManageMenuOpen(false); }}
+                                    className="w-full text-left px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors font-medium"
+                                >
+                                    Manage Categories
+                                </button>
+                                <button
+                                    onClick={() => { setManageSubCategoryOpen(true); setManageMenuOpen(false); }}
+                                    className="w-full text-left px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors font-medium"
+                                >
+                                    Manage Sub-Categories
+                                </button>
+                                <button
+                                    onClick={() => { setManageTypeOpen(true); setManageMenuOpen(false); }}
+                                    className="w-full text-left px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors font-medium"
+                                >
+                                    Manage Types
+                                </button>
+                                <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
+                                <button
+                                    onClick={() => { setManageAssetClassOpen(true); setManageMenuOpen(false); }}
+                                    className="w-full text-left px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors font-medium"
+                                >
+                                    Manage Asset Classes
+                                </button>
+                                <button
+                                    onClick={() => { setManageOwnershipOpen(true); setManageMenuOpen(false); }}
+                                    className="w-full text-left px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors font-medium"
+                                >
+                                    Manage Ownership Types
+                                </button>
+                                <button
+                                    onClick={() => { setManagePTWClassOpen(true); setManageMenuOpen(false); }}
+                                    className="w-full text-left px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors font-medium"
+                                >
+                                    Manage PTW Classes
+                                </button>
+                            </div>
+                        )}
+                    </div>
                     {canCreate && (
                         <button
                             onClick={openAdd}
@@ -593,7 +692,19 @@ export function AssetRegisterScreen() {
                                 <legend className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">Identity</legend>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <FormInput label="Name" required value={form.name} onChange={(v) => setField("name", v)} placeholder="Asset name" />
-                                    <FormSelect label="Asset Class" required value={form.assetClass} onChange={(v) => setField("assetClass", v)} options={ASSET_CLASS_OPTIONS.filter((o) => o.value)} />
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Asset Class<span className="text-red-500 ml-0.5">*</span></label>
+                                            <button type="button" onClick={() => setManageAssetClassOpen(true)} className="text-xs font-bold text-primary-600 hover:text-primary-700">+ New</button>
+                                        </div>
+                                        <select
+                                            value={form.assetClass}
+                                            onChange={(e) => setField("assetClass", e.target.value)}
+                                            className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                                        >
+                                            {ASSET_CLASS_OPTIONS.filter((o) => o.value).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                        </select>
+                                    </div>
                                     <FormInput label="Serial Number" value={form.serialNumber} onChange={(v) => setField("serialNumber", v)} placeholder="Serial number" />
                                 </div>
                             </fieldset>
@@ -602,25 +713,61 @@ export function AssetRegisterScreen() {
                             <fieldset>
                                 <legend className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">Classification</legend>
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                    <FormSelect
-                                        label="Category"
-                                        value={form.categoryId}
-                                        onChange={(v) => { setField("categoryId", v); setField("subCategoryId", ""); }}
-                                        options={[{ value: "", label: "Select..." }, ...categories.map((c: any) => ({ value: c.id, label: c.name }))]}
-                                    />
-                                    <FormSelect
-                                        label="Sub-Category"
-                                        value={form.subCategoryId}
-                                        onChange={(v) => setField("subCategoryId", v)}
-                                        options={[{ value: "", label: "Select..." }, ...subCategories.map((c: any) => ({ value: c.id, label: c.name }))]}
-                                    />
-                                    <FormSelect
-                                        label="Type"
-                                        value={form.typeId}
-                                        onChange={(v) => setField("typeId", v)}
-                                        options={[{ value: "", label: "Select..." }, ...types.map((t: any) => ({ value: t.id, label: t.name }))]}
-                                    />
-                                    <FormSelect label="Ownership" value={form.ownership} onChange={(v) => setField("ownership", v)} options={OWNERSHIP_OPTIONS} />
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Category</label>
+                                            <button type="button" onClick={() => setManageCategoryOpen(true)} className="text-xs font-bold text-primary-600 hover:text-primary-700">+ New</button>
+                                        </div>
+                                        <select
+                                            value={form.categoryId}
+                                            onChange={(e) => { setField("categoryId", e.target.value); setField("subCategoryId", ""); }}
+                                            className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                                        >
+                                            <option value="">Select...</option>
+                                            {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Sub-Category</label>
+                                            <button type="button" onClick={() => setManageSubCategoryOpen(true)} className="text-xs font-bold text-primary-600 hover:text-primary-700">+ New</button>
+                                        </div>
+                                        <select
+                                            value={form.subCategoryId}
+                                            onChange={(e) => setField("subCategoryId", e.target.value)}
+                                            className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                                        >
+                                            <option value="">Select...</option>
+                                            {subCategories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Type</label>
+                                            <button type="button" onClick={() => setManageTypeOpen(true)} className="text-xs font-bold text-primary-600 hover:text-primary-700">+ New</button>
+                                        </div>
+                                        <select
+                                            value={form.typeId}
+                                            onChange={(e) => setField("typeId", e.target.value)}
+                                            className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                                        >
+                                            <option value="">Select...</option>
+                                            {types.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Ownership</label>
+                                            <button type="button" onClick={() => setManageOwnershipOpen(true)} className="text-xs font-bold text-primary-600 hover:text-primary-700">+ New</button>
+                                        </div>
+                                        <select
+                                            value={form.ownership}
+                                            onChange={(e) => setField("ownership", e.target.value)}
+                                            className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                                        >
+                                            {OWNERSHIP_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                        </select>
+                                    </div>
                                     <FormSelect label="Criticality" value={form.criticality} onChange={(v) => setField("criticality", v)} options={CRITICALITY_OPTIONS.filter((o) => o.value)} />
                                     <FormCheckbox label="Is Bottleneck" checked={form.isBottleneck} onChange={(v) => setField("isBottleneck", v)} />
                                 </div>
@@ -659,7 +806,19 @@ export function AssetRegisterScreen() {
                                 <legend className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">Compliance</legend>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <FormCheckbox label="Permit Required" checked={form.permitRequired} onChange={(v) => setField("permitRequired", v)} />
-                                    <FormSelect label="PTW Class" value={form.ptwClass} onChange={(v) => setField("ptwClass", v)} options={PTW_CLASS_OPTIONS} />
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400">PTW Class</label>
+                                            <button type="button" onClick={() => setManagePTWClassOpen(true)} className="text-xs font-bold text-primary-600 hover:text-primary-700">+ New</button>
+                                        </div>
+                                        <select
+                                            value={form.ptwClass}
+                                            onChange={(e) => setField("ptwClass", e.target.value)}
+                                            className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                                        >
+                                            {PTW_CLASS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                        </select>
+                                    </div>
                                     <FormInput label="Warranty Expiry" value={form.warrantyExpiry} onChange={(v) => setField("warrantyExpiry", v)} type="date" />
                                     <FormInput label="Insurance Expiry" value={form.insuranceExpiry} onChange={(v) => setField("insuranceExpiry", v)} type="date" />
                                     <FormInput label="Registration Expiry" value={form.registrationExpiry} onChange={(v) => setField("registrationExpiry", v)} type="date" />
@@ -749,11 +908,54 @@ export function AssetRegisterScreen() {
                 isDeleting={deleteTypeMutation.isPending}
             />
 
-            {/* Manage Dropdown Picker (shown from Manage button) */}
-            {manageCategoryOpen || manageSubCategoryOpen || manageTypeOpen ? null : (
-                /* This is invisible — the Manage button opens a picker first */
-                null
-            )}
+            {/* Manage Asset Classes Modal */}
+            <ManageModal
+                open={manageAssetClassOpen}
+                onClose={() => setManageAssetClassOpen(false)}
+                title="Manage Asset Classes"
+                items={assetClassOpts.map((o: any) => ({ id: o.id, name: o.name, code: o.code }))}
+                isLoading={assetClassOptionsQuery.isLoading}
+                createFields={[{ key: "name", label: "Asset Class Name", placeholder: "e.g. Machine", required: true }]}
+                onCreate={async (vals) => { await createAssetClassOptionMutation.mutateAsync({ name: vals.name }); }}
+                onUpdate={async (id, vals) => { await updateAssetClassOptionMutation.mutateAsync({ id, data: { name: vals.name } }); }}
+                onDelete={async (id) => { await deleteAssetClassOptionMutation.mutateAsync(id); }}
+                isCreating={createAssetClassOptionMutation.isPending}
+                isUpdating={updateAssetClassOptionMutation.isPending}
+                isDeleting={deleteAssetClassOptionMutation.isPending}
+            />
+
+            {/* Manage Ownership Types Modal */}
+            <ManageModal
+                open={manageOwnershipOpen}
+                onClose={() => setManageOwnershipOpen(false)}
+                title="Manage Ownership Types"
+                items={ownershipOpts.map((o: any) => ({ id: o.id, name: o.name, code: o.code }))}
+                isLoading={ownershipOptionsQuery.isLoading}
+                createFields={[{ key: "name", label: "Ownership Type", placeholder: "e.g. Owned", required: true }]}
+                onCreate={async (vals) => { await createOwnershipOptionMutation.mutateAsync({ name: vals.name }); }}
+                onUpdate={async (id, vals) => { await updateOwnershipOptionMutation.mutateAsync({ id, data: { name: vals.name } }); }}
+                onDelete={async (id) => { await deleteOwnershipOptionMutation.mutateAsync(id); }}
+                isCreating={createOwnershipOptionMutation.isPending}
+                isUpdating={updateOwnershipOptionMutation.isPending}
+                isDeleting={deleteOwnershipOptionMutation.isPending}
+            />
+
+            {/* Manage PTW Classes Modal */}
+            <ManageModal
+                open={managePTWClassOpen}
+                onClose={() => setManagePTWClassOpen(false)}
+                title="Manage PTW Classes"
+                items={ptwClassOpts.map((o: any) => ({ id: o.id, name: o.name, code: o.code }))}
+                isLoading={ptwClassOptionsQuery.isLoading}
+                createFields={[{ key: "name", label: "PTW Class Name", placeholder: "e.g. Hot Work", required: true }]}
+                onCreate={async (vals) => { await createPTWClassOptionMutation.mutateAsync({ name: vals.name }); }}
+                onUpdate={async (id, vals) => { await updatePTWClassOptionMutation.mutateAsync({ id, data: { name: vals.name } }); }}
+                onDelete={async (id) => { await deletePTWClassOptionMutation.mutateAsync(id); }}
+                isCreating={createPTWClassOptionMutation.isPending}
+                isUpdating={updatePTWClassOptionMutation.isPending}
+                isDeleting={deletePTWClassOptionMutation.isPending}
+            />
+
         </div>
     );
 }
