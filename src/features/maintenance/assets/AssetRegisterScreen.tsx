@@ -912,7 +912,12 @@ export function AssetRegisterScreen() {
                 createFields={[
                     { key: "name", label: "Sub-Category Name", placeholder: "e.g. Pumps", required: true },
                 ]}
-                onCreate={async (vals) => { await createSubCategoryMutation.mutateAsync({ name: vals.name, categoryId: form.categoryId }); }}
+                onCreate={async (vals) => {
+                    const result = await createSubCategoryMutation.mutateAsync({ name: vals.name, categoryId: form.categoryId });
+                    if (result?.data?.id) {
+                        setField("subCategoryId", result.data.id);
+                    }
+                }}
                 onUpdate={async (id, vals) => { await updateSubCategoryMutation.mutateAsync({ id, data: { name: vals.name } }); }}
                 onDelete={async (id) => { await deleteSubCategoryMutation.mutateAsync(id); }}
                 isCreating={createSubCategoryMutation.isPending}
