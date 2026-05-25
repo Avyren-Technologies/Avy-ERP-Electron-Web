@@ -77,7 +77,7 @@ function StepProgress({ steps, currentStep }: { steps: any[]; currentStep: numbe
 }
 
 const STATUS_FILTERS = ["All", "Pending", "Approved", "Rejected", "Escalated"];
-const TYPE_FILTERS = ["All", "LeaveRequest", "AttendanceOverride", "LoanRecord", "WfhRequest", "ShiftSwapRequest"];
+const TYPE_FILTERS = ["All", "LeaveRequest", "AttendanceOverride", "LoanRecord", "WfhRequest", "ShiftSwapRequest", "Visit"];
 
 /** Map raw entityType to human-readable label */
 const ENTITY_LABELS: Record<string, string> = {
@@ -88,6 +88,7 @@ const ENTITY_LABELS: Record<string, string> = {
     ShiftSwapRequest: "Shift Swap",
     ExpenseClaim: "Expense Claim",
     ITDeclaration: "IT Declaration",
+    Visit: "Visitor Approval",
 };
 
 /** Build a summary description from the request data payload */
@@ -104,6 +105,8 @@ function buildSummary(entityType: string, data: any): string {
             return `Shift swap on ${data.swapDate ?? ""}${data.reason ? ` — ${data.reason}` : ""}`;
         case "AttendanceOverride":
             return `${data.issueType ?? "Correction"}${data.reason ? ` — ${data.reason}` : ""}`;
+        case "Visit":
+            return `${data.visitorName ?? "Visitor"}${data.visitorCompany ? ` (${data.visitorCompany})` : ""} — ${data.purpose ?? "Visit"}${data.visitDate ? ` on ${data.visitDate}` : ""}`;
         default:
             return data.reason ?? data.description ?? JSON.stringify(data);
     }
