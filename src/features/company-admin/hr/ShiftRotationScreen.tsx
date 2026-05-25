@@ -311,7 +311,7 @@ export function ShiftRotationScreen() {
     const handleExecute = async (schedule: any) => {
         try {
             const result = await executeMutation.mutateAsync(undefined as void);
-            const count = (result as any)?.data?.rotatedCount ?? (result as any)?.rotatedCount ?? 0;
+            const count = (result as any)?.data?.employeesRotated ?? (result as any)?.employeesRotated ?? 0;
             setExecuteResult({ name: schedule.name, count });
             showSuccess("Rotation Executed", `${count} employee(s) rotated for ${schedule.name}.`);
         } catch (err) {
