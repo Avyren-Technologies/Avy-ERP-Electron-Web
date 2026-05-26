@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWorkRequests } from "@/features/maintenance/api/use-maintenance-queries";
+import { useCompanyUsers } from "@/features/company-admin/api/use-company-admin-queries";
 import {
     useTriageWorkRequest,
     useApproveWorkRequest,
@@ -113,6 +114,15 @@ export function WorkRequestListScreen() {
     const workRequests: any[] = data?.data ?? [];
     const meta = data?.meta ?? {};
 
+    const { data: usersData } = useCompanyUsers({ limit: 1000 });
+    const usersList = usersData?.data ?? [];
+    const userMap = new Map<string, string>(
+        usersList.map((u: any) => [
+            u.id,
+            [u.firstName, u.lastName].filter(Boolean).join(" ") || u.fullName || u.email || u.id,
+        ])
+    );
+
     // Mutations
     const triageMutation = useTriageWorkRequest();
     const approveMutation = useApproveWorkRequest();
@@ -128,10 +138,10 @@ export function WorkRequestListScreen() {
         setPage(1);
     };
 
-    const handleTriage = async (id: string) => {
+    const handleTriage = async (id: string, currentPriority: string) => {
         try {
             setActionId(id);
-            await triageMutation.mutateAsync({ id, data: { triageNotes: "Triaged via quick action" } });
+            await triageMutation.mutateAsync({ id, data: { triageNotes: "Triaged via quick action", assignedPriority: currentPriority } });
             showSuccess("Triaged", "Work request has been triaged.");
         } catch (err) {
             showApiError(err);
@@ -298,7 +308,7 @@ export function WorkRequestListScreen() {
                                             <WRStatusBadge status={wr.status} />
                                         </td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">
-                                            {wr.requestedByName || wr.requestedById || "---"}
+                                            {wr.requestedByName || userMap.get(wr.requestedById) || wr.requestedById || "---"}
                                         </td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">
                                             {wr.requestedAt ? fmt.date(wr.requestedAt) : "---"}
@@ -308,7 +318,7 @@ export function WorkRequestListScreen() {
                                                 {/* Quick actions */}
                                                 {canApprove && wr.status === "SUBMITTED" && (
                                                     <button
-                                                        onClick={() => handleTriage(wr.id)}
+                                                        onClick={() => handleTriage(wr.id, wr.priority)}
                                                         disabled={actionId === wr.id}
                                                         className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/50 transition-colors disabled:opacity-50"
                                                         title="Triage"

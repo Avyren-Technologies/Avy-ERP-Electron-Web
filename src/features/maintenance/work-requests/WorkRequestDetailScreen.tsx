@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWorkRequest } from "@/features/maintenance/api/use-maintenance-queries";
+import { useCompanyUsers } from "@/features/company-admin/api/use-company-admin-queries";
 import {
     useTriageWorkRequest,
     useApproveWorkRequest,
@@ -80,6 +81,15 @@ export function WorkRequestDetailScreen() {
     const { data, isLoading, isError } = useWorkRequest(id!);
     const wr: any = data?.data ?? null;
 
+    const { data: usersData } = useCompanyUsers({ limit: 1000 });
+    const usersList = usersData?.data ?? [];
+    const userMap = new Map<string, string>(
+        usersList.map((u: any) => [
+            u.id,
+            [u.firstName, u.lastName].filter(Boolean).join(" ") || u.fullName || u.email || u.id,
+        ])
+    );
+
     // Mutations
     const triageMutation = useTriageWorkRequest();
     const approveMutation = useApproveWorkRequest();
@@ -89,8 +99,10 @@ export function WorkRequestDetailScreen() {
 
     const handleTriage = async () => {
         try {
-            const payload: Record<string, any> = { triageNotes: triageForm.triageNotes };
-            if (triageForm.assignedPriority) payload.assignedPriority = triageForm.assignedPriority;
+            const payload: Record<string, any> = {
+                triageNotes: triageForm.triageNotes,
+                assignedPriority: triageForm.assignedPriority || wr.priority,
+            };
             await triageMutation.mutateAsync({ id: id!, data: payload });
             showSuccess("Triaged", "Work request has been triaged.");
             setTriageModalOpen(false);
@@ -305,9 +317,9 @@ export function WorkRequestDetailScreen() {
                             Timeline
                         </h3>
                         <div className="space-y-3">
-                            <TimelineItem label="Created" date={wr.requestedAt} by={wr.requestedByName || wr.requestedById} fmt={fmt} />
-                            {wr.triagedAt && <TimelineItem label="Triaged" date={wr.triagedAt} by={wr.triagedByName || wr.triagedById} fmt={fmt} />}
-                            {wr.approvedAt && <TimelineItem label="Approved" date={wr.approvedAt} by={wr.approvedByName || wr.approvedById} fmt={fmt} />}
+                            <TimelineItem label="Created" date={wr.requestedAt} by={wr.requestedByName || userMap.get(wr.requestedById) || wr.requestedById} fmt={fmt} />
+                            {wr.triagedAt && <TimelineItem label="Triaged" date={wr.triagedAt} by={wr.triagedByName || userMap.get(wr.triagedById) || wr.triagedById} fmt={fmt} />}
+                            {wr.approvedAt && <TimelineItem label="Approved" date={wr.approvedAt} by={wr.approvedByName || userMap.get(wr.approvedById) || userMap.get(wr.reviewedById) || wr.approvedById || wr.reviewedById} fmt={fmt} />}
                             {wr.rejectionReason && <TimelineItem label="Rejected" date={wr.updatedAt} fmt={fmt} />}
                             {wr.workOrderId && <TimelineItem label="Converted to WO" date={wr.updatedAt} fmt={fmt} />}
                         </div>

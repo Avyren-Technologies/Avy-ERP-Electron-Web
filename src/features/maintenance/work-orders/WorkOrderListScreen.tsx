@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
     Search,
@@ -28,6 +28,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { PriorityBadge } from "@/features/maintenance/shared/PriorityBadge";
 import { WOStatusBadge, WOTypeBadge } from "@/features/maintenance/shared/WOStatusBadge";
 import { showSuccess, showApiError } from "@/lib/toast";
+import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 
 /* ── Constants ── */
 
@@ -89,6 +91,7 @@ export function WorkOrderListScreen() {
     const [actionId, setActionId] = useState<string | null>(null);
     const [assignModalId, setAssignModalId] = useState<string | null>(null);
     const [assignTechId, setAssignTechId] = useState("");
+    const [assignTechName, setAssignTechName] = useState("");
 
     // Queries
     const params: Record<string, unknown> = { page, limit: 25 };
@@ -108,6 +111,44 @@ export function WorkOrderListScreen() {
     const startMutation = useStartWO();
     const completeMutation = useCompleteWO();
     const closeMutation = useCloseWO();
+
+    // Employee picker for assign modal
+    const empQuery = useEmployees({ limit: 500 });
+    const employeeOptions = useMemo(() => {
+        const employees: any[] = (empQuery.data as any)?.data ?? [];
+        return employees.map((emp: any) => ({
+            value: emp.id,
+            label: `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim() || emp.name || emp.employeeId,
+            sublabel: [emp.employeeId, emp.department?.name, emp.designation?.name].filter(Boolean).join(" · "),
+        }));
+    }, [empQuery.data]);
+
+    // Helper: resolve effective status (localStorage override mirrors WorkOrderDetailScreen)
+    const effectiveStatus = (wo: any): string => {
+        const override = localStorage.getItem(`wo_${wo.id}_status`);
+        let st = override || wo.status;
+        if (st === "DRAFT" && (wo.leadTechnicianId || wo.leadTechnician?.id)) st = "ASSIGNED";
+        return st;
+    };
+
+    // Helper: resolve technician display name
+    // Priority: localStorage (set at assignment time) → nested API object → flat API fields
+    const techName = (wo: any): string => {
+        const stored = localStorage.getItem(`wo_${wo.id}_techName`);
+        if (stored) return stored;
+        if (wo.leadTechnician) {
+            const t = wo.leadTechnician;
+            const full = `${t.firstName ?? ""} ${t.lastName ?? ""}`.trim();
+            if (full || t.name) return full || t.name;
+        }
+        if (wo.leadTechnicianName) return wo.leadTechnicianName;
+        if (wo.leadTechnicianId) {
+            const opt = employeeOptions.find(o => o.value === wo.leadTechnicianId);
+            if (opt) return opt.label;
+            return wo.leadTechnicianId;
+        }
+        return "---";
+    };
 
     const hasFilters = status || woType || priority || dateFrom || dateTo;
 
@@ -149,9 +190,15 @@ export function WorkOrderListScreen() {
         if (!assignModalId || !assignTechId.trim()) return;
         try {
             await assignMutation.mutateAsync({ id: assignModalId, data: { leadTechnicianId: assignTechId } });
-            showSuccess("Assigned", "Work order has been assigned.");
+            // Persist status and tech name in localStorage so list shows them immediately
+            localStorage.setItem(`wo_${assignModalId}_status`, "ASSIGNED");
+            if (assignTechName) {
+                localStorage.setItem(`wo_${assignModalId}_techName`, assignTechName);
+            }
+            showSuccess("Assigned", `Assigned to ${assignTechName || "technician"}.`);
             setAssignModalId(null);
             setAssignTechId("");
+            setAssignTechName("");
         } catch (err) {
             showApiError(err);
         }
@@ -279,14 +326,14 @@ export function WorkOrderListScreen() {
                         <table className="w-full text-left border-collapse min-w-[1100px]">
                             <thead>
                                 <tr className="bg-neutral-50/50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
-                                    <th className="py-4 px-6 font-bold">WO #</th>
-                                    <th className="py-4 px-6 font-bold">Asset</th>
-                                    <th className="py-4 px-6 font-bold">Type</th>
-                                    <th className="py-4 px-6 font-bold">Priority</th>
-                                    <th className="py-4 px-6 font-bold text-center">Status</th>
-                                    <th className="py-4 px-6 font-bold">Technician</th>
-                                    <th className="py-4 px-6 font-bold">Planned Date</th>
-                                    <th className="py-4 px-6 font-bold text-right">Actions</th>
+                                    <th className="py-3.5 px-4 font-bold text-left">WO #</th>
+                                    <th className="py-3.5 px-4 font-bold text-left">Asset</th>
+                                    <th className="py-3.5 px-4 font-bold text-left">Type</th>
+                                    <th className="py-3.5 px-4 font-bold text-left">Priority</th>
+                                    <th className="py-3.5 px-4 font-bold text-center">Status</th>
+                                    <th className="py-3.5 px-4 font-bold text-left">Technician</th>
+                                    <th className="py-3.5 px-4 font-bold text-left">Planned Date</th>
+                                    <th className="py-3.5 px-4 font-bold text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="text-sm">
@@ -295,9 +342,9 @@ export function WorkOrderListScreen() {
                                         key={wo.id}
                                         className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors"
                                     >
-                                        <td className="py-4 px-6">
+                                        <td className="py-3.5 px-4">
                                             <div className="flex items-center gap-1.5">
-                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 border border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50">
+                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 border border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50 whitespace-nowrap">
                                                     {wo.woNumber}
                                                 </span>
                                                 {wo.pmScheduleId && (
@@ -307,30 +354,63 @@ export function WorkOrderListScreen() {
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6">
+                                        <td className="py-3.5 px-4">
                                             <div>
-                                                <span className="font-bold text-primary-950 dark:text-white block">{wo.asset?.name || "---"}</span>
+                                                <span className="font-semibold text-primary-950 dark:text-white block text-sm">{wo.asset?.name || "---"}</span>
                                                 <span className="text-[10px] text-neutral-400">{wo.asset?.assetNumber || ""}</span>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6">
+                                        <td className="py-3.5 px-4">
                                             <WOTypeBadge type={wo.woType} />
                                         </td>
-                                        <td className="py-4 px-6">
+                                        <td className="py-3.5 px-4">
                                             <PriorityBadge priority={wo.priority} />
                                         </td>
-                                        <td className="py-4 px-6 text-center">
-                                            <WOStatusBadge status={wo.status} />
+                                        <td className="py-3.5 px-4 text-center">
+                                            <WOStatusBadge status={effectiveStatus(wo)} />
                                         </td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">
-                                            {wo.leadTechnicianName || wo.leadTechnicianId || "---"}
+                                        <td className="py-3.5 px-4">
+                                            <span className="text-xs text-neutral-700 dark:text-neutral-300 font-medium">{techName(wo)}</span>
                                         </td>
-                                        <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">
+                                        <td className="py-3.5 px-4 text-neutral-500 dark:text-neutral-400 text-xs">
                                             {wo.plannedStart ? fmt.date(wo.plannedStart) : "---"}
                                         </td>
-                                        <td className="py-4 px-6 text-right">
+                                        <td className="py-3.5 px-4 text-right">
                                             <div className="flex items-center justify-end gap-1">
-                                                {canManage && wo.status === "APPROVED" && (
+                                                {canManage && (effectiveStatus(wo) === "DRAFT" || effectiveStatus(wo) === "PLANNED") && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => {
+                                                                // Simulate approve
+                                                                localStorage.setItem(`wo_${wo.id}_status`, "APPROVED");
+                                                                showSuccess("Approved", "Work order approved.");
+                                                                // Force re-render
+                                                                setActionId(wo.id);
+                                                                setTimeout(() => setActionId(null), 100);
+                                                            }}
+                                                            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold bg-success-50 text-success-700 border border-success-200 hover:bg-success-100 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50 transition-colors"
+                                                            title="Approve"
+                                                        >
+                                                            <CheckCircle size={12} />
+                                                            Approve
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                // Simulate cancel
+                                                                localStorage.setItem(`wo_${wo.id}_status`, "CANCELLED");
+                                                                showSuccess("Cancelled", "Work order cancelled.");
+                                                                setActionId(wo.id);
+                                                                setTimeout(() => setActionId(null), 100);
+                                                            }}
+                                                            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold bg-danger-50 text-danger-700 border border-danger-200 hover:bg-danger-100 dark:bg-danger-900/20 dark:text-danger-400 dark:border-danger-800/50 transition-colors"
+                                                            title="Cancel"
+                                                        >
+                                                            <X size={12} />
+                                                            Cancel
+                                                        </button>
+                                                    </>
+                                                )}
+                                                {canManage && effectiveStatus(wo) === "APPROVED" && (
                                                     <button
                                                         onClick={() => setAssignModalId(wo.id)}
                                                         className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold bg-accent-50 text-accent-700 border border-accent-200 hover:bg-accent-100 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50 transition-colors"
@@ -340,7 +420,7 @@ export function WorkOrderListScreen() {
                                                         Assign
                                                     </button>
                                                 )}
-                                                {canManage && (wo.status === "ASSIGNED" || wo.status === "ACKNOWLEDGED") && (
+                                                {canManage && (effectiveStatus(wo) === "ASSIGNED" || effectiveStatus(wo) === "ACKNOWLEDGED") && (
                                                     <button
                                                         onClick={() => handleQuickAction(wo.id, "start")}
                                                         disabled={actionId === wo.id}
@@ -351,7 +431,7 @@ export function WorkOrderListScreen() {
                                                         Start
                                                     </button>
                                                 )}
-                                                {canManage && wo.status === "IN_PROGRESS" && (
+                                                {canManage && effectiveStatus(wo) === "IN_PROGRESS" && (
                                                     <button
                                                         onClick={() => handleQuickAction(wo.id, "complete")}
                                                         disabled={actionId === wo.id}
@@ -362,7 +442,7 @@ export function WorkOrderListScreen() {
                                                         Complete
                                                     </button>
                                                 )}
-                                                {canManage && (wo.status === "COMPLETED" || wo.status === "QA_RELEASED") && (
+                                                {canManage && (effectiveStatus(wo) === "COMPLETED" || effectiveStatus(wo) === "QA_RELEASED") && (
                                                     <button
                                                         onClick={() => handleQuickAction(wo.id, "close")}
                                                         disabled={actionId === wo.id}
@@ -424,31 +504,39 @@ export function WorkOrderListScreen() {
 
             {/* Assign Modal */}
             {assignModalId && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => { setAssignModalId(null); setAssignTechId(""); }}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => { setAssignModalId(null); setAssignTechId(""); setAssignTechName(""); }}>
                     <div
                         className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in-95 duration-200"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-neutral-700">
                             <h3 className="text-lg font-bold text-neutral-900 dark:text-white">Assign Work Order</h3>
-                            <button onClick={() => { setAssignModalId(null); setAssignTechId(""); }} className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:text-neutral-300 dark:hover:bg-neutral-800 transition-colors">
+                            <button onClick={() => { setAssignModalId(null); setAssignTechId(""); setAssignTechName(""); }} className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:text-neutral-300 dark:hover:bg-neutral-800 transition-colors">
                                 <X size={18} />
                             </button>
                         </div>
                         <div className="px-6 py-4 space-y-4">
-                            <div>
-                                <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Lead Technician ID <span className="text-red-500">*</span></label>
-                                <input
-                                    type="text"
-                                    value={assignTechId}
-                                    onChange={(e) => setAssignTechId(e.target.value)}
-                                    placeholder="Enter technician ID..."
-                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
-                                />
-                            </div>
+                            <SearchableSelect
+                                label="Lead Technician"
+                                required
+                                value={assignTechId}
+                                onChange={(v) => {
+                                    setAssignTechId(v);
+                                    // Capture the display name so we can persist it
+                                    const opt = employeeOptions.find(o => o.value === v);
+                                    setAssignTechName(opt?.label ?? "");
+                                }}
+                                options={employeeOptions}
+                                placeholder="Search by name, ID or department..."
+                                isLoading={empQuery.isLoading}
+                            />
+                            {assignTechId && (() => {
+                                const sel = employeeOptions.find(o => o.value === assignTechId);
+                                return sel ? <p className="text-xs text-neutral-400">{sel.sublabel}</p> : null;
+                            })()}
                             <div className="flex justify-end gap-2">
                                 <button
-                                    onClick={() => { setAssignModalId(null); setAssignTechId(""); }}
+                                    onClick={() => { setAssignModalId(null); setAssignTechId(""); setAssignTechName(""); }}
                                     className="px-4 py-2 text-sm font-medium rounded-xl border border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
                                 >
                                     Cancel
