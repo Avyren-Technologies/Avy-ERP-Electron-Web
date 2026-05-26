@@ -279,8 +279,29 @@ const PipIncentiveConfig = lazyNamed(() => import("./features/production/pip/Pip
 const PipOperationMasterScreen = lazyNamed(() => import("./features/production/pip/PipOperationMasterScreen"), "PipOperationMasterScreen");
 const PipReportsHubScreen = lazyNamed(() => import("./features/production/pip/PipReportsHubScreen"), "PipReportsHubScreen");
 
+// ─── Inventory Module ───
+const InventoryDashboardScreen = lazyNamed(() => import("./features/inventory/dashboard/InventoryDashboardScreen"), "InventoryDashboardScreen");
+const StockExplorerScreen = lazyNamed(() => import("./features/inventory/stock/StockExplorerScreen"), "StockExplorerScreen");
+const InventoryConfigScreen = lazyNamed(() => import("./features/inventory/config/InventoryConfigScreen"), "InventoryConfigScreen");
+const WarehouseMasterScreen = lazyNamed(() => import("./features/inventory/config/WarehouseMasterScreen"), "WarehouseMasterScreen");
+const ItemPolicyScreen = lazyNamed(() => import("./features/inventory/config/ItemPolicyScreen"), "ItemPolicyScreen");
+const ReceiveStockScreen = lazyNamed(() => import("./features/inventory/transactions/ReceiveStockScreen"), "ReceiveStockScreen");
+const GrnScreen = lazyNamed(() => import("./features/inventory/transactions/GrnScreen"), "GrnScreen");
+const GrnDetailScreen = lazyNamed(() => import("./features/inventory/transactions/GrnDetailScreen"), "GrnDetailScreen");
+const PutAwayScreen = lazyNamed(() => import("./features/inventory/transactions/PutAwayScreen"), "PutAwayScreen");
+const MoveStockScreen = lazyNamed(() => import("./features/inventory/transactions/MoveStockScreen"), "MoveStockScreen");
+const AdjustStockScreen = lazyNamed(() => import("./features/inventory/transactions/AdjustStockScreen"), "AdjustStockScreen");
+const PickItemsScreen = lazyNamed(() => import("./features/inventory/transactions/PickItemsScreen"), "PickItemsScreen");
+const DispatchScreen = lazyNamed(() => import("./features/inventory/transactions/DispatchScreen"), "DispatchScreen");
+const CustomerReturnScreen = lazyNamed(() => import("./features/inventory/transactions/CustomerReturnScreen"), "CustomerReturnScreen");
+const VendorReturnScreen = lazyNamed(() => import("./features/inventory/transactions/VendorReturnScreen"), "VendorReturnScreen");
+const CountListScreen = lazyNamed(() => import("./features/inventory/counts/CountListScreen"), "CountListScreen");
+const CountCreateScreen = lazyNamed(() => import("./features/inventory/counts/CountCreateScreen"), "CountCreateScreen");
+const CountDetailScreen = lazyNamed(() => import("./features/inventory/counts/CountDetailScreen"), "CountDetailScreen");
+const InventoryApprovalInboxScreen = lazyNamed(() => import("./features/inventory/approvals/InventoryApprovalInboxScreen"), "InventoryApprovalInboxScreen");
+const InventoryReportsScreen = lazyNamed(() => import("./features/inventory/reports/InventoryReportsScreen"), "InventoryReportsScreen");
+
 // ─── Operations Modules ───
-const InventoryScreen = lazyNamed(() => import("./features/inventory/InventoryScreen"), "InventoryScreen");
 const ProductionScreen = lazyNamed(() => import("./features/production/ProductionScreen"), "ProductionScreen");
 const MaintenanceScreen = lazyNamed(() => import("./features/maintenance/MaintenanceScreen"), "MaintenanceScreen");
 const WorkOrdersScreen = lazyNamed(() => import("./features/maintenance/WorkOrdersScreen"), "WorkOrdersScreen");
@@ -638,8 +659,28 @@ function App() {
         <Route path="company/production/pip/operations" element={<RequirePermission permission="production.pip:read"><PipOperationMasterScreen /></RequirePermission>} />
         <Route path="company/production/pip/reports" element={<RequirePermission permission="production.pip:read"><PipReportsHubScreen /></RequirePermission>} />
         <Route path="company/production/pip/config" element={<RequirePermission permission="production.pip:configure"><PipIncentiveConfig /></RequirePermission>} />
-        {/* Operations module routes */}
-        <Route path="inventory" element={<RequireRole roles={['super-admin', 'company-admin']}><InventoryScreen /></RequireRole>} />
+        {/* Inventory module routes */}
+        <Route path="inventory" element={<Navigate to="inventory/dashboard" replace />} />
+        <Route path="inventory/dashboard" element={<RequirePermission permission="inventory.dashboard:read"><InventoryDashboardScreen /></RequirePermission>} />
+        <Route path="inventory/stock" element={<RequirePermission permission="inventory.stock:read"><StockExplorerScreen /></RequirePermission>} />
+        <Route path="inventory/config" element={<RequirePermission permission="inventory.config:configure"><InventoryConfigScreen /></RequirePermission>} />
+        <Route path="inventory/config/warehouses" element={<RequirePermission permission="inventory.masters:read"><WarehouseMasterScreen /></RequirePermission>} />
+        <Route path="inventory/config/item-policies" element={<RequirePermission permission="inventory.masters:read"><ItemPolicyScreen /></RequirePermission>} />
+        <Route path="inventory/receive" element={<RequirePermission permission="inventory.transactions:create"><ReceiveStockScreen /></RequirePermission>} />
+        <Route path="inventory/grn" element={<RequirePermission permission="inventory.transactions:create"><GrnScreen /></RequirePermission>} />
+        <Route path="inventory/grn/:id" element={<RequirePermission permission="inventory.transactions:read"><GrnDetailScreen /></RequirePermission>} />
+        <Route path="inventory/put-away" element={<RequirePermission permission="inventory.transactions:create"><PutAwayScreen /></RequirePermission>} />
+        <Route path="inventory/transfer" element={<RequirePermission permission="inventory.transactions:create"><MoveStockScreen /></RequirePermission>} />
+        <Route path="inventory/adjustments" element={<RequirePermission permission="inventory.transactions:create"><AdjustStockScreen /></RequirePermission>} />
+        <Route path="inventory/issue" element={<RequirePermission permission="inventory.transactions:create"><PickItemsScreen /></RequirePermission>} />
+        <Route path="inventory/dispatch" element={<RequirePermission permission="inventory.transactions:create"><DispatchScreen /></RequirePermission>} />
+        <Route path="inventory/returns" element={<RequirePermission permission="inventory.transactions:create"><CustomerReturnScreen /></RequirePermission>} />
+        <Route path="inventory/returns/vendor" element={<RequirePermission permission="inventory.transactions:create"><VendorReturnScreen /></RequirePermission>} />
+        <Route path="inventory/counts" element={<RequirePermission permission="inventory.counts:read"><CountListScreen /></RequirePermission>} />
+        <Route path="inventory/counts/new" element={<RequirePermission permission="inventory.counts:create"><CountCreateScreen /></RequirePermission>} />
+        <Route path="inventory/counts/:id" element={<RequirePermission permission="inventory.counts:read"><CountDetailScreen /></RequirePermission>} />
+        <Route path="inventory/approvals" element={<RequirePermission permission="inventory.approvals:read"><InventoryApprovalInboxScreen /></RequirePermission>} />
+        <Route path="inventory/reports" element={<RequirePermission permission="inventory.reports:read"><InventoryReportsScreen /></RequirePermission>} />
         <Route path="production" element={<RequireRole roles={['super-admin', 'company-admin']}><ProductionScreen /></RequireRole>} />
         <Route path="maintenance" element={<Navigate to="maintenance/dashboard" replace />} />
         <Route path="maintenance/dashboard" element={<RequirePermission permission="maintenance:read"><MaintenanceDashboardScreen /></RequirePermission>} />
