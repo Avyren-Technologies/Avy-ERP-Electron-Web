@@ -22,6 +22,8 @@
     "test:e2e:report": "npx playwright show-report e2e/playwright-report",
     "test:e2e:maintenance": "npx playwright test --project=auth-setup --project=maintenance:api --project=maintenance --headed",
     "test:e2e:maintenance:api": "npx playwright test --project=maintenance:api",
+    "test:e2e:inventory": "npx playwright test --project=auth-setup --project=inventory:api --project=inventory --headed",
+    "test:e2e:inventory:api": "npx playwright test --project=inventory:api",
     "restart": "git pull origin main && pnpm install && pnpm run build && pm2 restart avy-erp-app"
   },
   "build": {
