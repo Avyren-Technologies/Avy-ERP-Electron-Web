@@ -76,6 +76,24 @@ export default defineConfig({
       },
     },
 
+    /* ── Inventory module — API only ── */
+    {
+      name: 'inventory:api',
+      testMatch: /modules\/inventory\/tests\/api\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+
+    /* ── Inventory module — UI tests ── */
+    {
+      name: 'inventory',
+      testMatch: /modules\/inventory\/tests\/(?!api\.).*\.spec\.ts/,
+      dependencies: ['auth-setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'e2e/.auth/company-admin.json',
+      },
+    },
+
     /* ──────────────────────────────────────────────────────────
      * ADD NEW MODULES HERE — copy the maintenance pattern:
      *

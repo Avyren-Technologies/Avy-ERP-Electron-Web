@@ -14,6 +14,15 @@ export const STOCK_STATUS_CONFIG: Record<string, { bg: string; text: string; ico
     CONDEMNED: { bg: 'bg-gray-100', text: 'text-gray-500', icon: 'trash-2', border: 'border-gray-300', label: 'Condemned' },
 };
 
+export const COUNT_STATUS_CONFIG: Record<string, { bg: string; text: string; border: string; label: string }> = {
+    CREATED: { bg: 'bg-gray-50', text: 'text-gray-600', border: 'border-gray-200', label: 'Created' },
+    IN_PROGRESS: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', label: 'In Progress' },
+    VARIANCE_COMPUTED: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', label: 'Variance Computed' },
+    PENDING_APPROVAL: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', label: 'Pending Approval' },
+    CLOSED: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', label: 'Closed' },
+    CANCELLED: { bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-300', label: 'Cancelled' },
+};
+
 export const TRANSACTION_STATUS_CONFIG: Record<string, { bg: string; text: string; border: string; label: string }> = {
     DRAFT: { bg: 'bg-gray-50', text: 'text-gray-600', border: 'border-gray-200', label: 'Draft' },
     SUBMITTED: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', label: 'Submitted' },
