@@ -32,6 +32,10 @@ import { WOStatusBadge, WOTypeBadge } from "@/features/maintenance/shared/WOStat
 import { showSuccess, showApiError } from "@/lib/toast";
 import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import {
+    MAINTENANCE_WO_PRIORITY_OPTIONS,
+    MAINTENANCE_WO_TYPE_OPTIONS,
+} from "@/features/maintenance/shared/work-order-enums";
 
 /* ── Constants ── */
 
@@ -54,24 +58,12 @@ const STATUS_OPTIONS = [
 
 const WO_TYPE_OPTIONS = [
     { value: "", label: "All Types" },
-    { value: "CORRECTIVE", label: "Corrective" },
-    { value: "PREVENTIVE", label: "Preventive" },
-    { value: "PM", label: "PM (Preventive)" },
-    { value: "BREAKDOWN", label: "Breakdown" },
-    { value: "PREDICTIVE", label: "Predictive" },
-    { value: "CONDITION_BASED", label: "Condition Based" },
-    { value: "EMERGENCY", label: "Emergency" },
-    { value: "INSPECTION", label: "Inspection" },
-    { value: "CALIBRATION", label: "Calibration" },
-    { value: "OVERHAUL", label: "Overhaul" },
+    ...MAINTENANCE_WO_TYPE_OPTIONS,
 ];
 
 const PRIORITY_OPTIONS = [
     { value: "", label: "All Priorities" },
-    { value: "EMERGENCY", label: "Emergency" },
-    { value: "HIGH", label: "High" },
-    { value: "MEDIUM", label: "Medium" },
-    { value: "LOW", label: "Low" },
+    ...MAINTENANCE_WO_PRIORITY_OPTIONS,
 ];
 
 /* ── Screen ── */

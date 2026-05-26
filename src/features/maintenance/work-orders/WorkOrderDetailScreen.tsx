@@ -53,7 +53,36 @@ import { PriorityBadge } from "@/features/maintenance/shared/PriorityBadge";
 import { WOStatusBadge, WOTypeBadge } from "@/features/maintenance/shared/WOStatusBadge";
 import { showSuccess, showApiError } from "@/lib/toast";
 import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
+import { useCompanySettings } from "@/features/company-admin/api/use-company-admin-queries";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { DEFAULT_FORMAT_SETTINGS } from "@/lib/format/company-formatter";
+import {
+    buildAddPartsPayload,
+    buildLogLabourPayload,
+    computeLabourLineCost,
+    computePartLineCost,
+    emptyLogLabourForm,
+    resolveTechnicianName,
+    validateAddPartForm,
+    validateLogLabourForm,
+    type AddPartFormState,
+    type LogLabourFormState,
+} from "@/features/maintenance/work-orders/work-order-parts-labour";
+import {
+    buildObservationsForComplete,
+    formatWorkOrderDescriptionDisplay,
+    getWorkOrderClosureHistory,
+    getWorkOrderExecutionObservations,
+} from "@/features/maintenance/work-orders/work-order-description";
+import {
+    LabourQuickTimer,
+    WOFormButton,
+    WOFormField,
+    WOFormPanel,
+    WOFormSection,
+    WorkOrderReasonModal,
+    woFieldInputClass,
+} from "@/features/maintenance/work-orders/WOFormPanel";
 
 /* ── Tabs ── */
 
@@ -86,6 +115,10 @@ export function WorkOrderDetailScreen() {
     const navigate = useNavigate();
     const fmt = useCompanyFormatter();
     const canManage = useCanPerform("maintenance.work-orders:approve");
+    const canUpdateWO = useCanPerform("maintenance.work-orders:update");
+    const { data: companySettings } = useCompanySettings();
+    const companyTimezone =
+        companySettings?.data?.timezone ?? DEFAULT_FORMAT_SETTINGS.timezone;
 
     const [activeTab, setActiveTab] = useState<TabKey>("overview");
 
@@ -156,7 +189,18 @@ export function WorkOrderDetailScreen() {
 
     const openModal = (name: string) => {
         setModal(name);
-        setModalData({});
+        if (name === "complete" && wo) {
+            setModalData({
+                observations: getWorkOrderExecutionObservations(wo),
+                rootCauseCode: wo.rootCauseCode ?? "",
+                actionTakenCode: wo.actionTakenCode ?? "",
+                actionDescription: wo.actionDescription ?? "",
+                recommendations: wo.recommendations ?? "",
+                closureReason: "",
+            });
+        } else {
+            setModalData({});
+        }
     };
     const closeModal = () => {
         setModal(null);
@@ -174,6 +218,34 @@ export function WorkOrderDetailScreen() {
         try {
             await mutation.mutateAsync(payload);
             showSuccess(successTitle, successMsg);
+            closeModal();
+        } catch (err) {
+            showApiError(err);
+        }
+    };
+
+    const handleCompleteAndClose = async () => {
+        const closureReason = modalData.closureReason?.trim();
+        if (!closureReason || !wo) return;
+
+        try {
+            await completeMutation.mutateAsync({
+                id: id!,
+                data: {
+                    observations: buildObservationsForComplete(wo, {
+                        executionObservations: modalData.observations,
+                    }),
+                    rootCauseCode: modalData.rootCauseCode || undefined,
+                    actionTakenCode: modalData.actionTakenCode || undefined,
+                    actionDescription: modalData.actionDescription?.trim() || undefined,
+                    recommendations: modalData.recommendations?.trim() || undefined,
+                },
+            });
+            await closeMutation.mutateAsync({
+                id: id!,
+                data: { reason: closureReason },
+            });
+            showSuccess("Closed", "Work order completed and closed.");
             closeModal();
         } catch (err) {
             showApiError(err);
@@ -221,7 +293,7 @@ export function WorkOrderDetailScreen() {
     const events: any[] = wo.events ?? [];
     const checklist: any[] = wo.checklistSnapshot ?? [];
 
-    const labourCost = labourLogs.reduce((s: number, l: any) => s + Number(l.cost || 0), 0);
+    const labourCost = labourLogs.reduce((s: number, l: any) => s + computeLabourLineCost(l), 0);
     const partsCost = parts.reduce((s: number, p: any) => s + Number(p.totalCost || 0), 0);
     const vendorCost = Number(wo.vendorCost || 0);
     const totalCost = labourCost + partsCost + vendorCost;
@@ -284,19 +356,19 @@ export function WorkOrderDetailScreen() {
                         {status === "ON_HOLD" && (
                             <ActionBtn icon={<Play className="w-4 h-4" />} label="Resume" color="blue" onClick={() => handleLifecycleAction(resumeMutation, "Resumed", "Work order resumed.")} isPending={resumeMutation.isPending} />
                         )}
-                        {status === "QA_REVIEW" && (
+                        {status === "AWAITING_QA" && (
                             <>
                                 <ActionBtn icon={<ShieldCheck className="w-4 h-4" />} label="QA Release" color="emerald" onClick={() => handleLifecycleAction(qaReleaseMutation, "QA Released", "Work order QA released.")} isPending={qaReleaseMutation.isPending} />
                                 <ActionBtn icon={<ThumbsDown className="w-4 h-4" />} label="Reject" color="danger" onClick={() => openModal("reject")} />
                             </>
                         )}
-                        {(status === "COMPLETED" || status === "QA_RELEASED") && (
+                        {(status === "COMPLETED" || status === "AWAITING_QA") && (
                             <ActionBtn icon={<Lock className="w-4 h-4" />} label="Close" color="neutral" onClick={() => openModal("close")} />
                         )}
                         {status === "CLOSED" && (
                             <ActionBtn icon={<RotateCcw className="w-4 h-4" />} label="Reopen" color="warning" onClick={() => openModal("reopen")} />
                         )}
-                        {!["CLOSED", "CANCELLED", "COMPLETED", "QA_REVIEW", "QA_RELEASED"].includes(status) && (
+                        {!["CLOSED", "CANCELLED", "COMPLETED", "AWAITING_QA"].includes(status) && (
                             <ActionBtn icon={<Ban className="w-4 h-4" />} label="Cancel" color="danger" onClick={() => handleLifecycleAction(cancelMutation, "Cancelled", "Work order cancelled.")} isPending={cancelMutation.isPending} />
                         )}
                     </div>
@@ -329,8 +401,29 @@ export function WorkOrderDetailScreen() {
                 <div className="p-6">
                     {activeTab === "overview" && <OverviewTab wo={wo} fmt={fmt} resolvedTechName={resolvedTechName} />}
                     {activeTab === "checklist" && <ChecklistTab checklist={checklist} woId={id!} submitMutation={submitChecklistMutation} canManage={canManage} status={status} />}
-                    {activeTab === "parts" && <PartsTab parts={parts} woId={id!} addMutation={addPartsMutation} returnMutation={returnPartMutation} canManage={canManage} status={status} />}
-                    {activeTab === "labour" && <LabourTab labourLogs={labourLogs} woId={id!} logMutation={logLabourMutation} canManage={canManage} status={status} fmt={fmt} />}
+                    {activeTab === "parts" && (
+                        <PartsTab
+                            parts={parts}
+                            woId={id!}
+                            addMutation={addPartsMutation}
+                            returnMutation={returnPartMutation}
+                            canEdit={canUpdateWO}
+                            status={status}
+                        />
+                    )}
+                    {activeTab === "labour" && (
+                        <LabourTab
+                            labourLogs={labourLogs}
+                            woId={id!}
+                            logMutation={logLabourMutation}
+                            canEdit={canUpdateWO}
+                            status={status}
+                            fmt={fmt}
+                            employeeOptions={employeeOptions}
+                            companyTimezone={companyTimezone}
+                            defaultTechnicianId={wo?.leadTechnicianId ?? ""}
+                        />
+                    )}
                     {activeTab === "evidence" && <EvidenceTab evidence={evidence} woId={id!} addMutation={addEvidenceMutation} canManage={canManage} status={status} />}
                     {activeTab === "cost" && <CostTab labourCost={labourCost} partsCost={partsCost} vendorCost={vendorCost} totalCost={totalCost} />}
                     {activeTab === "history" && <HistoryTab events={events} fmt={fmt} />}
@@ -425,8 +518,22 @@ export function WorkOrderDetailScreen() {
                 const totalCost = partsCost + labourCost;
 
                 return (
-                    <ActionModal title="Complete & Close Job" onClose={closeModal} className="max-w-2xl">
-                        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+                    <ActionModal
+                        title="Complete & Close Job"
+                        onClose={closeModal}
+                        className="max-w-2xl"
+                        footer={
+                            <ModalActions
+                                onClose={closeModal}
+                                onConfirm={handleCompleteAndClose}
+                                isPending={completeMutation.isPending || closeMutation.isPending}
+                                disabled={!modalData.closureReason?.trim()}
+                                label="Complete & Close"
+                                color="success"
+                            />
+                        }
+                    >
+                        <div className="space-y-4 pb-2">
                             {/* Summary Card */}
                             <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-100 dark:border-neutral-700/60 space-y-3">
                                 <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Closure Summary</h4>
@@ -470,6 +577,16 @@ export function WorkOrderDetailScreen() {
                                     </div>
                                 )}
                             </div>
+
+                            <WOFormField label="Closure Reason" required hint="Required to complete and close this work order">
+                                <textarea
+                                    value={modalData.closureReason || ""}
+                                    onChange={(e) => setMD("closureReason", e.target.value)}
+                                    placeholder="Summarize why this job is complete and ready to close..."
+                                    rows={3}
+                                    className={cn(woFieldInputClass, "resize-none min-h-[88px]")}
+                                />
+                            </WOFormField>
 
                             {/* Dropdowns Grid */}
                             <div className="grid grid-cols-2 gap-4">
@@ -539,36 +656,30 @@ export function WorkOrderDetailScreen() {
                                 </div>
                             </div>
                         </div>
-                        <ModalActions
-                            onClose={closeModal}
-                            onConfirm={() =>
-                                handleLifecycleAction(completeMutation, "Completed", "Work order completed and closed.", {
-                                    id: id!,
-                                    data: {
-                                        observations: modalData.observations?.trim() || undefined,
-                                        rootCauseCode: modalData.rootCauseCode || undefined,
-                                        actionTakenCode: modalData.actionTakenCode || undefined,
-                                        actionDescription: modalData.actionDescription?.trim() || undefined,
-                                        recommendations: modalData.recommendations?.trim() || undefined,
-                                    }
-                                })
-                            }
-                            isPending={completeMutation.isPending}
-                            label="Complete Job"
-                            color="success"
-                        />
                     </ActionModal>
                 );
             })()}
 
             {modal === "close" && (
-                <ActionModal title="Close Work Order" onClose={closeModal}>
-                    <div>
-                        <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Closing Notes</label>
-                        <textarea value={modalData.notes || ""} onChange={(e) => setMD("notes", e.target.value)} placeholder="Final closing notes..." rows={3} className="modal-input resize-none" />
-                    </div>
-                    <ModalActions onClose={closeModal} onConfirm={() => handleLifecycleAction(closeMutation, "Closed", "Work order closed.", { id: id!, data: modalData.notes ? { closingNotes: modalData.notes } : undefined })} isPending={closeMutation.isPending} label="Close" />
-                </ActionModal>
+                <WorkOrderReasonModal
+                    title="Close Work Order"
+                    subtitle="Provide a reason before closing this work order"
+                    fieldLabel="Close Reason"
+                    placeholder="Why is this work order being closed?"
+                    value={modalData.reason || ""}
+                    onChange={(v) => setMD("reason", v)}
+                    onClose={closeModal}
+                    onConfirm={() =>
+                        handleLifecycleAction(closeMutation, "Closed", "Work order closed.", {
+                            id: id!,
+                            data: { reason: modalData.reason?.trim() },
+                        })
+                    }
+                    isPending={closeMutation.isPending}
+                    confirmLabel="Close Work Order"
+                    confirmVariant="success"
+                    disabled={!modalData.reason?.trim()}
+                />
             )}
 
             {modal === "reject" && (
@@ -582,13 +693,26 @@ export function WorkOrderDetailScreen() {
             )}
 
             {modal === "reopen" && (
-                <ActionModal title="Reopen Work Order" onClose={closeModal}>
-                    <div>
-                        <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Reopen Reason <span className="text-red-500">*</span></label>
-                        <textarea value={modalData.reason || ""} onChange={(e) => setMD("reason", e.target.value)} placeholder="Reason for reopening..." rows={3} className="modal-input resize-none" />
-                    </div>
-                    <ModalActions onClose={closeModal} onConfirm={() => handleLifecycleAction(reopenMutation, "Reopened", "Work order reopened.", { id: id!, data: { reason: modalData.reason } })} isPending={reopenMutation.isPending} disabled={!modalData.reason?.trim()} label="Reopen" color="warning" />
-                </ActionModal>
+                <WorkOrderReasonModal
+                    title="Reopen Work Order"
+                    subtitle="This will move the work order back to In Progress"
+                    tone="warning"
+                    fieldLabel="Reopen Reason"
+                    placeholder="Why does this work order need to be reopened?"
+                    value={modalData.reason || ""}
+                    onChange={(v) => setMD("reason", v)}
+                    onClose={closeModal}
+                    onConfirm={() =>
+                        handleLifecycleAction(reopenMutation, "Reopened", "Work order reopened.", {
+                            id: id!,
+                            data: { reason: modalData.reason?.trim() },
+                        })
+                    }
+                    isPending={reopenMutation.isPending}
+                    confirmLabel="Reopen Work Order"
+                    confirmVariant="warning"
+                    disabled={!modalData.reason?.trim()}
+                />
             )}
 
             {modal === "decline" && (
@@ -607,6 +731,8 @@ export function WorkOrderDetailScreen() {
 /* ── Tab Components ── */
 
 function OverviewTab({ wo, fmt, resolvedTechName }: { wo: any; fmt: any; resolvedTechName: string }) {
+    const closureHistory = getWorkOrderClosureHistory(wo);
+
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
@@ -614,9 +740,25 @@ function OverviewTab({ wo, fmt, resolvedTechName }: { wo: any; fmt: any; resolve
                 <div>
                     <h3 className="text-sm font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">Description</h3>
                     <p className="text-sm text-neutral-800 dark:text-neutral-200 leading-relaxed whitespace-pre-wrap">
-                        {wo.description || wo.observations || wo.workRequests?.[0]?.description || "No description provided."}
+                        {formatWorkOrderDescriptionDisplay(wo)}
                     </p>
                 </div>
+
+                {closureHistory.length > 0 && (
+                    <div>
+                        <h3 className="text-sm font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">Closure History</h3>
+                        <ul className="space-y-2">
+                            {closureHistory.map((note, idx) => (
+                                <li
+                                    key={`${idx}-${note.slice(0, 24)}`}
+                                    className="text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed whitespace-pre-wrap pl-3 border-l-2 border-neutral-200 dark:border-neutral-700"
+                                >
+                                    {note}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
 
                 {/* Scheduling */}
                 <div>
@@ -746,63 +888,210 @@ function ChecklistTab({ checklist, woId, submitMutation, canManage, status }: { 
     );
 }
 
-function PartsTab({ parts, woId, addMutation, returnMutation, canManage, status }: { parts: any[]; woId: string; addMutation: any; returnMutation: any; canManage: boolean; status: string }) {
+function PartsTab({
+    parts,
+    woId,
+    addMutation,
+    returnMutation,
+    canEdit,
+    status,
+}: {
+    parts: any[];
+    woId: string;
+    addMutation: any;
+    returnMutation: any;
+    canEdit: boolean;
+    status: string;
+}) {
     const [showAdd, setShowAdd] = useState(false);
-    const [partForm, setPartForm] = useState({ itemName: "", quantity: "1", unitCost: "" });
+    const [partForm, setPartForm] = useState<AddPartFormState>({
+        partName: "",
+        partNumber: "",
+        quantity: "1",
+        unitCost: "",
+    });
+    const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+    const [returningPart, setReturningPart] = useState<{ id: string; name: string; maxQty: number } | null>(null);
+    const [returnQty, setReturnQty] = useState("1");
+    const [returnCondition, setReturnCondition] = useState("");
+    const [returnError, setReturnError] = useState("");
     const isActive = ["IN_PROGRESS", "ON_HOLD"].includes(status);
 
     const handleAdd = async () => {
+        const errors = validateAddPartForm(partForm);
+        setFormErrors(errors);
+        if (Object.keys(errors).length > 0) return;
+
         try {
             await addMutation.mutateAsync({
                 id: woId,
-                data: {
-                    itemName: partForm.itemName,
-                    quantity: Number(partForm.quantity),
-                    unitCost: partForm.unitCost ? Number(partForm.unitCost) : undefined,
-                },
+                data: buildAddPartsPayload(partForm),
             });
             showSuccess("Added", "Part added to work order.");
-            setPartForm({ itemName: "", quantity: "1", unitCost: "" });
+            setPartForm({ partName: "", partNumber: "", quantity: "1", unitCost: "" });
+            setFormErrors({});
             setShowAdd(false);
         } catch (err) {
             showApiError(err);
         }
     };
 
-    const handleReturn = async (partId: string) => {
+    const handleReturn = async () => {
+        if (!returningPart) return;
+        const qty = Number(returnQty);
+        if (!qty || qty <= 0 || qty > returningPart.maxQty) {
+            setReturnError(`Return quantity must be between 1 and ${returningPart.maxQty}`);
+            return;
+        }
+        setReturnError("");
+
         try {
-            await returnMutation.mutateAsync({ id: woId, partId, data: { quantity: 1 } });
+            await returnMutation.mutateAsync({
+                id: woId,
+                partId: returningPart.id,
+                data: {
+                    returnQty: qty,
+                    returnCondition: returnCondition.trim() || undefined,
+                },
+            });
             showSuccess("Returned", "Part returned.");
+            setReturningPart(null);
+            setReturnQty("1");
+            setReturnCondition("");
         } catch (err) {
             showApiError(err);
         }
     };
 
     return (
-        <div className="space-y-4">
-            {canManage && isActive && (
+        <div className="space-y-5">
+            {canEdit && isActive && !showAdd && !returningPart && (
                 <div className="flex justify-end">
-                    <button onClick={() => setShowAdd(!showAdd)} className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all">
+                    <button
+                        type="button"
+                        onClick={() => setShowAdd(true)}
+                        className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm shadow-primary-500/20 transition-all"
+                    >
                         <Plus size={16} /> Add Part
                     </button>
                 </div>
             )}
 
             {showAdd && (
-                <div className="p-4 rounded-xl bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-100 dark:border-neutral-800 space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <input type="text" placeholder="Item name" value={partForm.itemName} onChange={(e) => setPartForm((p) => ({ ...p, itemName: e.target.value }))} className="modal-input" />
-                        <input type="number" placeholder="Quantity" value={partForm.quantity} onChange={(e) => setPartForm((p) => ({ ...p, quantity: e.target.value }))} className="modal-input" />
-                        <input type="number" placeholder="Unit cost" value={partForm.unitCost} onChange={(e) => setPartForm((p) => ({ ...p, unitCost: e.target.value }))} className="modal-input" />
+                <WOFormPanel
+                    title="Add Part"
+                    subtitle="Record a spare part used on this work order"
+                    icon={Package}
+                    onClose={() => setShowAdd(false)}
+                    footer={
+                        <>
+                            <WOFormButton variant="secondary" onClick={() => setShowAdd(false)}>
+                                Cancel
+                            </WOFormButton>
+                            <WOFormButton variant="primary" onClick={handleAdd} loading={addMutation.isPending}>
+                                Add Part
+                            </WOFormButton>
+                        </>
+                    }
+                >
+                    <WOFormSection title="Part details">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <WOFormField label="Part Name" required error={formErrors.partName} className="sm:col-span-2">
+                                <input
+                                    type="text"
+                                    placeholder="e.g. Bearing assembly"
+                                    value={partForm.partName}
+                                    onChange={(e) => {
+                                        setPartForm((p) => ({ ...p, partName: e.target.value }));
+                                        if (formErrors.partName) setFormErrors((prev) => ({ ...prev, partName: "" }));
+                                    }}
+                                    className={cn(woFieldInputClass, formErrors.partName && "border-danger-400 focus:border-danger-400 focus:ring-danger-500/20")}
+                                />
+                            </WOFormField>
+                            <WOFormField label="Part Number" hint="Optional catalogue or SKU reference">
+                                <input
+                                    type="text"
+                                    placeholder="e.g. BRG-2040"
+                                    value={partForm.partNumber}
+                                    onChange={(e) => setPartForm((p) => ({ ...p, partNumber: e.target.value }))}
+                                    className={woFieldInputClass}
+                                />
+                            </WOFormField>
+                            <WOFormField label="Quantity" required error={formErrors.quantity}>
+                                <input
+                                    type="number"
+                                    min={0}
+                                    step="any"
+                                    placeholder="1"
+                                    value={partForm.quantity}
+                                    onChange={(e) => {
+                                        setPartForm((p) => ({ ...p, quantity: e.target.value }));
+                                        if (formErrors.quantity) setFormErrors((prev) => ({ ...prev, quantity: "" }));
+                                    }}
+                                    className={cn(woFieldInputClass, formErrors.quantity && "border-danger-400 focus:border-danger-400 focus:ring-danger-500/20")}
+                                />
+                            </WOFormField>
+                        </div>
+                    </WOFormSection>
+                    <WOFormSection title="Cost">
+                            <WOFormField label="Unit Cost" hint="Leave blank if cost is unknown">
+                                <input
+                                    type="number"
+                                    min={0}
+                                    step="any"
+                                    placeholder="0.00"
+                                    value={partForm.unitCost}
+                                    onChange={(e) => setPartForm((p) => ({ ...p, unitCost: e.target.value }))}
+                                    className={woFieldInputClass}
+                                />
+                            </WOFormField>
+                    </WOFormSection>
+                </WOFormPanel>
+            )}
+
+            {returningPart && (
+                <WOFormPanel
+                    title="Return Part"
+                    subtitle={`Returning "${returningPart.name}"`}
+                    icon={Undo2}
+                    tone="warning"
+                    onClose={() => setReturningPart(null)}
+                    footer={
+                        <>
+                            <WOFormButton variant="secondary" onClick={() => setReturningPart(null)}>
+                                Cancel
+                            </WOFormButton>
+                            <WOFormButton variant="warning" onClick={handleReturn} loading={returnMutation.isPending}>
+                                Confirm Return
+                            </WOFormButton>
+                        </>
+                    }
+                >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <WOFormField label="Return Quantity" required error={returnError} hint={`Max ${returningPart.maxQty}`}>
+                            <input
+                                type="number"
+                                min={1}
+                                max={returningPart.maxQty}
+                                value={returnQty}
+                                onChange={(e) => {
+                                    setReturnQty(e.target.value);
+                                    if (returnError) setReturnError("");
+                                }}
+                                className={cn(woFieldInputClass, returnError && "border-danger-400")}
+                            />
+                        </WOFormField>
+                        <WOFormField label="Return Condition" hint="e.g. Good, Damaged, Refurbished">
+                            <input
+                                type="text"
+                                placeholder="Condition on return"
+                                value={returnCondition}
+                                onChange={(e) => setReturnCondition(e.target.value)}
+                                className={woFieldInputClass}
+                            />
+                        </WOFormField>
                     </div>
-                    <div className="flex justify-end gap-2">
-                        <button onClick={() => setShowAdd(false)} className="px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400">Cancel</button>
-                        <button onClick={handleAdd} disabled={addMutation.isPending || !partForm.itemName.trim()} className="px-4 py-1.5 text-sm font-bold rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 flex items-center gap-1.5">
-                            {addMutation.isPending && <Loader2 size={12} className="animate-spin" />}
-                            Add
-                        </button>
-                    </div>
-                </div>
+                </WOFormPanel>
             )}
 
             {parts.length === 0 ? (
@@ -812,37 +1101,55 @@ function PartsTab({ parts, woId, addMutation, returnMutation, canManage, status 
                     <table className="w-full text-left text-sm">
                         <thead>
                             <tr className="border-b border-neutral-200 dark:border-neutral-700 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                                <th className="py-3 px-4 font-bold">Item</th>
+                                <th className="py-3 px-4 font-bold">Part</th>
+                                <th className="py-3 px-4 font-bold">Part No.</th>
                                 <th className="py-3 px-4 font-bold">Qty</th>
                                 <th className="py-3 px-4 font-bold">Unit Cost</th>
                                 <th className="py-3 px-4 font-bold">Total</th>
                                 <th className="py-3 px-4 font-bold">Status</th>
-                                {canManage && isActive && <th className="py-3 px-4 font-bold text-right">Action</th>}
+                                {canEdit && isActive && <th className="py-3 px-4 font-bold text-right">Action</th>}
                             </tr>
                         </thead>
                         <tbody>
-                            {parts.map((p: any) => (
-                                <tr key={p.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0">
-                                    <td className="py-3 px-4 font-medium text-neutral-900 dark:text-white">{p.itemName || p.inventoryItem?.name || "---"}</td>
-                                    <td className="py-3 px-4 text-neutral-600 dark:text-neutral-400">{p.quantity}</td>
-                                    <td className="py-3 px-4 text-neutral-600 dark:text-neutral-400">{p.unitCost ? Number(p.unitCost).toFixed(2) : "---"}</td>
-                                    <td className="py-3 px-4 font-bold text-neutral-900 dark:text-white">{p.totalCost ? Number(p.totalCost).toFixed(2) : "---"}</td>
-                                    <td className="py-3 px-4">
-                                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize", p.returned ? "text-warning-700 bg-warning-50 border-warning-200 dark:text-warning-400 dark:bg-warning-900/20 dark:border-warning-800/50" : "text-success-700 bg-success-50 border-success-200 dark:text-success-400 dark:bg-success-900/20 dark:border-success-800/50")}>
-                                            {p.returned ? "Returned" : "Used"}
-                                        </span>
-                                    </td>
-                                    {canManage && isActive && (
-                                        <td className="py-3 px-4 text-right">
-                                            {!p.returned && (
-                                                <button onClick={() => handleReturn(p.id)} disabled={returnMutation.isPending} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold text-warning-700 bg-warning-50 border border-warning-200 hover:bg-warning-100 dark:text-warning-400 dark:bg-warning-900/20 dark:border-warning-800/50 transition-colors disabled:opacity-50">
-                                                    <Undo2 size={10} /> Return
-                                                </button>
-                                            )}
+                            {parts.map((p: any) => {
+                                const lineTotal = computePartLineCost(p);
+                                const isReturned = Boolean(p.isReturned);
+                                return (
+                                    <tr key={p.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0">
+                                        <td className="py-3 px-4 font-medium text-neutral-900 dark:text-white">{p.partName || "---"}</td>
+                                        <td className="py-3 px-4 text-neutral-600 dark:text-neutral-400">{p.partNumber || "---"}</td>
+                                        <td className="py-3 px-4 text-neutral-600 dark:text-neutral-400">{p.quantity}</td>
+                                        <td className="py-3 px-4 text-neutral-600 dark:text-neutral-400">{p.unitCost != null ? Number(p.unitCost).toFixed(2) : "---"}</td>
+                                        <td className="py-3 px-4 font-bold text-neutral-900 dark:text-white">{lineTotal > 0 ? lineTotal.toFixed(2) : "---"}</td>
+                                        <td className="py-3 px-4">
+                                            <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize", isReturned ? "text-warning-700 bg-warning-50 border-warning-200 dark:text-warning-400 dark:bg-warning-900/20 dark:border-warning-800/50" : "text-success-700 bg-success-50 border-success-200 dark:text-success-400 dark:bg-success-900/20 dark:border-success-800/50")}>
+                                                {isReturned ? "Returned" : "Used"}
+                                            </span>
                                         </td>
-                                    )}
-                                </tr>
-                            ))}
+                                        {canEdit && isActive && (
+                                            <td className="py-3 px-4 text-right">
+                                                {!isReturned && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setReturningPart({
+                                                                id: p.id,
+                                                                name: p.partName || "Part",
+                                                                maxQty: Number(p.quantity) || 1,
+                                                            });
+                                                            setReturnQty(String(Number(p.quantity) || 1));
+                                                            setReturnCondition("");
+                                                        }}
+                                                        disabled={returnMutation.isPending}
+                                                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold text-warning-700 bg-warning-50 border border-warning-200 hover:bg-warning-100 dark:text-warning-400 dark:bg-warning-900/20 dark:border-warning-800/50 transition-colors disabled:opacity-50"
+                                                    >
+                                                        <Undo2 size={10} /> Return
+                                                    </button>
+                                                )}
+                                            </td>
+                                        )}
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>
@@ -851,24 +1158,54 @@ function PartsTab({ parts, woId, addMutation, returnMutation, canManage, status 
     );
 }
 
-function LabourTab({ labourLogs, woId, logMutation, canManage, status, fmt }: { labourLogs: any[]; woId: string; logMutation: any; canManage: boolean; status: string; fmt: any }) {
+function LabourTab({
+    labourLogs,
+    woId,
+    logMutation,
+    canEdit,
+    status,
+    fmt,
+    employeeOptions,
+    companyTimezone,
+    defaultTechnicianId,
+}: {
+    labourLogs: any[];
+    woId: string;
+    logMutation: any;
+    canEdit: boolean;
+    status: string;
+    fmt: ReturnType<typeof useCompanyFormatter>;
+    employeeOptions: { value: string; label: string; sublabel?: string }[];
+    companyTimezone: string;
+    defaultTechnicianId: string;
+}) {
     const [showAdd, setShowAdd] = useState(false);
-    const [logForm, setLogForm] = useState({ technicianName: "", hours: "", description: "", costPerHour: "" });
+    const [logForm, setLogForm] = useState<LogLabourFormState>(() => {
+        const base = emptyLogLabourForm(companyTimezone);
+        return { ...base, technicianId: defaultTechnicianId };
+    });
+    const [formErrors, setFormErrors] = useState<Record<string, string>>({});
     const isActive = ["IN_PROGRESS", "ON_HOLD"].includes(status);
+    const openAddForm = () => {
+        const base = emptyLogLabourForm(companyTimezone);
+        setLogForm({ ...base, technicianId: defaultTechnicianId || logForm.technicianId });
+        setFormErrors({});
+        setShowAdd(true);
+    };
 
     const handleAdd = async () => {
+        const errors = validateLogLabourForm(logForm, companyTimezone);
+        setFormErrors(errors);
+        if (Object.keys(errors).length > 0) return;
+
+        const payload = buildLogLabourPayload(logForm, companyTimezone);
+        if (!payload) return;
+
         try {
-            await logMutation.mutateAsync({
-                id: woId,
-                data: {
-                    technicianName: logForm.technicianName,
-                    hours: Number(logForm.hours),
-                    description: logForm.description || undefined,
-                    costPerHour: logForm.costPerHour ? Number(logForm.costPerHour) : undefined,
-                },
-            });
+            await logMutation.mutateAsync({ id: woId, data: payload });
             showSuccess("Logged", "Labour logged.");
-            setLogForm({ technicianName: "", hours: "", description: "", costPerHour: "" });
+            setLogForm(emptyLogLabourForm(companyTimezone));
+            setFormErrors({});
             setShowAdd(false);
         } catch (err) {
             showApiError(err);
@@ -876,31 +1213,135 @@ function LabourTab({ labourLogs, woId, logMutation, canManage, status, fmt }: { 
     };
 
     return (
-        <div className="space-y-4">
-            {canManage && isActive && (
+        <div className="space-y-5">
+            {canEdit && isActive && !showAdd && (
                 <div className="flex justify-end">
-                    <button onClick={() => setShowAdd(!showAdd)} className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all">
+                    <button
+                        type="button"
+                        onClick={openAddForm}
+                        className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm shadow-primary-500/20 transition-all"
+                    >
                         <Plus size={16} /> Log Labour
                     </button>
                 </div>
             )}
 
             {showAdd && (
-                <div className="p-4 rounded-xl bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-100 dark:border-neutral-800 space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <input type="text" placeholder="Technician name" value={logForm.technicianName} onChange={(e) => setLogForm((p) => ({ ...p, technicianName: e.target.value }))} className="modal-input" />
-                        <input type="number" placeholder="Hours" value={logForm.hours} onChange={(e) => setLogForm((p) => ({ ...p, hours: e.target.value }))} className="modal-input" />
-                        <input type="number" placeholder="Cost per hour" value={logForm.costPerHour} onChange={(e) => setLogForm((p) => ({ ...p, costPerHour: e.target.value }))} className="modal-input" />
-                        <input type="text" placeholder="Description" value={logForm.description} onChange={(e) => setLogForm((p) => ({ ...p, description: e.target.value }))} className="modal-input" />
-                    </div>
-                    <div className="flex justify-end gap-2">
-                        <button onClick={() => setShowAdd(false)} className="px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400">Cancel</button>
-                        <button onClick={handleAdd} disabled={logMutation.isPending || !logForm.technicianName.trim() || !logForm.hours} className="px-4 py-1.5 text-sm font-bold rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 flex items-center gap-1.5">
-                            {logMutation.isPending && <Loader2 size={12} className="animate-spin" />}
-                            Log
-                        </button>
-                    </div>
-                </div>
+                <WOFormPanel
+                    title="Log Labour"
+                    subtitle="Record technician time and cost for this work order"
+                    icon={Clock}
+                    onClose={() => setShowAdd(false)}
+                    footer={
+                        <>
+                            <WOFormButton variant="secondary" onClick={() => setShowAdd(false)}>
+                                Cancel
+                            </WOFormButton>
+                            <WOFormButton variant="primary" onClick={handleAdd} loading={logMutation.isPending}>
+                                Log Labour
+                            </WOFormButton>
+                        </>
+                    }
+                >
+                    <WOFormSection title="Technician">
+                        <WOFormField label="Technician" required error={formErrors.technicianId}>
+                            <SearchableSelect
+                                value={logForm.technicianId}
+                                onChange={(v) => {
+                                    setLogForm((p) => ({ ...p, technicianId: v }));
+                                    if (formErrors.technicianId) setFormErrors((prev) => ({ ...prev, technicianId: "" }));
+                                }}
+                                options={employeeOptions}
+                                placeholder="Search and select technician..."
+                            />
+                        </WOFormField>
+                    </WOFormSection>
+
+                    <LabourQuickTimer
+                        timezone={companyTimezone}
+                        onTimerStart={({ startTime }) => {
+                            setLogForm((p) => ({
+                                ...p,
+                                startTime,
+                                endTime: "",
+                            }));
+                            if (formErrors.startTime) setFormErrors((prev) => ({ ...prev, startTime: "" }));
+                        }}
+                        onTimerStop={({ startTime, endTime, hours }) => {
+                            setLogForm((p) => ({
+                                ...p,
+                                startTime,
+                                endTime,
+                                hours,
+                            }));
+                            if (formErrors.startTime) setFormErrors((prev) => ({ ...prev, startTime: "" }));
+                            if (formErrors.hours) setFormErrors((prev) => ({ ...prev, hours: "" }));
+                        }}
+                    />
+
+                    <WOFormSection title="Time & duration">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <WOFormField label="Start Time" required error={formErrors.startTime}>
+                                <input
+                                    type="datetime-local"
+                                    value={logForm.startTime}
+                                    onChange={(e) => {
+                                        setLogForm((p) => ({ ...p, startTime: e.target.value }));
+                                        if (formErrors.startTime) setFormErrors((prev) => ({ ...prev, startTime: "" }));
+                                    }}
+                                    className={cn(woFieldInputClass, formErrors.startTime && "border-danger-400")}
+                                />
+                            </WOFormField>
+                            <WOFormField label="End Time" hint="Optional — used to calculate hours">
+                                <input
+                                    type="datetime-local"
+                                    value={logForm.endTime}
+                                    onChange={(e) => setLogForm((p) => ({ ...p, endTime: e.target.value }))}
+                                    className={woFieldInputClass}
+                                />
+                            </WOFormField>
+                            <WOFormField label="Hours Worked" required error={formErrors.hours} hint="Total labour hours for this entry">
+                                <input
+                                    type="number"
+                                    min={0}
+                                    step="any"
+                                    placeholder="e.g. 2.5"
+                                    value={logForm.hours}
+                                    onChange={(e) => {
+                                        setLogForm((p) => ({ ...p, hours: e.target.value }));
+                                        if (formErrors.hours) setFormErrors((prev) => ({ ...prev, hours: "" }));
+                                    }}
+                                    className={cn(woFieldInputClass, formErrors.hours && "border-danger-400")}
+                                />
+                            </WOFormField>
+                        </div>
+                    </WOFormSection>
+
+                    <WOFormSection title="Cost & notes">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <WOFormField label="Hourly Rate" hint="Optional — used to compute total labour cost">
+                                <input
+                                    type="number"
+                                    min={0}
+                                    step="any"
+                                    placeholder="0.00"
+                                    value={logForm.hourlyRate}
+                                    onChange={(e) => setLogForm((p) => ({ ...p, hourlyRate: e.target.value }))}
+                                    className={woFieldInputClass}
+                                />
+                            </WOFormField>
+                            <WOFormField label="Notes" className="sm:col-span-2">
+                                <textarea
+                                    rows={3}
+                                    placeholder="Describe work performed..."
+                                    value={logForm.notes}
+                                    onChange={(e) => setLogForm((p) => ({ ...p, notes: e.target.value }))}
+                                    className={cn(woFieldInputClass, "resize-none min-h-[88px]")}
+                                />
+                            </WOFormField>
+                        </div>
+                    </WOFormSection>
+                </WOFormPanel>
             )}
 
             {labourLogs.length === 0 ? (
@@ -911,22 +1352,34 @@ function LabourTab({ labourLogs, woId, logMutation, canManage, status, fmt }: { 
                         <thead>
                             <tr className="border-b border-neutral-200 dark:border-neutral-700 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                                 <th className="py-3 px-4 font-bold">Technician</th>
+                                <th className="py-3 px-4 font-bold">Start</th>
+                                <th className="py-3 px-4 font-bold">End</th>
                                 <th className="py-3 px-4 font-bold">Hours</th>
-                                <th className="py-3 px-4 font-bold">Cost/Hr</th>
-                                <th className="py-3 px-4 font-bold">Total Cost</th>
-                                <th className="py-3 px-4 font-bold">Description</th>
-                                <th className="py-3 px-4 font-bold">Date</th>
+                                <th className="py-3 px-4 font-bold">Rate/Hr</th>
+                                <th className="py-3 px-4 font-bold">Total</th>
+                                <th className="py-3 px-4 font-bold">Notes</th>
                             </tr>
                         </thead>
                         <tbody>
                             {labourLogs.map((l: any) => (
                                 <tr key={l.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0">
-                                    <td className="py-3 px-4 font-medium text-neutral-900 dark:text-white">{l.technicianName || l.technicianId || "---"}</td>
-                                    <td className="py-3 px-4 text-neutral-600 dark:text-neutral-400">{Number(l.hours || 0)}h</td>
-                                    <td className="py-3 px-4 text-neutral-600 dark:text-neutral-400">{l.costPerHour ? Number(l.costPerHour).toFixed(2) : "---"}</td>
-                                    <td className="py-3 px-4 font-bold text-neutral-900 dark:text-white">{l.cost ? Number(l.cost).toFixed(2) : "---"}</td>
-                                    <td className="py-3 px-4 text-neutral-600 dark:text-neutral-400 text-xs max-w-[200px] truncate">{l.description || "---"}</td>
-                                    <td className="py-3 px-4 text-neutral-400 text-xs">{l.createdAt ? fmt.dateTime(l.createdAt) : "---"}</td>
+                                    <td className="py-3 px-4 font-medium text-neutral-900 dark:text-white">
+                                        {resolveTechnicianName(l.technicianId, employeeOptions)}
+                                    </td>
+                                    <td className="py-3 px-4 text-neutral-600 dark:text-neutral-400 text-xs">
+                                        {l.startTime ? fmt.dateTime(l.startTime) : "---"}
+                                    </td>
+                                    <td className="py-3 px-4 text-neutral-600 dark:text-neutral-400 text-xs">
+                                        {l.endTime ? fmt.dateTime(l.endTime) : "---"}
+                                    </td>
+                                    <td className="py-3 px-4 text-neutral-600 dark:text-neutral-400">{Number(l.hours || 0).toFixed(1)}h</td>
+                                    <td className="py-3 px-4 text-neutral-600 dark:text-neutral-400">
+                                        {l.hourlyRate != null ? Number(l.hourlyRate).toFixed(2) : "---"}
+                                    </td>
+                                    <td className="py-3 px-4 font-bold text-neutral-900 dark:text-white">
+                                        {computeLabourLineCost(l) > 0 ? computeLabourLineCost(l).toFixed(2) : "---"}
+                                    </td>
+                                    <td className="py-3 px-4 text-neutral-600 dark:text-neutral-400 text-xs max-w-[200px] truncate">{l.notes || "---"}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -1070,17 +1523,42 @@ function ActionBtn({ icon, label, color, onClick, isPending }: { icon: React.Rea
     );
 }
 
-function ActionModal({ title, onClose, children, className }: { title: string; onClose: () => void; children: React.ReactNode; className?: string }) {
+function ActionModal({
+    title,
+    onClose,
+    children,
+    className,
+    footer,
+}: {
+    title: string;
+    onClose: () => void;
+    children: React.ReactNode;
+    className?: string;
+    footer?: React.ReactNode;
+}) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={onClose}>
-            <div className={cn("bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full animate-in fade-in zoom-in-95 duration-200", className || "max-w-md")} onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-neutral-700">
+            <div
+                className={cn(
+                    "bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-h-[min(92vh,900px)] flex flex-col animate-in fade-in zoom-in-95 duration-200",
+                    className || "max-w-md",
+                )}
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-neutral-700 shrink-0">
                     <h3 className="text-lg font-bold text-neutral-900 dark:text-white">{title}</h3>
                     <button onClick={onClose} className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:text-neutral-300 dark:hover:bg-neutral-800 transition-colors">
                         <X size={18} />
                     </button>
                 </div>
-                <div className="px-6 py-4 space-y-4">{children}</div>
+                <div className={cn("px-6 py-4 space-y-4", footer ? "flex-1 min-h-0 overflow-y-auto overscroll-contain" : "")}>
+                    {children}
+                </div>
+                {footer ? (
+                    <div className="shrink-0 px-6 py-4 border-t border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 rounded-b-3xl">
+                        {footer}
+                    </div>
+                ) : null}
             </div>
         </div>
     );

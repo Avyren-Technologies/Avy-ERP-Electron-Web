@@ -9,6 +9,7 @@ const WO_STATUS_CONFIG: Record<string, { label: string; color: string; bg: strin
     IN_PROGRESS: { label: 'In Progress', color: 'text-blue-700 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800/50' },
     ON_HOLD: { label: 'On Hold', color: 'text-warning-700 dark:text-warning-400', bg: 'bg-warning-50 dark:bg-warning-900/20 border-warning-200 dark:border-warning-800/50' },
     COMPLETED: { label: 'Completed', color: 'text-success-700 dark:text-success-400', bg: 'bg-success-50 dark:bg-success-900/20 border-success-200 dark:border-success-800/50' },
+    AWAITING_QA: { label: 'Awaiting QA', color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50' },
     QA_REVIEW: { label: 'QA Review', color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50' },
     QA_RELEASED: { label: 'QA Released', color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/50' },
     CLOSED: { label: 'Closed', color: 'text-neutral-500 dark:text-neutral-400', bg: 'bg-neutral-50 dark:bg-neutral-800/50 border-neutral-200 dark:border-neutral-700' },

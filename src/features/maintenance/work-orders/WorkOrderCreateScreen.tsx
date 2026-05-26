@@ -8,29 +8,11 @@ import {
 import { useCreateWorkOrder } from "@/features/maintenance/api/use-maintenance-mutations";
 import { useJobPlans } from "@/features/maintenance/api/use-maintenance-queries";
 import { AssetPicker } from "@/features/maintenance/shared/AssetPicker";
+import {
+    MAINTENANCE_WO_PRIORITY_OPTIONS,
+    MAINTENANCE_WO_TYPE_OPTIONS,
+} from "@/features/maintenance/shared/work-order-enums";
 import { showSuccess, showApiError } from "@/lib/toast";
-
-/* ── Constants ── */
-
-const WO_TYPE_OPTIONS = [
-    { value: "CORRECTIVE", label: "Corrective" },
-    { value: "PREVENTIVE", label: "Preventive" },
-    { value: "PM", label: "PM" },
-    { value: "BREAKDOWN", label: "Breakdown" },
-    { value: "PREDICTIVE", label: "Predictive" },
-    { value: "CONDITION_BASED", label: "Condition Based" },
-    { value: "EMERGENCY", label: "Emergency" },
-    { value: "INSPECTION", label: "Inspection" },
-    { value: "CALIBRATION", label: "Calibration" },
-    { value: "OVERHAUL", label: "Overhaul" },
-];
-
-const PRIORITY_OPTIONS = [
-    { value: "EMERGENCY", label: "Emergency" },
-    { value: "HIGH", label: "High" },
-    { value: "MEDIUM", label: "Medium" },
-    { value: "LOW", label: "Low" },
-];
 
 /* ── Screen ── */
 
@@ -48,7 +30,6 @@ export function WorkOrderCreateScreen() {
         plannedStart: "",
         plannedEnd: "",
         estimatedHours: "",
-        leadTechnicianId: "",
         pmScheduleId,
     });
 
@@ -71,7 +52,6 @@ export function WorkOrderCreateScreen() {
         if (form.plannedStart) payload.plannedStart = form.plannedStart;
         if (form.plannedEnd) payload.plannedEnd = form.plannedEnd;
         if (form.estimatedHours) payload.estimatedHours = Number(form.estimatedHours);
-        if (form.leadTechnicianId.trim()) payload.leadTechnicianId = form.leadTechnicianId.trim();
         if (form.pmScheduleId) payload.pmScheduleId = form.pmScheduleId;
 
         try {
@@ -123,7 +103,7 @@ export function WorkOrderCreateScreen() {
                             onChange={(e) => setField("woType", e.target.value)}
                             className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
                         >
-                            {WO_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            {MAINTENANCE_WO_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                         </select>
                     </div>
                     <div>
@@ -135,7 +115,7 @@ export function WorkOrderCreateScreen() {
                             onChange={(e) => setField("priority", e.target.value)}
                             className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
                         >
-                            {PRIORITY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            {MAINTENANCE_WO_PRIORITY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                         </select>
                     </div>
                 </div>
@@ -212,21 +192,6 @@ export function WorkOrderCreateScreen() {
                                 className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
                             />
                         </div>
-                    </div>
-                </div>
-
-                {/* Assignment */}
-                <div>
-                    <h3 className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">Assignment</h3>
-                    <div>
-                        <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Lead Technician ID</label>
-                        <input
-                            type="text"
-                            value={form.leadTechnicianId}
-                            onChange={(e) => setField("leadTechnicianId", e.target.value)}
-                            placeholder="Enter technician user ID..."
-                            className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
-                        />
                     </div>
                 </div>
 
