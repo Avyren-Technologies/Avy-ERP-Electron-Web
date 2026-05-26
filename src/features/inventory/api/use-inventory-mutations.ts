@@ -625,3 +625,120 @@ export function useRejectTransaction() {
         onError: (error: any) => showApiError(error),
     });
 }
+
+// ── Production: Issue to Production ──
+
+export function useCreateIssueToProduction() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: any) => inventoryApi.createIssueToProduction(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.issueToProduction() });
+            invalidateStockQueries(queryClient);
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.wipStock() });
+            showSuccess('Material issued to production');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+// ── Production: FG Receipt ──
+
+export function useCreateFgReceipt() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: any) => inventoryApi.createFgReceipt(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.fgReceipts() });
+            invalidateStockQueries(queryClient);
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.wipStock() });
+            showSuccess('FG receipt recorded');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+// ── Production: Material Return ──
+
+export function useCreateMaterialReturn() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: any) => inventoryApi.createMaterialReturn(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.materialReturns() });
+            invalidateStockQueries(queryClient);
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.wipStock() });
+            showSuccess('Material returned from production');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+// ── Production: Production Scrap ──
+
+export function useCreateProductionScrap() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: any) => inventoryApi.createProductionScrap(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.productionScraps() });
+            invalidateStockQueries(queryClient);
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.wipStock() });
+            showSuccess('Production scrap logged');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+// ── Scrap Categories ──
+
+export function useCreateScrapCategory() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: any) => inventoryApi.createScrapCategory(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.scrapCategories() });
+            showSuccess('Scrap category created');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+export function useUpdateScrapCategory() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, data }: { id: string; data: any }) =>
+            inventoryApi.updateScrapCategory(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.scrapCategories() });
+            showSuccess('Scrap category updated');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+export function useDeleteScrapCategory() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => inventoryApi.deleteScrapCategory(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.scrapCategories() });
+            showSuccess('Scrap category deleted');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+// ── WO Reconciliation ──
+
+export function useGenerateWoReconciliation() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (workOrderId: string) => inventoryApi.generateWoReconciliation(workOrderId),
+        onSuccess: (_, workOrderId) => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.woReconciliation(workOrderId) });
+            showSuccess('Reconciliation generated');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
