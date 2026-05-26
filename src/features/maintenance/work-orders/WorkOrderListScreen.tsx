@@ -56,6 +56,8 @@ const WO_TYPE_OPTIONS = [
     { value: "", label: "All Types" },
     { value: "CORRECTIVE", label: "Corrective" },
     { value: "PREVENTIVE", label: "Preventive" },
+    { value: "PM", label: "PM (Preventive)" },
+    { value: "BREAKDOWN", label: "Breakdown" },
     { value: "PREDICTIVE", label: "Predictive" },
     { value: "CONDITION_BASED", label: "Condition Based" },
     { value: "EMERGENCY", label: "Emergency" },

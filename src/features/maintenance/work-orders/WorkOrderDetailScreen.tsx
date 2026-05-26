@@ -26,7 +26,7 @@ import {
     Undo2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useWorkOrder } from "@/features/maintenance/api/use-maintenance-queries";
+import { useWorkOrder, useActionCodes } from "@/features/maintenance/api/use-maintenance-queries";
 import {
     useApproveWO,
     useAssignWO,
@@ -69,6 +69,16 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]["key"];
 
+const HOLD_REASON_OPTIONS = [
+    { value: "WAITING_PARTS", label: "Waiting for Parts" },
+    { value: "WAITING_VENDOR", label: "Waiting for Vendor" },
+    { value: "WAITING_SHUTDOWN", label: "Waiting for Shutdown" },
+    { value: "WAITING_PTW", label: "Waiting for PTW" },
+    { value: "WAITING_QA", label: "Waiting for QA" },
+    { value: "WAITING_APPROVAL", label: "Waiting for Approval" },
+    { value: "OTHER", label: "Other" },
+];
+
 /* ── Screen ── */
 
 export function WorkOrderDetailScreen() {
@@ -87,6 +97,9 @@ export function WorkOrderDetailScreen() {
     const { data, isLoading, isError } = useWorkOrder(id!);
     const wo: any = data?.data ?? null;
 
+    const actionCodesQuery = useActionCodes({ limit: 500 });
+    const actionCodes: any[] = (actionCodesQuery.data as any)?.data ?? [];
+
     // Employee picker for technician assignment
     const empQuery = useEmployees({ limit: 500 });
     const employeeOptions = useMemo(() => {
@@ -101,6 +114,25 @@ export function WorkOrderDetailScreen() {
             ].filter(Boolean).join(" · "),
         }));
     }, [empQuery.data]);
+
+    const resolvedTechName = useMemo(() => {
+        if (wo?.leadTechnician) {
+            const t = wo.leadTechnician;
+            const full = `${t.firstName ?? ""} ${t.lastName ?? ""}`.trim();
+            if (full || t.name) return full || t.name;
+        }
+        if (wo?.leadTechnicianName) return wo.leadTechnicianName;
+        if (wo?.leadTechnicianId) {
+            const employees: any[] = (empQuery.data as any)?.data ?? [];
+            const emp = employees.find((e: any) => e.id === wo.leadTechnicianId);
+            if (emp) {
+                return `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim() || emp.name || emp.employeeId;
+            }
+            return wo.leadTechnicianId;
+        }
+        return "---";
+    }, [wo, empQuery.data]);
+
 
     // Mutations
     const approveMutation = useApproveWO();
@@ -295,7 +327,7 @@ export function WorkOrderDetailScreen() {
                 </div>
 
                 <div className="p-6">
-                    {activeTab === "overview" && <OverviewTab wo={wo} fmt={fmt} />}
+                    {activeTab === "overview" && <OverviewTab wo={wo} fmt={fmt} resolvedTechName={resolvedTechName} />}
                     {activeTab === "checklist" && <ChecklistTab checklist={checklist} woId={id!} submitMutation={submitChecklistMutation} canManage={canManage} status={status} />}
                     {activeTab === "parts" && <PartsTab parts={parts} woId={id!} addMutation={addPartsMutation} returnMutation={returnPartMutation} canManage={canManage} status={status} />}
                     {activeTab === "labour" && <LabourTab labourLogs={labourLogs} woId={id!} logMutation={logLabourMutation} canManage={canManage} status={status} fmt={fmt} />}
@@ -328,29 +360,206 @@ export function WorkOrderDetailScreen() {
                             ) : null;
                         })()}
                     </div>
-                    <ModalActions onClose={closeModal} onConfirm={handleAssignConfirm} isPending={assignMutation.isPending || updateMutation.isPending} disabled={!modalData.techId?.trim()} label="Assign" />
+                    <ModalActions onClose={closeModal} onConfirm={handleAssignConfirm} isPending={assignMutation.isPending} disabled={!modalData.techId?.trim()} label="Assign" />
                 </ActionModal>
             )}
 
             {modal === "hold" && (
                 <ActionModal title="Hold Work Order" onClose={closeModal}>
-                    <div>
-                        <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Hold Reason <span className="text-red-500">*</span></label>
-                        <textarea value={modalData.reason || ""} onChange={(e) => setMD("reason", e.target.value)} placeholder="Reason for putting on hold..." rows={3} className="modal-input resize-none" />
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1.5">
+                                Hold Reason <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                                value={modalData.holdReason || ""}
+                                onChange={(e) => setMD("holdReason", e.target.value)}
+                                className="modal-input w-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
+                            >
+                                <option value="" className="text-neutral-400">Select reason for putting on hold...</option>
+                                {HOLD_REASON_OPTIONS.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>
+                                        {opt.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1.5">
+                                Optional Notes
+                            </label>
+                            <textarea
+                                value={modalData.holdNotes || ""}
+                                onChange={(e) => setMD("holdNotes", e.target.value)}
+                                placeholder="Provide any additional details or notes..."
+                                rows={3}
+                                className="modal-input w-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors resize-none"
+                            />
+                        </div>
                     </div>
-                    <ModalActions onClose={closeModal} onConfirm={() => handleLifecycleAction(holdMutation, "On Hold", "Work order put on hold.", { id: id!, data: { holdReason: modalData.reason } })} isPending={holdMutation.isPending} disabled={!modalData.reason?.trim()} label="Put on Hold" color="warning" />
+                    <ModalActions
+                        onClose={closeModal}
+                        onConfirm={() =>
+                            handleLifecycleAction(holdMutation, "On Hold", "Work order put on hold.", {
+                                id: id!,
+                                data: {
+                                    holdReason: modalData.holdReason,
+                                    holdNotes: modalData.holdNotes?.trim() || undefined,
+                                },
+                            })
+                        }
+                        isPending={holdMutation.isPending}
+                        disabled={!modalData.holdReason}
+                        label="Put on Hold"
+                        color="warning"
+                    />
                 </ActionModal>
             )}
 
-            {modal === "complete" && (
-                <ActionModal title="Complete Work Order" onClose={closeModal}>
-                    <div>
-                        <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Completion Notes</label>
-                        <textarea value={modalData.notes || ""} onChange={(e) => setMD("notes", e.target.value)} placeholder="Notes about the completion..." rows={3} className="modal-input resize-none" />
-                    </div>
-                    <ModalActions onClose={closeModal} onConfirm={() => handleLifecycleAction(completeMutation, "Completed", "Work order completed.", { id: id!, data: { completionNotes: modalData.notes || undefined } })} isPending={completeMutation.isPending} label="Complete" color="success" />
-                </ActionModal>
-            )}
+            {modal === "complete" && (() => {
+                const partsUsed: any[] = wo?.partsUsed ?? [];
+                const labourLogs: any[] = wo?.labourLogs ?? [];
+                const totalLabourHrs = labourLogs.reduce((sum: number, l: any) => sum + Number(l.hours ?? 0), 0);
+                const partsCost = partsUsed.reduce((sum: number, p: any) => sum + Number(p.totalCost ?? (Number(p.quantity ?? 0) * Number(p.unitCost ?? 0))), 0);
+                const labourCost = labourLogs.reduce((sum: number, l: any) => sum + Number(l.totalCost ?? (Number(l.hours ?? 0) * Number(l.hourlyRate ?? l.costPerHour ?? 0))), 0);
+                const totalCost = partsCost + labourCost;
+
+                return (
+                    <ActionModal title="Complete & Close Job" onClose={closeModal} className="max-w-2xl">
+                        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+                            {/* Summary Card */}
+                            <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-100 dark:border-neutral-700/60 space-y-3">
+                                <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Closure Summary</h4>
+                                <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm text-neutral-700 dark:text-neutral-300">
+                                    <div className="flex justify-between border-b border-neutral-100 dark:border-neutral-800 py-1">
+                                        <span>Total Labour Time:</span>
+                                        <span className="font-semibold">{totalLabourHrs.toFixed(1)} hrs</span>
+                                    </div>
+                                    <div className="flex justify-between border-b border-neutral-100 dark:border-neutral-800 py-1">
+                                        <span>Labour Cost:</span>
+                                        <span className="font-semibold">{labourCost.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between border-b border-neutral-100 dark:border-neutral-800 py-1">
+                                        <span>Parts Cost:</span>
+                                        <span className="font-semibold">{partsCost.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between border-b border-neutral-100 dark:border-neutral-800 py-1">
+                                        <span>Total Cost:</span>
+                                        <span className="font-bold text-primary-600 dark:text-primary-400">{totalCost.toFixed(2)}</span>
+                                    </div>
+                                </div>
+                                <div className="flex justify-between text-xs text-neutral-500 pt-1">
+                                    <span>Actual End Time:</span>
+                                    <span className="font-medium text-success-600">{new Date().toLocaleString()}</span>
+                                </div>
+
+                                {/* Parts details if any */}
+                                {partsUsed.length > 0 && (
+                                    <div className="mt-2 pt-2 border-t border-neutral-200 dark:border-neutral-700 space-y-1.5">
+                                        <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">Parts Details</p>
+                                        <div className="max-h-24 overflow-y-auto space-y-1">
+                                            {partsUsed.map((p: any, idx: number) => (
+                                                <div key={idx} className="flex justify-between text-xs text-neutral-600 dark:text-neutral-400">
+                                                    <span className="truncate max-w-[280px]">{p.partName ?? p.partNumber ?? `Part #${idx+1}`}</span>
+                                                    <span className="font-mono">
+                                                        {p.quantity} x {Number(p.unitCost ?? 0).toFixed(2)} = {Number(p.totalCost ?? (Number(p.quantity ?? 0) * Number(p.unitCost ?? 0))).toFixed(2)}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Dropdowns Grid */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 mb-1.5">Root Cause Code</label>
+                                    <select
+                                        value={modalData.rootCauseCode || ""}
+                                        onChange={(e) => setMD("rootCauseCode", e.target.value)}
+                                        className="modal-input w-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                    >
+                                        <option value="">Select root cause...</option>
+                                        {actionCodes.map((ac) => (
+                                            <option key={ac.id} value={ac.code ?? ac.name}>
+                                                {ac.code ?? ac.name} - {ac.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 mb-1.5">Action Code</label>
+                                    <select
+                                        value={modalData.actionTakenCode || ""}
+                                        onChange={(e) => setMD("actionTakenCode", e.target.value)}
+                                        className="modal-input w-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                    >
+                                        <option value="">Select action code...</option>
+                                        {actionCodes.map((ac) => (
+                                            <option key={ac.id} value={ac.code ?? ac.name}>
+                                                {ac.code ?? ac.name} - {ac.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Text Inputs */}
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 mb-1.5">Observations</label>
+                                    <textarea
+                                        value={modalData.observations || ""}
+                                        onChange={(e) => setMD("observations", e.target.value)}
+                                        placeholder="Detailed observations about the failure/job..."
+                                        rows={2}
+                                        className="modal-input w-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 mb-1.5">Action Description (Notes)</label>
+                                    <textarea
+                                        value={modalData.actionDescription || ""}
+                                        onChange={(e) => setMD("actionDescription", e.target.value)}
+                                        placeholder="Describe the action taken to resolve the issue..."
+                                        rows={2}
+                                        className="modal-input w-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 mb-1.5">Recommendations</label>
+                                    <textarea
+                                        value={modalData.recommendations || ""}
+                                        onChange={(e) => setMD("recommendations", e.target.value)}
+                                        placeholder="Any subsequent recommendations..."
+                                        rows={2}
+                                        className="modal-input w-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <ModalActions
+                            onClose={closeModal}
+                            onConfirm={() =>
+                                handleLifecycleAction(completeMutation, "Completed", "Work order completed and closed.", {
+                                    id: id!,
+                                    data: {
+                                        observations: modalData.observations?.trim() || undefined,
+                                        rootCauseCode: modalData.rootCauseCode || undefined,
+                                        actionTakenCode: modalData.actionTakenCode || undefined,
+                                        actionDescription: modalData.actionDescription?.trim() || undefined,
+                                        recommendations: modalData.recommendations?.trim() || undefined,
+                                    }
+                                })
+                            }
+                            isPending={completeMutation.isPending}
+                            label="Complete Job"
+                            color="success"
+                        />
+                    </ActionModal>
+                );
+            })()}
 
             {modal === "close" && (
                 <ActionModal title="Close Work Order" onClose={closeModal}>
@@ -397,7 +606,7 @@ export function WorkOrderDetailScreen() {
 
 /* ── Tab Components ── */
 
-function OverviewTab({ wo, fmt }: { wo: any; fmt: any }) {
+function OverviewTab({ wo, fmt, resolvedTechName }: { wo: any; fmt: any; resolvedTechName: string }) {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
@@ -459,7 +668,7 @@ function OverviewTab({ wo, fmt }: { wo: any; fmt: any }) {
                         <DetailRow label="WO Type" value={(wo.woType || "").replace(/_/g, " ")} />
                         <DetailRow label="Priority" value={wo.priority} />
                         <DetailRow label="Estimated Hours" value={wo.estimatedHours ? `${Number(wo.estimatedHours)}h` : "---"} />
-                        <DetailRow label="Lead Technician" value={wo.leadTechnicianName || wo.leadTechnicianId || "---"} />
+                        <DetailRow label="Lead Technician" value={resolvedTechName} />
                         <DetailRow label="Job Plan" value={wo.jobPlan?.name || "---"} />
                         <DetailRow label="Created" value={fmt.dateTime(wo.createdAt)} />
                         <DetailRow label="Updated" value={fmt.dateTime(wo.updatedAt)} />
@@ -861,10 +1070,10 @@ function ActionBtn({ icon, label, color, onClick, isPending }: { icon: React.Rea
     );
 }
 
-function ActionModal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+function ActionModal({ title, onClose, children, className }: { title: string; onClose: () => void; children: React.ReactNode; className?: string }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className={cn("bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full animate-in fade-in zoom-in-95 duration-200", className || "max-w-md")} onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-neutral-700">
                     <h3 className="text-lg font-bold text-neutral-900 dark:text-white">{title}</h3>
                     <button onClick={onClose} className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:text-neutral-300 dark:hover:bg-neutral-800 transition-colors">

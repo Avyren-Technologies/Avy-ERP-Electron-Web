@@ -36,8 +36,8 @@ export function WOStatusBadge({ status, size = 'sm' }: { status: string; size?: 
 
 export function WOTypeBadge({ type }: { type: string }) {
     const label = (type || '').replace(/_/g, ' ');
-    const isPreventive = type === 'PREVENTIVE';
-    const isCorrective = type === 'CORRECTIVE';
+    const isPreventive = type === 'PREVENTIVE' || type === 'PM';
+    const isCorrective = type === 'CORRECTIVE' || type === 'BREAKDOWN';
     return (
         <span className={cn(
             'text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize',

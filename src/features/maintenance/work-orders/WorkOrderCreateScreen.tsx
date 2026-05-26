@@ -15,6 +15,8 @@ import { showSuccess, showApiError } from "@/lib/toast";
 const WO_TYPE_OPTIONS = [
     { value: "CORRECTIVE", label: "Corrective" },
     { value: "PREVENTIVE", label: "Preventive" },
+    { value: "PM", label: "PM" },
+    { value: "BREAKDOWN", label: "Breakdown" },
     { value: "PREDICTIVE", label: "Predictive" },
     { value: "CONDITION_BASED", label: "Condition Based" },
     { value: "EMERGENCY", label: "Emergency" },

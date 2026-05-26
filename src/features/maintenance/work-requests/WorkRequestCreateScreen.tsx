@@ -19,6 +19,7 @@ const REQUEST_TYPE_OPTIONS = [
     { value: "INSPECTION", label: "Inspection" },
     { value: "REPLACEMENT", label: "Replacement" },
     { value: "SAFETY", label: "Safety" },
+    { value: "CORRECTIVE", label: "Corrective" },
     { value: "OTHER", label: "Other" },
 ];
 
