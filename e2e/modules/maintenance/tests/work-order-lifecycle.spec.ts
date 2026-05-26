@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { WorkOrderListPage, WorkOrderDetailPage } from '../../page-objects';
+import { WorkOrderListPage, WorkOrderDetailPage } from '../pages';
 
 test.describe('Work Order Lifecycle — UI E2E', () => {
   let woListPage: WorkOrderListPage;

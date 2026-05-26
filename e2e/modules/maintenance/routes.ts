@@ -1,21 +1,7 @@
 /**
- * Test data constants for E2E tests.
- * Update these if your test environment has different seed data.
+ * All maintenance module routes.
+ * Each module defines its own routes file.
  */
-
-export const TEST_CREDENTIALS = {
-  companyAdmin: {
-    email: process.env.E2E_USER_EMAIL || 'admin@test.com',
-    password: process.env.E2E_USER_PASSWORD || 'Test@123',
-  },
-};
-
-export const WO_TYPES = ['PM', 'CORRECTIVE', 'BREAKDOWN', 'INSPECTION', 'OVERHAUL', 'SHUTDOWN', 'VENDOR_SERVICE', 'CALIBRATION'] as const;
-export const WO_PRIORITIES = ['EMERGENCY', 'HIGH', 'MEDIUM', 'LOW'] as const;
-export const WO_STATUSES = ['DRAFT', 'PLANNED', 'APPROVED', 'ASSIGNED', 'ACKNOWLEDGED', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'AWAITING_QA', 'CLOSED', 'REJECTED', 'CANCELLED'] as const;
-export const WR_TYPES = ['BREAKDOWN', 'PLANNED_SERVICE', 'INSPECTION', 'REPLACEMENT', 'SAFETY', 'OTHER'] as const;
-export const WR_STATUSES = ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'CONVERTED', 'REJECTED', 'CANCELLED'] as const;
-
 export const MAINTENANCE_ROUTES = {
   dashboard: '/app/maintenance/dashboard',
   assets: '/app/maintenance/assets',
@@ -28,6 +14,7 @@ export const MAINTENANCE_ROUTES = {
   workOrderDetail: (id: string) => `/app/maintenance/work-orders/${id}`,
   workOrderBoard: '/app/maintenance/work-orders/board',
   pmSchedules: '/app/maintenance/pm-schedules',
+  pmScheduleNew: '/app/maintenance/pm-schedules/new',
   pmCalendar: '/app/maintenance/pm-calendar',
   breakdowns: '/app/maintenance/breakdowns',
   breakdownLog: '/app/maintenance/breakdowns/log',

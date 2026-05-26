@@ -15,11 +15,13 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "npx playwright test --headed",
-    "test:e2e:headless": "npx playwright test",
+    "test:e2e": "npx playwright test --project=auth-setup --project=api --project=all-ui --headed",
+    "test:e2e:headless": "npx playwright test --project=auth-setup --project=api --project=all-ui",
     "test:e2e:api": "npx playwright test --project=api",
     "test:e2e:ui": "npx playwright test --ui",
     "test:e2e:report": "npx playwright show-report e2e/playwright-report",
+    "test:e2e:maintenance": "npx playwright test --project=auth-setup --project=maintenance:api --project=maintenance --headed",
+    "test:e2e:maintenance:api": "npx playwright test --project=maintenance:api",
     "restart": "git pull origin main && pnpm install && pnpm run build && pm2 restart avy-erp-app"
   },
   "build": {

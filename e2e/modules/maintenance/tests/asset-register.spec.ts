@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { MAINTENANCE_ROUTES } from '../../data/test-constants';
+import { MAINTENANCE_ROUTES } from '../routes';
 
 /**
  * Asset Register — Functional E2E Tests

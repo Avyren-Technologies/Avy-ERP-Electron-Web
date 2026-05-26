@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { MAINTENANCE_ROUTES } from '../../data/test-constants';
+import { MAINTENANCE_ROUTES } from '../routes';
 
 test.describe('Maintenance Module — Screen Navigation', () => {
   test.describe('Dashboard', () => {

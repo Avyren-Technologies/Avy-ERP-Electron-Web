@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { MAINTENANCE_ROUTES } from '../../data/test-constants';
-import { waitForDataLoad, expectToast } from '../../helpers/test-utils';
+import { MAINTENANCE_ROUTES } from '../routes';
+import { waitForDataLoad, expectToast } from '../../../shared/helpers/test-utils';
 
 /**
  * Maintenance Configuration Screens — Functional E2E Tests

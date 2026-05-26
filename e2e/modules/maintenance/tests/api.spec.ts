@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/auth.fixture';
+import { test, expect } from '../fixture';
 
 /**
  * Ensure number series exist for maintenance screens.
@@ -66,7 +66,7 @@ test.describe('Maintenance API — Integration Tests', () => {
    * ═══════════════════════════════════════════════
    */
   test.describe('Assets', () => {
-    test('GET /maintenance/assets — list assets', async ({ workerApi: api }) => {
+    test('GET /maintenance/assets — list assets', async ({ api }) => {
       const body = await api.listAssets();
       expect(body.success).toBe(true);
       expect(body).toHaveProperty('data');
@@ -77,13 +77,13 @@ test.describe('Maintenance API — Integration Tests', () => {
       }
     });
 
-    test('GET /maintenance/assets — search filter', async ({ workerApi: api }) => {
+    test('GET /maintenance/assets — search filter', async ({ api }) => {
       const body = await api.listAssets({ search: 'test-nonexistent-xyz' });
       expect(body.success).toBe(true);
       expect(Array.isArray(body.data)).toBe(true);
     });
 
-    test('GET /maintenance/assets/:id — 404 for invalid ID', async ({ workerApi: api }) => {
+    test('GET /maintenance/assets/:id — 404 for invalid ID', async ({ api }) => {
       const body = await api.getAsset('nonexistent-id-12345');
       expect(body.success).toBe(false);
     });
@@ -95,13 +95,13 @@ test.describe('Maintenance API — Integration Tests', () => {
    * ═══════════════════════════════════════════════
    */
   test.describe('Work Requests', () => {
-    test('GET /maintenance/work-requests — list', async ({ workerApi: api }) => {
+    test('GET /maintenance/work-requests — list', async ({ api }) => {
       const body = await api.listWorkRequests();
       expect(body.success).toBe(true);
       expect(Array.isArray(body.data)).toBe(true);
     });
 
-    test('GET /maintenance/work-requests — filter by status', async ({ workerApi: api }) => {
+    test('GET /maintenance/work-requests — filter by status', async ({ api }) => {
       const body = await api.listWorkRequests({ status: 'SUBMITTED' });
       expect(body.success).toBe(true);
       if (body.data.length > 0) {
@@ -116,13 +116,13 @@ test.describe('Maintenance API — Integration Tests', () => {
    * ═══════════════════════════════════════════════
    */
   test.describe('Work Orders', () => {
-    test('GET /maintenance/work-orders — list', async ({ workerApi: api }) => {
+    test('GET /maintenance/work-orders — list', async ({ api }) => {
       const body = await api.listWorkOrders();
       expect(body.success).toBe(true);
       expect(Array.isArray(body.data)).toBe(true);
     });
 
-    test('GET /maintenance/work-orders — filter by status', async ({ workerApi: api }) => {
+    test('GET /maintenance/work-orders — filter by status', async ({ api }) => {
       const body = await api.listWorkOrders({ status: 'DRAFT' });
       expect(body.success).toBe(true);
       if (body.data.length > 0) {
@@ -130,7 +130,7 @@ test.describe('Maintenance API — Integration Tests', () => {
       }
     });
 
-    test('GET /maintenance/work-orders — filter by priority', async ({ workerApi: api }) => {
+    test('GET /maintenance/work-orders — filter by priority', async ({ api }) => {
       const body = await api.listWorkOrders({ priority: 'HIGH' });
       expect(body.success).toBe(true);
       if (body.data.length > 0) {
@@ -138,12 +138,12 @@ test.describe('Maintenance API — Integration Tests', () => {
       }
     });
 
-    test('GET /maintenance/work-orders/board — board view', async ({ workerApi: api }) => {
+    test('GET /maintenance/work-orders/board — board view', async ({ api }) => {
       const body = await api.getWOBoard();
       expect(body.success).toBe(true);
     });
 
-    test('GET /maintenance/work-orders/:id — 404 for invalid ID', async ({ workerApi: api }) => {
+    test('GET /maintenance/work-orders/:id — 404 for invalid ID', async ({ api }) => {
       const body = await api.getWorkOrder('nonexistent-id-12345');
       expect(body.success).toBe(false);
     });
@@ -155,7 +155,7 @@ test.describe('Maintenance API — Integration Tests', () => {
    * Single test that walks through every transition.
    * ═══════════════════════════════════════════════
    */
-  test('WO Lifecycle: DRAFT → APPROVED → ASSIGNED → ACK → IN_PROGRESS → ON_HOLD → IN_PROGRESS → COMPLETED → CLOSED', async ({ workerApi: api }) => {
+  test('WO Lifecycle: DRAFT → APPROVED → ASSIGNED → ACK → IN_PROGRESS → ON_HOLD → IN_PROGRESS → COMPLETED → CLOSED', async ({ api }) => {
     const assetId = await getOrCreateAssetId(api);
 
     // 1. Create (→ DRAFT)
@@ -223,7 +223,7 @@ test.describe('Maintenance API — Integration Tests', () => {
    * WO REJECTION FLOW
    * ═══════════════════════════════════════════════
    */
-  test('WO Rejection: DRAFT → REJECTED', async ({ workerApi: api }) => {
+  test('WO Rejection: DRAFT → REJECTED', async ({ api }) => {
     const assetId = await getOrCreateAssetId(api);
 
     const create = await api.createWorkOrder({ assetId, woType: 'INSPECTION', priority: 'LOW' });
@@ -239,7 +239,7 @@ test.describe('Maintenance API — Integration Tests', () => {
    * WO CANCEL FLOW
    * ═══════════════════════════════════════════════
    */
-  test('WO Cancel: DRAFT → CANCELLED', async ({ workerApi: api }) => {
+  test('WO Cancel: DRAFT → CANCELLED', async ({ api }) => {
     const assetId = await getOrCreateAssetId(api);
 
     const create = await api.createWorkOrder({ assetId, woType: 'CORRECTIVE', priority: 'LOW' });
@@ -255,7 +255,7 @@ test.describe('Maintenance API — Integration Tests', () => {
    * INVALID STATE TRANSITIONS
    * ═══════════════════════════════════════════════
    */
-  test('Invalid transition: cannot start a DRAFT WO', async ({ workerApi: api }) => {
+  test('Invalid transition: cannot start a DRAFT WO', async ({ api }) => {
     const assetId = await getOrCreateAssetId(api);
 
     const create = await api.createWorkOrder({ assetId, woType: 'CORRECTIVE', priority: 'MEDIUM' });
@@ -268,7 +268,7 @@ test.describe('Maintenance API — Integration Tests', () => {
     await api.cancelWorkOrder(woId);
   });
 
-  test('Invalid transition: cannot assign a DRAFT WO', async ({ workerApi: api }) => {
+  test('Invalid transition: cannot assign a DRAFT WO', async ({ api }) => {
     const assetId = await getOrCreateAssetId(api);
 
     const create = await api.createWorkOrder({ assetId, woType: 'CORRECTIVE', priority: 'MEDIUM' });
@@ -281,7 +281,7 @@ test.describe('Maintenance API — Integration Tests', () => {
     await api.cancelWorkOrder(woId);
   });
 
-  test('Invalid transition: cannot close an IN_PROGRESS WO', async ({ workerApi: api }) => {
+  test('Invalid transition: cannot close an IN_PROGRESS WO', async ({ api }) => {
     const assetId = await getOrCreateAssetId(api);
 
     const create = await api.createWorkOrder({ assetId, woType: 'CORRECTIVE', priority: 'MEDIUM' });
@@ -306,7 +306,7 @@ test.describe('Maintenance API — Integration Tests', () => {
    * ═══════════════════════════════════════════════
    */
   test.describe('PM Schedules', () => {
-    test('GET /maintenance/pm-schedules — list', async ({ workerApi: api }) => {
+    test('GET /maintenance/pm-schedules — list', async ({ api }) => {
       const body = await api.listPMSchedules();
       expect(body.success).toBe(true);
       expect(Array.isArray(body.data)).toBe(true);
@@ -319,27 +319,27 @@ test.describe('Maintenance API — Integration Tests', () => {
    * ═══════════════════════════════════════════════
    */
   test.describe('Configuration', () => {
-    test('GET /maintenance/failure-code-sets — list', async ({ workerApi: api }) => {
+    test('GET /maintenance/failure-code-sets — list', async ({ api }) => {
       const body = await api.listFailureCodeSets();
       expect(body.success).toBe(true);
     });
 
-    test('GET /maintenance/strategies — list', async ({ workerApi: api }) => {
+    test('GET /maintenance/strategies — list', async ({ api }) => {
       const body = await api.listStrategies();
       expect(body.success).toBe(true);
     });
 
-    test('GET /maintenance/job-plans — list', async ({ workerApi: api }) => {
+    test('GET /maintenance/job-plans — list', async ({ api }) => {
       const body = await api.listJobPlans();
       expect(body.success).toBe(true);
     });
 
-    test('GET /maintenance/checklist-templates — list', async ({ workerApi: api }) => {
+    test('GET /maintenance/checklist-templates — list', async ({ api }) => {
       const body = await api.listChecklistTemplates();
       expect(body.success).toBe(true);
     });
 
-    test('GET /maintenance/config — get config', async ({ workerApi: api }) => {
+    test('GET /maintenance/config — get config', async ({ api }) => {
       const body = await api.getMaintenanceConfig();
       expect(body.success).toBe(true);
     });
@@ -351,12 +351,12 @@ test.describe('Maintenance API — Integration Tests', () => {
    * ═══════════════════════════════════════════════
    */
   test.describe('Breakdowns & Downtime', () => {
-    test('GET /maintenance/breakdowns — list', async ({ workerApi: api }) => {
+    test('GET /maintenance/breakdowns — list', async ({ api }) => {
       const body = await api.listBreakdowns();
       expect(body.success).toBe(true);
     });
 
-    test('GET /maintenance/downtime — list', async ({ workerApi: api }) => {
+    test('GET /maintenance/downtime — list', async ({ api }) => {
       const body = await api.listDowntime();
       expect(body.success).toBe(true);
     });
@@ -368,12 +368,12 @@ test.describe('Maintenance API — Integration Tests', () => {
    * ═══════════════════════════════════════════════
    */
   test.describe('Dashboard', () => {
-    test('GET /maintenance/dashboard/manager — manager dashboard', async ({ workerApi: api }) => {
+    test('GET /maintenance/dashboard/manager — manager dashboard', async ({ api }) => {
       const body = await api.getDashboard('manager');
       expect(body.success).toBe(true);
     });
 
-    test('GET /maintenance/dashboard/planner — planner dashboard', async ({ workerApi: api }) => {
+    test('GET /maintenance/dashboard/planner — planner dashboard', async ({ api }) => {
       const body = await api.getDashboard('planner');
       expect(body.success).toBe(true);
     });
