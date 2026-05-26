@@ -16,7 +16,9 @@ import {
 import { cn } from "@/lib/utils";
 import { useWorkOrders } from "@/features/maintenance/api/use-maintenance-queries";
 import {
+    useApproveWO,
     useAssignWO,
+    useCancelWO,
     useStartWO,
     useCompleteWO,
     useCloseWO,
@@ -107,7 +109,9 @@ export function WorkOrderListScreen() {
     const meta = data?.meta ?? {};
 
     // Mutations
+    const approveMutation = useApproveWO();
     const assignMutation = useAssignWO();
+    const cancelMutation = useCancelWO();
     const startMutation = useStartWO();
     const completeMutation = useCompleteWO();
     const closeMutation = useCloseWO();
@@ -123,19 +127,8 @@ export function WorkOrderListScreen() {
         }));
     }, [empQuery.data]);
 
-    // Helper: resolve effective status (localStorage override mirrors WorkOrderDetailScreen)
-    const effectiveStatus = (wo: any): string => {
-        const override = localStorage.getItem(`wo_${wo.id}_status`);
-        let st = override || wo.status;
-        if (st === "DRAFT" && (wo.leadTechnicianId || wo.leadTechnician?.id)) st = "ASSIGNED";
-        return st;
-    };
-
-    // Helper: resolve technician display name
-    // Priority: localStorage (set at assignment time) → nested API object → flat API fields
+    // Helper: resolve technician display name from API data
     const techName = (wo: any): string => {
-        const stored = localStorage.getItem(`wo_${wo.id}_techName`);
-        if (stored) return stored;
         if (wo.leadTechnician) {
             const t = wo.leadTechnician;
             const full = `${t.firstName ?? ""} ${t.lastName ?? ""}`.trim();
@@ -166,6 +159,14 @@ export function WorkOrderListScreen() {
         try {
             setActionId(id);
             switch (action) {
+                case "approve":
+                    await approveMutation.mutateAsync({ id });
+                    showSuccess("Approved", "Work order has been approved.");
+                    break;
+                case "cancel":
+                    await cancelMutation.mutateAsync({ id });
+                    showSuccess("Cancelled", "Work order has been cancelled.");
+                    break;
                 case "start":
                     await startMutation.mutateAsync({ id });
                     showSuccess("Started", "Work order has been started.");
@@ -190,11 +191,6 @@ export function WorkOrderListScreen() {
         if (!assignModalId || !assignTechId.trim()) return;
         try {
             await assignMutation.mutateAsync({ id: assignModalId, data: { leadTechnicianId: assignTechId } });
-            // Persist status and tech name in localStorage so list shows them immediately
-            localStorage.setItem(`wo_${assignModalId}_status`, "ASSIGNED");
-            if (assignTechName) {
-                localStorage.setItem(`wo_${assignModalId}_techName`, assignTechName);
-            }
             showSuccess("Assigned", `Assigned to ${assignTechName || "technician"}.`);
             setAssignModalId(null);
             setAssignTechId("");
@@ -367,7 +363,7 @@ export function WorkOrderListScreen() {
                                             <PriorityBadge priority={wo.priority} />
                                         </td>
                                         <td className="py-3.5 px-4 text-center">
-                                            <WOStatusBadge status={effectiveStatus(wo)} />
+                                            <WOStatusBadge status={wo.status} />
                                         </td>
                                         <td className="py-3.5 px-4">
                                             <span className="text-xs text-neutral-700 dark:text-neutral-300 font-medium">{techName(wo)}</span>
@@ -377,32 +373,21 @@ export function WorkOrderListScreen() {
                                         </td>
                                         <td className="py-3.5 px-4 text-right">
                                             <div className="flex items-center justify-end gap-1">
-                                                {canManage && (effectiveStatus(wo) === "DRAFT" || effectiveStatus(wo) === "PLANNED") && (
+                                                {canManage && (wo.status === "DRAFT" || wo.status === "PLANNED") && (
                                                     <>
                                                         <button
-                                                            onClick={() => {
-                                                                // Simulate approve
-                                                                localStorage.setItem(`wo_${wo.id}_status`, "APPROVED");
-                                                                showSuccess("Approved", "Work order approved.");
-                                                                // Force re-render
-                                                                setActionId(wo.id);
-                                                                setTimeout(() => setActionId(null), 100);
-                                                            }}
-                                                            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold bg-success-50 text-success-700 border border-success-200 hover:bg-success-100 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50 transition-colors"
+                                                            onClick={() => handleQuickAction(wo.id, "approve")}
+                                                            disabled={actionId === wo.id}
+                                                            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold bg-success-50 text-success-700 border border-success-200 hover:bg-success-100 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50 transition-colors disabled:opacity-50"
                                                             title="Approve"
                                                         >
-                                                            <CheckCircle size={12} />
+                                                            {actionId === wo.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
                                                             Approve
                                                         </button>
                                                         <button
-                                                            onClick={() => {
-                                                                // Simulate cancel
-                                                                localStorage.setItem(`wo_${wo.id}_status`, "CANCELLED");
-                                                                showSuccess("Cancelled", "Work order cancelled.");
-                                                                setActionId(wo.id);
-                                                                setTimeout(() => setActionId(null), 100);
-                                                            }}
-                                                            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold bg-danger-50 text-danger-700 border border-danger-200 hover:bg-danger-100 dark:bg-danger-900/20 dark:text-danger-400 dark:border-danger-800/50 transition-colors"
+                                                            onClick={() => handleQuickAction(wo.id, "cancel")}
+                                                            disabled={actionId === wo.id}
+                                                            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold bg-danger-50 text-danger-700 border border-danger-200 hover:bg-danger-100 dark:bg-danger-900/20 dark:text-danger-400 dark:border-danger-800/50 transition-colors disabled:opacity-50"
                                                             title="Cancel"
                                                         >
                                                             <X size={12} />
@@ -410,7 +395,7 @@ export function WorkOrderListScreen() {
                                                         </button>
                                                     </>
                                                 )}
-                                                {canManage && effectiveStatus(wo) === "APPROVED" && (
+                                                {canManage && wo.status === "APPROVED" && (
                                                     <button
                                                         onClick={() => setAssignModalId(wo.id)}
                                                         className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold bg-accent-50 text-accent-700 border border-accent-200 hover:bg-accent-100 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50 transition-colors"
@@ -420,7 +405,7 @@ export function WorkOrderListScreen() {
                                                         Assign
                                                     </button>
                                                 )}
-                                                {canManage && (effectiveStatus(wo) === "ASSIGNED" || effectiveStatus(wo) === "ACKNOWLEDGED") && (
+                                                {canManage && (wo.status === "ASSIGNED" || wo.status === "ACKNOWLEDGED") && (
                                                     <button
                                                         onClick={() => handleQuickAction(wo.id, "start")}
                                                         disabled={actionId === wo.id}
@@ -431,7 +416,7 @@ export function WorkOrderListScreen() {
                                                         Start
                                                     </button>
                                                 )}
-                                                {canManage && effectiveStatus(wo) === "IN_PROGRESS" && (
+                                                {canManage && wo.status === "IN_PROGRESS" && (
                                                     <button
                                                         onClick={() => handleQuickAction(wo.id, "complete")}
                                                         disabled={actionId === wo.id}
@@ -442,7 +427,7 @@ export function WorkOrderListScreen() {
                                                         Complete
                                                     </button>
                                                 )}
-                                                {canManage && (effectiveStatus(wo) === "COMPLETED" || effectiveStatus(wo) === "QA_RELEASED") && (
+                                                {canManage && (wo.status === "COMPLETED" || wo.status === "QA_RELEASED") && (
                                                     <button
                                                         onClick={() => handleQuickAction(wo.id, "close")}
                                                         disabled={actionId === wo.id}

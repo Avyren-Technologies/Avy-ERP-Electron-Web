@@ -713,6 +713,10 @@ function useWOAction(
     });
 }
 
+export function useApproveWO() {
+    return useWOAction(({ id, data }) => maintenanceApi.approveWorkOrder(id, data));
+}
+
 export function useAssignWO() {
     return useWOAction(({ id, data }) => maintenanceApi.assignWorkOrder(id, data));
 }

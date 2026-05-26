@@ -28,8 +28,10 @@ import {
 import { cn } from "@/lib/utils";
 import { useWorkOrder } from "@/features/maintenance/api/use-maintenance-queries";
 import {
+    useApproveWO,
     useAssignWO,
     useAcknowledgeWO,
+    useDeclineWO,
     useStartWO,
     useHoldWO,
     useResumeWO,
@@ -44,7 +46,6 @@ import {
     useLogWOLabour,
     useAddWOEvidence,
     useSubmitChecklist,
-    useUpdateWorkOrder,
 } from "@/features/maintenance/api/use-maintenance-mutations";
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
 import { useCanPerform } from "@/hooks/useCanPerform";
@@ -102,7 +103,9 @@ export function WorkOrderDetailScreen() {
     }, [empQuery.data]);
 
     // Mutations
+    const approveMutation = useApproveWO();
     const assignMutation = useAssignWO();
+    const declineMutation = useDeclineWO();
     const ackMutation = useAcknowledgeWO();
     const startMutation = useStartWO();
     const holdMutation = useHoldWO();
@@ -118,19 +121,6 @@ export function WorkOrderDetailScreen() {
     const logLabourMutation = useLogWOLabour();
     const addEvidenceMutation = useAddWOEvidence();
     const submitChecklistMutation = useSubmitChecklist();
-    const updateMutation = useUpdateWorkOrder();
-
-    // Client-side simulated status overrides
-    const [localStatusOverride, setLocalStatusOverride] = useState<string | null>(() => {
-        return id ? localStorage.getItem(`wo_${id}_status`) : null;
-    });
-
-    const updateLocalStatus = (newStatus: string) => {
-        setLocalStatusOverride(newStatus);
-        if (id) {
-            localStorage.setItem(`wo_${id}_status`, newStatus);
-        }
-    };
 
     const openModal = (name: string) => {
         setModal(name);
@@ -142,28 +132,19 @@ export function WorkOrderDetailScreen() {
     };
     const setMD = (key: string, value: string) => setModalData((p) => ({ ...p, [key]: value }));
 
-    // Action handlers
+    // Action handlers — all call real backend APIs
     const handleLifecycleAction = async (
         mutation: any,
-        targetStatus: string,
         successTitle: string,
         successMsg: string,
         payload: any = { id: id! }
     ) => {
-        const rawStatus = wo?.status;
-        if (rawStatus === "DRAFT" || rawStatus === "PLANNED") {
-            updateLocalStatus(targetStatus);
+        try {
+            await mutation.mutateAsync(payload);
             showSuccess(successTitle, successMsg);
             closeModal();
-        } else {
-            try {
-                await mutation.mutateAsync(payload);
-                updateLocalStatus(targetStatus);
-                showSuccess(successTitle, successMsg);
-                closeModal();
-            } catch (err) {
-                showApiError(err);
-            }
+        } catch (err) {
+            showApiError(err);
         }
     };
 
@@ -171,35 +152,15 @@ export function WorkOrderDetailScreen() {
         const techId = modalData.techId?.trim();
         if (!techId) return;
 
-        // Resolve display name from picker options for list-screen persistence
-        const techLabel = employeeOptions.find(o => o.value === techId)?.label ?? "";
-
-        if (rawStatus === "DRAFT" || rawStatus === "PLANNED") {
-            try {
-                await updateMutation.mutateAsync({
-                    id: id!,
-                    data: { leadTechnicianId: techId }
-                });
-                updateLocalStatus("ASSIGNED");
-                if (techLabel && id) localStorage.setItem(`wo_${id}_techName`, techLabel);
-                showSuccess("Assigned", "Work order assigned persistently.");
-                closeModal();
-            } catch (err) {
-                showApiError(err);
-            }
-        } else {
-            try {
-                await assignMutation.mutateAsync({
-                    id: id!,
-                    data: { leadTechnicianId: techId }
-                });
-                updateLocalStatus("ASSIGNED");
-                if (techLabel && id) localStorage.setItem(`wo_${id}_techName`, techLabel);
-                showSuccess("Assigned", "Work order assigned.");
-                closeModal();
-            } catch (err) {
-                showApiError(err);
-            }
+        try {
+            await assignMutation.mutateAsync({
+                id: id!,
+                data: { leadTechnicianId: techId }
+            });
+            showSuccess("Assigned", "Work order assigned.");
+            closeModal();
+        } catch (err) {
+            showApiError(err);
         }
     };
 
@@ -233,11 +194,7 @@ export function WorkOrderDetailScreen() {
     const vendorCost = Number(wo.vendorCost || 0);
     const totalCost = labourCost + partsCost + vendorCost;
 
-    const rawStatus = wo.status;
-    let status = localStatusOverride || rawStatus;
-    if (status === "DRAFT" && (wo.leadTechnicianId || wo.leadTechnicianName)) {
-        status = "ASSIGNED";
-    }
+    const status = wo.status;
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -271,23 +228,20 @@ export function WorkOrderDetailScreen() {
                 {/* Action Buttons */}
                 {canManage && (
                     <div className="flex items-center gap-2 flex-wrap">
-                        {status === "DRAFT" && (
-                            <ActionBtn icon={<CheckCircle className="w-4 h-4" />} label="Approve" color="success" onClick={() => {
-                                updateLocalStatus("APPROVED");
-                                showSuccess("Approved", "Work order approved.");
-                            }} />
+                        {(status === "DRAFT" || status === "PLANNED") && (
+                            <ActionBtn icon={<CheckCircle className="w-4 h-4" />} label="Approve" color="success" onClick={() => handleLifecycleAction(approveMutation, "Approved", "Work order approved.")} isPending={approveMutation.isPending} />
                         )}
-                        {(status === "APPROVED" || status === "DRAFT" || status === "PLANNED") && (
+                        {status === "APPROVED" && (
                             <ActionBtn icon={<UserPlus className="w-4 h-4" />} label="Assign" color="accent" onClick={() => openModal("assign")} />
                         )}
                         {status === "ASSIGNED" && (
                             <>
-                                <ActionBtn icon={<ThumbsUp className="w-4 h-4" />} label="Acknowledge" color="cyan" onClick={() => handleLifecycleAction(ackMutation, "ACKNOWLEDGED", "Acknowledged", "Work order acknowledged.")} isPending={ackMutation.isPending} />
+                                <ActionBtn icon={<ThumbsUp className="w-4 h-4" />} label="Acknowledge" color="cyan" onClick={() => handleLifecycleAction(ackMutation, "Acknowledged", "Work order acknowledged.")} isPending={ackMutation.isPending} />
                                 <ActionBtn icon={<ThumbsDown className="w-4 h-4" />} label="Decline" color="danger" onClick={() => openModal("decline")} />
                             </>
                         )}
                         {(status === "ASSIGNED" || status === "ACKNOWLEDGED") && (
-                            <ActionBtn icon={<Play className="w-4 h-4" />} label="Start" color="blue" onClick={() => handleLifecycleAction(startMutation, "IN_PROGRESS", "Started", "Work order started.")} isPending={startMutation.isPending} />
+                            <ActionBtn icon={<Play className="w-4 h-4" />} label="Start" color="blue" onClick={() => handleLifecycleAction(startMutation, "Started", "Work order started.")} isPending={startMutation.isPending} />
                         )}
                         {status === "IN_PROGRESS" && (
                             <>
@@ -296,11 +250,11 @@ export function WorkOrderDetailScreen() {
                             </>
                         )}
                         {status === "ON_HOLD" && (
-                            <ActionBtn icon={<Play className="w-4 h-4" />} label="Resume" color="blue" onClick={() => handleLifecycleAction(resumeMutation, "IN_PROGRESS", "Resumed", "Work order resumed.")} isPending={resumeMutation.isPending} />
+                            <ActionBtn icon={<Play className="w-4 h-4" />} label="Resume" color="blue" onClick={() => handleLifecycleAction(resumeMutation, "Resumed", "Work order resumed.")} isPending={resumeMutation.isPending} />
                         )}
                         {status === "QA_REVIEW" && (
                             <>
-                                <ActionBtn icon={<ShieldCheck className="w-4 h-4" />} label="QA Release" color="emerald" onClick={() => handleLifecycleAction(qaReleaseMutation, "AWAITING_QA", "QA Released", "Work order QA released.")} isPending={qaReleaseMutation.isPending} />
+                                <ActionBtn icon={<ShieldCheck className="w-4 h-4" />} label="QA Release" color="emerald" onClick={() => handleLifecycleAction(qaReleaseMutation, "QA Released", "Work order QA released.")} isPending={qaReleaseMutation.isPending} />
                                 <ActionBtn icon={<ThumbsDown className="w-4 h-4" />} label="Reject" color="danger" onClick={() => openModal("reject")} />
                             </>
                         )}
@@ -311,7 +265,7 @@ export function WorkOrderDetailScreen() {
                             <ActionBtn icon={<RotateCcw className="w-4 h-4" />} label="Reopen" color="warning" onClick={() => openModal("reopen")} />
                         )}
                         {!["CLOSED", "CANCELLED", "COMPLETED", "QA_REVIEW", "QA_RELEASED"].includes(status) && (
-                            <ActionBtn icon={<Ban className="w-4 h-4" />} label="Cancel" color="danger" onClick={() => handleLifecycleAction(cancelMutation, "CANCELLED", "Cancelled", "Work order cancelled.")} isPending={cancelMutation.isPending} />
+                            <ActionBtn icon={<Ban className="w-4 h-4" />} label="Cancel" color="danger" onClick={() => handleLifecycleAction(cancelMutation, "Cancelled", "Work order cancelled.")} isPending={cancelMutation.isPending} />
                         )}
                     </div>
                 )}
@@ -384,7 +338,7 @@ export function WorkOrderDetailScreen() {
                         <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Hold Reason <span className="text-red-500">*</span></label>
                         <textarea value={modalData.reason || ""} onChange={(e) => setMD("reason", e.target.value)} placeholder="Reason for putting on hold..." rows={3} className="modal-input resize-none" />
                     </div>
-                    <ModalActions onClose={closeModal} onConfirm={() => handleLifecycleAction(holdMutation, "ON_HOLD", "On Hold", "Work order put on hold.", { id: id!, data: { holdReason: modalData.reason } })} isPending={holdMutation.isPending} disabled={!modalData.reason?.trim()} label="Put on Hold" color="warning" />
+                    <ModalActions onClose={closeModal} onConfirm={() => handleLifecycleAction(holdMutation, "On Hold", "Work order put on hold.", { id: id!, data: { holdReason: modalData.reason } })} isPending={holdMutation.isPending} disabled={!modalData.reason?.trim()} label="Put on Hold" color="warning" />
                 </ActionModal>
             )}
 
@@ -394,7 +348,7 @@ export function WorkOrderDetailScreen() {
                         <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Completion Notes</label>
                         <textarea value={modalData.notes || ""} onChange={(e) => setMD("notes", e.target.value)} placeholder="Notes about the completion..." rows={3} className="modal-input resize-none" />
                     </div>
-                    <ModalActions onClose={closeModal} onConfirm={() => handleLifecycleAction(completeMutation, "COMPLETED", "Completed", "Work order completed.", { id: id!, data: { completionNotes: modalData.notes || undefined } })} isPending={completeMutation.isPending} label="Complete" color="success" />
+                    <ModalActions onClose={closeModal} onConfirm={() => handleLifecycleAction(completeMutation, "Completed", "Work order completed.", { id: id!, data: { completionNotes: modalData.notes || undefined } })} isPending={completeMutation.isPending} label="Complete" color="success" />
                 </ActionModal>
             )}
 
@@ -404,7 +358,7 @@ export function WorkOrderDetailScreen() {
                         <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Closing Notes</label>
                         <textarea value={modalData.notes || ""} onChange={(e) => setMD("notes", e.target.value)} placeholder="Final closing notes..." rows={3} className="modal-input resize-none" />
                     </div>
-                    <ModalActions onClose={closeModal} onConfirm={() => handleLifecycleAction(closeMutation, "CLOSED", "Closed", "Work order closed.", { id: id!, data: modalData.notes ? { closingNotes: modalData.notes } : undefined })} isPending={closeMutation.isPending} label="Close" />
+                    <ModalActions onClose={closeModal} onConfirm={() => handleLifecycleAction(closeMutation, "Closed", "Work order closed.", { id: id!, data: modalData.notes ? { closingNotes: modalData.notes } : undefined })} isPending={closeMutation.isPending} label="Close" />
                 </ActionModal>
             )}
 
@@ -414,7 +368,7 @@ export function WorkOrderDetailScreen() {
                         <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Rejection Reason <span className="text-red-500">*</span></label>
                         <textarea value={modalData.reason || ""} onChange={(e) => setMD("reason", e.target.value)} placeholder="Reason for rejection..." rows={3} className="modal-input resize-none" />
                     </div>
-                    <ModalActions onClose={closeModal} onConfirm={() => handleLifecycleAction(rejectMutation, "REJECTED", "Rejected", "Work order rejected.", { id: id!, data: { rejectionReason: modalData.reason } })} isPending={rejectMutation.isPending} disabled={!modalData.reason?.trim()} label="Reject" color="danger" />
+                    <ModalActions onClose={closeModal} onConfirm={() => handleLifecycleAction(rejectMutation, "Rejected", "Work order rejected.", { id: id!, data: { reason: modalData.reason } })} isPending={rejectMutation.isPending} disabled={!modalData.reason?.trim()} label="Reject" color="danger" />
                 </ActionModal>
             )}
 
@@ -424,7 +378,7 @@ export function WorkOrderDetailScreen() {
                         <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Reopen Reason <span className="text-red-500">*</span></label>
                         <textarea value={modalData.reason || ""} onChange={(e) => setMD("reason", e.target.value)} placeholder="Reason for reopening..." rows={3} className="modal-input resize-none" />
                     </div>
-                    <ModalActions onClose={closeModal} onConfirm={() => handleLifecycleAction(reopenMutation, "IN_PROGRESS", "Reopened", "Work order reopened.", { id: id!, data: { reopenReason: modalData.reason } })} isPending={reopenMutation.isPending} disabled={!modalData.reason?.trim()} label="Reopen" color="warning" />
+                    <ModalActions onClose={closeModal} onConfirm={() => handleLifecycleAction(reopenMutation, "Reopened", "Work order reopened.", { id: id!, data: { reason: modalData.reason } })} isPending={reopenMutation.isPending} disabled={!modalData.reason?.trim()} label="Reopen" color="warning" />
                 </ActionModal>
             )}
 
@@ -434,7 +388,7 @@ export function WorkOrderDetailScreen() {
                         <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Decline Reason <span className="text-red-500">*</span></label>
                         <textarea value={modalData.reason || ""} onChange={(e) => setMD("reason", e.target.value)} placeholder="Reason for declining..." rows={3} className="modal-input resize-none" />
                     </div>
-                    <ModalActions onClose={closeModal} onConfirm={() => handleLifecycleAction(null, "APPROVED", "Declined", "Work order declined.")} isPending={false} disabled={!modalData.reason?.trim()} label="Decline" color="danger" />
+                    <ModalActions onClose={closeModal} onConfirm={() => handleLifecycleAction(declineMutation, "Declined", "Work order declined.", { id: id!, data: { reason: modalData.reason } })} isPending={declineMutation.isPending} disabled={!modalData.reason?.trim()} label="Decline" color="danger" />
                 </ActionModal>
             )}
         </div>
