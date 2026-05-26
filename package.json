@@ -15,6 +15,11 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "npx playwright test --headed",
+    "test:e2e:headless": "npx playwright test",
+    "test:e2e:api": "npx playwright test --project=api",
+    "test:e2e:ui": "npx playwright test --ui",
+    "test:e2e:report": "npx playwright show-report e2e/playwright-report",
     "restart": "git pull origin main && pnpm install && pnpm run build && pm2 restart avy-erp-app"
   },
   "build": {
@@ -62,6 +67,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.60.0",
     "@radix-ui/react-slot": "^1.2.4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -73,6 +79,7 @@
     "@vitejs/plugin-react": "^5.1.1",
     "autoprefixer": "^10.4.27",
     "clsx": "^2.1.1",
+    "dotenv": "^17.4.2",
     "electron": "^40.6.1",
     "electron-builder": "^26.8.1",
     "eslint": "^9.39.1",
