@@ -127,4 +127,39 @@ export const inventoryApi = {
     getCountVariance: (params?: any) => client.get('/inventory/reports/count-variance', { params }).then((r) => r.data),
     getAdjustmentRegister: (params?: any) => client.get('/inventory/reports/adjustment-register', { params }).then((r) => r.data),
     getTransferLog: (params?: any) => client.get('/inventory/reports/transfer-log', { params }).then((r) => r.data),
+
+    // ── Production — Issue to Production ──
+    createIssueToProduction: (data: any) => client.post('/inventory/transactions/issue-to-production', data).then((r) => r.data),
+    listIssueToProduction: (params?: any) => client.get('/inventory/transactions/issue-to-production', { params }).then((r) => r.data),
+    getIssueToProduction: (id: string) => client.get(`/inventory/transactions/issue-to-production/${id}`).then((r) => r.data),
+    getIssuesByWorkOrder: (workOrderId: string) => client.get(`/inventory/transactions/issue-to-production/wo/${workOrderId}`).then((r) => r.data),
+
+    // ── Production — FG Receipt ──
+    createFgReceipt: (data: any) => client.post('/inventory/transactions/fg-receipt', data).then((r) => r.data),
+    listFgReceipts: (params?: any) => client.get('/inventory/transactions/fg-receipt', { params }).then((r) => r.data),
+    getFgReceipt: (id: string) => client.get(`/inventory/transactions/fg-receipt/${id}`).then((r) => r.data),
+
+    // ── Production — Material Return ──
+    createMaterialReturn: (data: any) => client.post('/inventory/transactions/material-return', data).then((r) => r.data),
+    listMaterialReturns: (params?: any) => client.get('/inventory/transactions/material-return', { params }).then((r) => r.data),
+
+    // ── Production — Production Scrap ──
+    createProductionScrap: (data: any) => client.post('/inventory/transactions/production-scrap', data).then((r) => r.data),
+    listProductionScraps: (params?: any) => client.get('/inventory/transactions/production-scrap', { params }).then((r) => r.data),
+
+    // ── Production — Scrap Categories ──
+    listScrapCategories: (params?: any) => client.get('/inventory/scrap-categories', { params }).then((r) => r.data),
+    createScrapCategory: (data: any) => client.post('/inventory/scrap-categories', data).then((r) => r.data),
+    updateScrapCategory: (id: string, data: any) => client.patch(`/inventory/scrap-categories/${id}`, data).then((r) => r.data),
+    deleteScrapCategory: (id: string) => client.delete(`/inventory/scrap-categories/${id}`).then((r) => r.data),
+
+    // ── Production — WO Reconciliation ──
+    getWoReconciliation: (workOrderId: string) => client.get(`/inventory/wo-reconciliation/${workOrderId}`).then((r) => r.data),
+    generateWoReconciliation: (workOrderId: string) => client.post(`/inventory/wo-reconciliation/${workOrderId}/generate`).then((r) => r.data),
+
+    // ── WIP Stock ──
+    getWipStock: (params?: any) => client.get('/inventory/stock/wip', { params }).then((r) => r.data),
+
+    // ── Scrap Analysis ──
+    getScrapAnalysis: (params?: any) => client.get('/inventory/reports/scrap-analysis', { params }).then((r) => r.data),
 };

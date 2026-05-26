@@ -300,6 +300,12 @@ const CountCreateScreen = lazyNamed(() => import("./features/inventory/counts/Co
 const CountDetailScreen = lazyNamed(() => import("./features/inventory/counts/CountDetailScreen"), "CountDetailScreen");
 const InventoryApprovalInboxScreen = lazyNamed(() => import("./features/inventory/approvals/InventoryApprovalInboxScreen"), "InventoryApprovalInboxScreen");
 const InventoryReportsScreen = lazyNamed(() => import("./features/inventory/reports/InventoryReportsScreen"), "InventoryReportsScreen");
+const IssueToProductionScreen = lazyNamed(() => import("./features/inventory/production/IssueToProductionScreen"), "IssueToProductionScreen");
+const IssueToProductionDetailScreen = lazyNamed(() => import("./features/inventory/production/IssueToProductionDetailScreen"), "IssueToProductionDetailScreen");
+const FgReceiptScreen = lazyNamed(() => import("./features/inventory/production/FgReceiptScreen"), "FgReceiptScreen");
+const MaterialReturnScreen = lazyNamed(() => import("./features/inventory/production/MaterialReturnScreen"), "MaterialReturnScreen");
+const ProductionScrapScreen = lazyNamed(() => import("./features/inventory/production/ProductionScrapScreen"), "ProductionScrapScreen");
+const WoReconciliationScreen = lazyNamed(() => import("./features/inventory/production/WoReconciliationScreen"), "WoReconciliationScreen");
 
 // ─── Operations Modules ───
 const ProductionScreen = lazyNamed(() => import("./features/production/ProductionScreen"), "ProductionScreen");
@@ -678,6 +684,12 @@ function App() {
         <Route path="inventory/counts/:id" element={<RequirePermission permission="inventory.counts:read"><CountDetailScreen /></RequirePermission>} />
         <Route path="inventory/approvals" element={<RequirePermission permission="inventory.approvals:read"><InventoryApprovalInboxScreen /></RequirePermission>} />
         <Route path="inventory/reports" element={<RequirePermission permission="inventory.reports:read"><InventoryReportsScreen /></RequirePermission>} />
+        <Route path="inventory/production/issue" element={<RequirePermission permission="inventory.transactions:create"><IssueToProductionScreen /></RequirePermission>} />
+        <Route path="inventory/production/issue/:id" element={<RequirePermission permission="inventory.transactions:read"><IssueToProductionDetailScreen /></RequirePermission>} />
+        <Route path="inventory/production/fg-receipt" element={<RequirePermission permission="inventory.transactions:create"><FgReceiptScreen /></RequirePermission>} />
+        <Route path="inventory/production/material-return" element={<RequirePermission permission="inventory.transactions:create"><MaterialReturnScreen /></RequirePermission>} />
+        <Route path="inventory/production/scrap" element={<RequirePermission permission="inventory.transactions:create"><ProductionScrapScreen /></RequirePermission>} />
+        <Route path="inventory/production/reconciliation" element={<RequirePermission permission="inventory.reports:read"><WoReconciliationScreen /></RequirePermission>} />
         <Route path="production" element={<RequireRole roles={['super-admin', 'company-admin']}><ProductionScreen /></RequireRole>} />
         <Route path="maintenance" element={<Navigate to="maintenance/dashboard" replace />} />
         <Route path="maintenance/dashboard" element={<RequirePermission permission="maintenance:read"><MaintenanceDashboardScreen /></RequirePermission>} />
