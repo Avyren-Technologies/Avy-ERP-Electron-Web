@@ -812,8 +812,8 @@ export function useLogWOLabour() {
 export function useAddWOEvidence() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) =>
-            maintenanceApi.addWOEvidence(id, data),
+        mutationFn: ({ id, evidence }: { id: string; evidence: unknown[] }) =>
+            maintenanceApi.addWOEvidence(id, evidence),
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: maintenanceKeys.workOrder(variables.id) });
         },

@@ -21,6 +21,17 @@ import {
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
 import { useCanPerform } from "@/hooks/useCanPerform";
 import { showSuccess, showApiError } from "@/lib/toast";
+import {
+    formatPMFrequencyDisplay,
+    formatPMScheduleTypeLabel,
+    formatPMStrategyLabel,
+    formatPMRescheduleReason,
+    getPMRescheduleNewDate,
+    getPMRescheduleOldDate,
+    getPMRescheduleTimestamp,
+    type PMRescheduleHistoryEntry,
+} from "@/features/maintenance/pm-schedule/pm-schedule-form";
+import { resolveMaintenanceAssetNumber } from "@/features/maintenance/shared/maintenance-asset-display";
 
 /* ── Screen ── */
 
@@ -28,7 +39,7 @@ export function PMScheduleDetailScreen() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const fmt = useCompanyFormatter();
-    const canManage = useCanPerform("maintenance.work-orders:approve");
+    const canManage = useCanPerform("maintenance.pm-schedule:update");
 
     const [modal, setModal] = useState<string | null>(null);
     const [rescheduleDate, setRescheduleDate] = useState("");
@@ -44,7 +55,7 @@ export function PMScheduleDetailScreen() {
     const handleReschedule = async () => {
         if (!rescheduleDate) return;
         try {
-            await rescheduleMutation.mutateAsync({ id: id!, data: { nextDueDate: rescheduleDate } });
+            await rescheduleMutation.mutateAsync({ id: id!, data: { newDueDate: rescheduleDate, reasonCode: "OTHER" } });
             showSuccess("Rescheduled", "PM schedule rescheduled.");
             setModal(null);
             setRescheduleDate("");
@@ -54,8 +65,9 @@ export function PMScheduleDetailScreen() {
     };
 
     const handleSkip = async () => {
+        if (!skipReason.trim()) return;
         try {
-            await skipMutation.mutateAsync({ id: id!, data: { reason: skipReason || undefined } });
+            await skipMutation.mutateAsync({ id: id!, data: { reason: skipReason.trim() } });
             showSuccess("Skipped", "PM occurrence skipped.");
             setModal(null);
             setSkipReason("");
@@ -94,7 +106,7 @@ export function PMScheduleDetailScreen() {
 
     const isOverdue = pm.nextDueDate && new Date(pm.nextDueDate) < new Date();
     const daysUntilDue = pm.nextDueDate
-        ? Math.ceil((new Date(pm.nextDueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+        ? Math.ceil((new Date(pm.nextDueDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
         : null;
     const recentWOs: any[] = pm.workOrders ?? [];
     const rescheduleHistory: any[] = pm.rescheduleHistory ?? [];
@@ -202,28 +214,34 @@ export function PMScheduleDetailScreen() {
                     </div>
 
                     {/* Reschedule History */}
-                    {rescheduleHistory.length > 0 && (
+                    {rescheduleHistory.length > 0 ? (
                         <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm p-6">
                             <h3 className="text-sm font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-4">
                                 <History size={14} className="inline mr-1" />
                                 Reschedule History
                             </h3>
                             <div className="space-y-3">
-                                {rescheduleHistory.map((entry: any, idx: number) => (
-                                    <div key={idx} className="flex gap-3">
-                                        <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 shrink-0" />
-                                        <div>
-                                            <p className="text-sm font-medium text-neutral-900 dark:text-white">
-                                                {entry.oldDate ? fmt.date(entry.oldDate) : "---"} → {entry.newDate ? fmt.date(entry.newDate) : "---"}
-                                            </p>
-                                            {entry.reason && <p className="text-xs text-neutral-400 mt-0.5">{entry.reason}</p>}
-                                            <p className="text-[10px] text-neutral-400 mt-0.5">{entry.createdAt ? fmt.dateTime(entry.createdAt) : ""}</p>
+                                {rescheduleHistory.map((entry: PMRescheduleHistoryEntry, idx: number) => {
+                                    const oldDate = getPMRescheduleOldDate(entry);
+                                    const newDate = getPMRescheduleNewDate(entry);
+                                    const reason = formatPMRescheduleReason(entry);
+                                    const when = getPMRescheduleTimestamp(entry);
+                                    return (
+                                        <div key={idx} className="flex gap-3">
+                                            <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 shrink-0" />
+                                            <div>
+                                                <p className="text-sm font-medium text-neutral-900 dark:text-white">
+                                                    {oldDate ? fmt.date(oldDate) : "---"} → {newDate ? fmt.date(newDate) : "---"}
+                                                </p>
+                                                {reason ? <p className="text-xs text-neutral-400 mt-0.5">{reason}</p> : null}
+                                                {when ? <p className="text-[10px] text-neutral-400 mt-0.5">{fmt.dateTime(when)}</p> : null}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
-                    )}
+                    ) : null}
                 </div>
 
                 {/* Sidebar */}
@@ -235,7 +253,7 @@ export function PMScheduleDetailScreen() {
                                 <a href={`/app/maintenance/assets/${pm.asset.id}`} className="text-sm font-bold text-primary-600 dark:text-primary-400 hover:underline block">
                                     {pm.asset.name}
                                 </a>
-                                <p className="text-xs text-neutral-400">{pm.asset.assetNumber}</p>
+                                <p className="text-xs text-neutral-400">{resolveMaintenanceAssetNumber(pm.asset)}</p>
                             </div>
                         ) : (
                             <p className="text-sm text-neutral-400">No asset linked.</p>
@@ -245,14 +263,16 @@ export function PMScheduleDetailScreen() {
                     {/* Schedule Info */}
                     <SideCard title="Schedule Info">
                         <div className="space-y-3">
-                            <DetailRow label="Strategy" value={pm.strategyType} />
-                            {pm.frequencyValue && <DetailRow label="Frequency" value={`${pm.frequencyValue} ${pm.frequencyUnit || ""}`} />}
-                            {pm.meterInterval && <DetailRow label="Meter Interval" value={`${pm.meterInterval} ${pm.meterType || "units"}`} />}
-                            {pm.fixedOrFloating && <DetailRow label="Schedule Type" value={pm.fixedOrFloating} />}
+                            <DetailRow label="Strategy" value={formatPMStrategyLabel(pm.strategyType)} />
+                            {(pm.frequency || pm.meterInterval) && (
+                                <DetailRow label="Frequency" value={formatPMFrequencyDisplay(pm)} />
+                            )}
+                            {pm.scheduleType && <DetailRow label="Schedule Type" value={formatPMScheduleTypeLabel(pm.scheduleType)} />}
+                            <DetailRow label="Next Due" value={pm.nextDueDate ? fmt.date(pm.nextDueDate) : "---"} />
                             <DetailRow label="Lead Days" value={pm.leadDays ?? "---"} />
-                            <DetailRow label="Grace Period" value={pm.gracePeriod ? `${pm.gracePeriod} days` : "---"} />
-                            <DetailRow label="Auto-Assign" value={pm.autoAssign ? "Yes" : "No"} />
-                            {pm.autoAssignTechnicianId && <DetailRow label="Auto Technician" value={pm.autoAssignTechnicianName || pm.autoAssignTechnicianId} />}
+                            <DetailRow label="Grace Period" value={pm.gracePeriodDays ? `${pm.gracePeriodDays} days` : "---"} />
+                            <DetailRow label="Auto-Assign" value={pm.autoAssignRule ? "Yes" : "No"} />
+                            {pm.autoAssignTo && <DetailRow label="Auto Technician" value={pm.autoAssignTo} />}
                         </div>
                     </SideCard>
 
@@ -321,15 +341,14 @@ export function PMScheduleDetailScreen() {
 
 function StrategyBadge({ type }: { type: string }) {
     const configs: Record<string, string> = {
-        CALENDAR: "text-blue-700 bg-blue-50 border-blue-200 dark:text-blue-400 dark:bg-blue-950/30 dark:border-blue-800/50",
-        METER: "text-accent-700 bg-accent-50 border-accent-200 dark:text-accent-400 dark:bg-accent-900/20 dark:border-accent-800/50",
+        PREVENTIVE_CALENDAR: "text-blue-700 bg-blue-50 border-blue-200 dark:text-blue-400 dark:bg-blue-950/30 dark:border-blue-800/50",
+        PREVENTIVE_METER: "text-accent-700 bg-accent-50 border-accent-200 dark:text-accent-400 dark:bg-accent-900/20 dark:border-accent-800/50",
         SEASONAL: "text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-950/30 dark:border-emerald-800/50",
         STATUTORY: "text-danger-700 bg-danger-50 border-danger-200 dark:text-danger-400 dark:bg-danger-900/20 dark:border-danger-800/50",
-        DUAL: "text-warning-700 bg-warning-50 border-warning-200 dark:text-warning-400 dark:bg-warning-900/20 dark:border-warning-800/50",
     };
     return (
-        <span className={cn("text-xs font-bold px-3 py-1 rounded-full border capitalize", configs[type] || "text-neutral-600 bg-neutral-100 border-neutral-200")}>
-            {type}
+        <span className={cn("text-xs font-bold px-3 py-1 rounded-full border", configs[type] || "text-neutral-600 bg-neutral-100 border-neutral-200")}>
+            {formatPMStrategyLabel(type)}
         </span>
     );
 }

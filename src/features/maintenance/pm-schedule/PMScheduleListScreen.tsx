@@ -26,38 +26,33 @@ import { useCanPerform } from "@/hooks/useCanPerform";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
+import {
+    formatPMFrequencyDisplay,
+    formatPMStrategyLabel,
+    PM_STRATEGY_FILTER_OPTIONS,
+} from "@/features/maintenance/pm-schedule/pm-schedule-form";
 
 /* ── Constants ── */
-
-const STRATEGY_OPTIONS = [
-    { value: "", label: "All Strategies" },
-    { value: "CALENDAR", label: "Calendar" },
-    { value: "METER", label: "Meter" },
-    { value: "SEASONAL", label: "Seasonal" },
-    { value: "STATUTORY", label: "Statutory" },
-    { value: "DUAL", label: "Dual" },
-];
 
 const STATUS_OPTIONS = [
     { value: "", label: "All Statuses" },
     { value: "ACTIVE", label: "Active" },
     { value: "OVERDUE", label: "Overdue" },
-    { value: "SUSPENDED", label: "Suspended" },
+    { value: "INACTIVE", label: "Inactive" },
 ];
 
 const STRATEGY_BADGE: Record<string, { color: string; bg: string }> = {
-    CALENDAR: { color: "text-blue-700 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800/50" },
-    METER: { color: "text-accent-700 dark:text-accent-400", bg: "bg-accent-50 dark:bg-accent-900/20 border-accent-200 dark:border-accent-800/50" },
+    PREVENTIVE_CALENDAR: { color: "text-blue-700 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800/50" },
+    PREVENTIVE_METER: { color: "text-accent-700 dark:text-accent-400", bg: "bg-accent-50 dark:bg-accent-900/20 border-accent-200 dark:border-accent-800/50" },
     SEASONAL: { color: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/50" },
     STATUTORY: { color: "text-danger-700 dark:text-danger-400", bg: "bg-danger-50 dark:bg-danger-900/20 border-danger-200 dark:border-danger-800/50" },
-    DUAL: { color: "text-warning-700 dark:text-warning-400", bg: "bg-warning-50 dark:bg-warning-900/20 border-warning-200 dark:border-warning-800/50" },
 };
 
 function StrategyBadge({ type }: { type: string }) {
     const config = STRATEGY_BADGE[type];
     return (
-        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize", config?.color || "text-neutral-600", config?.bg || "bg-neutral-100 border-neutral-200")}>
-            {type}
+        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border", config?.color || "text-neutral-600", config?.bg || "bg-neutral-100 border-neutral-200")}>
+            {formatPMStrategyLabel(type)}
         </span>
     );
 }
@@ -71,10 +66,10 @@ function PMStatusBadge({ status, nextDue }: { status: string; nextDue?: string }
             </span>
         );
     }
-    if (status === "SUSPENDED") {
+    if (status === "INACTIVE") {
         return (
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize text-neutral-500 dark:text-neutral-400 bg-neutral-50 dark:bg-neutral-800/50 border-neutral-200 dark:border-neutral-700">
-                Suspended
+                Inactive
             </span>
         );
     }
@@ -89,8 +84,8 @@ function PMStatusBadge({ status, nextDue }: { status: string; nextDue?: string }
 
 export function PMScheduleListScreen() {
     const fmt = useCompanyFormatter();
-    const canCreate = useCanPerform("maintenance.work-orders:create");
-    const canManage = useCanPerform("maintenance.work-orders:approve");
+    const canCreate = useCanPerform("maintenance.pm-schedule:create");
+    const canManage = useCanPerform("maintenance.pm-schedule:update");
 
     const [search, setSearch] = useState("");
     const [strategy, setStrategy] = useState("");
@@ -108,7 +103,9 @@ export function PMScheduleListScreen() {
     const params: Record<string, unknown> = { page, limit: 25 };
     if (search) params.search = search;
     if (strategy) params.strategyType = strategy;
-    if (statusFilter) params.status = statusFilter;
+    if (statusFilter === "ACTIVE") params.isActive = true;
+    if (statusFilter === "OVERDUE") params.isOverdue = true;
+    if (statusFilter === "INACTIVE") params.isActive = false;
 
     const { data, isLoading, isError } = usePMSchedules(params);
     const schedules: any[] = data?.data ?? [];
@@ -131,7 +128,7 @@ export function PMScheduleListScreen() {
     const handleReschedule = async () => {
         if (!rescheduleId || !rescheduleDate) return;
         try {
-            await rescheduleMutation.mutateAsync({ id: rescheduleId, data: { nextDueDate: rescheduleDate } });
+            await rescheduleMutation.mutateAsync({ id: rescheduleId, data: { newDueDate: rescheduleDate, reasonCode: "OTHER" } });
             showSuccess("Rescheduled", "PM schedule rescheduled.");
             setRescheduleId(null);
             setRescheduleDate("");
@@ -141,9 +138,9 @@ export function PMScheduleListScreen() {
     };
 
     const handleSkip = async () => {
-        if (!skipId) return;
+        if (!skipId || !skipReason.trim()) return;
         try {
-            await skipMutation.mutateAsync({ id: skipId, data: { reason: skipReason || undefined } });
+            await skipMutation.mutateAsync({ id: skipId, data: { reason: skipReason.trim() } });
             showSuccess("Skipped", "PM occurrence skipped.");
             setSkipId(null);
             setSkipReason("");
@@ -218,7 +215,7 @@ export function PMScheduleListScreen() {
                         onChange={(e) => { setStrategy(e.target.value); setPage(1); }}
                         className="px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
                     >
-                        {STRATEGY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        {PM_STRATEGY_FILTER_OPTIONS.map((o) => <option key={o.value || "all"} value={o.value}>{o.label}</option>)}
                     </select>
                     <button
                         onClick={() => setShowFilters(!showFilters)}
@@ -295,7 +292,7 @@ export function PMScheduleListScreen() {
                                             <StrategyBadge type={pm.strategyType} />
                                         </td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">
-                                            {pm.frequencyValue ? `${pm.frequencyValue} ${pm.frequencyUnit || ""}` : pm.meterInterval ? `${pm.meterInterval} ${pm.meterType || "units"}` : "---"}
+                                            {formatPMFrequencyDisplay(pm)}
                                         </td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">
                                             {pm.nextDueDate ? fmt.date(pm.nextDueDate) : "---"}

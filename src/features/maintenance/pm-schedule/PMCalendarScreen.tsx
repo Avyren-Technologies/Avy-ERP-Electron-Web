@@ -12,6 +12,7 @@ import { DateTime } from "luxon";
 import { cn } from "@/lib/utils";
 import { usePMCalendar } from "@/features/maintenance/api/use-maintenance-queries";
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
+import { formatPMStrategyLabel } from "@/features/maintenance/pm-schedule/pm-schedule-form";
 
 /* ── Helpers ── */
 
@@ -213,7 +214,7 @@ export function PMCalendarScreen() {
                                 <div key={pm.id || idx} className="flex items-center justify-between p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-100 dark:border-neutral-800">
                                     <div>
                                         <p className="text-sm font-bold text-neutral-900 dark:text-white">{pm.name || pm.scheduleName || "PM Schedule"}</p>
-                                        <p className="text-xs text-neutral-400 mt-0.5">{pm.asset?.name || pm.assetName || "---"} | {pm.strategyType || "---"}</p>
+                                        <p className="text-xs text-neutral-400 mt-0.5">{pm.asset?.name || pm.assetName || "---"} | {formatPMStrategyLabel(pm.strategyType)}</p>
                                     </div>
                                     {pm.id && (
                                         <Link to={`/app/maintenance/pm-schedules/${pm.id || pm.scheduleId}`} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors">

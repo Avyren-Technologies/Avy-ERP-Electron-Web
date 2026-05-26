@@ -15,7 +15,6 @@ import {
     ThumbsDown,
     ShieldCheck,
     Plus,
-    Upload,
     Clock,
     History,
     Package,
@@ -74,6 +73,9 @@ import {
     getWorkOrderClosureHistory,
     getWorkOrderExecutionObservations,
 } from "@/features/maintenance/work-orders/work-order-description";
+import { normalizeWorkOrderEvidence } from "@/features/maintenance/work-orders/work-order-evidence";
+import { WorkOrderEvidenceTab } from "@/features/maintenance/work-orders/WorkOrderEvidenceTab";
+import { resolveMaintenanceAssetNumber } from "@/features/maintenance/shared/maintenance-asset-display";
 import {
     LabourQuickTimer,
     WOFormButton,
@@ -289,7 +291,7 @@ export function WorkOrderDetailScreen() {
 
     const parts: any[] = wo.partsUsed ?? [];
     const labourLogs: any[] = wo.labourLogs ?? [];
-    const evidence: any[] = wo.evidence ?? [];
+    const evidence = normalizeWorkOrderEvidence(wo);
     const events: any[] = wo.events ?? [];
     const checklist: any[] = wo.checklistSnapshot ?? [];
 
@@ -424,7 +426,15 @@ export function WorkOrderDetailScreen() {
                             defaultTechnicianId={wo?.leadTechnicianId ?? ""}
                         />
                     )}
-                    {activeTab === "evidence" && <EvidenceTab evidence={evidence} woId={id!} addMutation={addEvidenceMutation} canManage={canManage} status={status} />}
+                    {activeTab === "evidence" && (
+                        <WorkOrderEvidenceTab
+                            evidence={evidence}
+                            woId={id!}
+                            addMutation={addEvidenceMutation}
+                            canManage={canManage}
+                            status={status}
+                        />
+                    )}
                     {activeTab === "cost" && <CostTab labourCost={labourCost} partsCost={partsCost} vendorCost={vendorCost} totalCost={totalCost} />}
                     {activeTab === "history" && <HistoryTab events={events} fmt={fmt} />}
                 </div>
@@ -796,7 +806,7 @@ function OverviewTab({ wo, fmt, resolvedTechName }: { wo: any; fmt: any; resolve
                             <a href={`/app/maintenance/assets/${wo.asset.id}`} className="text-sm font-bold text-primary-600 dark:text-primary-400 hover:underline block">
                                 {wo.asset.name}
                             </a>
-                            <p className="text-xs text-neutral-400">{wo.asset.assetNumber}</p>
+                            <p className="text-xs text-neutral-400">{resolveMaintenanceAssetNumber(wo.asset)}</p>
                             {wo.asset.location?.name && <p className="text-xs text-neutral-400">Location: {wo.asset.location.name}</p>}
                         </div>
                     ) : (
@@ -1384,72 +1394,6 @@ function LabourTab({
                             ))}
                         </tbody>
                     </table>
-                </div>
-            )}
-        </div>
-    );
-}
-
-function EvidenceTab({ evidence, woId, addMutation, canManage, status }: { evidence: any[]; woId: string; addMutation: any; canManage: boolean; status: string }) {
-    const [showAdd, setShowAdd] = useState(false);
-    const [url, setUrl] = useState("");
-    const [description, setDescription] = useState("");
-    const isActive = !["CLOSED", "CANCELLED"].includes(status);
-
-    const handleAdd = async () => {
-        try {
-            await addMutation.mutateAsync({ id: woId, data: { url, description: description || undefined } });
-            showSuccess("Added", "Evidence added.");
-            setUrl("");
-            setDescription("");
-            setShowAdd(false);
-        } catch (err) {
-            showApiError(err);
-        }
-    };
-
-    return (
-        <div className="space-y-4">
-            {canManage && isActive && (
-                <div className="flex justify-end">
-                    <button onClick={() => setShowAdd(!showAdd)} className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all">
-                        <Upload size={16} /> Add Evidence
-                    </button>
-                </div>
-            )}
-
-            {showAdd && (
-                <div className="p-4 rounded-xl bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-100 dark:border-neutral-800 space-y-3">
-                    <input type="url" placeholder="File/image URL" value={url} onChange={(e) => setUrl(e.target.value)} className="modal-input" />
-                    <input type="text" placeholder="Description (optional)" value={description} onChange={(e) => setDescription(e.target.value)} className="modal-input" />
-                    <div className="flex justify-end gap-2">
-                        <button onClick={() => setShowAdd(false)} className="px-3 py-1.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400">Cancel</button>
-                        <button onClick={handleAdd} disabled={addMutation.isPending || !url.trim()} className="px-4 py-1.5 text-sm font-bold rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 flex items-center gap-1.5">
-                            {addMutation.isPending && <Loader2 size={12} className="animate-spin" />}
-                            Add
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {evidence.length === 0 ? (
-                <EmptySection title="No Evidence" message="No evidence has been added to this work order." />
-            ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {evidence.map((e: any, idx: number) => (
-                        <div key={e.id || idx} className="rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 overflow-hidden">
-                            {e.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(e.url) ? (
-                                <img src={e.url} alt={e.description || `Evidence ${idx + 1}`} className="w-full aspect-square object-cover" />
-                            ) : (
-                                <div className="w-full aspect-square flex items-center justify-center">
-                                    <Image size={32} className="text-neutral-400" />
-                                </div>
-                            )}
-                            {e.description && (
-                                <p className="text-xs text-neutral-600 dark:text-neutral-400 p-2 truncate">{e.description}</p>
-                            )}
-                        </div>
-                    ))}
                 </div>
             )}
         </div>
