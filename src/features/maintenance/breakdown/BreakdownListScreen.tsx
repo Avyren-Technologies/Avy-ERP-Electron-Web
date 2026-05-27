@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
     Search,
@@ -11,22 +11,29 @@ import {
     Clock,
     RotateCcw,
     Eye,
+    UserPlus,
+    Play,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useBreakdowns, useRecurringFailures } from "@/features/maintenance/api/use-maintenance-queries";
-import { useResolveBreakdown } from "@/features/maintenance/api/use-maintenance-mutations";
+import { useBreakdowns, useRecurringFailures, useActionCodes } from "@/features/maintenance/api/use-maintenance-queries";
+import { useResolveBreakdown, useAssignWO, useAcknowledgeWO, useStartWO } from "@/features/maintenance/api/use-maintenance-mutations";
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
 import { useCanPerform } from "@/hooks/useCanPerform";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PriorityBadge } from "@/features/maintenance/shared/PriorityBadge";
 import { showSuccess, showApiError } from "@/lib/toast";
+import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 
 /* ── Status badge ── */
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
     OPEN: { bg: "bg-danger-50 dark:bg-danger-900/20", text: "text-danger-700 dark:text-danger-400", label: "Open" },
+    DRAFT: { bg: "bg-neutral-50 dark:bg-neutral-850", text: "text-neutral-600 dark:text-neutral-400", label: "Draft" },
+    APPROVED: { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-700 dark:text-emerald-400", label: "Approved" },
     ASSIGNED: { bg: "bg-blue-50 dark:bg-blue-900/20", text: "text-blue-700 dark:text-blue-400", label: "Assigned" },
+    ACKNOWLEDGED: { bg: "bg-cyan-50 dark:bg-cyan-900/20", text: "text-cyan-700 dark:text-cyan-400", label: "Acknowledged" },
     IN_PROGRESS: { bg: "bg-warning-50 dark:bg-warning-900/20", text: "text-warning-700 dark:text-warning-400", label: "In Progress" },
     RESOLVED: { bg: "bg-success-50 dark:bg-success-900/20", text: "text-success-700 dark:text-success-400", label: "Resolved" },
     CLOSED: { bg: "bg-neutral-100 dark:bg-neutral-800", text: "text-neutral-600 dark:text-neutral-400", label: "Closed" },
@@ -68,6 +75,36 @@ function LiveDowntimeTimer({ startedAt }: { startedAt: string }) {
     );
 }
 
+function getDowntimeDuration(bd: any): string {
+    const start = bd.downtimeStart || bd.reportedAt || bd.createdAt;
+    const end = bd.downtimeEnd || bd.actualEnd || bd.closedAt;
+    if (!start || !end) return "---";
+    const diff = new Date(end).getTime() - new Date(start).getTime();
+    if (diff <= 0) return "0s";
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    
+    const parts = [];
+    if (h > 0) parts.push(`${h}h`);
+    if (m > 0) parts.push(`${m}m`);
+    if (s > 0 || parts.length === 0) parts.push(`${s}s`);
+    return parts.join(" ");
+}
+
+function formatDowntimeMs(ms: number): string {
+    if (!ms || ms <= 0) return "---";
+    const h = Math.floor(ms / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    
+    const parts = [];
+    if (h > 0) parts.push(`${h}h`);
+    if (m > 0) parts.push(`${m}m`);
+    if (s > 0 || parts.length === 0) parts.push(`${s}s`);
+    return parts.join(" ");
+}
+
 /* ── Constants ── */
 
 const STATUS_OPTIONS = [
@@ -97,8 +134,14 @@ export function BreakdownListScreen() {
     const [activeTab, setActiveTab] = useState<"list" | "recurring">("list");
 
     const [resolveId, setResolveId] = useState<string | null>(null);
-    const [resolveNotes, setResolveNotes] = useState("");
+    const [actionDescription, setActionDescription] = useState("");
+    const [actionTaken, setActionTaken] = useState("");
     const [rootCause, setRootCause] = useState("");
+
+    const [actionId, setActionId] = useState<string | null>(null);
+    const [assignModalId, setAssignModalId] = useState<string | null>(null);
+    const [assignTechId, setAssignTechId] = useState("");
+    const [assignTechName, setAssignTechName] = useState("");
 
     const params: Record<string, unknown> = { page, limit: 25 };
     if (search) params.search = search;
@@ -114,7 +157,81 @@ export function BreakdownListScreen() {
     const { data: recurringData, isLoading: recurringLoading } = useRecurringFailures();
     const recurringFailures: any[] = recurringData?.data ?? [];
 
+    const { data: closedRes } = useBreakdowns({ status: "CLOSED", limit: 200 });
+    const closedBreakdowns = useMemo(() => {
+        const raw = closedRes?.data ?? [];
+        return Array.isArray(raw) ? raw : [];
+    }, [closedRes]);
+
+    const enrichedRecurringFailures = useMemo(() => {
+        return recurringFailures.map((rf: any) => {
+            const matches = closedBreakdowns.filter(
+                (bd: any) =>
+                    bd.assetId === rf.assetId &&
+                    (bd.rootCauseCode === rf.rootCauseCode || bd.rootCause === rf.rootCauseCode)
+            );
+
+            let lastOccurred: string | null = null;
+            let totalDowntimeMs = 0;
+
+            for (const bd of matches) {
+                const dateVal = bd.closedAt || bd.actualEnd || bd.createdAt;
+                if (dateVal && (!lastOccurred || new Date(dateVal) > new Date(lastOccurred))) {
+                    lastOccurred = dateVal;
+                }
+
+                const start = bd.downtimeStart || bd.reportedAt || bd.createdAt;
+                const end = bd.downtimeEnd || bd.actualEnd || bd.closedAt;
+                if (start && end) {
+                    const diff = new Date(end).getTime() - new Date(start).getTime();
+                    if (diff > 0) {
+                        totalDowntimeMs += diff;
+                    }
+                }
+            }
+
+            return {
+                ...rf,
+                lastOccurred: lastOccurred || rf.lastOccurred || null,
+                totalDowntimeMs: totalDowntimeMs || 0,
+            };
+        });
+    }, [recurringFailures, closedBreakdowns]);
+
+    const { data: actionCodesData } = useActionCodes();
+    const actionCodes: any[] = actionCodesData?.data ?? [];
+
     const resolveMutation = useResolveBreakdown();
+    const assignMutation = useAssignWO();
+    const acknowledgeMutation = useAcknowledgeWO();
+    const startMutation = useStartWO();
+
+    const empQuery = useEmployees({ limit: 500 });
+    const employeeOptions = useMemo(() => {
+        const employees: any[] = (empQuery.data as any)?.data ?? [];
+        return employees.map((emp: any) => ({
+            value: emp.id,
+            label: `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim() || emp.name || emp.employeeId,
+            sublabel: [emp.employeeId, emp.department?.name, emp.designation?.name].filter(Boolean).join(" · "),
+        }));
+    }, [empQuery.data]);
+
+    const resolveTechName = (bd: any): string => {
+        const leadTech = bd.leadTechnician ?? bd.workOrder?.leadTechnician;
+        if (leadTech) {
+            const full = `${leadTech.firstName ?? ""} ${leadTech.lastName ?? ""}`.trim();
+            if (full || leadTech.name) return full || leadTech.name;
+        }
+        const name = bd.leadTechnicianName ?? bd.workOrder?.leadTechnicianName ?? bd.assignedTechnicianName;
+        if (name) return name;
+        const id = bd.leadTechnicianId ?? bd.workOrder?.leadTechnicianId;
+        if (id) {
+            const opt = employeeOptions.find(o => o.value === id);
+            if (opt) return opt.label;
+            return id;
+        }
+        return "---";
+    };
 
     const hasFilters = status || priority || dateFrom || dateTo;
 
@@ -127,13 +244,51 @@ export function BreakdownListScreen() {
         setPage(1);
     };
 
+    const handleQuickAction = async (id: string, action: string) => {
+        try {
+            setActionId(id);
+            if (action === "acknowledge") {
+                await acknowledgeMutation.mutateAsync({ id });
+                showSuccess("Acknowledged", "Breakdown has been acknowledged.");
+            } else if (action === "start") {
+                await startMutation.mutateAsync({ id });
+                showSuccess("Started", "Breakdown work has started.");
+            }
+        } catch (err) {
+            showApiError(err);
+        } finally {
+            setActionId(null);
+        }
+    };
+
+    const handleAssign = async () => {
+        if (!assignModalId || !assignTechId.trim()) return;
+        try {
+            await assignMutation.mutateAsync({ id: assignModalId, data: { leadTechnicianId: assignTechId } });
+            showSuccess("Assigned", `Assigned to ${assignTechName || "technician"}.`);
+            setAssignModalId(null);
+            setAssignTechId("");
+            setAssignTechName("");
+        } catch (err) {
+            showApiError(err);
+        }
+    };
+
     const handleResolve = async () => {
         if (!resolveId) return;
         try {
-            await resolveMutation.mutateAsync({ id: resolveId, data: { resolutionNotes: resolveNotes, rootCause } });
+            await resolveMutation.mutateAsync({
+                id: resolveId,
+                data: {
+                    rootCauseCode: rootCause,
+                    actionTakenCode: actionTaken,
+                    actionDescription: actionDescription,
+                }
+            });
             showSuccess("Resolved", "Breakdown has been resolved.");
             setResolveId(null);
-            setResolveNotes("");
+            setActionDescription("");
+            setActionTaken("");
             setRootCause("");
         } catch (err) {
             showApiError(err);
@@ -307,25 +462,70 @@ export function BreakdownListScreen() {
                                                     {(bd.status === "OPEN" || bd.status === "IN_PROGRESS" || bd.status === "ASSIGNED") && bd.reportedAt ? (
                                                         <LiveDowntimeTimer startedAt={bd.reportedAt} />
                                                     ) : (
-                                                        <span className="text-xs text-neutral-500">{bd.downtimeDuration ?? "---"}</span>
+                                                        <span className="text-xs text-neutral-500">{getDowntimeDuration(bd)}</span>
                                                     )}
                                                 </td>
                                                 <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs max-w-[150px] truncate">
-                                                    {bd.rootCause ?? "---"}
+                                                    {bd.rootCauseCode ?? bd.rootCause ?? "---"}
                                                 </td>
                                                 <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">
-                                                    {bd.assignedTechnicianName ?? bd.leadTechnicianName ?? "---"}
+                                                    {resolveTechName(bd)}
                                                 </td>
                                                 <td className="py-4 px-6 text-right">
                                                     <div className="flex items-center justify-end gap-1">
-                                                        {canManage && (bd.status === "OPEN" || bd.status === "IN_PROGRESS" || bd.status === "ASSIGNED") && (
-                                                            <button
-                                                                onClick={() => setResolveId(bd.id)}
-                                                                className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold bg-success-50 text-success-700 border border-success-200 hover:bg-success-100 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50 transition-colors"
-                                                            >
-                                                                <CheckCircle size={12} />
-                                                                Resolve
-                                                            </button>
+                                                        {canManage && (
+                                                            <>
+                                                                {(bd.status === "OPEN" || bd.status === "DRAFT" || bd.status === "APPROVED") && (
+                                                                    <button
+                                                                        onClick={() => setAssignModalId(bd.workOrder?.id ?? bd.id)}
+                                                                        className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold bg-accent-50 text-accent-700 border border-accent-200 hover:bg-accent-100 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50 transition-colors"
+                                                                        title="Assign Technician"
+                                                                    >
+                                                                        <UserPlus size={12} />
+                                                                        Assign
+                                                                    </button>
+                                                                )}
+                                                                {bd.status === "ASSIGNED" && (
+                                                                    <button
+                                                                        onClick={() => handleQuickAction(bd.workOrder?.id ?? bd.id, "acknowledge")}
+                                                                        disabled={actionId === (bd.workOrder?.id ?? bd.id)}
+                                                                        className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold bg-cyan-50 text-cyan-700 border border-cyan-200 hover:bg-cyan-100 dark:bg-cyan-900/20 dark:text-cyan-400 dark:border-cyan-800/50 transition-colors disabled:opacity-50"
+                                                                        title="Acknowledge Assignment"
+                                                                    >
+                                                                        {actionId === (bd.workOrder?.id ?? bd.id) ? (
+                                                                            <Loader2 size={12} className="animate-spin" />
+                                                                        ) : (
+                                                                            <CheckCircle size={12} />
+                                                                        )}
+                                                                        Acknowledge
+                                                                    </button>
+                                                                )}
+                                                                {bd.status === "ACKNOWLEDGED" && (
+                                                                    <button
+                                                                        onClick={() => handleQuickAction(bd.workOrder?.id ?? bd.id, "start")}
+                                                                        disabled={actionId === (bd.workOrder?.id ?? bd.id)}
+                                                                        className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800/50 transition-colors disabled:opacity-50"
+                                                                        title="Start Job"
+                                                                    >
+                                                                        {actionId === (bd.workOrder?.id ?? bd.id) ? (
+                                                                            <Loader2 size={12} className="animate-spin" />
+                                                                        ) : (
+                                                                            <Play size={12} />
+                                                                        )}
+                                                                        Start
+                                                                    </button>
+                                                                )}
+                                                                {bd.status === "IN_PROGRESS" && (
+                                                                    <button
+                                                                        onClick={() => setResolveId(bd.id)}
+                                                                        className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold bg-success-50 text-success-700 border border-success-200 hover:bg-success-100 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50 transition-colors"
+                                                                        title="Resolve Breakdown"
+                                                                    >
+                                                                        <CheckCircle size={12} />
+                                                                        Resolve
+                                                                    </button>
+                                                                )}
+                                                            </>
                                                         )}
                                                         {bd.workOrder?.id && (
                                                             <Link
@@ -385,20 +585,27 @@ export function BreakdownListScreen() {
                                     </tr>
                                 </thead>
                                 <tbody className="text-sm">
-                                    {recurringFailures.map((rf: any, idx: number) => (
+                                    {enrichedRecurringFailures.map((rf: any, idx: number) => (
                                         <tr key={idx} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
-                                            <td className="py-4 px-6 font-bold text-primary-950 dark:text-white">{rf.assetName ?? "---"}</td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{rf.failureMode ?? "---"}</td>
+                                            <td className="py-4 px-6">
+                                                <div>
+                                                    <span className="font-bold text-primary-950 dark:text-white block">{rf.asset?.name ?? "---"}</span>
+                                                    <span className="text-[10px] text-neutral-400">{rf.asset?.assetNumber ?? ""}</span>
+                                                </div>
+                                            </td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{rf.rootCauseCode ?? "---"}</td>
                                             <td className="py-4 px-6 text-center">
                                                 <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-danger-50 text-danger-700 dark:bg-danger-900/20 dark:text-danger-400">
                                                     {rf.count ?? 0}x
                                                 </span>
                                             </td>
-                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{rf.totalDowntime ?? "---"}</td>
+                                            <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">
+                                                {formatDowntimeMs(rf.totalDowntimeMs)}
+                                            </td>
                                             <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">{rf.lastOccurred ? fmt.date(rf.lastOccurred) : "---"}</td>
                                         </tr>
                                     ))}
-                                    {recurringFailures.length === 0 && (
+                                    {enrichedRecurringFailures.length === 0 && (
                                         <tr>
                                             <td colSpan={5}>
                                                 <EmptyState icon="list" title="No recurring failures" message="No assets with repeated breakdown patterns detected." />
@@ -414,28 +621,108 @@ export function BreakdownListScreen() {
 
             {/* Resolve Modal */}
             {resolveId && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => { setResolveId(null); setResolveNotes(""); setRootCause(""); }}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => { setResolveId(null); setActionDescription(""); setActionTaken(""); setRootCause(""); }}>
                     <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-neutral-700">
                             <h3 className="text-lg font-bold text-neutral-900 dark:text-white">Resolve Breakdown</h3>
-                            <button onClick={() => { setResolveId(null); setResolveNotes(""); setRootCause(""); }} className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:text-neutral-300 dark:hover:bg-neutral-800 transition-colors">
+                            <button onClick={() => { setResolveId(null); setActionDescription(""); setActionTaken(""); setRootCause(""); }} className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:text-neutral-300 dark:hover:bg-neutral-800 transition-colors">
                                 <X size={18} />
                             </button>
                         </div>
                         <div className="px-6 py-4 space-y-4">
                             <div>
-                                <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Root Cause</label>
-                                <input type="text" value={rootCause} onChange={(e) => setRootCause(e.target.value)} placeholder="What caused the breakdown?" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 mb-1.5">Root Cause Code <span className="text-red-500">*</span></label>
+                                <select
+                                    value={rootCause}
+                                    onChange={(e) => setRootCause(e.target.value)}
+                                    className="w-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                                >
+                                    <option value="">Select root cause...</option>
+                                    {actionCodes.map((ac) => (
+                                        <option key={ac.id} value={ac.code ?? ac.name}>
+                                            {ac.code ?? ac.name} - {ac.name}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Resolution Notes</label>
-                                <textarea rows={3} value={resolveNotes} onChange={(e) => setResolveNotes(e.target.value)} placeholder="What was done to fix it?" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all resize-none" />
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 mb-1.5">Action Code <span className="text-red-500">*</span></label>
+                                <select
+                                    value={actionTaken}
+                                    onChange={(e) => setActionTaken(e.target.value)}
+                                    className="w-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                                >
+                                    <option value="">Select action code...</option>
+                                    {actionCodes.map((ac) => (
+                                        <option key={ac.id} value={ac.code ?? ac.name}>
+                                            {ac.code ?? ac.name} - {ac.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 mb-1.5">Action Description (Notes) <span className="text-red-500">*</span></label>
+                                <textarea
+                                    rows={3}
+                                    value={actionDescription}
+                                    onChange={(e) => setActionDescription(e.target.value)}
+                                    placeholder="Describe the action taken to resolve the issue..."
+                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all resize-none"
+                                />
                             </div>
                             <div className="flex justify-end gap-2">
-                                <button onClick={() => { setResolveId(null); setResolveNotes(""); setRootCause(""); }} className="px-4 py-2 text-sm font-medium rounded-xl border border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
-                                <button onClick={handleResolve} disabled={resolveMutation.isPending} className="px-6 py-2 text-sm font-bold rounded-xl bg-success-600 text-white hover:bg-success-700 disabled:opacity-50 transition-colors flex items-center gap-2">
+                                <button onClick={() => { setResolveId(null); setActionDescription(""); setActionTaken(""); setRootCause(""); }} className="px-4 py-2 text-sm font-medium rounded-xl border border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
+                                <button
+                                    onClick={handleResolve}
+                                    disabled={resolveMutation.isPending || !rootCause || !actionTaken || !actionDescription.trim()}
+                                    className="px-6 py-2 text-sm font-bold rounded-xl bg-success-600 text-white hover:bg-success-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+                                >
                                     {resolveMutation.isPending && <Loader2 size={14} className="animate-spin" />}
                                     Resolve
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Assign Modal */}
+            {assignModalId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => { setAssignModalId(null); setAssignTechId(""); setAssignTechName(""); }}>
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-neutral-700">
+                            <h3 className="text-lg font-bold text-neutral-900 dark:text-white">Assign Work Order</h3>
+                            <button onClick={() => { setAssignModalId(null); setAssignTechId(""); setAssignTechName(""); }} className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:text-neutral-300 dark:hover:bg-neutral-800 transition-colors">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="px-6 py-4 space-y-4">
+                            <SearchableSelect
+                                label="Lead Technician"
+                                required
+                                value={assignTechId}
+                                onChange={(v) => {
+                                    setAssignTechId(v);
+                                    const opt = employeeOptions.find(o => o.value === v);
+                                    setAssignTechName(opt?.label ?? "");
+                                }}
+                                options={employeeOptions}
+                                placeholder="Search by name, ID or department..."
+                                isLoading={empQuery.isLoading}
+                            />
+                            {assignTechId && (() => {
+                                const sel = employeeOptions.find(o => o.value === assignTechId);
+                                return sel ? <p className="text-xs text-neutral-400">{sel.sublabel}</p> : null;
+                            })()}
+                            <div className="flex justify-end gap-2">
+                                <button onClick={() => { setAssignModalId(null); setAssignTechId(""); setAssignTechName(""); }} className="px-4 py-2 text-sm font-medium rounded-xl border border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
+                                <button
+                                    onClick={handleAssign}
+                                    disabled={assignMutation.isPending || !assignTechId.trim()}
+                                    className="px-6 py-2 text-sm font-bold rounded-xl bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+                                >
+                                    {assignMutation.isPending && <Loader2 size={14} className="animate-spin" />}
+                                    Assign
                                 </button>
                             </div>
                         </div>

@@ -16,6 +16,7 @@ export function BreakdownLogScreen() {
     const navigate = useNavigate();
 
     const [assetId, setAssetId] = useState("");
+    const [selectedAssetName, setSelectedAssetName] = useState("");
     const [description, setDescription] = useState("");
     const [priority, setPriority] = useState("EMERGENCY");
     const [safetyRisk, setSafetyRisk] = useState(false);
@@ -27,7 +28,7 @@ export function BreakdownLogScreen() {
     const logMutation = useLogBreakdown();
 
     const handleSubmit = async () => {
-        if (!assetId) return;
+        if (!assetId || !description.trim()) return;
         try {
             const result = await logMutation.mutateAsync({
                 assetId,
@@ -46,8 +47,6 @@ export function BreakdownLogScreen() {
             showApiError(err);
         }
     };
-
-    const selectedAsset = assets.find((a: any) => a.id === assetId);
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 max-w-2xl mx-auto">
@@ -79,8 +78,12 @@ export function BreakdownLogScreen() {
                     <input
                         type="text"
                         placeholder="Search assets..."
-                        value={selectedAsset ? `${selectedAsset.name} (${selectedAsset.assetNumber})` : assetSearch}
-                        onChange={(e) => { setAssetSearch(e.target.value); setAssetId(""); }}
+                        value={assetId ? selectedAssetName : assetSearch}
+                        onChange={(e) => {
+                            setAssetSearch(e.target.value);
+                            setAssetId("");
+                            setSelectedAssetName("");
+                        }}
                         className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
                     />
                     {assetSearch && !assetId && assets.length > 0 && (
@@ -88,7 +91,12 @@ export function BreakdownLogScreen() {
                             {assets.map((asset: any) => (
                                 <button
                                     key={asset.id}
-                                    onClick={() => { setAssetId(asset.id); setAssetSearch(""); }}
+                                    type="button"
+                                    onClick={() => {
+                                        setAssetId(asset.id);
+                                        setSelectedAssetName(`${asset.name} (${asset.assetNumber})`);
+                                        setAssetSearch("");
+                                    }}
                                     className="w-full text-left px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-sm transition-colors border-b border-neutral-100 dark:border-neutral-700 last:border-0"
                                 >
                                     <span className="font-bold text-primary-950 dark:text-white">{asset.name}</span>
@@ -101,7 +109,7 @@ export function BreakdownLogScreen() {
 
                 {/* Description */}
                 <div>
-                    <label className="block text-sm font-bold text-neutral-700 dark:text-neutral-300 mb-2">Description</label>
+                    <label className="block text-sm font-bold text-neutral-700 dark:text-neutral-300 mb-2">Description <span className="text-danger-500">*</span></label>
                     <textarea
                         rows={3}
                         value={description}
@@ -139,13 +147,14 @@ export function BreakdownLogScreen() {
                         <p className="text-xs text-amber-600/80 dark:text-amber-400/60">Does this breakdown pose a safety risk?</p>
                     </div>
                     <button
+                        type="button"
                         onClick={() => setSafetyRisk(!safetyRisk)}
-                        className={`relative w-12 h-7 rounded-full transition-colors ${
+                        className={`relative w-12 h-7 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-danger-500/20 ${
                             safetyRisk ? "bg-danger-500" : "bg-neutral-300 dark:bg-neutral-600"
                         }`}
                     >
-                        <span className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                            safetyRisk ? "translate-x-6" : "translate-x-1"
+                        <span className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                            safetyRisk ? "translate-x-5" : "translate-x-0"
                         }`} />
                     </button>
                 </div>
@@ -153,7 +162,7 @@ export function BreakdownLogScreen() {
                 {/* Submit */}
                 <button
                     onClick={handleSubmit}
-                    disabled={!assetId || logMutation.isPending}
+                    disabled={!assetId || !description.trim() || logMutation.isPending}
                     className="w-full py-3 bg-danger-600 hover:bg-danger-700 text-white font-bold rounded-xl shadow-md shadow-danger-500/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                 >
                     {logMutation.isPending ? (

@@ -709,6 +709,7 @@ function useWOAction(
             queryClient.invalidateQueries({ queryKey: maintenanceKeys.workOrder(variables.id) });
             queryClient.invalidateQueries({ queryKey: maintenanceKeys.workOrders() });
             queryClient.invalidateQueries({ queryKey: maintenanceKeys.woBoard() });
+            queryClient.invalidateQueries({ queryKey: maintenanceKeys.breakdowns() });
         },
     });
 }
