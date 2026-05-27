@@ -435,6 +435,70 @@ export class InventoryApiClient extends BaseApiClient {
     return this.delete(`/inventory/compliance-documents/${id}`);
   }
 
+  // ── Phase 5: Analytics ────────────────────────
+  async getCurrentKpis() {
+    return this.get('/inventory/analytics/current-kpis');
+  }
+
+  async getDailyAnalytics(params?: Record<string, string>) {
+    return this.get('/inventory/analytics/daily', params);
+  }
+
+  async getKpiSnapshots(params?: Record<string, string>) {
+    return this.get('/inventory/analytics/kpis', params);
+  }
+
+  async getStockValueByWarehouse() {
+    return this.get('/inventory/analytics/stock-value');
+  }
+
+  async getTrendData(params?: Record<string, string>) {
+    return this.get('/inventory/analytics/trend', params);
+  }
+
+  // ── Phase 5: Search ─────────────────────────
+  async globalSearch(params?: Record<string, string>) {
+    return this.get('/inventory/search', params);
+  }
+
+  // ── Phase 5: Import/Export ──────────────────
+  async previewImport(data: Record<string, unknown>) {
+    return this.post('/inventory/import/preview', data);
+  }
+
+  async commitImport(jobId: string) {
+    return this.post(`/inventory/import/${jobId}/commit`);
+  }
+
+  async listImportJobs(params?: Record<string, string>) {
+    return this.get('/inventory/import/jobs', params);
+  }
+
+  async getImportJob(jobId: string) {
+    return this.get(`/inventory/import/jobs/${jobId}`);
+  }
+
+  async exportData(data: Record<string, unknown>) {
+    return this.post('/inventory/export', data);
+  }
+
+  async getExportTemplates() {
+    return this.get('/inventory/export/templates');
+  }
+
+  // ── Phase 5: Saved Filters ─────────────────
+  async listSavedFilters(params?: Record<string, string>) {
+    return this.get('/inventory/saved-filters', params);
+  }
+
+  async createSavedFilter(data: Record<string, unknown>) {
+    return this.post('/inventory/saved-filters', data);
+  }
+
+  async deleteSavedFilter(id: string) {
+    return this.delete(`/inventory/saved-filters/${id}`);
+  }
+
   // ── Helpers ───────────────────────────────────
   async seedInventoryData() {
     await this.ensureNumberSeries();

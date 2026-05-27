@@ -46,4 +46,10 @@ export const INVENTORY_ROUTES = {
   toolReportsBreakage: '/app/inventory/tool-room/reports/breakage',
   // Phase 4 — Industry Templates & Compliance
   industry: '/app/inventory/industry',
+  // Phase 5 — Analytics, Search, Import/Export
+  analytics: '/app/inventory/analytics',
+  stockValue: '/app/inventory/analytics/stock-value',
+  search: '/app/inventory/search',
+  importData: '/app/inventory/import',
+  exportData: '/app/inventory/export',
 };
