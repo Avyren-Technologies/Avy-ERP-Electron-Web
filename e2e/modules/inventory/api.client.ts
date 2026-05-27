@@ -397,6 +397,44 @@ export class InventoryApiClient extends BaseApiClient {
     return this.get('/inventory/reports/tool-breakage', params);
   }
 
+  // ── Phase 4: Industry Templates ───────────────
+  async listIndustryTemplates() {
+    return this.get('/inventory/industry/templates');
+  }
+
+  async getIndustryTemplate(id: string) {
+    return this.get(`/inventory/industry/templates/${id}`);
+  }
+
+  async activateIndustryTemplate(id: string) {
+    return this.post(`/inventory/industry/templates/${id}/activate`);
+  }
+
+  async cloneIndustryTemplate(id: string, data: Record<string, unknown>) {
+    return this.post(`/inventory/industry/templates/${id}/clone`, data);
+  }
+
+  async getActiveFieldConfig() {
+    return this.get('/inventory/industry/field-config');
+  }
+
+  async seedIndustryTemplates() {
+    return this.post('/inventory/industry/seed');
+  }
+
+  // ── Phase 4: Compliance Documents ────────────
+  async listComplianceDocuments(params?: Record<string, string>) {
+    return this.get('/inventory/compliance-documents', params);
+  }
+
+  async createComplianceDocument(data: Record<string, unknown>) {
+    return this.post('/inventory/compliance-documents', data);
+  }
+
+  async deleteComplianceDocument(id: string) {
+    return this.delete(`/inventory/compliance-documents/${id}`);
+  }
+
   // ── Helpers ───────────────────────────────────
   async seedInventoryData() {
     await this.ensureNumberSeries();
