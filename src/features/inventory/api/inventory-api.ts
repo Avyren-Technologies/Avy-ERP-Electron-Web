@@ -224,4 +224,32 @@ export const inventoryApi = {
     deleteComplianceDocument: (id: string) => client.delete(`/inventory/compliance-documents/${id}`).then((r) => r.data),
     getComplianceByLot: (lotId: string) => client.get(`/inventory/compliance-documents/by-lot/${lotId}`).then((r) => r.data),
     getComplianceByPart: (partId: string) => client.get(`/inventory/compliance-documents/by-part/${partId}`).then((r) => r.data),
+
+    // ── Analytics ──
+    getDailyAnalytics: (params?: any) => client.get('/inventory/analytics/daily', { params }).then((r) => r.data),
+    getKpiSnapshots: (params?: any) => client.get('/inventory/analytics/kpis', { params }).then((r) => r.data),
+    getCurrentKpis: () => client.get('/inventory/analytics/current-kpis').then((r) => r.data),
+    getStockValueByWarehouse: () => client.get('/inventory/analytics/stock-value').then((r) => r.data),
+    getTrendData: (params?: any) => client.get('/inventory/analytics/trend', { params }).then((r) => r.data),
+
+    // ── Search ──
+    globalSearch: (params?: any) => client.get('/inventory/search', { params }).then((r) => r.data),
+    searchByEntity: (entityType: string, params?: any) => client.get(`/inventory/search/${entityType}`, { params }).then((r) => r.data),
+
+    // ── Import ──
+    previewImport: (data: any) => client.post('/inventory/import/preview', data).then((r) => r.data),
+    commitImport: (jobId: string) => client.post(`/inventory/import/${jobId}/commit`).then((r) => r.data),
+    listImportJobs: (params?: any) => client.get('/inventory/import/jobs', { params }).then((r) => r.data),
+    getImportJob: (jobId: string) => client.get(`/inventory/import/jobs/${jobId}`).then((r) => r.data),
+
+    // ── Export ──
+    exportData: (data: any) => client.post('/inventory/export', data, { responseType: 'blob' }).then((r) => r.data),
+    getExportTemplates: () => client.get('/inventory/export/templates').then((r) => r.data),
+
+    // ── Saved Filters ──
+    listSavedFilters: (params?: any) => client.get('/inventory/saved-filters', { params }).then((r) => r.data),
+    createSavedFilter: (data: any) => client.post('/inventory/saved-filters', data).then((r) => r.data),
+    updateSavedFilter: (id: string, data: any) => client.patch(`/inventory/saved-filters/${id}`, data).then((r) => r.data),
+    deleteSavedFilter: (id: string) => client.delete(`/inventory/saved-filters/${id}`).then((r) => r.data),
+    setDefaultFilter: (id: string) => client.patch(`/inventory/saved-filters/${id}/default`).then((r) => r.data),
 };
