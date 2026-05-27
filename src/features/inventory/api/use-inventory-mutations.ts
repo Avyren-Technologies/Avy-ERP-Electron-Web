@@ -910,3 +910,97 @@ export function useCompleteReconditioning() {
         onError: (error: any) => showApiError(error),
     });
 }
+
+// ── Industry Templates ──
+
+export function useActivateIndustryTemplate() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => inventoryApi.activateIndustryTemplate(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.industryTemplates() });
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.activeFieldConfig() });
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.config() });
+            showSuccess('Industry template activated');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+export function useCloneIndustryTemplate() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, data }: { id: string; data: any }) =>
+            inventoryApi.cloneIndustryTemplate(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.industryTemplates() });
+            showSuccess('Template cloned');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+export function useUpdateFieldConfig() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ templateId, fieldId, data }: { templateId: string; fieldId: string; data: any }) =>
+            inventoryApi.updateFieldConfig(templateId, fieldId, data),
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.industryTemplate(variables.templateId) });
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.activeFieldConfig() });
+            showSuccess('Field configuration updated');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+export function useSeedIndustryTemplates() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: () => inventoryApi.seedIndustryTemplates(),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.industryTemplates() });
+            showSuccess('System templates seeded');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+// ── Compliance Documents ──
+
+export function useCreateComplianceDocument() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: any) => inventoryApi.createComplianceDocument(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.complianceDocuments() });
+            showSuccess('Compliance document uploaded');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+export function useUpdateComplianceDocument() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, data }: { id: string; data: any }) =>
+            inventoryApi.updateComplianceDocument(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.complianceDocuments() });
+            showSuccess('Compliance document updated');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+export function useDeleteComplianceDocument() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => inventoryApi.deleteComplianceDocument(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.complianceDocuments() });
+            showSuccess('Compliance document deleted');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}

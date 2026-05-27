@@ -206,4 +206,22 @@ export const inventoryApi = {
     getToolConsumptionReport: (params?: any) => client.get('/inventory/reports/tool-consumption', { params }).then((r) => r.data),
     getReconditioningRegister: (params?: any) => client.get('/inventory/reports/reconditioning-register', { params }).then((r) => r.data),
     getToolBreakageReport: (params?: any) => client.get('/inventory/reports/tool-breakage', { params }).then((r) => r.data),
+
+    // ── Industry Templates ──
+    listIndustryTemplates: () => client.get('/inventory/industry/templates').then((r) => r.data),
+    getIndustryTemplate: (id: string) => client.get(`/inventory/industry/templates/${id}`).then((r) => r.data),
+    activateIndustryTemplate: (id: string) => client.post(`/inventory/industry/templates/${id}/activate`).then((r) => r.data),
+    cloneIndustryTemplate: (id: string, data: any) => client.post(`/inventory/industry/templates/${id}/clone`, data).then((r) => r.data),
+    updateFieldConfig: (templateId: string, fieldId: string, data: any) => client.patch(`/inventory/industry/templates/${templateId}/fields/${fieldId}`, data).then((r) => r.data),
+    getActiveFieldConfig: () => client.get('/inventory/industry/field-config').then((r) => r.data),
+    seedIndustryTemplates: () => client.post('/inventory/industry/seed').then((r) => r.data),
+
+    // ── Compliance Documents ──
+    listComplianceDocuments: (params?: any) => client.get('/inventory/compliance-documents', { params }).then((r) => r.data),
+    getComplianceDocument: (id: string) => client.get(`/inventory/compliance-documents/${id}`).then((r) => r.data),
+    createComplianceDocument: (data: any) => client.post('/inventory/compliance-documents', data).then((r) => r.data),
+    updateComplianceDocument: (id: string, data: any) => client.patch(`/inventory/compliance-documents/${id}`, data).then((r) => r.data),
+    deleteComplianceDocument: (id: string) => client.delete(`/inventory/compliance-documents/${id}`).then((r) => r.data),
+    getComplianceByLot: (lotId: string) => client.get(`/inventory/compliance-documents/by-lot/${lotId}`).then((r) => r.data),
+    getComplianceByPart: (partId: string) => client.get(`/inventory/compliance-documents/by-part/${partId}`).then((r) => r.data),
 };
