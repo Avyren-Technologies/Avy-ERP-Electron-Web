@@ -307,6 +307,22 @@ const MaterialReturnScreen = lazyNamed(() => import("./features/inventory/produc
 const ProductionScrapScreen = lazyNamed(() => import("./features/inventory/production/ProductionScrapScreen"), "ProductionScrapScreen");
 const WoReconciliationScreen = lazyNamed(() => import("./features/inventory/production/WoReconciliationScreen"), "WoReconciliationScreen");
 
+// ─── Inventory: Warehouse Advanced ───
+const PutawayRulesScreen = lazyNamed(() => import("./features/inventory/warehouse-advanced/PutawayRulesScreen"), "PutawayRulesScreen");
+const PalletManagementScreen = lazyNamed(() => import("./features/inventory/warehouse-advanced/PalletManagementScreen"), "PalletManagementScreen");
+const StagingDockScreen = lazyNamed(() => import("./features/inventory/warehouse-advanced/StagingDockScreen"), "StagingDockScreen");
+
+// ─── Inventory: Tool Room ───
+const ToolLifePolicyScreen = lazyNamed(() => import("./features/inventory/tool-room/ToolLifePolicyScreen"), "ToolLifePolicyScreen");
+const ToolIssueScreen = lazyNamed(() => import("./features/inventory/tool-room/ToolIssueScreen"), "ToolIssueScreen");
+const ToolReturnScreen = lazyNamed(() => import("./features/inventory/tool-room/ToolReturnScreen"), "ToolReturnScreen");
+const ReconditioningScreen = lazyNamed(() => import("./features/inventory/tool-room/ReconditioningScreen"), "ReconditioningScreen");
+const ToolStatusReportScreen = lazyNamed(() => import("./features/inventory/tool-room/ToolStatusReportScreen"), "ToolStatusReportScreen");
+const ToolsAtMachineScreen = lazyNamed(() => import("./features/inventory/tool-room/ToolsAtMachineScreen"), "ToolsAtMachineScreen");
+const ToolConsumptionScreen = lazyNamed(() => import("./features/inventory/tool-room/ToolConsumptionScreen"), "ToolConsumptionScreen");
+const ReconditioningRegisterScreen = lazyNamed(() => import("./features/inventory/tool-room/ReconditioningRegisterScreen"), "ReconditioningRegisterScreen");
+const ToolBreakageScreen = lazyNamed(() => import("./features/inventory/tool-room/ToolBreakageScreen"), "ToolBreakageScreen");
+
 // ─── Operations Modules ───
 const ProductionScreen = lazyNamed(() => import("./features/production/ProductionScreen"), "ProductionScreen");
 const MaintenanceDashboardScreen = lazyNamed(() => import("./features/maintenance/dashboard/MaintenanceDashboardScreen"), "MaintenanceDashboardScreen");
@@ -690,6 +706,20 @@ function App() {
         <Route path="inventory/production/material-return" element={<RequirePermission permission="inventory.transactions:create"><MaterialReturnScreen /></RequirePermission>} />
         <Route path="inventory/production/scrap" element={<RequirePermission permission="inventory.transactions:create"><ProductionScrapScreen /></RequirePermission>} />
         <Route path="inventory/production/reconciliation" element={<RequirePermission permission="inventory.reports:read"><WoReconciliationScreen /></RequirePermission>} />
+        {/* Warehouse Advanced routes */}
+        <Route path="inventory/warehouse/putaway-rules" element={<RequirePermission permission="inventory.config:configure"><PutawayRulesScreen /></RequirePermission>} />
+        <Route path="inventory/warehouse/pallets" element={<RequirePermission permission="inventory.transactions:read"><PalletManagementScreen /></RequirePermission>} />
+        <Route path="inventory/warehouse/staging" element={<RequirePermission permission="inventory.stock:read"><StagingDockScreen /></RequirePermission>} />
+        {/* Tool Room routes */}
+        <Route path="inventory/tool-room/policies" element={<RequirePermission permission="inventory.config:configure"><ToolLifePolicyScreen /></RequirePermission>} />
+        <Route path="inventory/tool-room/issue" element={<RequirePermission permission="inventory.transactions:create"><ToolIssueScreen /></RequirePermission>} />
+        <Route path="inventory/tool-room/return" element={<RequirePermission permission="inventory.transactions:create"><ToolReturnScreen /></RequirePermission>} />
+        <Route path="inventory/tool-room/reconditioning" element={<RequirePermission permission="inventory.transactions:create"><ReconditioningScreen /></RequirePermission>} />
+        <Route path="inventory/tool-room/reports" element={<RequirePermission permission="inventory.reports:read"><ToolStatusReportScreen /></RequirePermission>} />
+        <Route path="inventory/tool-room/reports/at-machine" element={<RequirePermission permission="inventory.reports:read"><ToolsAtMachineScreen /></RequirePermission>} />
+        <Route path="inventory/tool-room/reports/consumption" element={<RequirePermission permission="inventory.reports:read"><ToolConsumptionScreen /></RequirePermission>} />
+        <Route path="inventory/tool-room/reports/reconditioning" element={<RequirePermission permission="inventory.reports:read"><ReconditioningRegisterScreen /></RequirePermission>} />
+        <Route path="inventory/tool-room/reports/breakage" element={<RequirePermission permission="inventory.reports:read"><ToolBreakageScreen /></RequirePermission>} />
         <Route path="production" element={<RequireRole roles={['super-admin', 'company-admin']}><ProductionScreen /></RequireRole>} />
         <Route path="maintenance" element={<Navigate to="maintenance/dashboard" replace />} />
         <Route path="maintenance/dashboard" element={<RequirePermission permission="maintenance:read"><MaintenanceDashboardScreen /></RequirePermission>} />

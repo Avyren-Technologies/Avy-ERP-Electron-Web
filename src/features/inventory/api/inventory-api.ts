@@ -162,4 +162,48 @@ export const inventoryApi = {
 
     // ── Scrap Analysis ──
     getScrapAnalysis: (params?: any) => client.get('/inventory/reports/scrap-analysis', { params }).then((r) => r.data),
+
+    // ── Putaway Rules ──
+    listPutawayRules: (params?: any) => client.get('/inventory/putaway-rules', { params }).then((r) => r.data),
+    createPutawayRule: (data: any) => client.post('/inventory/putaway-rules', data).then((r) => r.data),
+    updatePutawayRule: (id: string, data: any) => client.patch(`/inventory/putaway-rules/${id}`, data).then((r) => r.data),
+    deletePutawayRule: (id: string) => client.delete(`/inventory/putaway-rules/${id}`).then((r) => r.data),
+    suggestBin: (data: any) => client.post('/inventory/putaway-rules/suggest', data).then((r) => r.data),
+
+    // ── Pallets ──
+    listPallets: (params?: any) => client.get('/inventory/pallets', { params }).then((r) => r.data),
+    getPallet: (id: string) => client.get(`/inventory/pallets/${id}`).then((r) => r.data),
+    createPallet: (data: any) => client.post('/inventory/pallets', data).then((r) => r.data),
+    addPalletItems: (id: string, data: any) => client.post(`/inventory/pallets/${id}/items`, data).then((r) => r.data),
+    closePallet: (id: string) => client.patch(`/inventory/pallets/${id}/close`).then((r) => r.data),
+
+    // ── Staging ──
+    getStagingInbound: (params?: any) => client.get('/inventory/staging/inbound', { params }).then((r) => r.data),
+    getStagingOutbound: (params?: any) => client.get('/inventory/staging/outbound', { params }).then((r) => r.data),
+    getStagingArea: (warehouseId: string) => client.get(`/inventory/staging/${warehouseId}`).then((r) => r.data),
+
+    // ── Tool Life Policies ──
+    listToolLifePolicies: (params?: any) => client.get('/inventory/tool-life-policies', { params }).then((r) => r.data),
+    getToolLifePolicy: (partId: string) => client.get(`/inventory/tool-life-policies/${partId}`).then((r) => r.data),
+    upsertToolLifePolicy: (data: any) => client.post('/inventory/tool-life-policies', data).then((r) => r.data),
+
+    // ── Tool Issue ──
+    createToolIssue: (data: any) => client.post('/inventory/transactions/tool-issue', data).then((r) => r.data),
+    getToolsAtMachine: (params?: any) => client.get('/inventory/stock/tools-at-machine', { params }).then((r) => r.data),
+
+    // ── Tool Return ──
+    createToolReturn: (data: any) => client.post('/inventory/transactions/tool-return', data).then((r) => r.data),
+
+    // ── Reconditioning ──
+    listReconditioning: (params?: any) => client.get('/inventory/transactions/reconditioning', { params }).then((r) => r.data),
+    initiateReconditioning: (data: any) => client.post('/inventory/transactions/reconditioning', data).then((r) => r.data),
+    completeReconditioning: (id: string, data: any) => client.patch(`/inventory/transactions/reconditioning/${id}/complete`, data).then((r) => r.data),
+    getOverdueReconditioning: () => client.get('/inventory/transactions/reconditioning/overdue').then((r) => r.data),
+
+    // ── Tool Reports ──
+    getToolStatusReport: (params?: any) => client.get('/inventory/reports/tool-status', { params }).then((r) => r.data),
+    getToolsAtMachineReport: (params?: any) => client.get('/inventory/reports/tool-at-machine', { params }).then((r) => r.data),
+    getToolConsumptionReport: (params?: any) => client.get('/inventory/reports/tool-consumption', { params }).then((r) => r.data),
+    getReconditioningRegister: (params?: any) => client.get('/inventory/reports/reconditioning-register', { params }).then((r) => r.data),
+    getToolBreakageReport: (params?: any) => client.get('/inventory/reports/tool-breakage', { params }).then((r) => r.data),
 };

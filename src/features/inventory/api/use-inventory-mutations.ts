@@ -742,3 +742,171 @@ export function useGenerateWoReconciliation() {
         onError: (error: any) => showApiError(error),
     });
 }
+
+// ── Helper for tool-affecting mutations ──
+
+function invalidateToolQueries(queryClient: ReturnType<typeof useQueryClient>) {
+    queryClient.invalidateQueries({ queryKey: inventoryKeys.stockOnHand() });
+    queryClient.invalidateQueries({ queryKey: inventoryKeys.toolsAtMachine() });
+    queryClient.invalidateQueries({ queryKey: inventoryKeys.toolStatusReport() });
+    queryClient.invalidateQueries({ queryKey: inventoryKeys.dashboard() });
+}
+
+// ── Putaway Rules ──
+
+export function useCreatePutawayRule() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: any) => inventoryApi.createPutawayRule(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.putawayRules() });
+            showSuccess('Putaway rule created');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+export function useUpdatePutawayRule() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, data }: { id: string; data: any }) =>
+            inventoryApi.updatePutawayRule(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.putawayRules() });
+            showSuccess('Putaway rule updated');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+export function useDeletePutawayRule() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => inventoryApi.deletePutawayRule(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.putawayRules() });
+            showSuccess('Putaway rule deleted');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+export function useSuggestBin() {
+    return useMutation({
+        mutationFn: (data: any) => inventoryApi.suggestBin(data),
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+// ── Pallets ──
+
+export function useCreatePallet() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: any) => inventoryApi.createPallet(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.pallets() });
+            showSuccess('Pallet created');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+export function useAddPalletItems() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, data }: { id: string; data: any }) =>
+            inventoryApi.addPalletItems(id, data),
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.pallet(variables.id) });
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.pallets() });
+            showSuccess('Items added to pallet');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+export function useClosePallet() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => inventoryApi.closePallet(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.pallets() });
+            showSuccess('Pallet closed');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+// ── Tool Life Policies ──
+
+export function useUpsertToolLifePolicy() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: any) => inventoryApi.upsertToolLifePolicy(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.toolLifePolicies() });
+            showSuccess('Tool life policy saved');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+// ── Tool Issue ──
+
+export function useCreateToolIssue() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: any) => inventoryApi.createToolIssue(data),
+        onSuccess: () => {
+            invalidateToolQueries(queryClient);
+            showSuccess('Tool issued to machine');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+// ── Tool Return ──
+
+export function useCreateToolReturn() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: any) => inventoryApi.createToolReturn(data),
+        onSuccess: () => {
+            invalidateToolQueries(queryClient);
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.reconditioning() });
+            showSuccess('Tool returned from machine');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+// ── Reconditioning ──
+
+export function useInitiateReconditioning() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: any) => inventoryApi.initiateReconditioning(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.reconditioning() });
+            invalidateToolQueries(queryClient);
+            showSuccess('Reconditioning initiated');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+export function useCompleteReconditioning() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, data }: { id: string; data: any }) =>
+            inventoryApi.completeReconditioning(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.reconditioning() });
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.overdueReconditioning() });
+            invalidateToolQueries(queryClient);
+            showSuccess('Reconditioning completed');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
