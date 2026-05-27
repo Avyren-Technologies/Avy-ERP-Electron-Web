@@ -44,4 +44,6 @@ export const INVENTORY_ROUTES = {
   toolReportsConsumption: '/app/inventory/tool-room/reports/consumption',
   toolReportsReconditioning: '/app/inventory/tool-room/reports/reconditioning',
   toolReportsBreakage: '/app/inventory/tool-room/reports/breakage',
+  // Phase 4 — Industry Templates & Compliance
+  industry: '/app/inventory/industry',
 };
