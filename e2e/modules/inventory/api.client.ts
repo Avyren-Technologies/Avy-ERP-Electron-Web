@@ -294,6 +294,109 @@ export class InventoryApiClient extends BaseApiClient {
     return this.post('/inventory/scrap-categories', data);
   }
 
+  // ── Phase 3: Putaway Rules ────────────────────
+  async listPutawayRules(params?: Record<string, string>) {
+    return this.get('/inventory/putaway-rules', params);
+  }
+
+  async createPutawayRule(data: Record<string, unknown>) {
+    return this.post('/inventory/putaway-rules', data);
+  }
+
+  async deletePutawayRule(id: string) {
+    return this.delete(`/inventory/putaway-rules/${id}`);
+  }
+
+  async suggestBin(data: Record<string, unknown>) {
+    return this.post('/inventory/putaway-rules/suggest', data);
+  }
+
+  // ── Phase 3: Pallets ─────────────────────────
+  async listPallets(params?: Record<string, string>) {
+    return this.get('/inventory/pallets', params);
+  }
+
+  async getPallet(id: string) {
+    return this.get(`/inventory/pallets/${id}`);
+  }
+
+  async createPallet(data: Record<string, unknown>) {
+    return this.post('/inventory/pallets', data);
+  }
+
+  async closePallet(id: string) {
+    return this.patch(`/inventory/pallets/${id}/close`);
+  }
+
+  // ── Phase 3: Staging ─────────────────────────
+  async getStagingInbound(params?: Record<string, string>) {
+    return this.get('/inventory/staging/inbound', params);
+  }
+
+  async getStagingOutbound(params?: Record<string, string>) {
+    return this.get('/inventory/staging/outbound', params);
+  }
+
+  // ── Phase 3: Tool Life Policies ──────────────
+  async listToolLifePolicies(params?: Record<string, string>) {
+    return this.get('/inventory/tool-life-policies', params);
+  }
+
+  async upsertToolLifePolicy(data: Record<string, unknown>) {
+    return this.post('/inventory/tool-life-policies', data);
+  }
+
+  // ── Phase 3: Tool Issue/Return ───────────────
+  async createToolIssue(data: Record<string, unknown>) {
+    return this.post('/inventory/transactions/tool-issue', data);
+  }
+
+  async getToolsAtMachine(params?: Record<string, string>) {
+    return this.get('/inventory/stock/tools-at-machine', params);
+  }
+
+  async createToolReturn(data: Record<string, unknown>) {
+    return this.post('/inventory/transactions/tool-return', data);
+  }
+
+  // ── Phase 3: Reconditioning ──────────────────
+  async listReconditioning(params?: Record<string, string>) {
+    return this.get('/inventory/transactions/reconditioning', params);
+  }
+
+  async initiateReconditioning(data: Record<string, unknown>) {
+    return this.post('/inventory/transactions/reconditioning', data);
+  }
+
+  async completeReconditioning(id: string, data: Record<string, unknown>) {
+    return this.patch(`/inventory/transactions/reconditioning/${id}/complete`, data);
+  }
+
+  async getOverdueReconditioning() {
+    return this.get('/inventory/transactions/reconditioning/overdue');
+  }
+
+  // ── Phase 3: Tool Reports ────────────────────
+  async getToolStatusReport(params?: Record<string, string>) {
+    return this.get('/inventory/reports/tool-status', params);
+  }
+
+  async getToolsAtMachineReport(params?: Record<string, string>) {
+    return this.get('/inventory/reports/tool-at-machine', params);
+  }
+
+  async getToolConsumptionReport(params?: Record<string, string>) {
+    return this.get('/inventory/reports/tool-consumption', params);
+  }
+
+  async getReconditioningRegister(params?: Record<string, string>) {
+    return this.get('/inventory/reports/reconditioning-register', params);
+  }
+
+  async getToolBreakageReport(params?: Record<string, string>) {
+    return this.get('/inventory/reports/tool-breakage', params);
+  }
+
   // ── Helpers ───────────────────────────────────
   async seedInventoryData() {
     await this.ensureNumberSeries();
