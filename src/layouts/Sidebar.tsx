@@ -494,26 +494,26 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
                                 <button
                                     onClick={() => toggleModule(section.moduleSeparator!)}
                                     className={cn(
-                                        'w-full flex items-center gap-3 mx-3 mt-2 mb-0.5 rounded-xl transition-all duration-200 cursor-pointer group/mod',
-                                        'px-3 py-2.5 bg-white dark:bg-neutral-800/80',
+                                        'w-full flex items-center gap-2.5 mx-3 mt-1.5 mb-0.5 rounded-lg transition-all duration-200 cursor-pointer group/mod',
+                                        'px-2.5 py-[7px] bg-white dark:bg-neutral-800/80',
                                         'border border-neutral-100/80 dark:border-neutral-700/50',
-                                        'shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]',
+                                        'shadow-[0_1px_2px_rgba(0,0,0,0.03)] hover:shadow-[0_1px_6px_rgba(0,0,0,0.07)]',
                                         'border-l-[3px]', modCard.accent,
                                         modCard.hoverBg,
                                     )}
                                     style={{ width: 'calc(100% - 24px)' }}
                                 >
-                                    <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors', modCard.iconBg)}>
-                                        <ModIcon size={14} strokeWidth={2.2} />
+                                    <div className={cn('w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 transition-colors', modCard.iconBg)}>
+                                        <ModIcon size={12} strokeWidth={2.2} />
                                     </div>
                                     <span className={cn(
-                                        'text-[11.5px] font-semibold tracking-wide flex-1 text-left',
+                                        'text-[11px] font-semibold tracking-wide flex-1 text-left truncate',
                                         'text-neutral-700 dark:text-neutral-200 group-hover/mod:text-neutral-900 dark:group-hover/mod:text-white'
                                     )}>
                                         {section.moduleSeparator}
                                     </span>
                                     <ChevronRight
-                                        size={14}
+                                        size={13}
                                         className="text-neutral-300 dark:text-neutral-600 group-hover/mod:text-neutral-500 dark:group-hover/mod:text-neutral-400 transition-colors flex-shrink-0"
                                     />
                                 </button>
@@ -538,9 +538,30 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
                                 </button>
                             );
                         })()}
-                        {collapsed && section.moduleSeparator && (
-                            <div className="mx-3 mt-3 mb-1 h-px bg-primary-100 dark:bg-primary-900/40" />
-                        )}
+                        {collapsed && section.moduleSeparator && (() => {
+                            const modCard = MODULE_CARD_CONFIG[section.moduleSeparator!] ?? DEFAULT_MODULE_CARD;
+                            const ModIcon = modCard.icon;
+                            return (
+                                <button
+                                    onClick={() => toggleModule(section.moduleSeparator!)}
+                                    onMouseEnter={(e) => handleMouseEnter(e, section.moduleSeparator!)}
+                                    onMouseLeave={handleMouseLeave}
+                                    className={cn(
+                                        'mx-auto mt-2 mb-0.5 w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-150',
+                                        isModuleCollapsed
+                                            ? 'bg-neutral-50 dark:bg-neutral-800/60 hover:bg-primary-50 dark:hover:bg-primary-900/30'
+                                            : 'bg-primary-50 dark:bg-primary-900/40 ring-1 ring-primary-200 dark:ring-primary-800',
+                                    )}
+                                    title={section.moduleSeparator}
+                                >
+                                    <ModIcon
+                                        size={16}
+                                        strokeWidth={2}
+                                        className={isModuleCollapsed ? 'text-neutral-400 dark:text-neutral-500' : 'text-primary-600 dark:text-primary-400'}
+                                    />
+                                </button>
+                            );
+                        })()}
 
                         {!isModuleCollapsed && (
                         <div className={cn('mb-1', collapsed ? 'px-2' : 'px-3')}>
