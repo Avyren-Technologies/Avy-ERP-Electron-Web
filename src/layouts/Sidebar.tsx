@@ -195,6 +195,35 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
         }
     }, [location.pathname, manifestSections]);
 
+    // Auto-expand module containing active route on navigation
+    useEffect(() => {
+        if (!manifestSections) return;
+        let activeModuleSep: string | null = null;
+        let currentSep = '';
+        for (const section of manifestSections) {
+            if (section.moduleSeparator) currentSep = section.moduleSeparator;
+            if (currentSep) {
+                const hasActive = section.items.some(item =>
+                    location.pathname === item.path ||
+                    location.pathname.startsWith(item.path + '/') ||
+                    item.children?.some(c => location.pathname.startsWith(c.path))
+                );
+                if (hasActive) { activeModuleSep = currentSep; break; }
+            }
+        }
+        if (activeModuleSep) {
+            setCollapsedModules(prev => {
+                if (!prev[activeModuleSep!]) return prev; // Already expanded
+                // Expand the active module, collapse others (accordion)
+                const next: Record<string, boolean> = {};
+                for (const key of Object.keys(prev)) {
+                    next[key] = key !== activeModuleSep;
+                }
+                return next;
+            });
+        }
+    }, [location.pathname, manifestSections]);
+
     const toggleSection = (group: string) => {
         if (group === 'Overview') return;
         setCollapsedSections(prev => {
@@ -213,9 +242,47 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
     };
 
     // ── Module-level collapse (HRMS, Operations, etc.) ──
-    const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>({});
+    const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>(() => {
+        const initial: Record<string, boolean> = {};
+        if (!manifestSections) return initial;
+
+        // Find which module separator contains the active route
+        let activeModuleSep: string | null = null;
+        let currentSep = '';
+        for (const section of manifestSections) {
+            if (section.moduleSeparator) currentSep = section.moduleSeparator;
+            if (currentSep) {
+                const hasActive = section.items.some(item =>
+                    location.pathname === item.path ||
+                    location.pathname.startsWith(item.path + '/') ||
+                    item.children?.some(c => location.pathname.startsWith(c.path))
+                );
+                if (hasActive && !activeModuleSep) activeModuleSep = currentSep;
+            }
+        }
+
+        // Collapse all module separators except the active one
+        for (const section of manifestSections) {
+            if (section.moduleSeparator) {
+                initial[section.moduleSeparator] = section.moduleSeparator !== activeModuleSep;
+            }
+        }
+        return initial;
+    });
     const toggleModule = (moduleName: string) => {
-        setCollapsedModules(prev => ({ ...prev, [moduleName]: !prev[moduleName] }));
+        setCollapsedModules(prev => {
+            const isCurrentlyCollapsed = !!prev[moduleName];
+            if (!isCurrentlyCollapsed) {
+                // Collapsing — just collapse it
+                return { ...prev, [moduleName]: true };
+            }
+            // Expanding — collapse all others (accordion)
+            const next: Record<string, boolean> = {};
+            for (const key of Object.keys(prev)) {
+                next[key] = key !== moduleName;
+            }
+            return next;
+        });
     };
 
     const isItemActive = (item: { path: string; children?: { path: string }[] }) => {
@@ -374,20 +441,43 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
                         {section.moduleSeparator && !collapsed && (
                             <button
                                 onClick={() => toggleModule(section.moduleSeparator!)}
-                                className="w-full flex items-center gap-2 px-5 pt-5 pb-1 cursor-pointer group/mod"
+                                className={cn(
+                                    'w-full flex items-center gap-2 mx-3 mt-3 mb-1 rounded-lg transition-all duration-200 cursor-pointer group/mod',
+                                    isModuleCollapsed
+                                        ? 'px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800/60 hover:bg-primary-50 dark:hover:bg-primary-900/30 border border-neutral-100 dark:border-neutral-800'
+                                        : 'px-3 py-1'
+                                )}
+                                style={isModuleCollapsed ? { width: 'calc(100% - 24px)' } : undefined}
                             >
-                                <div className="flex-1 h-px bg-primary-100 dark:bg-primary-900/40" />
-                                <span className="text-[9px] font-bold uppercase tracking-[2px] text-primary-500 dark:text-primary-400 whitespace-nowrap">
-                                    {section.moduleSeparator}
-                                </span>
-                                <ChevronDown
-                                    size={11}
-                                    className={cn(
-                                        'text-primary-400 dark:text-primary-500 transition-transform duration-200',
-                                        isModuleCollapsed && '-rotate-90'
-                                    )}
-                                />
-                                <div className="flex-1 h-px bg-primary-100 dark:bg-primary-900/40" />
+                                {isModuleCollapsed ? (
+                                    <>
+                                        <span className={cn(
+                                            'text-[11px] font-bold uppercase tracking-[1.5px] flex-1 text-left',
+                                            'text-neutral-600 dark:text-neutral-300 group-hover/mod:text-primary-600 dark:group-hover/mod:text-primary-400'
+                                        )}>
+                                            {section.moduleSeparator}
+                                        </span>
+                                        <ChevronDown
+                                            size={14}
+                                            className="text-neutral-400 dark:text-neutral-500 -rotate-90 group-hover/mod:text-primary-500 transition-all duration-200"
+                                        />
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="flex-1 h-px bg-primary-100 dark:bg-primary-900/40" />
+                                        <span className="text-[9px] font-bold uppercase tracking-[2px] text-primary-500 dark:text-primary-400 whitespace-nowrap">
+                                            {section.moduleSeparator}
+                                        </span>
+                                        <ChevronDown
+                                            size={11}
+                                            className={cn(
+                                                'text-primary-400 dark:text-primary-500 transition-transform duration-200',
+                                                'rotate-0'
+                                            )}
+                                        />
+                                        <div className="flex-1 h-px bg-primary-100 dark:bg-primary-900/40" />
+                                    </>
+                                )}
                             </button>
                         )}
                         {collapsed && section.moduleSeparator && (
