@@ -499,6 +499,27 @@ export class InventoryApiClient extends BaseApiClient {
     return this.delete(`/inventory/saved-filters/${id}`);
   }
 
+  // ── Phase 6: Offline Sync ─────────────────────
+  async uploadSyncActions(data: Record<string, unknown>) {
+    return this.post('/inventory/sync/upload', data);
+  }
+
+  async getSyncConflicts() {
+    return this.get('/inventory/sync/conflicts');
+  }
+
+  async resolveSyncConflict(id: string, data: Record<string, unknown>) {
+    return this.patch(`/inventory/sync/conflicts/${id}/resolve`, data);
+  }
+
+  async retrySyncFailed() {
+    return this.post('/inventory/sync/retry');
+  }
+
+  async getSyncStats() {
+    return this.get('/inventory/sync/stats');
+  }
+
   // ── Helpers ───────────────────────────────────
   async seedInventoryData() {
     await this.ensureNumberSeries();
