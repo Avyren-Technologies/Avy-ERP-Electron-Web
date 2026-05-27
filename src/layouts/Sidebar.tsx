@@ -269,6 +269,37 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
         }
         return initial;
     });
+    // Seed collapsedModules when manifestSections loads (async from API).
+    // The useState initializer runs before data arrives, so this effect
+    // ensures all modules default to collapsed once the manifest is available.
+    const [modulesSeeded, setModulesSeeded] = useState(false);
+    useEffect(() => {
+        if (!manifestSections || manifestSections.length === 0 || modulesSeeded) return;
+        setModulesSeeded(true);
+
+        let activeModuleSep: string | null = null;
+        let currentSep = '';
+        for (const section of manifestSections) {
+            if (section.moduleSeparator) currentSep = section.moduleSeparator;
+            if (currentSep) {
+                const hasActive = section.items.some(item =>
+                    location.pathname === item.path ||
+                    location.pathname.startsWith(item.path + '/') ||
+                    item.children?.some(c => location.pathname.startsWith(c.path))
+                );
+                if (hasActive && !activeModuleSep) activeModuleSep = currentSep;
+            }
+        }
+
+        const next: Record<string, boolean> = {};
+        for (const section of manifestSections) {
+            if (section.moduleSeparator) {
+                next[section.moduleSeparator] = section.moduleSeparator !== activeModuleSep;
+            }
+        }
+        setCollapsedModules(next);
+    }, [manifestSections, modulesSeeded, location.pathname]);
+
     const toggleModule = (moduleName: string) => {
         setCollapsedModules(prev => {
             const isCurrentlyCollapsed = !!prev[moduleName];
@@ -373,7 +404,7 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
                 'relative flex flex-col h-screen border-r border-neutral-200 dark:border-neutral-800',
                 'bg-white dark:bg-neutral-900',
                 'transition-all duration-300 ease-in-out z-20 flex-shrink-0',
-                collapsed ? 'w-[72px]' : 'w-[240px]'
+                collapsed ? 'w-[72px]' : 'w-[260px]'
             )}
         >
             {/* ---- Brand ---- */}
