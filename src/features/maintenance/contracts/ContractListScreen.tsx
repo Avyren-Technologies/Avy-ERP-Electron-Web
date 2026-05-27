@@ -55,7 +55,7 @@ export function ContractListScreen() {
     // Modal state
     const [showModal, setShowModal] = useState(false);
     const [editId, setEditId] = useState<string | null>(null);
-    const [form, setForm] = useState({ name: "", code: "", contractType: "AMC", vendorName: "", startDate: "", endDate: "", callLimit: "", contractValue: "" });
+    const [form, setForm] = useState({ name: "", code: "", contractType: "AMC", vendorName: "", startDate: "", endDate: "", callLimit: "", contractValue: "", coverageScope: "" });
 
     const params: Record<string, unknown> = { page, limit: 25 };
     if (search) params.search = search;
@@ -79,7 +79,7 @@ export function ContractListScreen() {
 
     const openAddModal = () => {
         setEditId(null);
-        setForm({ name: "", code: "", contractType: "AMC", vendorName: "", startDate: "", endDate: "", callLimit: "", contractValue: "" });
+        setForm({ name: "", code: "", contractType: "AMC", vendorName: "", startDate: "", endDate: "", callLimit: "", contractValue: "", coverageScope: "" });
         setShowModal(true);
     };
 
@@ -87,21 +87,23 @@ export function ContractListScreen() {
         setEditId(c.id);
         setForm({
             name: c.name ?? "",
-            code: c.code ?? "",
+            code: c.contractCode ?? "",
             contractType: c.contractType ?? "AMC",
             vendorName: c.vendorName ?? "",
             startDate: c.startDate ? c.startDate.split("T")[0] : "",
             endDate: c.endDate ? c.endDate.split("T")[0] : "",
             callLimit: c.callLimit?.toString() ?? "",
             contractValue: c.contractValue?.toString() ?? "",
+            coverageScope: c.coverageScope ?? "",
         });
         setShowModal(true);
     };
 
     const handleSave = async () => {
         try {
+            const { code, ...rest } = form;
             const payload = {
-                ...form,
+                ...rest,
                 callLimit: form.callLimit ? Number(form.callLimit) : undefined,
                 contractValue: form.contractValue ? Number(form.contractValue) : undefined,
             };
@@ -220,7 +222,7 @@ export function ContractListScreen() {
                                 {contracts.map((c: any) => (
                                     <tr key={c.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
                                         <td className="py-4 px-6">
-                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 border border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50">{c.code ?? "---"}</span>
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 border border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50">{c.contractCode ?? "---"}</span>
                                         </td>
                                         <td className="py-4 px-6 font-bold text-primary-950 dark:text-white">{c.name ?? "---"}</td>
                                         <td className="py-4 px-6"><ContractTypeBadge type={c.contractType ?? "AMC"} /></td>
@@ -228,8 +230,25 @@ export function ContractListScreen() {
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400 text-xs">
                                             {c.startDate ? fmt.date(c.startDate) : "---"} - {c.endDate ? fmt.date(c.endDate) : "---"}
                                         </td>
-                                        <td className="py-4 px-6 text-center text-xs font-bold text-neutral-700 dark:text-neutral-300">
-                                            {c.callsUsed ?? 0}/{c.callLimit ?? "Unlimited"}
+                                        <td className="py-4 px-6 text-center">
+                                            {(() => {
+                                                const exceeded = c.callLimit != null && (c.callsUsed ?? 0) > c.callLimit;
+                                                return (
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <span className={cn(
+                                                            "text-xs font-bold",
+                                                            exceeded ? "text-danger-600 dark:text-danger-400" : "text-neutral-700 dark:text-neutral-300"
+                                                        )}>
+                                                            {c.callsUsed ?? 0}/{c.callLimit ?? "∞"}
+                                                        </span>
+                                                        {exceeded && (
+                                                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-danger-50 text-danger-700 border border-danger-200 dark:bg-danger-900/20 dark:text-danger-400 dark:border-danger-800/50">
+                                                                ⚠ Exceeded
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
                                         </td>
                                         <td className="py-4 px-6"><ExpiryBadge endDate={c.endDate} /></td>
                                         <td className="py-4 px-6 text-right">
@@ -305,6 +324,16 @@ export function ContractListScreen() {
                                 <div>
                                     <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Contract Value</label>
                                     <input type="number" value={form.contractValue} onChange={(e) => setForm({ ...form, contractValue: e.target.value })} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
+                                </div>
+                                {editId && (
+                                    <div className="col-span-2">
+                                        <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Contract Code</label>
+                                        <input type="text" value={form.code} disabled className="w-full px-3 py-2.5 bg-neutral-100 dark:bg-neutral-850 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm dark:text-neutral-400 text-neutral-500 cursor-not-allowed" />
+                                    </div>
+                                )}
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Coverage Scope</label>
+                                    <textarea value={form.coverageScope} onChange={(e) => setForm({ ...form, coverageScope: e.target.value })} rows={3} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all resize-none" placeholder="Describe contract coverage, terms, and inclusions..." />
                                 </div>
                             </div>
                         </div>
