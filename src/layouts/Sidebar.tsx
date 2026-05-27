@@ -7,7 +7,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
     LayoutDashboard, Building2, CreditCard, Blocks, Activity,
-    Settings, LogOut, ChevronDown,
+    Settings, LogOut, ChevronDown, ChevronRight,
     Users, FileText, BarChart3, Package, Wrench, ClipboardList,
     ShieldCheck, HelpCircle, PanelLeftClose, PanelLeftOpen,
     MapPin, Clock, Hash, Cpu, SlidersHorizontal, UserCog, Shield, ToggleLeft,
@@ -19,7 +19,24 @@ import {
     Target, Flag, MessageSquare, Star, Brain, GitFork,
     UserPlus, GraduationCap, Award, FileSignature, AlertTriangle, Gavel,
     ArrowLeftRight, LogIn, CheckCircle2,
+    Warehouse, Factory, Eye, FileDiff, Cog, HardHat,
 } from 'lucide-react';
+
+// Module separator → icon + accent color mapping for collapsed card state
+const MODULE_CARD_CONFIG: Record<string, { icon: React.ComponentType<any>; accent: string; iconBg: string; hoverBg: string }> = {
+    'Self-Service':          { icon: UserCircle,     accent: 'border-l-violet-400',    iconBg: 'bg-violet-50 text-violet-500 dark:bg-violet-900/30 dark:text-violet-400',       hoverBg: 'hover:bg-violet-50/60 dark:hover:bg-violet-900/20' },
+    'Company Admin':         { icon: Building2,      accent: 'border-l-blue-400',      iconBg: 'bg-blue-50 text-blue-500 dark:bg-blue-900/30 dark:text-blue-400',               hoverBg: 'hover:bg-blue-50/60 dark:hover:bg-blue-900/20' },
+    'HR Analytics':          { icon: BarChart3,      accent: 'border-l-cyan-400',      iconBg: 'bg-cyan-50 text-cyan-500 dark:bg-cyan-900/30 dark:text-cyan-400',               hoverBg: 'hover:bg-cyan-50/60 dark:hover:bg-cyan-900/20' },
+    'HRMS':                  { icon: Users,          accent: 'border-l-indigo-400',    iconBg: 'bg-indigo-50 text-indigo-500 dark:bg-indigo-900/30 dark:text-indigo-400',       hoverBg: 'hover:bg-indigo-50/60 dark:hover:bg-indigo-900/20' },
+    'Masters':               { icon: Package,        accent: 'border-l-slate-400',     iconBg: 'bg-slate-50 text-slate-500 dark:bg-slate-900/30 dark:text-slate-400',           hoverBg: 'hover:bg-slate-50/60 dark:hover:bg-slate-900/20' },
+    'Production':            { icon: Factory,        accent: 'border-l-orange-400',    iconBg: 'bg-orange-50 text-orange-500 dark:bg-orange-900/30 dark:text-orange-400',       hoverBg: 'hover:bg-orange-50/60 dark:hover:bg-orange-900/20' },
+    'Production Incentive':  { icon: TrendingUp,     accent: 'border-l-emerald-400',   iconBg: 'bg-emerald-50 text-emerald-500 dark:bg-emerald-900/30 dark:text-emerald-400',   hoverBg: 'hover:bg-emerald-50/60 dark:hover:bg-emerald-900/20' },
+    'Visitor Management':    { icon: Eye,            accent: 'border-l-pink-400',      iconBg: 'bg-pink-50 text-pink-500 dark:bg-pink-900/30 dark:text-pink-400',               hoverBg: 'hover:bg-pink-50/60 dark:hover:bg-pink-900/20' },
+    'Asset Maintenance':     { icon: HardHat,        accent: 'border-l-amber-400',     iconBg: 'bg-amber-50 text-amber-500 dark:bg-amber-900/30 dark:text-amber-400',           hoverBg: 'hover:bg-amber-50/60 dark:hover:bg-amber-900/20' },
+    'Inventory & Warehouse': { icon: Warehouse,      accent: 'border-l-teal-400',      iconBg: 'bg-teal-50 text-teal-500 dark:bg-teal-900/30 dark:text-teal-400',               hoverBg: 'hover:bg-teal-50/60 dark:hover:bg-teal-900/20' },
+    'Document Comparison':   { icon: FileDiff,       accent: 'border-l-rose-400',      iconBg: 'bg-rose-50 text-rose-500 dark:bg-rose-900/30 dark:text-rose-400',               hoverBg: 'hover:bg-rose-50/60 dark:hover:bg-rose-900/20' },
+};
+const DEFAULT_MODULE_CARD = { icon: Blocks, accent: 'border-l-neutral-400', iconBg: 'bg-neutral-50 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400', hoverBg: 'hover:bg-neutral-50/60 dark:hover:bg-neutral-800/30' };
 import { useAuthStore, getUserInitials, getDisplayName } from '@/store/useAuthStore';
 import { useNavigate } from 'react-router-dom';
 import appLogo from '@/assets/logo/app-logo.png';
@@ -469,48 +486,58 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
                     return (
                     <div key={section.group}>
                         {/* Module Separator — clickable to collapse entire module */}
-                        {section.moduleSeparator && !collapsed && (
-                            <button
-                                onClick={() => toggleModule(section.moduleSeparator!)}
-                                className={cn(
-                                    'w-full flex items-center gap-2 mx-3 mt-3 mb-1 rounded-lg transition-all duration-200 cursor-pointer group/mod',
-                                    isModuleCollapsed
-                                        ? 'px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800/60 hover:bg-primary-50 dark:hover:bg-primary-900/30 border border-neutral-100 dark:border-neutral-800'
-                                        : 'px-3 py-1'
-                                )}
-                                style={isModuleCollapsed ? { width: 'calc(100% - 24px)' } : undefined}
-                            >
-                                {isModuleCollapsed ? (
-                                    <>
-                                        <span className={cn(
-                                            'text-[11px] font-bold uppercase tracking-[1.5px] flex-1 text-left',
-                                            'text-neutral-600 dark:text-neutral-300 group-hover/mod:text-primary-600 dark:group-hover/mod:text-primary-400'
-                                        )}>
-                                            {section.moduleSeparator}
-                                        </span>
-                                        <ChevronDown
-                                            size={14}
-                                            className="text-neutral-400 dark:text-neutral-500 -rotate-90 group-hover/mod:text-primary-500 transition-all duration-200"
-                                        />
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="flex-1 h-px bg-primary-100 dark:bg-primary-900/40" />
-                                        <span className="text-[9px] font-bold uppercase tracking-[2px] text-primary-500 dark:text-primary-400 whitespace-nowrap">
-                                            {section.moduleSeparator}
-                                        </span>
-                                        <ChevronDown
-                                            size={11}
-                                            className={cn(
-                                                'text-primary-400 dark:text-primary-500 transition-transform duration-200',
-                                                'rotate-0'
-                                            )}
-                                        />
-                                        <div className="flex-1 h-px bg-primary-100 dark:bg-primary-900/40" />
-                                    </>
-                                )}
-                            </button>
-                        )}
+                        {section.moduleSeparator && !collapsed && (() => {
+                            const modCard = MODULE_CARD_CONFIG[section.moduleSeparator!] ?? DEFAULT_MODULE_CARD;
+                            const ModIcon = modCard.icon;
+                            return isModuleCollapsed ? (
+                                /* ── Collapsed: Modern card with icon + accent border ── */
+                                <button
+                                    onClick={() => toggleModule(section.moduleSeparator!)}
+                                    className={cn(
+                                        'w-full flex items-center gap-3 mx-3 mt-2 mb-0.5 rounded-xl transition-all duration-200 cursor-pointer group/mod',
+                                        'px-3 py-2.5 bg-white dark:bg-neutral-800/80',
+                                        'border border-neutral-100/80 dark:border-neutral-700/50',
+                                        'shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]',
+                                        'border-l-[3px]', modCard.accent,
+                                        modCard.hoverBg,
+                                    )}
+                                    style={{ width: 'calc(100% - 24px)' }}
+                                >
+                                    <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors', modCard.iconBg)}>
+                                        <ModIcon size={14} strokeWidth={2.2} />
+                                    </div>
+                                    <span className={cn(
+                                        'text-[11.5px] font-semibold tracking-wide flex-1 text-left',
+                                        'text-neutral-700 dark:text-neutral-200 group-hover/mod:text-neutral-900 dark:group-hover/mod:text-white'
+                                    )}>
+                                        {section.moduleSeparator}
+                                    </span>
+                                    <ChevronRight
+                                        size={14}
+                                        className="text-neutral-300 dark:text-neutral-600 group-hover/mod:text-neutral-500 dark:group-hover/mod:text-neutral-400 transition-colors flex-shrink-0"
+                                    />
+                                </button>
+                            ) : (
+                                /* ── Expanded: Thin separator line with label ── */
+                                <button
+                                    onClick={() => toggleModule(section.moduleSeparator!)}
+                                    className="w-full flex items-center gap-2 mx-3 mt-4 mb-1 px-3 py-1 cursor-pointer group/mod"
+                                >
+                                    <div className="flex-1 h-px bg-primary-100 dark:bg-primary-900/40" />
+                                    <div className={cn('w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0', modCard.iconBg)}>
+                                        <ModIcon size={10} strokeWidth={2.2} />
+                                    </div>
+                                    <span className="text-[9px] font-bold uppercase tracking-[2px] text-primary-500 dark:text-primary-400 whitespace-nowrap">
+                                        {section.moduleSeparator}
+                                    </span>
+                                    <ChevronDown
+                                        size={11}
+                                        className="text-primary-400 dark:text-primary-500 transition-transform duration-200"
+                                    />
+                                    <div className="flex-1 h-px bg-primary-100 dark:bg-primary-900/40" />
+                                </button>
+                            );
+                        })()}
                         {collapsed && section.moduleSeparator && (
                             <div className="mx-3 mt-3 mb-1 h-px bg-primary-100 dark:bg-primary-900/40" />
                         )}
