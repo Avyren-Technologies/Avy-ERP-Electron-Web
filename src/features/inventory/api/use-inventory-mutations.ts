@@ -1004,3 +1004,46 @@ export function useDeleteComplianceDocument() {
         onError: (error: any) => showApiError(error),
     });
 }
+
+// ── Sync ──
+
+export function useUploadSyncActions() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: any) => inventoryApi.uploadSyncActions(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.syncConflicts() });
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.syncStats() });
+            invalidateStockQueries(queryClient);
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+export function useResolveSyncConflict() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, data }: { id: string; data: any }) =>
+            inventoryApi.resolveSyncConflict(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.syncConflicts() });
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.syncStats() });
+            invalidateStockQueries(queryClient);
+            showSuccess('Conflict resolved');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}
+
+export function useRetrySyncFailed() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: () => inventoryApi.retrySyncFailed(),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.syncConflicts() });
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.syncStats() });
+            showSuccess('Retrying failed sync actions');
+        },
+        onError: (error: any) => showApiError(error),
+    });
+}

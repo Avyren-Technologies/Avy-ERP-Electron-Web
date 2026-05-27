@@ -1,6 +1,9 @@
+import { useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, Package, AlertTriangle, Clock, ArrowDownToLine, ArrowUpFromLine, ArrowLeftRight, ClipboardCheck, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useInventoryDashboard } from '@/features/inventory/api/use-inventory-queries';
+import { inventoryKeys } from '@/features/inventory/api/inventory-keys';
 
 /* ── KPI Card ── */
 
@@ -26,8 +29,31 @@ function KpiCard({ icon: Icon, label, value, subtext, color }: {
 /* ── Main Screen ── */
 
 export function InventoryDashboardScreen() {
+    const queryClient = useQueryClient();
     const { data, isLoading } = useInventoryDashboard();
     const dashboard = data?.data;
+
+    // Real-time Socket.io listeners for live dashboard updates
+    // TODO: Connect to actual Socket.io client when infrastructure is ready
+    useEffect(() => {
+        const handleBalanceChanged = () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.stockOnHand() });
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.dashboard() });
+        };
+        const handleApprovalPending = () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.pendingApprovals() });
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.dashboard() });
+        };
+
+        // Wire up when socket client is available:
+        // socket.on('inventory:balance-changed', handleBalanceChanged);
+        // socket.on('inventory:approval-pending', handleApprovalPending);
+
+        return () => {
+            // socket.off('inventory:balance-changed', handleBalanceChanged);
+            // socket.off('inventory:approval-pending', handleApprovalPending);
+        };
+    }, [queryClient]);
 
     if (isLoading) {
         return (

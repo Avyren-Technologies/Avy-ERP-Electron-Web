@@ -1,17 +1,37 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, Search, Filter, Package, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStockOnHand, useWarehouses } from '@/features/inventory/api/use-inventory-queries';
+import { inventoryKeys } from '@/features/inventory/api/inventory-keys';
 import { InventoryStatusBadge } from '@/features/inventory/shared/InventoryStatusBadge';
 import { STOCK_STATUS_CONFIG } from '@/features/inventory/shared/inventory-status-colors';
 
 /* ── Main Screen ── */
 
 export function StockExplorerScreen() {
+    const queryClient = useQueryClient();
     const [search, setSearch] = useState('');
     const [warehouseFilter, setWarehouseFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     const [page, setPage] = useState(1);
+
+    // Real-time Socket.io listeners for live stock balance updates
+    // TODO: Connect to actual Socket.io client when infrastructure is ready
+    useEffect(() => {
+        const handleBalanceChanged = () => {
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.stockOnHand() });
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.netAvailable() });
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.stockByStatus() });
+        };
+
+        // Wire up when socket client is available:
+        // socket.on('inventory:balance-changed', handleBalanceChanged);
+
+        return () => {
+            // socket.off('inventory:balance-changed', handleBalanceChanged);
+        };
+    }, [queryClient]);
 
     const params = useMemo(() => {
         const p: Record<string, unknown> = { page, limit: 25 };

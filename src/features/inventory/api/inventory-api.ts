@@ -252,4 +252,11 @@ export const inventoryApi = {
     updateSavedFilter: (id: string, data: any) => client.patch(`/inventory/saved-filters/${id}`, data).then((r) => r.data),
     deleteSavedFilter: (id: string) => client.delete(`/inventory/saved-filters/${id}`).then((r) => r.data),
     setDefaultFilter: (id: string) => client.patch(`/inventory/saved-filters/${id}/default`).then((r) => r.data),
+
+    // ── Sync (offline actions — primarily mobile, admin view on web) ──
+    uploadSyncActions: (data: any) => client.post('/inventory/sync/upload', data).then((r) => r.data),
+    getSyncConflicts: () => client.get('/inventory/sync/conflicts').then((r) => r.data),
+    resolveSyncConflict: (id: string, data: any) => client.patch(`/inventory/sync/conflicts/${id}/resolve`, data).then((r) => r.data),
+    retrySyncFailed: () => client.post('/inventory/sync/retry').then((r) => r.data),
+    getSyncStats: () => client.get('/inventory/sync/stats').then((r) => r.data),
 };
