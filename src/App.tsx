@@ -326,6 +326,13 @@ const ToolConsumptionScreen = lazyNamed(() => import("./features/inventory/tool-
 const ReconditioningRegisterScreen = lazyNamed(() => import("./features/inventory/tool-room/ReconditioningRegisterScreen"), "ReconditioningRegisterScreen");
 const ToolBreakageScreen = lazyNamed(() => import("./features/inventory/tool-room/ToolBreakageScreen"), "ToolBreakageScreen");
 
+// ─── Inventory: Analytics, Search, Import/Export ───
+const InventoryAnalyticsScreen = lazyNamed(() => import("./features/inventory/analytics/InventoryAnalyticsScreen"), "InventoryAnalyticsScreen");
+const StockValueScreen = lazyNamed(() => import("./features/inventory/analytics/StockValueScreen"), "StockValueScreen");
+const InventorySearchScreen = lazyNamed(() => import("./features/inventory/search/InventorySearchScreen"), "InventorySearchScreen");
+const InventoryImportScreen = lazyNamed(() => import("./features/inventory/import-export/InventoryImportScreen"), "InventoryImportScreen");
+const InventoryExportScreen = lazyNamed(() => import("./features/inventory/import-export/InventoryExportScreen"), "InventoryExportScreen");
+
 // ─── Operations Modules ───
 const ProductionScreen = lazyNamed(() => import("./features/production/ProductionScreen"), "ProductionScreen");
 const MaintenanceDashboardScreen = lazyNamed(() => import("./features/maintenance/dashboard/MaintenanceDashboardScreen"), "MaintenanceDashboardScreen");
@@ -725,6 +732,11 @@ function App() {
         <Route path="inventory/tool-room/reports/breakage" element={<RequirePermission permission="inventory.reports:read"><ToolBreakageScreen /></RequirePermission>} />
                         {/* Industry Templates */}
                         <Route path="inventory/industry" element={<RequirePermission permission="inventory.config:configure"><IndustryTemplateConfigScreen /></RequirePermission>} />
+        <Route path="inventory/analytics" element={<RequirePermission permission="inventory.reports:read"><InventoryAnalyticsScreen /></RequirePermission>} />
+        <Route path="inventory/analytics/stock-value" element={<RequirePermission permission="inventory.reports:read"><StockValueScreen /></RequirePermission>} />
+        <Route path="inventory/search" element={<RequirePermission permission="inventory.stock:read"><InventorySearchScreen /></RequirePermission>} />
+        <Route path="inventory/import" element={<RequirePermission permission="inventory.config:configure"><InventoryImportScreen /></RequirePermission>} />
+        <Route path="inventory/export" element={<RequirePermission permission="inventory.reports:export"><InventoryExportScreen /></RequirePermission>} />
         <Route path="production" element={<RequireRole roles={['super-admin', 'company-admin']}><ProductionScreen /></RequireRole>} />
         <Route path="maintenance" element={<Navigate to="maintenance/dashboard" replace />} />
         <Route path="maintenance/dashboard" element={<RequirePermission permission="maintenance:read"><MaintenanceDashboardScreen /></RequirePermission>} />
