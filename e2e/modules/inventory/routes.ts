@@ -30,4 +30,18 @@ export const INVENTORY_ROUTES = {
   materialReturn: '/app/inventory/production/material-return',
   productionScrap: '/app/inventory/production/scrap',
   woReconciliation: '/app/inventory/production/reconciliation',
+  // Phase 3 — Warehouse Advanced
+  putawayRules: '/app/inventory/warehouse/putaway-rules',
+  pallets: '/app/inventory/warehouse/pallets',
+  staging: '/app/inventory/warehouse/staging',
+  // Phase 3 — Tool Room
+  toolLifePolicies: '/app/inventory/tool-room/policies',
+  toolIssue: '/app/inventory/tool-room/issue',
+  toolReturn: '/app/inventory/tool-room/return',
+  reconditioning: '/app/inventory/tool-room/reconditioning',
+  toolReports: '/app/inventory/tool-room/reports',
+  toolReportsAtMachine: '/app/inventory/tool-room/reports/at-machine',
+  toolReportsConsumption: '/app/inventory/tool-room/reports/consumption',
+  toolReportsReconditioning: '/app/inventory/tool-room/reports/reconditioning',
+  toolReportsBreakage: '/app/inventory/tool-room/reports/breakage',
 };
