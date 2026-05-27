@@ -312,6 +312,9 @@ const PutawayRulesScreen = lazyNamed(() => import("./features/inventory/warehous
 const PalletManagementScreen = lazyNamed(() => import("./features/inventory/warehouse-advanced/PalletManagementScreen"), "PalletManagementScreen");
 const StagingDockScreen = lazyNamed(() => import("./features/inventory/warehouse-advanced/StagingDockScreen"), "StagingDockScreen");
 
+// ─── Inventory: Industry Templates ───
+const IndustryTemplateConfigScreen = lazyNamed(() => import("./features/inventory/industry/IndustryTemplateConfigScreen"), "IndustryTemplateConfigScreen");
+
 // ─── Inventory: Tool Room ───
 const ToolLifePolicyScreen = lazyNamed(() => import("./features/inventory/tool-room/ToolLifePolicyScreen"), "ToolLifePolicyScreen");
 const ToolIssueScreen = lazyNamed(() => import("./features/inventory/tool-room/ToolIssueScreen"), "ToolIssueScreen");
@@ -720,6 +723,8 @@ function App() {
         <Route path="inventory/tool-room/reports/consumption" element={<RequirePermission permission="inventory.reports:read"><ToolConsumptionScreen /></RequirePermission>} />
         <Route path="inventory/tool-room/reports/reconditioning" element={<RequirePermission permission="inventory.reports:read"><ReconditioningRegisterScreen /></RequirePermission>} />
         <Route path="inventory/tool-room/reports/breakage" element={<RequirePermission permission="inventory.reports:read"><ToolBreakageScreen /></RequirePermission>} />
+                        {/* Industry Templates */}
+                        <Route path="inventory/industry" element={<RequirePermission permission="inventory.config:configure"><IndustryTemplateConfigScreen /></RequirePermission>} />
         <Route path="production" element={<RequireRole roles={['super-admin', 'company-admin']}><ProductionScreen /></RequireRole>} />
         <Route path="maintenance" element={<Navigate to="maintenance/dashboard" replace />} />
         <Route path="maintenance/dashboard" element={<RequirePermission permission="maintenance:read"><MaintenanceDashboardScreen /></RequirePermission>} />
