@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Loader2, Send } from "lucide-react";
 import { useCreatePMSchedule, useUpdatePMSchedule } from "@/features/maintenance/api/use-maintenance-mutations";
-import { useJobPlans, usePMSchedule } from "@/features/maintenance/api/use-maintenance-queries";
+import { useJobPlans, usePMSchedule, useContracts } from "@/features/maintenance/api/use-maintenance-queries";
 import { AssetPicker } from "@/features/maintenance/shared/AssetPicker";
 import {
     PM_STRATEGY_OPTIONS,
@@ -65,6 +65,8 @@ export function PMScheduleCreateScreen() {
     const { data: pmData, isLoading: pmLoading, isError: pmError } = usePMSchedule(editId);
     const { data: jobPlansData } = useJobPlans({ limit: 100 });
     const jobPlans: { id: string; name?: string }[] = jobPlansData?.data ?? [];
+    const { data: contractsData } = useContracts({ limit: 200 });
+    const contracts: any[] = contractsData?.data ?? [];
 
     useEffect(() => {
         if (!isEdit) {
@@ -288,6 +290,26 @@ export function PMScheduleCreateScreen() {
                                 onChange={(e) => setField("statutoryDueDate", e.target.value)}
                                 className={inputClass}
                             />
+                        </div>
+                    </SectionCard>
+                )}
+
+                {strategy === "AMC_MANAGED" && (
+                    <SectionCard title="Service Contract settings" tone="accent">
+                        <div>
+                            <FieldLabel required>Service Contract</FieldLabel>
+                            <select
+                                value={form.contractId}
+                                onChange={(e) => setField("contractId", e.target.value)}
+                                className={selectClass}
+                            >
+                                <option value="">Select Service Contract...</option>
+                                {contracts.map((c: any) => (
+                                    <option key={c.id} value={c.id}>
+                                        {c.name} {c.contractCode ? `(${c.contractCode})` : ""}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                     </SectionCard>
                 )}

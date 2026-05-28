@@ -264,6 +264,23 @@ export function PMScheduleDetailScreen() {
                     <SideCard title="Schedule Info">
                         <div className="space-y-3">
                             <DetailRow label="Strategy" value={formatPMStrategyLabel(pm.strategyType)} />
+                            {pm.strategyType === "AMC_MANAGED" && (
+                                <DetailRow
+                                    label="Service Contract"
+                                    value={
+                                        pm.contract ? (
+                                            <Link
+                                                to={`/app/maintenance/contracts/${pm.contract.id}`}
+                                                className="text-primary-600 dark:text-primary-400 font-bold hover:underline"
+                                            >
+                                                {pm.contract.name} {pm.contract.contractCode ? `(${pm.contract.contractCode})` : ""}
+                                            </Link>
+                                        ) : (
+                                            "---"
+                                        )
+                                    }
+                                />
+                            )}
                             {(pm.frequency || pm.meterInterval) && (
                                 <DetailRow label="Frequency" value={formatPMFrequencyDisplay(pm)} />
                             )}
