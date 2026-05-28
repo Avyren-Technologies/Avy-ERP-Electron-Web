@@ -88,8 +88,12 @@ export interface LoginResponse {
 
 // ── API Functions ──
 
-async function login(email: string, password: string): Promise<ApiResponse<LoginResponse>> {
-    const response = await client.post('/auth/login', { email, password });
+async function login(email: string, password: string, tenantSlug?: string): Promise<ApiResponse<LoginResponse>> {
+    const response = await client.post('/auth/login', {
+        email,
+        password,
+        ...(tenantSlug ? { tenantSlug } : {}),
+    });
     return response.data;
 }
 

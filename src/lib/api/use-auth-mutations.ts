@@ -12,8 +12,8 @@ export function useLoginMutation() {
     const signIn = useAuthStore((s) => s.signIn);
 
     return useMutation({
-        mutationFn: ({ email, password }: { email: string; password: string }) =>
-            authApi.login(email, password),
+        mutationFn: ({ email, password, tenantSlug }: { email: string; password: string; tenantSlug?: string }) =>
+            authApi.login(email, password, tenantSlug),
         onSuccess: (response) => {
             if (response.success && response.data) {
                 // Check if MFA challenge is returned

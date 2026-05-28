@@ -142,7 +142,7 @@ export function LoginScreen() {
 
     const onSubmit = async (data: LoginFormValues) => {
         loginMutation.mutate(
-            { email: data.email, password: data.password },
+            { email: data.email, password: data.password, tenantSlug: tenantContext.slug ?? undefined },
         );
     };
 
