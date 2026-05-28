@@ -131,7 +131,12 @@ export function WorkOrderCreateScreen() {
                         className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
                     >
                         <option value="">No job plan</option>
-                        {jobPlans.map((jp: any) => <option key={jp.id} value={jp.id}>{jp.name}</option>)}
+                        {jobPlans.map((jp: any) => {
+                            const code = typeof jp.code === "string" ? jp.code.trim() : "";
+                            const name = typeof jp.name === "string" ? jp.name.trim() : "";
+                            const label = code && name ? `${code} - ${name}` : (name || code || jp.id);
+                            return <option key={jp.id} value={jp.id}>{label}</option>;
+                        })}
                     </select>
                     {selectedJobPlan?.checklistTemplate && (
                         <div className="mt-2 p-3 rounded-xl bg-primary-50/50 dark:bg-primary-900/10 border border-primary-100 dark:border-primary-800/30">

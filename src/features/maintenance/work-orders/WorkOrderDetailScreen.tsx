@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
     ArrowLeft,
@@ -48,6 +48,7 @@ import {
 } from "@/features/maintenance/api/use-maintenance-mutations";
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
 import { useCanPerform } from "@/hooks/useCanPerform";
+import { useFileUpload } from "@/hooks/useFileUpload";
 import { PriorityBadge } from "@/features/maintenance/shared/PriorityBadge";
 import { WOStatusBadge, WOTypeBadge } from "@/features/maintenance/shared/WOStatusBadge";
 import { showSuccess, showApiError } from "@/lib/toast";
@@ -129,7 +130,7 @@ export function WorkOrderDetailScreen() {
     const [modalData, setModalData] = useState<Record<string, string>>({});
 
     // Query
-    const { data, isLoading, isError } = useWorkOrder(id!);
+    const { data, isLoading, isError, refetch } = useWorkOrder(id!);
     const wo: any = data?.data ?? null;
 
     const actionCodesQuery = useActionCodes({ limit: 500 });
@@ -293,7 +294,19 @@ export function WorkOrderDetailScreen() {
     const labourLogs: any[] = wo.labourLogs ?? [];
     const evidence = normalizeWorkOrderEvidence(wo);
     const events: any[] = wo.events ?? [];
-    const checklist: any[] = wo.checklistSnapshot ?? [];
+    const checklistSnapshotRaw =
+        typeof wo.checklistSnapshot === "string"
+            ? (() => {
+                try {
+                    return JSON.parse(wo.checklistSnapshot);
+                } catch {
+                    return null;
+                }
+            })()
+            : wo.checklistSnapshot;
+    const checklistSections: any[] = Array.isArray(checklistSnapshotRaw)
+        ? checklistSnapshotRaw
+        : (checklistSnapshotRaw?.sections ?? []);
 
     const labourCost = labourLogs.reduce((s: number, l: any) => s + computeLabourLineCost(l), 0);
     const partsCost = parts.reduce((s: number, p: any) => s + Number(p.totalCost || 0), 0);
@@ -402,7 +415,19 @@ export function WorkOrderDetailScreen() {
 
                 <div className="p-6">
                     {activeTab === "overview" && <OverviewTab wo={wo} fmt={fmt} resolvedTechName={resolvedTechName} />}
-                    {activeTab === "checklist" && <ChecklistTab checklist={checklist} woId={id!} submitMutation={submitChecklistMutation} canManage={canManage} status={status} />}
+                    {activeTab === "checklist" && (
+                        <ChecklistTab
+                            checklistSections={checklistSections}
+                            checklistResponses={Array.isArray(wo?.checklistResponses) ? wo.checklistResponses : []}
+                            woId={id!}
+                            submitMutation={submitChecklistMutation}
+                            canManage={canManage}
+                            status={status}
+                            onChecklistSaved={async () => {
+                                await refetch();
+                            }}
+                        />
+                    )}
                     {activeTab === "parts" && (
                         <PartsTab
                             parts={parts}
@@ -742,6 +767,8 @@ export function WorkOrderDetailScreen() {
 
 function OverviewTab({ wo, fmt, resolvedTechName }: { wo: any; fmt: any; resolvedTechName: string }) {
     const closureHistory = getWorkOrderClosureHistory(wo);
+    const checklistName = wo.checklistSnapshot?.name || (wo.checklistTemplateId ? "Checklist Linked" : "---");
+    const checklistSectionsCount = Array.isArray(wo.checklistSnapshot?.sections) ? wo.checklistSnapshot.sections.length : 0;
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -822,6 +849,10 @@ function OverviewTab({ wo, fmt, resolvedTechName }: { wo: any; fmt: any; resolve
                         <DetailRow label="Estimated Hours" value={wo.estimatedHours ? `${Number(wo.estimatedHours)}h` : "---"} />
                         <DetailRow label="Lead Technician" value={resolvedTechName} />
                         <DetailRow label="Job Plan" value={wo.jobPlan?.name || "---"} />
+                        <DetailRow
+                            label="Checklist"
+                            value={checklistSectionsCount > 0 ? `${checklistName} (${checklistSectionsCount} sections)` : checklistName}
+                        />
                         <DetailRow label="Created" value={fmt.dateTime(wo.createdAt)} />
                         <DetailRow label="Updated" value={fmt.dateTime(wo.updatedAt)} />
                     </div>
@@ -840,56 +871,340 @@ function OverviewTab({ wo, fmt, resolvedTechName }: { wo: any; fmt: any; resolve
     );
 }
 
-function ChecklistTab({ checklist, woId, submitMutation, canManage, status }: { checklist: any[]; woId: string; submitMutation: any; canManage: boolean; status: string }) {
+
+function ChecklistTab({
+    checklistSections,
+    checklistResponses,
+    woId,
+    submitMutation,
+    canManage,
+    status,
+    onChecklistSaved,
+}: {
+    checklistSections: any[];
+    checklistResponses: any[];
+    woId: string;
+    submitMutation: any;
+    canManage: boolean;
+    status: string;
+    onChecklistSaved?: () => Promise<void> | void;
+}) {
     const [responses, setResponses] = useState<Record<string, string>>({});
-    const isEditable = canManage && status === "IN_PROGRESS";
+    const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+    const [isChecklistLocked, setIsChecklistLocked] = useState(false);
+    const normalizeFieldType = (raw: unknown) =>
+        String(raw ?? "").trim().toUpperCase().replace(/[\s-]+/g, "_");
+    const { upload, isUploading } = useFileUpload({
+        category: "expense-receipt",
+        entityId: woId,
+        allowedTypes: ["image/jpeg", "image/png", "image/gif", "image/webp"],
+    });
+    const checklistItems = useMemo(() => {
+        const responsesByFieldId = new Map<string, any>();
+        checklistResponses.forEach((resp: any) => {
+            if (resp?.fieldId) responsesByFieldId.set(resp.fieldId, resp);
+        });
+        return checklistSections.flatMap((section: any) =>
+            (section.fields ?? []).map((field: any) => {
+                const matched = responsesByFieldId.get(field.id);
+                return {
+                    sectionId: section.id,
+                    sectionName: section.name,
+                    ...field,
+                    response: matched?.value ?? field.response ?? null,
+                    numericValue: matched?.numericValue ?? field.numericValue ?? null,
+                    passed: matched?.passed ?? field.passed ?? null,
+                };
+            })
+        );
+    }, [checklistResponses, checklistSections]);
+    const existingResponses = useMemo(() => {
+        const seed: Record<string, string> = {};
+        checklistItems.forEach((item: any, idx: number) => {
+            const responseKey = item.id ?? `${item.sectionId}-${item.sortOrder ?? idx}`;
+            const normalizedType = normalizeFieldType(item.fieldType);
+            if (item.response != null && item.response !== "") {
+                seed[responseKey] = String(item.response);
+                return;
+            }
+            if ((normalizedType === "PASS_FAIL" || normalizedType === "YES_NO") && typeof item.passed === "boolean") {
+                seed[responseKey] = normalizedType === "PASS_FAIL" ? (item.passed ? "PASS" : "FAIL") : (item.passed ? "YES" : "NO");
+                return;
+            }
+            if (normalizedType === "NUMERIC" && item.numericValue != null && item.numericValue !== "") {
+                seed[responseKey] = String(item.numericValue);
+            }
+        });
+        return seed;
+    }, [checklistItems]);
+
+    useEffect(() => {
+        setResponses(existingResponses);
+        setIsChecklistLocked(Object.keys(existingResponses).length > 0);
+    }, [existingResponses]);
+    const isEditable = canManage && status === "IN_PROGRESS" && !isChecklistLocked;
 
     const handleSubmit = async () => {
         try {
-            await submitMutation.mutateAsync({ id: woId, data: { responses } });
+            const payloadResponses = checklistItems
+                .map((item: any) => {
+                    const responseKey = item.id ?? `${item.sectionId}-${item.sortOrder ?? "x"}`;
+                    const raw = responses[responseKey];
+                    if (raw == null || raw === "") return null;
+                    const fieldType = normalizeFieldType(item.fieldType);
+                    const upper = raw.toUpperCase();
+                    return {
+                        fieldId: item.id,
+                        sectionId: item.sectionId,
+                        value: raw,
+                        passed: (fieldType === "PASS_FAIL" || fieldType === "YES_NO")
+                            ? (upper === "PASS" || upper === "YES" || upper === "TRUE")
+                            : undefined,
+                        numericValue: fieldType === "NUMERIC" ? Number(raw) : undefined,
+                    };
+                })
+                .filter(Boolean);
+            if (payloadResponses.length === 0) {
+                return;
+            }
+            await submitMutation.mutateAsync({ id: woId, data: { responses: payloadResponses } });
+            setResponses({});
+            setLastSavedAt(new Date().toISOString());
+            setIsChecklistLocked(true);
+            await onChecklistSaved?.();
             showSuccess("Saved", "Checklist responses saved.");
         } catch (err) {
             showApiError(err);
         }
     };
 
-    if (!checklist || checklist.length === 0) {
+    if (!checklistItems || checklistItems.length === 0) {
         return <EmptySection title="No Checklist" message="This work order has no checklist items." />;
     }
 
     return (
         <div className="space-y-4">
-            {checklist.map((item: any, idx: number) => (
+            {lastSavedAt ? (
+                <div className="rounded-xl border border-success-200 bg-success-50 px-3 py-2 text-xs font-medium text-success-700 dark:border-success-900/50 dark:bg-success-900/20 dark:text-success-300">
+                    Checklist saved successfully. Last saved at {new Date(lastSavedAt).toLocaleTimeString()}.
+                </div>
+            ) : null}
+            {checklistItems.map((item: any, idx: number) => (
                 <div key={idx} className="p-4 rounded-xl bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-100 dark:border-neutral-800 space-y-2">
+                    {(() => {
+                        const responseKey = item.id ?? `${item.sectionId}-${item.sortOrder ?? idx}`;
+                        const fieldType = normalizeFieldType(item.fieldType);
+                        const dropdownOptions = Array.isArray(item?.options)
+                            ? item.options
+                            : Array.isArray(item?.config?.options)
+                                ? item.config.options
+                                : typeof item?.config === "string"
+                                    ? item.config.split(",").map((v: string) => v.trim()).filter(Boolean)
+                                    : [];
+                        const selectedValue =
+                            responses[responseKey] ||
+                            (item.response != null && item.response !== "" ? String(item.response) : "") ||
+                            ((fieldType === "PASS_FAIL" || fieldType === "YES_NO") && typeof item.passed === "boolean"
+                                ? (fieldType === "PASS_FAIL" ? (item.passed ? "PASS" : "FAIL") : (item.passed ? "YES" : "NO"))
+                                : "") ||
+                            (fieldType === "NUMERIC" && item.numericValue != null ? String(item.numericValue) : "");
+                        const isReadOnly = !isEditable;
+                        return (
+                            <>
                     <div className="flex items-start justify-between gap-4">
                         <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">{item.sectionName || "Section"}</p>
                             <p className="text-sm font-bold text-neutral-900 dark:text-white">{item.label || item.question || `Item ${idx + 1}`}</p>
                             {item.description && <p className="text-xs text-neutral-400 mt-0.5">{item.description}</p>}
                             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 mt-1 inline-block">{item.fieldType || item.type || "text"}</span>
                         </div>
                     </div>
-                    {item.response !== undefined && item.response !== null && (
-                        <p className="text-sm text-neutral-700 dark:text-neutral-300 bg-white dark:bg-neutral-900 rounded-lg px-3 py-2 border border-neutral-200 dark:border-neutral-700">{String(item.response)}</p>
-                    )}
-                    {isEditable && (
-                        <input
-                            type="text"
-                            placeholder="Enter response..."
-                            value={responses[item.id || idx] || ""}
-                            onChange={(e) => setResponses((p) => ({ ...p, [item.id || idx]: e.target.value }))}
-                            className="w-full px-3 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
-                        />
-                    )}
+                    {(() => {
+                        const fieldType = normalizeFieldType(item.fieldType);
+                        if (fieldType === "PASS_FAIL" || fieldType === "YES_NO") {
+                            const positiveValue = fieldType === "PASS_FAIL" ? "PASS" : "YES";
+                            const negativeValue = fieldType === "PASS_FAIL" ? "FAIL" : "NO";
+                            return (
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        disabled={isReadOnly}
+                                        onClick={() => setResponses((p) => ({ ...p, [responseKey]: positiveValue }))}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                                            selectedValue === positiveValue
+                                                ? "bg-success-600 text-white border-success-600"
+                                                : "bg-success-50 text-success-700 border-success-200"
+                                        } ${isReadOnly ? "cursor-not-allowed opacity-90" : ""}`}
+                                    >
+                                        {fieldType === "PASS_FAIL" ? "Pass" : "Yes"}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled={isReadOnly}
+                                        onClick={() => setResponses((p) => ({ ...p, [responseKey]: negativeValue }))}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                                            selectedValue === negativeValue
+                                                ? "bg-danger-600 text-white border-danger-600"
+                                                : "bg-danger-50 text-danger-700 border-danger-200"
+                                        } ${isReadOnly ? "cursor-not-allowed opacity-90" : ""}`}
+                                    >
+                                        {fieldType === "PASS_FAIL" ? "Fail" : "No"}
+                                    </button>
+                                </div>
+                            );
+                        }
+
+                        if (fieldType === "PHOTO") {
+                            return (
+                                <div className="space-y-2">
+                                    {!isReadOnly ? (
+                                        <input
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/gif,image/webp"
+                                            onChange={async (e) => {
+                                                const file = e.target.files?.[0];
+                                                if (!file) return;
+                                                const key = await upload(file);
+                                                if (key) {
+                                                    setResponses((p) => ({ ...p, [responseKey]: key }));
+                                                }
+                                                e.target.value = "";
+                                            }}
+                                            className="w-full px-3 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm"
+                                        />
+                                    ) : (
+                                        <div className="w-full px-3 py-2 bg-neutral-100 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm text-neutral-500 dark:text-neutral-400">
+                                            Photo field is locked
+                                        </div>
+                                    )}
+                                    {selectedValue ? (
+                                        <p className="text-xs text-neutral-500 dark:text-neutral-400 break-all">
+                                            Uploaded: {selectedValue}
+                                        </p>
+                                    ) : null}
+                                </div>
+                            );
+                        }
+
+                        if (fieldType === "DROPDOWN" || fieldType === "SELECT") {
+                            return (
+                                <select
+                                    value={selectedValue}
+                                    disabled={isReadOnly}
+                                    onChange={(e) => setResponses((p) => ({ ...p, [responseKey]: e.target.value }))}
+                                    className={`w-full px-3 py-2 border rounded-xl text-sm ${
+                                        isReadOnly
+                                            ? "bg-neutral-100 dark:bg-neutral-900/60 border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 cursor-not-allowed"
+                                            : "bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white"
+                                    }`}
+                                >
+                                    <option value="">Select option...</option>
+                                    {dropdownOptions.map((opt: string) => (
+                                        <option key={opt} value={opt}>{opt}</option>
+                                    ))}
+                                </select>
+                            );
+                        }
+
+                        if (fieldType === "RISK_RATING" || fieldType === "RATING") {
+                            const currentRating = Number(selectedValue || 0);
+                            return (
+                                <div className="flex gap-2">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <button
+                                            key={star}
+                                            type="button"
+                                            disabled={isReadOnly}
+                                            onClick={() => setResponses((p) => ({ ...p, [responseKey]: String(star) }))}
+                                            className={`w-9 h-9 rounded-lg border text-sm font-bold ${
+                                                star <= currentRating
+                                                    ? "bg-warning-500 text-white border-warning-600"
+                                                    : "bg-neutral-100 dark:bg-neutral-800 border-neutral-300 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400"
+                                            } ${isReadOnly ? "cursor-not-allowed opacity-90" : ""}`}
+                                        >
+                                            ★
+                                        </button>
+                                    ))}
+                                </div>
+                            );
+                        }
+
+                        if (fieldType === "DATE_TIME" || fieldType === "DATETIME") {
+                            return (
+                                <input
+                                    type="datetime-local"
+                                    value={selectedValue ? selectedValue.replace(" ", "T") : ""}
+                                    disabled={isReadOnly}
+                                    onChange={(e) => setResponses((p) => ({ ...p, [responseKey]: e.target.value.replace("T", " ") }))}
+                                    className={`w-full px-3 py-2 border rounded-xl text-sm ${
+                                        isReadOnly
+                                            ? "bg-neutral-100 dark:bg-neutral-900/60 border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 cursor-not-allowed"
+                                            : "bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white"
+                                    }`}
+                                />
+                            );
+                        }
+
+                        if (fieldType === "SIGNATURE") {
+                            return (
+                                <div className="space-y-2">
+                                    {!isReadOnly ? (
+                                        <input
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/gif,image/webp"
+                                            onChange={async (e) => {
+                                                const file = e.target.files?.[0];
+                                                if (!file) return;
+                                                const key = await upload(file);
+                                                if (key) {
+                                                    setResponses((p) => ({ ...p, [responseKey]: key }));
+                                                }
+                                                e.target.value = "";
+                                            }}
+                                            className="w-full px-3 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm"
+                                        />
+                                    ) : (
+                                        <div className="w-full px-3 py-2 bg-neutral-100 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm text-neutral-500 dark:text-neutral-400">
+                                            Signature field is locked
+                                        </div>
+                                    )}
+                                    {selectedValue ? (
+                                        <p className="text-xs text-neutral-500 dark:text-neutral-400 break-all">
+                                            Uploaded signature: {selectedValue}
+                                        </p>
+                                    ) : null}
+                                </div>
+                            );
+                        }
+
+                        return (
+                            <input
+                                type={fieldType === "NUMERIC" ? "number" : "text"}
+                                placeholder={fieldType === "NUMERIC" ? "Enter number..." : "Enter response..."}
+                                value={selectedValue}
+                                disabled={isReadOnly}
+                                onChange={(e) => setResponses((p) => ({ ...p, [responseKey]: e.target.value }))}
+                                className={`w-full px-3 py-2 border rounded-xl text-sm transition-all ${
+                                    isReadOnly
+                                        ? "bg-neutral-100 dark:bg-neutral-900/60 border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 cursor-not-allowed"
+                                        : "bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white"
+                                }`}
+                            />
+                        );
+                    })()}
+                            </>
+                        );
+                    })()}
                 </div>
             ))}
-            {isEditable && Object.keys(responses).length > 0 && (
+            {isEditable && (
                 <div className="flex justify-end">
                     <button
                         onClick={handleSubmit}
-                        disabled={submitMutation.isPending}
+                        disabled={submitMutation.isPending || isUploading}
                         className="px-6 py-2 text-sm font-bold rounded-xl bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 transition-colors flex items-center gap-2"
                     >
-                        {submitMutation.isPending && <Loader2 size={14} className="animate-spin" />}
+                        {(submitMutation.isPending || isUploading) && <Loader2 size={14} className="animate-spin" />}
                         Save Checklist
                     </button>
                 </div>

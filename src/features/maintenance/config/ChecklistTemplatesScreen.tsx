@@ -25,6 +25,7 @@ import {
     useUpdateChecklistTemplate,
     useDeleteChecklistTemplate,
 } from "@/features/maintenance/api/use-maintenance-mutations";
+import { maintenanceApi } from "@/features/maintenance/api/maintenance-api";
 
 /* ── Constants ── */
 
@@ -264,19 +265,30 @@ function BuilderModal({
                                 {!sec.collapsed && (
                                     <div className="p-4 space-y-2">
                                         {sec.fields.map((f, fi) => (
-                                            <div key={fi} className="flex items-center gap-2 bg-neutral-50/50 dark:bg-neutral-800/50 rounded-lg px-3 py-2">
-                                                <GripVertical size={12} className="text-neutral-300 flex-shrink-0" />
-                                                <input type="text" value={f.label} onChange={(e) => updateField(si, fi, { label: e.target.value })} placeholder="Field label"
-                                                    className="flex-1 px-2 py-1 bg-transparent border-none text-sm text-primary-950 dark:text-white focus:outline-none placeholder:text-neutral-400" />
-                                                <select value={f.fieldType} onChange={(e) => updateField(si, fi, { fieldType: e.target.value })}
-                                                    className="px-2 py-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded text-xs focus:outline-none dark:text-white">
-                                                    {FIELD_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                                                </select>
-                                                <label className="flex items-center gap-1 text-[10px] text-neutral-500 flex-shrink-0">
-                                                    <input type="checkbox" checked={f.isMandatory} onChange={(e) => updateField(si, fi, { isMandatory: e.target.checked })} className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500" />
-                                                    Req
-                                                </label>
-                                                <button onClick={() => removeField(si, fi)} className="p-1 text-danger-400 hover:text-danger-600"><X size={12} /></button>
+                                            <div key={fi} className="bg-neutral-50/50 dark:bg-neutral-800/50 rounded-lg px-3 py-2 space-y-2">
+                                                <div className="flex items-center gap-2">
+                                                    <GripVertical size={12} className="text-neutral-300 flex-shrink-0" />
+                                                    <input type="text" value={f.label} onChange={(e) => updateField(si, fi, { label: e.target.value })} placeholder="Field label"
+                                                        className="flex-1 px-2 py-1 bg-transparent border-none text-sm text-primary-950 dark:text-white focus:outline-none placeholder:text-neutral-400" />
+                                                    <select value={f.fieldType} onChange={(e) => updateField(si, fi, { fieldType: e.target.value })}
+                                                        className="px-2 py-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded text-xs focus:outline-none dark:text-white">
+                                                        {FIELD_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                                    </select>
+                                                    <label className="flex items-center gap-1 text-[10px] text-neutral-500 flex-shrink-0">
+                                                        <input type="checkbox" checked={f.isMandatory} onChange={(e) => updateField(si, fi, { isMandatory: e.target.checked })} className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500" />
+                                                        Req
+                                                    </label>
+                                                    <button onClick={() => removeField(si, fi)} className="p-1 text-danger-400 hover:text-danger-600"><X size={12} /></button>
+                                                </div>
+                                                {f.fieldType === "DROPDOWN" ? (
+                                                    <input
+                                                        type="text"
+                                                        value={f.config}
+                                                        onChange={(e) => updateField(si, fi, { config: e.target.value })}
+                                                        placeholder="Options (comma separated)"
+                                                        className="w-full px-2 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded text-xs focus:outline-none dark:text-white placeholder:text-neutral-400"
+                                                    />
+                                                ) : null}
                                             </div>
                                         ))}
                                         <button onClick={() => addField(si)} className="text-xs font-bold text-primary-600 dark:text-primary-400 hover:underline pl-6">+ Add Field</button>
@@ -286,17 +298,15 @@ function BuilderModal({
                         ))}
                     </div>
 
-                    {editingId && (
-                        <div className="border-t border-neutral-100 dark:border-neutral-800 pt-4">
-                            <div className="flex items-center gap-3">
-                                <button type="button" onClick={() => setIsActive(!isActive)}
-                                    className={cn("w-10 h-6 rounded-full transition-colors relative flex-shrink-0", isActive ? "bg-primary-600" : "bg-neutral-300 dark:bg-neutral-700")}>
-                                    <div className={cn("w-4 h-4 rounded-full bg-white absolute top-1 transition-all", isActive ? "left-5" : "left-1")} />
-                                </button>
-                                <span className="text-sm font-medium text-primary-950 dark:text-white">Active</span>
-                            </div>
+                    <div className="border-t border-neutral-100 dark:border-neutral-800 pt-4">
+                        <div className="flex items-center gap-3">
+                            <button type="button" onClick={() => setIsActive(!isActive)}
+                                className={cn("w-10 h-6 rounded-full transition-colors relative flex-shrink-0", isActive ? "bg-primary-600" : "bg-neutral-300 dark:bg-neutral-700")}>
+                                <div className={cn("w-4 h-4 rounded-full bg-white absolute top-1 transition-all", isActive ? "left-5" : "left-1")} />
+                            </button>
+                            <span className="text-sm font-medium text-primary-950 dark:text-white">Active</span>
                         </div>
-                    )}
+                    </div>
                 </div>
                 <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
                     <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
@@ -340,48 +350,79 @@ export function ChecklistTemplatesScreen() {
         setBuilderOpen(true);
     };
 
-    const openEdit = (t: any) => {
-        setEditingId(t.id);
-        setEditName(t.name ?? "");
-        setEditDesc(t.description ?? "");
-        setEditIsActive(t.isActive ?? true);
-        const sections: SectionForm[] = (t.sections ?? []).map((sec: any) => ({
+    const openEdit = async (t: any) => {
+        let source = t;
+        try {
+            const full = await maintenanceApi.getChecklistTemplate(t.id);
+            source = full?.data ?? t;
+        } catch {
+            // Fallback to list data if detail fetch fails.
+        }
+
+        setEditingId(source.id);
+        setEditName(source.name ?? "");
+        setEditDesc(source.description ?? "");
+        setEditIsActive(source.isActive ?? true);
+        const sections: SectionForm[] = (source.sections ?? []).map((sec: any) => ({
             name: sec.name ?? "",
             isMandatory: sec.isMandatory ?? false,
             passThreshold: sec.passThreshold != null ? String(sec.passThreshold) : "",
             description: sec.description ?? "",
             collapsed: false,
-            fields: (sec.fields ?? []).map((f: any) => ({
-                label: f.label ?? "",
-                fieldType: f.fieldType ?? "YES_NO",
-                isMandatory: f.isMandatory ?? false,
-                config: f.config ? JSON.stringify(f.config) : "",
-            })),
+            fields: (sec.fields ?? []).map((f: any) => {
+                const dropdownOptions = Array.isArray(f?.config?.options)
+                    ? f.config.options.join(", ")
+                    : "";
+                return {
+                    label: f.label ?? "",
+                    fieldType: f.fieldType ?? "YES_NO",
+                    isMandatory: f.isMandatory ?? false,
+                    config: f.fieldType === "DROPDOWN"
+                        ? dropdownOptions
+                        : (f.config ? JSON.stringify(f.config) : ""),
+                };
+            }),
         }));
         setEditSections(sections.length > 0 ? sections : [newSection()]);
         setBuilderOpen(true);
+    };
+
+    const parseFieldConfig = (field: FieldForm) => {
+        const raw = field.config.trim();
+        if (!raw) return undefined;
+        if (field.fieldType === "DROPDOWN") {
+            if (raw.startsWith("{") || raw.startsWith("[")) {
+                try { return JSON.parse(raw); } catch { /* ignore parse */ }
+            }
+            const options = raw.split(",").map((v) => v.trim()).filter(Boolean);
+            return options.length > 0 ? { options } : undefined;
+        }
+        try { return JSON.parse(raw); } catch { return undefined; }
     };
 
     const handleSave = async (name: string, description: string, sections: SectionForm[], isActive: boolean) => {
         const payload: any = {
             name: name.trim(),
             description: description || undefined,
+            isActive,
             sections: sections.map((sec, si) => ({
                 name: sec.name.trim(),
                 sortOrder: si,
                 isMandatory: sec.isMandatory,
                 passThreshold: sec.passThreshold ? Number(sec.passThreshold) : undefined,
                 description: sec.description || undefined,
-                fields: sec.fields.map((f, fi) => {
-                    let config: any;
-                    if (f.config.trim()) { try { config = JSON.parse(f.config); } catch { /* ignore */ } }
-                    return { label: f.label.trim(), fieldType: f.fieldType, sortOrder: fi, isMandatory: f.isMandatory, config };
-                }),
+                fields: sec.fields.map((f, fi) => ({
+                    label: f.label.trim(),
+                    fieldType: f.fieldType,
+                    sortOrder: fi,
+                    isMandatory: f.isMandatory,
+                    config: parseFieldConfig(f),
+                })),
             })),
         };
         try {
             if (editingId) {
-                await updateMut.mutateAsync({ id: editingId, data: { ...payload, isActive } });
+                await updateMut.mutateAsync({ id: editingId, data: payload });
                 showSuccess("Updated", `${name} updated.`);
             } else {
                 await createMut.mutateAsync(payload);
