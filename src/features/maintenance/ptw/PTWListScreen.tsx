@@ -9,6 +9,7 @@ import { useCanPerform } from "@/hooks/useCanPerform";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
+import { AssetPicker } from "@/features/maintenance/shared/AssetPicker";
 
 /* ── Class badge ── */
 
@@ -82,6 +83,7 @@ export function PTWListScreen() {
     const [showModal, setShowModal] = useState(false);
     const [form, setForm] = useState({
         ptwClass: "GENERAL_WORK",
+        assetId: "",
         description: "",
         hazards: "",
         precautions: "",
@@ -109,7 +111,7 @@ export function PTWListScreen() {
             await createMutation.mutateAsync(form);
             showSuccess("Created", "Permit to Work created successfully.");
             setShowModal(false);
-            setForm({ ptwClass: "GENERAL_WORK", description: "", hazards: "", precautions: "", emergencyContact: "", isolationDetails: "" });
+            setForm({ ptwClass: "GENERAL_WORK", assetId: "", description: "", hazards: "", precautions: "", emergencyContact: "", isolationDetails: "" });
         } catch (err) { showApiError(err); }
     };
 
@@ -256,6 +258,14 @@ export function PTWListScreen() {
                                     <option value="ELECTRICAL_ISOLATION">Electrical Isolation</option>
                                     <option value="PRESSURE_RELEASE">Pressure Release</option>
                                 </select>
+                            </div>
+                            <div>
+                                <AssetPicker
+                                    value={form.assetId}
+                                    onChange={(val) => setForm({ ...form, assetId: val })}
+                                    label="Linked Asset"
+                                    placeholder="Search asset to link..."
+                                />
                             </div>
                             <div>
                                 <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Description</label>

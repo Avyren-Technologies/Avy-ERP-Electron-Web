@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Loader2, Plus, Trash2, X, Wrench, Calendar, DollarSign, CheckCircle, BarChart3 } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Trash2, X, Wrench, Calendar, DollarSign, CheckCircle, BarChart3, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useShutdown, useShutdownProgress, useWorkOrders } from "@/features/maintenance/api/use-maintenance-queries";
-import { useApproveShutdown, useStartShutdown, useCompleteShutdown, useAddShutdownWOs, useRemoveShutdownWO } from "@/features/maintenance/api/use-maintenance-mutations";
+import { useApproveShutdown, useStartShutdown, useCompleteShutdown, useAddShutdownWOs, useRemoveShutdownWO, useUpdateShutdown } from "@/features/maintenance/api/use-maintenance-mutations";
+import { useCompanyLocations } from "@/features/company-admin/api/use-company-admin-queries";
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
 import { useCanPerform } from "@/hooks/useCanPerform";
 import { SkeletonTable } from "@/components/ui/Skeleton";
@@ -51,6 +52,9 @@ export function ShutdownDetailScreen() {
     const { data: progressData } = useShutdownProgress(id ?? "");
     const progress: any = progressData?.data ?? {};
 
+    const locationsQuery = useCompanyLocations();
+    const locations: any[] = locationsQuery.data?.data ?? [];
+
     const [activeTab, setActiveTab] = useState<"overview" | "work-orders" | "progress">("overview");
 
     // Add WO modal
@@ -64,6 +68,46 @@ export function ShutdownDetailScreen() {
     const completeMutation = useCompleteShutdown();
     const addWOMutation = useAddShutdownWOs();
     const removeWOMutation = useRemoveShutdownWO();
+    const updateMutation = useUpdateShutdown();
+
+    // Edit state
+    const [showEdit, setShowEdit] = useState(false);
+    const [editForm, setEditForm] = useState<any>(null);
+
+    const openEdit = () => {
+        setEditForm({
+            name: shutdown.name ?? "",
+            eventType: shutdown.eventType ?? "PLANNED_OVERHAUL",
+            plannedStart: shutdown.plannedStart ? shutdown.plannedStart.slice(0, 10) : "",
+            plannedEnd: shutdown.plannedEnd ? shutdown.plannedEnd.slice(0, 10) : "",
+            estimatedCost: shutdown.estimatedCost != null ? String(shutdown.estimatedCost) : "",
+            locationId: shutdown.locationId ?? "",
+            lineWorkCenter: shutdown.lineWorkCenter ?? "",
+            actualCost: shutdown.actualCost != null ? String(shutdown.actualCost) : "",
+        });
+        setShowEdit(true);
+    };
+
+    const handleEdit = async () => {
+        if (!id || !editForm) return;
+        try {
+            await updateMutation.mutateAsync({
+                id,
+                data: {
+                    name: editForm.name || undefined,
+                    eventType: editForm.eventType || undefined,
+                    plannedStart: editForm.plannedStart || undefined,
+                    plannedEnd: editForm.plannedEnd || undefined,
+                    estimatedCost: editForm.estimatedCost !== "" ? Number(editForm.estimatedCost) : undefined,
+                    locationId: editForm.locationId || undefined,
+                    lineWorkCenter: editForm.lineWorkCenter || undefined,
+                    actualCost: editForm.actualCost !== "" ? Number(editForm.actualCost) : undefined,
+                },
+            });
+            showSuccess("Updated", "Shutdown event updated successfully.");
+            setShowEdit(false);
+        } catch (err) { showApiError(err); }
+    };
 
     const isPending = approveMutation.isPending || startMutation.isPending || completeMutation.isPending;
 
@@ -120,6 +164,11 @@ export function ShutdownDetailScreen() {
                         <span className={cn("inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider", statusCfg.bg, statusCfg.text)}>{statusCfg.label}</span>
                     </div>
                 </div>
+                {canManage && ["DRAFT", "APPROVED"].includes(shutdown.status) && (
+                    <button onClick={openEdit} className="inline-flex items-center gap-2 px-4 py-2 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm font-semibold hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">
+                        <Pencil size={14} /> Edit
+                    </button>
+                )}
                 {canApprove && (
                     <div className="flex items-center gap-2">
                         {shutdown.status === "DRAFT" && (
@@ -160,8 +209,8 @@ export function ShutdownDetailScreen() {
                 <div className="space-y-6">
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         {[
-                            { label: "Location", value: shutdown.location?.name ?? "---" },
-                            { label: "Production Line", value: shutdown.productionLine?.name ?? "---" },
+                            { label: "Location", value: locations.find((l: any) => l.id === shutdown.locationId)?.name || shutdown.location?.name || "---" },
+                            { label: "Production Line", value: shutdown.lineWorkCenter ?? "---" },
                             { label: "Planned Start", value: shutdown.plannedStart ? fmt.date(shutdown.plannedStart) : "---" },
                             { label: "Planned End", value: shutdown.plannedEnd ? fmt.date(shutdown.plannedEnd) : "---" },
                         ].map((c) => (
@@ -175,7 +224,7 @@ export function ShutdownDetailScreen() {
                         {[
                             { label: "Work Orders", value: String(shutdownWOs.length), icon: Wrench },
                             { label: "Completion", value: `${completionPct}%`, icon: CheckCircle },
-                            { label: "Budget", value: shutdown.estimatedBudget ? Number(shutdown.estimatedBudget).toLocaleString() : "---", icon: DollarSign },
+                            { label: "Budget", value: shutdown.estimatedCost ? Number(shutdown.estimatedCost).toLocaleString() : "---", icon: DollarSign },
                             { label: "Actual Cost", value: shutdown.actualCost ? Number(shutdown.actualCost).toLocaleString() : "---", icon: DollarSign },
                         ].map((c) => (
                             <div key={c.label} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-4">
@@ -296,11 +345,11 @@ export function ShutdownDetailScreen() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-5">
                             <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-2">Budget</h3>
-                            <p className="text-2xl font-bold text-primary-950 dark:text-white">{shutdown.estimatedBudget ? Number(shutdown.estimatedBudget).toLocaleString() : "---"}</p>
+                            <p className="text-2xl font-bold text-primary-950 dark:text-white">{shutdown.estimatedCost ? Number(shutdown.estimatedCost).toLocaleString() : "---"}</p>
                         </div>
                         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-5">
                             <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-2">Actual Cost</h3>
-                            <p className={cn("text-2xl font-bold", shutdown.actualCost && shutdown.estimatedBudget && Number(shutdown.actualCost) > Number(shutdown.estimatedBudget) ? "text-danger-600" : "text-success-600")}>
+                            <p className={cn("text-2xl font-bold", shutdown.actualCost && shutdown.estimatedCost && Number(shutdown.actualCost) > Number(shutdown.estimatedCost) ? "text-danger-600" : "text-success-600")}>
                                 {shutdown.actualCost ? Number(shutdown.actualCost).toLocaleString() : "---"}
                             </p>
                         </div>
@@ -326,6 +375,136 @@ export function ShutdownDetailScreen() {
                                     <span className="text-xs text-neutral-400">{wo.status}</span>
                                 </button>
                             ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Edit Shutdown Modal ── */}
+            {showEdit && editForm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
+                    <div className="w-full max-w-lg bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-700 flex flex-col max-h-[90vh]">
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-neutral-700">
+                            <h2 className="text-lg font-bold text-primary-950 dark:text-white flex items-center gap-2"><Pencil size={16} /> Edit Shutdown Event</h2>
+                            <button onClick={() => setShowEdit(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"><X size={18} /></button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="overflow-y-auto p-6 space-y-4 flex-1">
+                            {/* Name */}
+                            <div>
+                                <label className="block text-xs font-bold text-neutral-600 dark:text-neutral-400 mb-1.5 uppercase tracking-wider">Event Name *</label>
+                                <input
+                                    type="text"
+                                    value={editForm.name}
+                                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                                    className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                />
+                            </div>
+
+                            {/* Location */}
+                            <div>
+                                <label className="block text-xs font-bold text-neutral-600 dark:text-neutral-400 mb-1.5 uppercase tracking-wider">Location</label>
+                                <select
+                                    value={editForm.locationId}
+                                    onChange={(e) => setEditForm({ ...editForm, locationId: e.target.value })}
+                                    className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                >
+                                    <option value="">Select location...</option>
+                                    {locations.map((l: any) => (
+                                        <option key={l.id} value={l.id}>{l.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Production Line */}
+                            <div>
+                                <label className="block text-xs font-bold text-neutral-600 dark:text-neutral-400 mb-1.5 uppercase tracking-wider">Production Line</label>
+                                <input
+                                    type="text"
+                                    value={editForm.lineWorkCenter}
+                                    onChange={(e) => setEditForm({ ...editForm, lineWorkCenter: e.target.value })}
+                                    className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                    placeholder="e.g., Line 1, Packaging"
+                                />
+                            </div>
+
+                            {/* Actual Cost */}
+                            <div>
+                                <label className="block text-xs font-bold text-neutral-600 dark:text-neutral-400 mb-1.5 uppercase tracking-wider">Actual Cost</label>
+                                <input
+                                    type="number"
+                                    value={editForm.actualCost}
+                                    onChange={(e) => setEditForm({ ...editForm, actualCost: e.target.value })}
+                                    placeholder="0.00"
+                                    className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                />
+                            </div>
+
+                            {/* Event Type */}
+                            <div>
+                                <label className="block text-xs font-bold text-neutral-600 dark:text-neutral-400 mb-1.5 uppercase tracking-wider">Event Type</label>
+                                <select
+                                    value={editForm.eventType}
+                                    onChange={(e) => setEditForm({ ...editForm, eventType: e.target.value })}
+                                    className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                >
+                                    <option value="PLANNED_OVERHAUL">Planned Overhaul</option>
+                                    <option value="STATUTORY_INSPECTION">Statutory Inspection</option>
+                                    <option value="CORRECTIVE_MAJOR">Corrective Major</option>
+                                    <option value="COMMISSIONING">Commissioning</option>
+                                </select>
+                            </div>
+
+                            {/* Dates */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-bold text-neutral-600 dark:text-neutral-400 mb-1.5 uppercase tracking-wider">Planned Start</label>
+                                    <input
+                                        type="date"
+                                        value={editForm.plannedStart}
+                                        onChange={(e) => setEditForm({ ...editForm, plannedStart: e.target.value })}
+                                        className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-neutral-600 dark:text-neutral-400 mb-1.5 uppercase tracking-wider">Planned End</label>
+                                    <input
+                                        type="date"
+                                        value={editForm.plannedEnd}
+                                        onChange={(e) => setEditForm({ ...editForm, plannedEnd: e.target.value })}
+                                        className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Estimated Budget (estimatedCost) */}
+                            <div>
+                                <label className="block text-xs font-bold text-neutral-600 dark:text-neutral-400 mb-1.5 uppercase tracking-wider">Estimated Budget</label>
+                                <input
+                                    type="number"
+                                    value={editForm.estimatedCost}
+                                    onChange={(e) => setEditForm({ ...editForm, estimatedCost: e.target.value })}
+                                    placeholder="0.00"
+                                    className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="px-6 py-4 border-t border-neutral-200 dark:border-neutral-700 flex justify-end gap-3">
+                            <button onClick={() => setShowEdit(false)} className="px-4 py-2 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-semibold hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleEdit}
+                                disabled={updateMutation.isPending || !editForm.name}
+                                className="px-5 py-2 rounded-xl bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 disabled:opacity-60 flex items-center gap-2 transition-colors"
+                            >
+                                {updateMutation.isPending && <Loader2 size={14} className="animate-spin" />}
+                                Save Changes
+                            </button>
                         </div>
                     </div>
                 </div>

@@ -4,6 +4,7 @@ import { Search, Filter, X, Plus, Loader2, Eye, Trash2, Calendar, DollarSign, Wr
 import { cn } from "@/lib/utils";
 import { useShutdowns } from "@/features/maintenance/api/use-maintenance-queries";
 import { useCreateShutdown, useDeleteShutdown } from "@/features/maintenance/api/use-maintenance-mutations";
+import { useCompanyLocations } from "@/features/company-admin/api/use-company-admin-queries";
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
 import { useCanPerform } from "@/hooks/useCanPerform";
 import { SkeletonTable } from "@/components/ui/Skeleton";
@@ -50,6 +51,14 @@ const STATUS_OPTIONS = [
     { value: "CANCELLED", label: "Cancelled" },
 ];
 
+const TYPE_OPTIONS = [
+    { value: "", label: "All Types" },
+    { value: "PLANNED_OVERHAUL", label: "Planned Overhaul" },
+    { value: "STATUTORY_INSPECTION", label: "Statutory Inspection" },
+    { value: "CORRECTIVE_MAJOR", label: "Corrective Major" },
+    { value: "COMMISSIONING", label: "Commissioning" },
+];
+
 /* ── Screen ── */
 
 export function ShutdownListScreen() {
@@ -57,8 +66,12 @@ export function ShutdownListScreen() {
     const canCreate = useCanPerform("maintenance:create");
     const canDelete = useCanPerform("maintenance:delete");
 
+    const locationsQuery = useCompanyLocations();
+    const locations: any[] = locationsQuery.data?.data ?? [];
+
     const [search, setSearch] = useState("");
     const [status, setStatus] = useState("");
+    const [eventType, setEventType] = useState("");
     const [page, setPage] = useState(1);
     const [showFilters, setShowFilters] = useState(false);
 
@@ -68,16 +81,17 @@ export function ShutdownListScreen() {
         name: "",
         eventType: "PLANNED_OVERHAUL",
         locationId: "",
-        productionLineId: "",
+        lineWorkCenter: "",
         plannedStart: "",
         plannedEnd: "",
-        estimatedBudget: "",
+        estimatedCost: "",
         description: "",
     });
 
     const params: Record<string, unknown> = { page, limit: 25 };
     if (search) params.search = search;
     if (status) params.status = status;
+    if (eventType) params.eventType = eventType;
 
     const { data, isLoading, isError } = useShutdowns(params);
     const shutdowns: any[] = data?.data ?? [];
@@ -86,20 +100,20 @@ export function ShutdownListScreen() {
     const createMutation = useCreateShutdown();
     const deleteMutation = useDeleteShutdown();
 
-    const hasFilters = !!status;
-    const clearFilters = () => { setSearch(""); setStatus(""); setPage(1); };
+    const hasFilters = !!status || !!eventType;
+    const clearFilters = () => { setSearch(""); setStatus(""); setEventType(""); setPage(1); };
 
     const handleCreate = async () => {
         try {
             await createMutation.mutateAsync({
                 ...form,
-                estimatedBudget: form.estimatedBudget ? Number(form.estimatedBudget) : undefined,
+                estimatedCost: form.estimatedCost ? Number(form.estimatedCost) : undefined,
                 locationId: form.locationId || undefined,
-                productionLineId: form.productionLineId || undefined,
+                lineWorkCenter: form.lineWorkCenter || undefined,
             });
             showSuccess("Created", "Shutdown event created.");
             setShowModal(false);
-            setForm({ name: "", eventType: "PLANNED_OVERHAUL", locationId: "", productionLineId: "", plannedStart: "", plannedEnd: "", estimatedBudget: "", description: "" });
+            setForm({ name: "", eventType: "PLANNED_OVERHAUL", locationId: "", lineWorkCenter: "", plannedStart: "", plannedEnd: "", estimatedCost: "", description: "" });
         } catch (err) { showApiError(err); }
     };
 
@@ -143,9 +157,18 @@ export function ShutdownListScreen() {
 
             {showFilters && (
                 <div className="flex flex-wrap gap-3 p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl border border-neutral-200 dark:border-neutral-700">
-                    <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm">
-                        {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
+                    <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-500 mb-1">Status</label>
+                        <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm min-w-[150px] focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                            {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-500 mb-1">Event Type</label>
+                        <select value={eventType} onChange={(e) => { setEventType(e.target.value); setPage(1); }} className="px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm min-w-[180px] focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                            {TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                    </div>
                 </div>
             )}
 
@@ -179,14 +202,17 @@ export function ShutdownListScreen() {
                                         <td className="px-4 py-3">
                                             <Link to={`/app/maintenance/shutdown/${s.id}`} className="font-semibold text-primary-600 hover:text-primary-700 dark:text-primary-400">{s.name ?? "---"}</Link>
                                         </td>
-                                        <td className="px-4 py-3 text-neutral-700 dark:text-neutral-300">{s.location?.name ?? s.productionLine?.name ?? "---"}</td>
+                                        <td className="px-4 py-3 text-neutral-700 dark:text-neutral-300">
+                                            {locations.find((l: any) => l.id === s.locationId)?.name || s.location?.name || "---"}
+                                            {s.lineWorkCenter ? ` / ${s.lineWorkCenter}` : ""}
+                                        </td>
                                         <td className="px-4 py-3"><ShutdownTypeBadge type={s.eventType} /></td>
                                         <td className="px-4 py-3"><ShutdownStatusBadge status={s.status} /></td>
                                         <td className="px-4 py-3 text-neutral-500 dark:text-neutral-400 text-xs">
                                             {s.plannedStart ? fmt.date(s.plannedStart) : "---"} - {s.plannedEnd ? fmt.date(s.plannedEnd) : "---"}
                                         </td>
                                         <td className="px-4 py-3 text-right font-medium text-neutral-700 dark:text-neutral-300">{s._count?.workOrders ?? s.woCount ?? 0}</td>
-                                        <td className="px-4 py-3 text-right font-medium text-neutral-700 dark:text-neutral-300">{s.estimatedBudget ? Number(s.estimatedBudget).toLocaleString() : "---"}</td>
+                                        <td className="px-4 py-3 text-right font-medium text-neutral-700 dark:text-neutral-300">{s.estimatedCost ? Number(s.estimatedCost).toLocaleString() : "---"}</td>
                                         <td className="px-4 py-3 text-right font-medium text-neutral-700 dark:text-neutral-300">{s.actualCost ? Number(s.actualCost).toLocaleString() : "---"}</td>
                                         <td className="px-4 py-3">
                                             <div className="flex items-center justify-end gap-1">
@@ -241,6 +267,31 @@ export function ShutdownListScreen() {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
+                                    <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Location</label>
+                                    <select
+                                        value={form.locationId}
+                                        onChange={(e) => setForm({ ...form, locationId: e.target.value })}
+                                        className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                    >
+                                        <option value="">Select location...</option>
+                                        {locations.map((l: any) => (
+                                            <option key={l.id} value={l.id}>{l.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Production Line</label>
+                                    <input
+                                        type="text"
+                                        value={form.lineWorkCenter}
+                                        onChange={(e) => setForm({ ...form, lineWorkCenter: e.target.value })}
+                                        className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        placeholder="e.g., Line 1, Packaging"
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
                                     <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Planned Start</label>
                                     <input type="date" value={form.plannedStart} onChange={(e) => setForm({ ...form, plannedStart: e.target.value })} className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm" />
                                 </div>
@@ -251,7 +302,7 @@ export function ShutdownListScreen() {
                             </div>
                             <div>
                                 <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Estimated Budget</label>
-                                <input type="number" value={form.estimatedBudget} onChange={(e) => setForm({ ...form, estimatedBudget: e.target.value })} className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm" placeholder="0.00" />
+                                <input type="number" value={form.estimatedCost} onChange={(e) => setForm({ ...form, estimatedCost: e.target.value })} className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm" placeholder="0.00" />
                             </div>
                             <div>
                                 <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Description</label>

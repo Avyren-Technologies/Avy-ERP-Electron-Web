@@ -39,6 +39,19 @@ const STRATEGY_TYPES = [
 
 const STRATEGY_TYPE_MAP: Record<string, string> = Object.fromEntries(STRATEGY_TYPES.map((t) => [t.value, t.label]));
 
+const STRATEGY_TEMPLATES: Record<string, string> = {
+    PREVENTIVE_CALENDAR: JSON.stringify({ intervalDays: 30, nonWorkingDayRule: "MOVE_LATER" }, null, 2),
+    PREVENTIVE_METER: JSON.stringify({ meterType: "RUNTIME_HOURS", intervalValue: 250, limitValue: 5000 }, null, 2),
+    CORRECTIVE: JSON.stringify({ triggerOnFailure: true }, null, 2),
+    CONDITION_BASED: JSON.stringify({ metric: "TEMPERATURE", operator: "GREATER_THAN", threshold: 80 }, null, 2),
+    PREDICTIVE: JSON.stringify({ anomalyThreshold: 0.85, windowDays: 7 }, null, 2),
+    SEASONAL: JSON.stringify({ season: "SUMMER", startMonth: 5, endMonth: 8 }, null, 2),
+    STATUTORY: JSON.stringify({ regulatoryBody: "OSHA", inspectionIntervalMonths: 12 }, null, 2),
+    AMC_MANAGED: JSON.stringify({ contractId: "AMC-100", visitFrequency: "QUARTERLY" }, null, 2),
+    RUN_TO_FAILURE: JSON.stringify({ allowBreakdown: true }, null, 2),
+    SHUTDOWN_OVERHAUL: JSON.stringify({ shutdownEventId: "MAJOR_SHUTDOWN", requireOverhaul: true }, null, 2),
+};
+
 function StatusBadge({ active }: { active: boolean }) {
     return active ? (
         <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded border bg-success-50 text-success-700 border-success-100 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50">
@@ -88,6 +101,17 @@ export function StrategiesScreen() {
             isActive: s.isActive ?? true,
         });
         setModalOpen(true);
+    };
+
+    const handleTypeChange = (type: string) => {
+        setForm((p) => {
+            const isCurrentTemplateOrEmpty = !p.triggerConfig.trim() || Object.values(STRATEGY_TEMPLATES).includes(p.triggerConfig);
+            return {
+                ...p,
+                strategyType: type,
+                triggerConfig: isCurrentTemplateOrEmpty ? (STRATEGY_TEMPLATES[type] ?? "") : p.triggerConfig,
+            };
+        });
     };
 
     const handleSave = async () => {
@@ -219,7 +243,7 @@ export function StrategiesScreen() {
                             </div>
                             <div>
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Strategy Type</label>
-                                <select value={form.strategyType} onChange={(e) => setForm((p) => ({ ...p, strategyType: e.target.value }))}
+                                <select value={form.strategyType} onChange={(e) => handleTypeChange(e.target.value)}
                                     className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
                                     {STRATEGY_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                                 </select>
@@ -230,7 +254,13 @@ export function StrategiesScreen() {
                                     className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all resize-none" />
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Trigger Config (JSON)</label>
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Trigger Config (JSON)</label>
+                                    <button type="button" onClick={() => setForm((p) => ({ ...p, triggerConfig: STRATEGY_TEMPLATES[p.strategyType] ?? "" }))}
+                                        className="text-xs font-bold text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
+                                        Load Template
+                                    </button>
+                                </div>
                                 <textarea value={form.triggerConfig} onChange={(e) => setForm((p) => ({ ...p, triggerConfig: e.target.value }))} placeholder='{"intervalDays": 30}' rows={4}
                                     className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all resize-none" />
                             </div>

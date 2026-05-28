@@ -601,6 +601,8 @@ export function usePTWList(params?: Record<string, unknown>) {
     return useQuery({
         queryKey: maintenanceKeys.ptwList(params),
         queryFn: () => maintenanceApi.listPTW(params as any),
+        staleTime: 0,
+        refetchOnMount: 'always',
     });
 }
 
@@ -609,6 +611,8 @@ export function usePTW(id: string) {
         queryKey: maintenanceKeys.ptw(id),
         queryFn: () => maintenanceApi.getPTW(id),
         enabled: !!id,
+        staleTime: 0,
+        refetchOnMount: 'always',
     });
 }
 
