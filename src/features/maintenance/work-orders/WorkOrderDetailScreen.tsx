@@ -51,6 +51,9 @@ import { useCanPerform } from "@/hooks/useCanPerform";
 import { useFileUpload } from "@/hooks/useFileUpload";
 import { PriorityBadge } from "@/features/maintenance/shared/PriorityBadge";
 import { WOStatusBadge, WOTypeBadge } from "@/features/maintenance/shared/WOStatusBadge";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
+import { workOrderDetailHelp } from "@/features/maintenance/help";
 import { showSuccess, showApiError } from "@/lib/toast";
 import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
 import { useCompanySettings } from "@/features/company-admin/api/use-company-admin-queries";
@@ -340,7 +343,10 @@ export function WorkOrderDetailScreen() {
                                 </span>
                             )}
                         </div>
-                        <h1 className="text-2xl font-bold text-primary-950 dark:text-white tracking-tight">Work Order Detail</h1>
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-2xl font-bold text-primary-950 dark:text-white tracking-tight">Work Order Detail</h1>
+                            <HelpDrawer help={workOrderDetailHelp} />
+                        </div>
                     </div>
                 </div>
 
@@ -496,8 +502,9 @@ export function WorkOrderDetailScreen() {
                 <ActionModal title="Hold Work Order" onClose={closeModal}>
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1.5">
+                            <label className="flex items-center gap-1 text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1.5">
                                 Hold Reason <span className="text-red-500">*</span>
+                                <InfoTooltip content={workOrderDetailHelp.fields!.holdReason} />
                             </label>
                             <select
                                 value={modalData.holdReason || ""}

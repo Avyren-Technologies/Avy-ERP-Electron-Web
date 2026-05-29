@@ -8,6 +8,8 @@ import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
 import { useCanPerform } from "@/hooks/useCanPerform";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { showSuccess, showApiError } from "@/lib/toast";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
+import { ptwDetailHelp } from "@/features/maintenance/help";
 
 /* ── Class badge ── */
 
@@ -99,10 +101,13 @@ export function PTWDetailScreen() {
             <div className="flex items-center gap-3">
                 <button onClick={() => navigate(-1)} className="p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"><ArrowLeft size={18} /></button>
                 <div className="flex-1">
-                    <h1 className="text-2xl font-bold text-primary-950 dark:text-white flex items-center gap-2">
-                        <ShieldAlert size={22} className="text-primary-600" />
-                        {permit.permitNumber ?? `PTW-${id?.slice(0, 6)}`}
-                    </h1>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-2xl font-bold text-primary-950 dark:text-white flex items-center gap-2">
+                            <ShieldAlert size={22} className="text-primary-600" />
+                            {permit.permitNumber ?? `PTW-${id?.slice(0, 6)}`}
+                        </h1>
+                        <HelpDrawer help={ptwDetailHelp} />
+                    </div>
                     <div className="flex items-center gap-3 mt-1">
                         <span className={cn("inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider", classCfg.bg, classCfg.text)}>{classCfg.label}</span>
                         <span className={cn("inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider", statusCfg.bg, statusCfg.text)}>

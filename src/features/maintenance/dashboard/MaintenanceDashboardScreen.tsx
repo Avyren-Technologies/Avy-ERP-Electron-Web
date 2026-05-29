@@ -33,6 +33,8 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
+import { dashboardHelp } from "@/features/maintenance/help";
 
 /* ── Stat Card ── */
 
@@ -265,9 +267,12 @@ export function MaintenanceDashboardScreen() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">
-                        Maintenance Dashboard
-                    </h1>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">
+                            Maintenance Dashboard
+                        </h1>
+                        <HelpDrawer help={dashboardHelp} />
+                    </div>
                     <p className="text-neutral-500 dark:text-neutral-400 mt-1">
                         Overview of assets, work requests, and maintenance activity
                     </p>
@@ -366,7 +371,7 @@ export function MaintenanceDashboardScreen() {
                             Recent Work Requests
                         </h2>
                         <a
-                            href="/app/maintenance/orders"
+                            href="/app/maintenance/work-requests"
                             className="text-xs font-bold text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1"
                         >
                             View All <ArrowRight size={12} />
@@ -397,7 +402,7 @@ export function MaintenanceDashboardScreen() {
                                         <tr
                                             key={wr.id}
                                             className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors cursor-pointer"
-                                            onClick={() => navigate(`/app/maintenance/orders`)}
+                                            onClick={() => navigate(`/app/maintenance/work-requests/${wr.id}`)}
                                         >
                                             <td className="py-3 px-6">
                                                 <span className="font-mono text-xs font-bold text-primary-700 dark:text-primary-400">

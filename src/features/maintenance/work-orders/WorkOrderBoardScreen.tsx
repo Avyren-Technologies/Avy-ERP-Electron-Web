@@ -10,6 +10,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useWOBoard } from "@/features/maintenance/api/use-maintenance-queries";
 import { PriorityBadge } from "@/features/maintenance/shared/PriorityBadge";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
+import { workOrderBoardHelp } from "@/features/maintenance/help";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 
 /* ── Constants ── */
@@ -78,7 +80,10 @@ export function WorkOrderBoardScreen() {
                         <ArrowLeft size={18} />
                     </Link>
                     <div>
-                        <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Work Order Board</h1>
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Work Order Board</h1>
+                            <HelpDrawer help={workOrderBoardHelp} />
+                        </div>
                         <p className="text-neutral-500 dark:text-neutral-400 mt-1">Kanban view of active work orders</p>
                     </div>
                 </div>

@@ -9,6 +9,9 @@ import {
 import { useCreateWorkRequest } from "@/features/maintenance/api/use-maintenance-mutations";
 import { maintenanceApi } from "@/features/maintenance/api/maintenance-api";
 import { AssetPicker } from "@/features/maintenance/shared/AssetPicker";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
+import { workRequestCreateHelp } from "@/features/maintenance/help";
 import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Constants ── */
@@ -118,7 +121,10 @@ export function WorkRequestCreateScreen() {
                     <ArrowLeft size={18} />
                 </button>
                 <div>
-                    <h1 className="text-2xl font-bold text-primary-950 dark:text-white tracking-tight">New Work Request</h1>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-2xl font-bold text-primary-950 dark:text-white tracking-tight">New Work Request</h1>
+                        <HelpDrawer help={workRequestCreateHelp} />
+                    </div>
                     <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-0.5">Report a maintenance issue or request</p>
                 </div>
             </div>
@@ -156,8 +162,9 @@ export function WorkRequestCreateScreen() {
                 {/* Type & Priority */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">
+                        <label className="flex items-center gap-1 text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">
                             Request Type <span className="text-red-500">*</span>
+                            <InfoTooltip content={workRequestCreateHelp.fields!.requestType} />
                         </label>
                         <select
                             value={form.requestType}
@@ -197,8 +204,9 @@ export function WorkRequestCreateScreen() {
 
                 {/* Location Detail */}
                 <div>
-                    <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">
+                    <label className="flex items-center gap-1 text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">
                         Location Detail
+                        <InfoTooltip content={workRequestCreateHelp.fields!.locationDetail} />
                     </label>
                     <input
                         type="text"
@@ -211,8 +219,9 @@ export function WorkRequestCreateScreen() {
 
                 {/* Requested By Date */}
                 <div>
-                    <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">
+                    <label className="flex items-center gap-1 text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">
                         Requested By Date
+                        <InfoTooltip content={workRequestCreateHelp.fields!.requestedByDate} />
                     </label>
                     <input
                         type="date"
@@ -242,7 +251,7 @@ export function WorkRequestCreateScreen() {
                         className="w-4 h-4 rounded border-neutral-300 dark:border-neutral-600 text-danger-600 focus:ring-danger-500"
                     />
                     <div>
-                        <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300">Safety Risk</label>
+                        <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300 flex items-center gap-1">Safety Risk <InfoTooltip content={workRequestCreateHelp.fields!.safetyRisk} /></label>
                         <p className="text-xs text-neutral-500 dark:text-neutral-400">Check if this issue poses a safety risk to personnel</p>
                     </div>
                 </div>

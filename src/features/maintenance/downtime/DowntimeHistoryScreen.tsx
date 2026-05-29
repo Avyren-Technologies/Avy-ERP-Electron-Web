@@ -6,6 +6,8 @@ import { useDowntimeList, useOEEFeed } from "@/features/maintenance/api/use-main
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
+import { downtimeHistoryHelp } from "@/features/maintenance/help";
 
 /* ── Category Badge ── */
 
@@ -89,7 +91,10 @@ export function DowntimeHistoryScreen() {
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
             <div>
-                <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Downtime History</h1>
+                <div className="flex items-center gap-2">
+                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Downtime History</h1>
+                    <HelpDrawer help={downtimeHistoryHelp} />
+                </div>
                 <p className="text-neutral-500 dark:text-neutral-400 mt-1">Track all asset downtime events and OEE metrics</p>
             </div>
 

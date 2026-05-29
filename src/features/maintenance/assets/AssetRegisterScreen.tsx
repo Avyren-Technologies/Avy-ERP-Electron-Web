@@ -50,6 +50,9 @@ import { AssetStatusBadge } from "@/features/maintenance/shared/AssetStatusBadge
 import { CriticalityBadge } from "@/features/maintenance/shared/CriticalityBadge";
 import { showSuccess, showApiError } from "@/lib/toast";
 import { toast } from "sonner";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
+import { assetRegisterHelp } from "@/features/maintenance/help";
 
 /* ── Constants ── */
 
@@ -381,7 +384,10 @@ export function AssetRegisterScreen() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Asset Register</h1>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Asset Register</h1>
+                        <HelpDrawer help={assetRegisterHelp} />
+                    </div>
                     <p className="text-neutral-500 dark:text-neutral-400 mt-1">Manage all maintenance assets, equipment, and facilities</p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -710,7 +716,7 @@ export function AssetRegisterScreen() {
                                     <FormInput label="Name" required value={form.name} onChange={(v) => setField("name", v)} placeholder="Asset name" />
                                     <div>
                                         <div className="flex items-center justify-between mb-1">
-                                            <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Asset Class<span className="text-red-500 ml-0.5">*</span></label>
+                                            <span className="flex items-center gap-1"><label className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Asset Class<span className="text-red-500 ml-0.5">*</span></label><InfoTooltip content={assetRegisterHelp.fields!.assetClass} /></span>
                                             <button type="button" onClick={() => setManageAssetClassOpen(true)} className="text-xs font-bold text-primary-600 hover:text-primary-700">+ New</button>
                                         </div>
                                         <select
@@ -785,7 +791,7 @@ export function AssetRegisterScreen() {
                                     </div>
                                     <div>
                                         <div className="flex items-center justify-between mb-1">
-                                            <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Ownership</label>
+                                            <span className="flex items-center gap-1"><label className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Ownership</label><InfoTooltip content={assetRegisterHelp.fields!.ownership} /></span>
                                             <button type="button" onClick={() => setManageOwnershipOpen(true)} className="text-xs font-bold text-primary-600 hover:text-primary-700">+ New</button>
                                         </div>
                                         <select
@@ -796,8 +802,29 @@ export function AssetRegisterScreen() {
                                             {OWNERSHIP_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                                         </select>
                                     </div>
-                                    <FormSelect label="Criticality" value={form.criticality} onChange={(v) => setField("criticality", v)} options={CRITICALITY_OPTIONS.filter((o) => o.value)} />
-                                    <FormCheckbox label="Is Bottleneck" checked={form.isBottleneck} onChange={(v) => setField("isBottleneck", v)} />
+                                    <div>
+                                        <div className="flex items-center gap-1 mb-1">
+                                            <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Criticality</label>
+                                            <InfoTooltip content={assetRegisterHelp.fields!.criticality} />
+                                        </div>
+                                        <select
+                                            value={form.criticality}
+                                            onChange={(e) => setField("criticality", e.target.value)}
+                                            className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
+                                        >
+                                            {CRITICALITY_OPTIONS.filter((o) => o.value).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="flex items-center gap-2 pt-5">
+                                        <input
+                                            type="checkbox"
+                                            checked={form.isBottleneck}
+                                            onChange={(e) => setField("isBottleneck", e.target.checked)}
+                                            className="w-4 h-4 rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500"
+                                        />
+                                        <label className="text-sm text-neutral-700 dark:text-neutral-300">Is Bottleneck</label>
+                                        <InfoTooltip content={assetRegisterHelp.fields!.isBottleneck} />
+                                    </div>
                                 </div>
                             </fieldset>
 
@@ -823,9 +850,27 @@ export function AssetRegisterScreen() {
                                     <FormInput label="Brand" value={form.brand} onChange={(v) => setField("brand", v)} placeholder="Brand" />
                                     <FormInput label="Model Number" value={form.modelNumber} onChange={(v) => setField("modelNumber", v)} placeholder="Model number" />
                                     <FormInput label="Commissioning Date" value={form.commissioningDate} onChange={(v) => setField("commissioningDate", v)} type="date" />
-                                    <FormInput label="Condition" value={form.condition} onChange={(v) => setField("condition", v)} placeholder="e.g. Good, Fair" />
-                                    <FormInput label="Rated Capacity" value={form.ratedCapacity} onChange={(v) => setField("ratedCapacity", v)} placeholder="e.g. 500 kg/hr" />
-                                    <FormInput label="Design Life (Years)" value={form.designLifeYears} onChange={(v) => setField("designLifeYears", v)} type="number" />
+                                    <div>
+                                        <div className="flex items-center gap-1 mb-1">
+                                            <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Condition</label>
+                                            <InfoTooltip content={assetRegisterHelp.fields!.condition} />
+                                        </div>
+                                        <input type="text" value={form.condition} onChange={(e) => setField("condition", e.target.value)} placeholder="e.g. Good, Fair" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-1 mb-1">
+                                            <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Rated Capacity</label>
+                                            <InfoTooltip content={assetRegisterHelp.fields!.ratedCapacity} />
+                                        </div>
+                                        <input type="text" value={form.ratedCapacity} onChange={(e) => setField("ratedCapacity", e.target.value)} placeholder="e.g. 500 kg/hr" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-1 mb-1">
+                                            <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Design Life (Years)</label>
+                                            <InfoTooltip content={assetRegisterHelp.fields!.designLifeYears} />
+                                        </div>
+                                        <input type="number" value={form.designLifeYears} onChange={(e) => setField("designLifeYears", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                    </div>
                                 </div>
                             </fieldset>
 
@@ -836,7 +881,7 @@ export function AssetRegisterScreen() {
                                     <FormCheckbox label="Permit Required" checked={form.permitRequired} onChange={(v) => setField("permitRequired", v)} />
                                     <div>
                                         <div className="flex items-center justify-between mb-1">
-                                            <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400">PTW Class</label>
+                                            <span className="flex items-center gap-1"><label className="text-xs font-medium text-neutral-500 dark:text-neutral-400">PTW Class</label><InfoTooltip content={assetRegisterHelp.fields!.ptwClass} /></span>
                                             <button type="button" onClick={() => setManagePTWClassOpen(true)} className="text-xs font-bold text-primary-600 hover:text-primary-700">+ New</button>
                                         </div>
                                         <select
@@ -858,9 +903,21 @@ export function AssetRegisterScreen() {
                             <fieldset>
                                 <legend className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">Financial</legend>
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                    <FormInput label="Purchase Cost" value={form.purchaseCost} onChange={(v) => setField("purchaseCost", v)} type="number" placeholder="0.00" />
+                                    <div>
+                                        <div className="flex items-center gap-1 mb-1">
+                                            <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Purchase Cost</label>
+                                            <InfoTooltip content={assetRegisterHelp.fields!.purchaseCost} />
+                                        </div>
+                                        <input type="number" value={form.purchaseCost} onChange={(e) => setField("purchaseCost", e.target.value)} placeholder="0.00" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                    </div>
                                     <FormInput label="Current Book Value" value={form.currentBookValue} onChange={(v) => setField("currentBookValue", v)} type="number" placeholder="0.00" />
-                                    <FormInput label="Replacement Value" value={form.replacementValue} onChange={(v) => setField("replacementValue", v)} type="number" placeholder="0.00" />
+                                    <div>
+                                        <div className="flex items-center gap-1 mb-1">
+                                            <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Replacement Value</label>
+                                            <InfoTooltip content={assetRegisterHelp.fields!.replacementValue} />
+                                        </div>
+                                        <input type="number" value={form.replacementValue} onChange={(e) => setField("replacementValue", e.target.value)} placeholder="0.00" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                    </div>
                                 </div>
                             </fieldset>
                         </div>

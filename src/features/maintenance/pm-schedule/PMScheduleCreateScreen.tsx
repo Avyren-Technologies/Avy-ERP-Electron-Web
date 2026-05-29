@@ -20,6 +20,9 @@ import {
     type PMFormStrategyKey,
 } from "@/features/maintenance/pm-schedule/pm-schedule-form";
 import { showSuccess, showApiError } from "@/lib/toast";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
+import { pmScheduleCreateHelp } from "@/features/maintenance/help";
 
 const inputClass =
     "w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all";
@@ -147,9 +150,12 @@ export function PMScheduleCreateScreen() {
                     <ArrowLeft size={18} />
                 </button>
                 <div>
-                    <h1 className="text-2xl font-bold text-primary-950 dark:text-white tracking-tight">
-                        {isEdit ? "Edit PM Schedule" : "New PM Schedule"}
-                    </h1>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-2xl font-bold text-primary-950 dark:text-white tracking-tight">
+                            {isEdit ? "Edit PM Schedule" : "New PM Schedule"}
+                        </h1>
+                        <HelpDrawer help={pmScheduleCreateHelp} />
+                    </div>
                     <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-0.5">
                         {isEdit ? "Update schedule settings" : "Create a preventive maintenance schedule"}
                     </p>
@@ -175,7 +181,7 @@ export function PMScheduleCreateScreen() {
                 </div>
 
                 <div>
-                    <FieldLabel required>Strategy Type</FieldLabel>
+                    <FieldLabel required>Strategy Type <InfoTooltip content={pmScheduleCreateHelp.fields!.strategyType} /></FieldLabel>
                     <select
                         value={form.strategyKey}
                         onChange={(e) => setField("strategyKey", e.target.value as PMFormStrategyKey)}
@@ -191,7 +197,7 @@ export function PMScheduleCreateScreen() {
                     <SectionCard title="Calendar settings" tone="blue">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <FieldLabel required>Frequency</FieldLabel>
+                                <FieldLabel required>Frequency <InfoTooltip content={pmScheduleCreateHelp.fields!.frequencyValue} /></FieldLabel>
                                 <select value={form.frequency} onChange={(e) => setField("frequency", e.target.value)} className={selectClass}>
                                     {PM_FREQUENCY_OPTIONS.map((o) => (
                                         <option key={o.value} value={o.value}>{o.label}</option>
@@ -212,7 +218,7 @@ export function PMScheduleCreateScreen() {
                                 </div>
                             )}
                             <div className={form.frequency === "CUSTOM_DAYS" ? "sm:col-span-2" : ""}>
-                                <FieldLabel>Schedule type</FieldLabel>
+                                <FieldLabel>Schedule type <InfoTooltip content={pmScheduleCreateHelp.fields!.scheduleType} /></FieldLabel>
                                 <select value={form.scheduleType} onChange={(e) => setField("scheduleType", e.target.value)} className={selectClass}>
                                     {PM_SCHEDULE_TYPE_OPTIONS.map((o) => (
                                         <option key={o.value} value={o.value}>{o.label}</option>
@@ -227,7 +233,7 @@ export function PMScheduleCreateScreen() {
                     <SectionCard title="Meter settings" tone="accent">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <FieldLabel required>Meter type</FieldLabel>
+                                <FieldLabel required>Meter type <InfoTooltip content={pmScheduleCreateHelp.fields!.meterType} /></FieldLabel>
                                 <select value={form.meterType} onChange={(e) => setField("meterType", e.target.value)} className={selectClass}>
                                     {PM_METER_TYPE_OPTIONS.map((o) => (
                                         <option key={o.value} value={o.value}>{o.label}</option>
@@ -235,7 +241,7 @@ export function PMScheduleCreateScreen() {
                                 </select>
                             </div>
                             <div>
-                                <FieldLabel required>Meter interval</FieldLabel>
+                                <FieldLabel required>Meter interval <InfoTooltip content={pmScheduleCreateHelp.fields!.meterInterval} /></FieldLabel>
                                 <input
                                     type="number"
                                     min={1}
@@ -318,11 +324,11 @@ export function PMScheduleCreateScreen() {
                     <h3 className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">Common settings</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
-                            <FieldLabel>Lead days</FieldLabel>
+                            <FieldLabel>Lead days <InfoTooltip content={pmScheduleCreateHelp.fields!.leadDays} /></FieldLabel>
                             <input type="number" min={0} value={form.leadDays} onChange={(e) => setField("leadDays", e.target.value)} className={inputClass} />
                         </div>
                         <div>
-                            <FieldLabel>Grace period (days)</FieldLabel>
+                            <FieldLabel>Grace period (days) <InfoTooltip content={pmScheduleCreateHelp.fields!.gracePeriodDays} /></FieldLabel>
                             <input type="number" min={0} value={form.gracePeriodDays} onChange={(e) => setField("gracePeriodDays", e.target.value)} className={inputClass} />
                         </div>
                         <div>
@@ -344,7 +350,7 @@ export function PMScheduleCreateScreen() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <FieldLabel>Auto-assign rule</FieldLabel>
+                        <FieldLabel>Auto-assign rule <InfoTooltip content={pmScheduleCreateHelp.fields!.autoAssign} /></FieldLabel>
                         <select value={form.autoAssignRule} onChange={(e) => setField("autoAssignRule", e.target.value)} className={selectClass}>
                             {PM_AUTO_ASSIGN_RULE_OPTIONS.map((o) => (
                                 <option key={o.value || "none"} value={o.value}>{o.label}</option>

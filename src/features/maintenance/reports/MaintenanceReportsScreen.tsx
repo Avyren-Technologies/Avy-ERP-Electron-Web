@@ -5,6 +5,8 @@ import { maintenanceApi } from "@/features/maintenance/api/maintenance-api";
 import { showSuccess, showApiError } from "@/lib/toast";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
+import { reportsHelp } from "@/features/maintenance/help";
 
 /* ── Types ── */
 
@@ -208,9 +210,12 @@ export function MaintenanceReportsScreen() {
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
             <div>
-                <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">
-                    Maintenance Reports
-                </h1>
+                <div className="flex items-center gap-2">
+                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">
+                        Maintenance Reports
+                    </h1>
+                    <HelpDrawer help={reportsHelp} />
+                </div>
                 <p className="text-neutral-500 dark:text-neutral-400 mt-1">
                     Generate operational, management, and compliance reports
                 </p>

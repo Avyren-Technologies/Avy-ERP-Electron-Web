@@ -10,6 +10,8 @@ import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
 import { AssetPicker } from "@/features/maintenance/shared/AssetPicker";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
+import { ptwListHelp } from "@/features/maintenance/help";
 
 /* ── Class badge ── */
 
@@ -128,10 +130,13 @@ export function PTWListScreen() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-primary-950 dark:text-white flex items-center gap-2">
-                        <ShieldAlert size={24} className="text-primary-600" />
-                        Permit to Work
-                    </h1>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-2xl font-bold text-primary-950 dark:text-white flex items-center gap-2">
+                            <ShieldAlert size={24} className="text-primary-600" />
+                            Permit to Work
+                        </h1>
+                        <HelpDrawer help={ptwListHelp} />
+                    </div>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">Manage safety permits for hazardous work activities</p>
                 </div>
                 {canCreate && (

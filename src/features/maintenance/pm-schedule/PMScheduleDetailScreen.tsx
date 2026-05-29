@@ -20,7 +20,9 @@ import {
 } from "@/features/maintenance/api/use-maintenance-mutations";
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
 import { useCanPerform } from "@/hooks/useCanPerform";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
 import { showSuccess, showApiError } from "@/lib/toast";
+import { pmScheduleDetailHelp } from "@/features/maintenance/help";
 import {
     formatPMFrequencyDisplay,
     formatPMScheduleTypeLabel,
@@ -136,7 +138,10 @@ export function PMScheduleDetailScreen() {
                             </span>
                             <StrategyBadge type={pm.strategyType} />
                         </div>
-                        <h1 className="text-2xl font-bold text-primary-950 dark:text-white tracking-tight">{pm.name}</h1>
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-2xl font-bold text-primary-950 dark:text-white tracking-tight">{pm.name}</h1>
+                            <HelpDrawer help={pmScheduleDetailHelp} />
+                        </div>
                     </div>
                 </div>
 

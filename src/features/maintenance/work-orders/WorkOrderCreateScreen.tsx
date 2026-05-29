@@ -8,6 +8,9 @@ import {
 import { useCreateWorkOrder } from "@/features/maintenance/api/use-maintenance-mutations";
 import { useJobPlans } from "@/features/maintenance/api/use-maintenance-queries";
 import { AssetPicker } from "@/features/maintenance/shared/AssetPicker";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
+import { workOrderCreateHelp } from "@/features/maintenance/help";
 import {
     MAINTENANCE_WO_PRIORITY_OPTIONS,
     MAINTENANCE_WO_TYPE_OPTIONS,
@@ -76,7 +79,10 @@ export function WorkOrderCreateScreen() {
                     <ArrowLeft size={18} />
                 </button>
                 <div>
-                    <h1 className="text-2xl font-bold text-primary-950 dark:text-white tracking-tight">New Work Order</h1>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-2xl font-bold text-primary-950 dark:text-white tracking-tight">New Work Order</h1>
+                        <HelpDrawer help={workOrderCreateHelp} />
+                    </div>
                     <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-0.5">Create a maintenance work order</p>
                 </div>
             </div>
@@ -95,8 +101,9 @@ export function WorkOrderCreateScreen() {
                 {/* Type & Priority */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">
+                        <label className="flex items-center gap-1 text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">
                             Work Order Type <span className="text-red-500">*</span>
+                            <InfoTooltip content={workOrderCreateHelp.fields!.woType} />
                         </label>
                         <select
                             value={form.woType}
@@ -107,8 +114,9 @@ export function WorkOrderCreateScreen() {
                         </select>
                     </div>
                     <div>
-                        <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">
+                        <label className="flex items-center gap-1 text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">
                             Priority <span className="text-red-500">*</span>
+                            <InfoTooltip content={workOrderCreateHelp.fields!.priority} />
                         </label>
                         <select
                             value={form.priority}
@@ -122,8 +130,9 @@ export function WorkOrderCreateScreen() {
 
                 {/* Job Plan */}
                 <div>
-                    <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">
+                    <label className="flex items-center gap-1 text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">
                         Job Plan
+                        <InfoTooltip content={workOrderCreateHelp.fields!.jobPlan} />
                     </label>
                     <select
                         value={form.jobPlanId}
@@ -186,7 +195,7 @@ export function WorkOrderCreateScreen() {
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Estimated Hours</label>
+                            <label className="flex items-center gap-1 text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Estimated Hours <InfoTooltip content={workOrderCreateHelp.fields!.estimatedHours} /></label>
                             <input
                                 type="number"
                                 value={form.estimatedHours}

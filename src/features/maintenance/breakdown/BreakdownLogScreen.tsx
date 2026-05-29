@@ -4,6 +4,9 @@ import { ArrowLeft, Loader2, AlertTriangle, ShieldAlert } from "lucide-react";
 import { useAssets } from "@/features/maintenance/api/use-maintenance-queries";
 import { useLogBreakdown } from "@/features/maintenance/api/use-maintenance-mutations";
 import { showSuccess, showApiError } from "@/lib/toast";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
+import { breakdownLogHelp } from "@/features/maintenance/help";
 
 const PRIORITY_OPTIONS = [
     { value: "EMERGENCY", label: "Emergency", color: "bg-danger-50 text-danger-700 border-danger-200" },
@@ -56,7 +59,10 @@ export function BreakdownLogScreen() {
                     <ArrowLeft size={18} />
                 </button>
                 <div>
-                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Log Breakdown</h1>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Log Breakdown</h1>
+                        <HelpDrawer help={breakdownLogHelp} />
+                    </div>
                     <p className="text-neutral-500 dark:text-neutral-400 mt-1">Quick-log an equipment breakdown</p>
                 </div>
             </div>
@@ -121,7 +127,7 @@ export function BreakdownLogScreen() {
 
                 {/* Priority */}
                 <div>
-                    <label className="block text-sm font-bold text-neutral-700 dark:text-neutral-300 mb-2">Priority</label>
+                    <label className="block text-sm font-bold text-neutral-700 dark:text-neutral-300 mb-2">Priority <InfoTooltip content={breakdownLogHelp.fields!.priority} /></label>
                     <div className="grid grid-cols-4 gap-2">
                         {PRIORITY_OPTIONS.map((p) => (
                             <button
@@ -143,7 +149,7 @@ export function BreakdownLogScreen() {
                 <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-200 dark:border-amber-800/50">
                     <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
                     <div className="flex-1">
-                        <span className="text-sm font-bold text-amber-700 dark:text-amber-400">Safety Risk</span>
+                        <span className="text-sm font-bold text-amber-700 dark:text-amber-400">Safety Risk <InfoTooltip content={breakdownLogHelp.fields!.safetyRisk} /></span>
                         <p className="text-xs text-amber-600/80 dark:text-amber-400/60">Does this breakdown pose a safety risk?</p>
                     </div>
                     <button

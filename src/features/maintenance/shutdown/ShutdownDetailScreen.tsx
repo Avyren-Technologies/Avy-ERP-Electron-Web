@@ -10,6 +10,8 @@ import { useCanPerform } from "@/hooks/useCanPerform";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
+import { shutdownDetailHelp } from "@/features/maintenance/help";
 
 /* ── Type badge ── */
 
@@ -155,10 +157,13 @@ export function ShutdownDetailScreen() {
             <div className="flex items-center gap-3">
                 <button onClick={() => navigate(-1)} className="p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"><ArrowLeft size={18} /></button>
                 <div className="flex-1">
-                    <h1 className="text-2xl font-bold text-primary-950 dark:text-white flex items-center gap-2">
-                        <Wrench size={22} className="text-primary-600" />
-                        {shutdown.name ?? "Shutdown Detail"}
-                    </h1>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-2xl font-bold text-primary-950 dark:text-white flex items-center gap-2">
+                            <Wrench size={22} className="text-primary-600" />
+                            {shutdown.name ?? "Shutdown Detail"}
+                        </h1>
+                        <HelpDrawer help={shutdownDetailHelp} />
+                    </div>
                     <div className="flex items-center gap-3 mt-1">
                         <span className={cn("inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider", typeCfg.bg, typeCfg.text)}>{typeCfg.label}</span>
                         <span className={cn("inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider", statusCfg.bg, statusCfg.text)}>{statusCfg.label}</span>

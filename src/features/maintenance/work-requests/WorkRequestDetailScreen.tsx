@@ -26,6 +26,8 @@ import {
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
 import { useCanPerform } from "@/hooks/useCanPerform";
 import { PriorityBadge } from "@/features/maintenance/shared/PriorityBadge";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
+import { workRequestDetailHelp } from "@/features/maintenance/help";
 import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Status Badge ── */
@@ -197,7 +199,10 @@ export function WorkRequestDetailScreen() {
                                 </span>
                             )}
                         </div>
-                        <h1 className="text-2xl font-bold text-primary-950 dark:text-white tracking-tight">Work Request Detail</h1>
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-2xl font-bold text-primary-950 dark:text-white tracking-tight">Work Request Detail</h1>
+                            <HelpDrawer help={workRequestDetailHelp} />
+                        </div>
                     </div>
                 </div>
 

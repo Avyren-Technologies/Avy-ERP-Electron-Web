@@ -5,6 +5,9 @@ import { useCanPerform } from "@/hooks/useCanPerform";
 import { showSuccess, showApiError } from "@/lib/toast";
 import { useMaintenanceConfig } from "@/features/maintenance/api/use-maintenance-queries";
 import { useUpdateMaintenanceConfig } from "@/features/maintenance/api/use-maintenance-mutations";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
+import { configHelp } from "@/features/maintenance/help";
 
 /* ── Constants ── */
 
@@ -104,12 +107,12 @@ function ConfigSection({ icon: Icon, title, description, children }: {
     );
 }
 
-function NumberInput({ label, value, onChange, suffix, min, max }: {
-    label: string; value: string; onChange: (v: string) => void; suffix?: string; min?: number; max?: number;
+function NumberInput({ label, value, onChange, suffix, min, max, tooltip }: {
+    label: string; value: string; onChange: (v: string) => void; suffix?: string; min?: number; max?: number; tooltip?: string;
 }) {
     return (
         <div className="flex items-center justify-between gap-4">
-            <label className="text-sm text-neutral-700 dark:text-neutral-300 font-medium">{label}</label>
+            <label className="text-sm text-neutral-700 dark:text-neutral-300 font-medium flex items-center gap-1.5">{label}{tooltip && <InfoTooltip content={tooltip} />}</label>
             <div className="flex items-center gap-1.5">
                 <input type="number" value={value} onChange={(e) => onChange(e.target.value)} min={min} max={max}
                     className="w-20 px-2.5 py-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm text-right font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all" />
@@ -119,12 +122,12 @@ function NumberInput({ label, value, onChange, suffix, min, max }: {
     );
 }
 
-function SelectInput({ label, value, onChange, options }: {
-    label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[];
+function SelectInput({ label, value, onChange, options, tooltip }: {
+    label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; tooltip?: string;
 }) {
     return (
         <div className="flex items-center justify-between gap-4">
-            <label className="text-sm text-neutral-700 dark:text-neutral-300 font-medium">{label}</label>
+            <label className="text-sm text-neutral-700 dark:text-neutral-300 font-medium flex items-center gap-1.5">{label}{tooltip && <InfoTooltip content={tooltip} />}</label>
             <select value={value} onChange={(e) => onChange(e.target.value)}
                 className="px-2.5 py-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
                 {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -133,13 +136,13 @@ function SelectInput({ label, value, onChange, options }: {
     );
 }
 
-function ToggleRow({ label, description, checked, onChange }: {
-    label: string; description?: string; checked: boolean; onChange: (v: boolean) => void;
+function ToggleRow({ label, description, checked, onChange, tooltip }: {
+    label: string; description?: string; checked: boolean; onChange: (v: boolean) => void; tooltip?: string;
 }) {
     return (
         <div className="flex items-center justify-between gap-4 py-1">
             <div>
-                <p className="text-sm text-neutral-700 dark:text-neutral-300 font-medium">{label}</p>
+                <p className="text-sm text-neutral-700 dark:text-neutral-300 font-medium flex items-center gap-1.5">{label}{tooltip && <InfoTooltip content={tooltip} />}</p>
                 {description && <p className="text-xs text-neutral-400 mt-0.5">{description}</p>}
             </div>
             <button type="button" onClick={() => onChange(!checked)}
@@ -241,7 +244,10 @@ export function MaintenanceConfigScreen() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Maintenance Configuration</h1>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Maintenance Configuration</h1>
+                        <HelpDrawer help={configHelp} />
+                    </div>
                     <p className="text-neutral-500 dark:text-neutral-400 mt-1">Global settings for the maintenance module</p>
                 </div>
                 {canConfigure && (
@@ -255,10 +261,10 @@ export function MaintenanceConfigScreen() {
 
             {/* General */}
             <ConfigSection icon={Settings} title="General" description="Default scheduling and assignment rules">
-                <NumberInput label="Default Lead Days" value={form.defaultLeadDays} onChange={(v) => setForm((p) => ({ ...p, defaultLeadDays: v }))} suffix="days" min={0} />
-                <NumberInput label="Default Grace Period" value={form.defaultGracePeriodDays} onChange={(v) => setForm((p) => ({ ...p, defaultGracePeriodDays: v }))} suffix="days" min={0} />
-                <SelectInput label="Non-Working Day Rule" value={form.nonWorkingDayRule} onChange={(v) => setForm((p) => ({ ...p, nonWorkingDayRule: v }))} options={NON_WORKING_DAY_RULES} />
-                <SelectInput label="Auto-Assign Rule" value={form.autoAssignRule} onChange={(v) => setForm((p) => ({ ...p, autoAssignRule: v }))} options={AUTO_ASSIGN_RULES} />
+                <NumberInput label="Default Lead Days" value={form.defaultLeadDays} onChange={(v) => setForm((p) => ({ ...p, defaultLeadDays: v }))} suffix="days" min={0} tooltip={configHelp.fields!.defaultLeadDays} />
+                <NumberInput label="Default Grace Period" value={form.defaultGracePeriodDays} onChange={(v) => setForm((p) => ({ ...p, defaultGracePeriodDays: v }))} suffix="days" min={0} tooltip={configHelp.fields!.defaultGracePeriodDays} />
+                <SelectInput label="Non-Working Day Rule" value={form.nonWorkingDayRule} onChange={(v) => setForm((p) => ({ ...p, nonWorkingDayRule: v }))} options={NON_WORKING_DAY_RULES} tooltip={configHelp.fields!.nonWorkingDayRule} />
+                <SelectInput label="Auto-Assign Rule" value={form.autoAssignRule} onChange={(v) => setForm((p) => ({ ...p, autoAssignRule: v }))} options={AUTO_ASSIGN_RULES} tooltip={configHelp.fields!.autoAssignRule} />
             </ConfigSection>
 
             {/* SLA Timings */}
@@ -278,26 +284,26 @@ export function MaintenanceConfigScreen() {
 
             {/* Breakdown */}
             <ConfigSection icon={AlertTriangle} title="Breakdown & Repeat Failure" description="Thresholds for detecting repeat failures">
-                <NumberInput label="Bottleneck Alert After" value={form.bottleneckAlertMinutes} onChange={(v) => setForm((p) => ({ ...p, bottleneckAlertMinutes: v }))} suffix="min" min={1} />
-                <NumberInput label="Repeat Failure Threshold" value={form.repeatFailureThreshold} onChange={(v) => setForm((p) => ({ ...p, repeatFailureThreshold: v }))} suffix="times" min={1} />
-                <NumberInput label="Repeat Failure Window" value={form.repeatFailureWindowDays} onChange={(v) => setForm((p) => ({ ...p, repeatFailureWindowDays: v }))} suffix="days" min={1} />
+                <NumberInput label="Bottleneck Alert After" value={form.bottleneckAlertMinutes} onChange={(v) => setForm((p) => ({ ...p, bottleneckAlertMinutes: v }))} suffix="min" min={1} tooltip={configHelp.fields!.bottleneckAlertMinutes} />
+                <NumberInput label="Repeat Failure Threshold" value={form.repeatFailureThreshold} onChange={(v) => setForm((p) => ({ ...p, repeatFailureThreshold: v }))} suffix="times" min={1} tooltip={configHelp.fields!.repeatFailureThreshold} />
+                <NumberInput label="Repeat Failure Window" value={form.repeatFailureWindowDays} onChange={(v) => setForm((p) => ({ ...p, repeatFailureWindowDays: v }))} suffix="days" min={1} tooltip={configHelp.fields!.repeatFailureWindowDays} />
             </ConfigSection>
 
             {/* Closure */}
             <ConfigSection icon={Shield} title="Closure" description="Rules for closing and evaluating work orders">
-                <NumberInput label="Repair vs Replace Threshold" value={form.repairVsReplacePercent} onChange={(v) => setForm((p) => ({ ...p, repairVsReplacePercent: v }))} suffix="%" min={0} max={100} />
+                <NumberInput label="Repair vs Replace Threshold" value={form.repairVsReplacePercent} onChange={(v) => setForm((p) => ({ ...p, repairVsReplacePercent: v }))} suffix="%" min={0} max={100} tooltip={configHelp.fields!.repairVsReplacePercent} />
             </ConfigSection>
 
             {/* Feature Toggles */}
             <ConfigSection icon={ToggleLeft} title="Feature Toggles" description="Enable or disable maintenance sub-modules">
-                <ToggleRow label="Permit to Work (PTW)" description="Require permits for hazardous work" checked={form.ptwEnabled} onChange={(v) => setForm((p) => ({ ...p, ptwEnabled: v }))} />
-                <ToggleRow label="Shutdown Planning" description="Plan and schedule plant shutdowns" checked={form.shutdownPlanningEnabled} onChange={(v) => setForm((p) => ({ ...p, shutdownPlanningEnabled: v }))} />
+                <ToggleRow label="Permit to Work (PTW)" description="Require permits for hazardous work" checked={form.ptwEnabled} onChange={(v) => setForm((p) => ({ ...p, ptwEnabled: v }))} tooltip={configHelp.fields!.ptwEnabled} />
+                <ToggleRow label="Shutdown Planning" description="Plan and schedule plant shutdowns" checked={form.shutdownPlanningEnabled} onChange={(v) => setForm((p) => ({ ...p, shutdownPlanningEnabled: v }))} tooltip={configHelp.fields!.shutdownPlanningEnabled} />
                 <ToggleRow label="Vendor Portal" description="External vendor access for work orders" checked={form.vendorPortalEnabled} onChange={(v) => setForm((p) => ({ ...p, vendorPortalEnabled: v }))} />
                 <ToggleRow label="Condition Monitoring" description="IoT sensor-based condition monitoring" checked={form.conditionMonitoringEnabled} onChange={(v) => setForm((p) => ({ ...p, conditionMonitoringEnabled: v }))} />
-                <ToggleRow label="QR / NFC Tagging" description="Scan asset tags for quick identification" checked={form.qrTaggingEnabled} onChange={(v) => setForm((p) => ({ ...p, qrTaggingEnabled: v }))} />
-                <ToggleRow label="QA Release" description="Require quality assurance sign-off" checked={form.qaReleaseEnabled} onChange={(v) => setForm((p) => ({ ...p, qaReleaseEnabled: v }))} />
-                <ToggleRow label="Sanitation" description="Food/pharma sanitation protocols" checked={form.sanitationEnabled} onChange={(v) => setForm((p) => ({ ...p, sanitationEnabled: v }))} />
-                <ToggleRow label="Calibration Block" description="Block assets from use until calibrated" checked={form.calibrationBlockEnabled} onChange={(v) => setForm((p) => ({ ...p, calibrationBlockEnabled: v }))} />
+                <ToggleRow label="QR / NFC Tagging" description="Scan asset tags for quick identification" checked={form.qrTaggingEnabled} onChange={(v) => setForm((p) => ({ ...p, qrTaggingEnabled: v }))} tooltip={configHelp.fields!.qrTaggingEnabled} />
+                <ToggleRow label="QA Release" description="Require quality assurance sign-off" checked={form.qaReleaseEnabled} onChange={(v) => setForm((p) => ({ ...p, qaReleaseEnabled: v }))} tooltip={configHelp.fields!.qaReleaseEnabled} />
+                <ToggleRow label="Sanitation" description="Food/pharma sanitation protocols" checked={form.sanitationEnabled} onChange={(v) => setForm((p) => ({ ...p, sanitationEnabled: v }))} tooltip={configHelp.fields!.sanitationEnabled} />
+                <ToggleRow label="Calibration Block" description="Block assets from use until calibrated" checked={form.calibrationBlockEnabled} onChange={(v) => setForm((p) => ({ ...p, calibrationBlockEnabled: v }))} tooltip={configHelp.fields!.calibrationBlockEnabled} />
             </ConfigSection>
 
             {/* Industry */}

@@ -27,6 +27,8 @@ import { CriticalityBadge } from "@/features/maintenance/shared/CriticalityBadge
 import { showSuccess, showApiError } from "@/lib/toast";
 import { useAuthStore, getDisplayName } from "@/store/useAuthStore";
 import { platformUsersApi } from "@/lib/api/platform-users";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
+import { assetDetailHelp } from "@/features/maintenance/help";
 
 const TABS = [
     { key: "overview", label: "Overview", icon: LayoutDashboard },
@@ -179,7 +181,10 @@ export function AssetDetailScreen() {
                             <AssetStatusBadge operationalStatus={asset.operationalStatus} maintenanceStatus={asset.maintenanceStatus} />
                             <CriticalityBadge criticality={asset.criticality} />
                         </div>
-                        <h1 className="text-2xl font-bold text-primary-950 dark:text-white tracking-tight">{asset.name}</h1>
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-2xl font-bold text-primary-950 dark:text-white tracking-tight">{asset.name}</h1>
+                            <HelpDrawer help={assetDetailHelp} />
+                        </div>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">

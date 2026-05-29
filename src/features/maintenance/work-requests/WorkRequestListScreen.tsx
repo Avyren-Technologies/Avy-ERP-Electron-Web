@@ -21,6 +21,8 @@ import {
 } from "@/features/maintenance/api/use-maintenance-mutations";
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
 import { useCanPerform } from "@/hooks/useCanPerform";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
+import { workRequestListHelp } from "@/features/maintenance/help";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PriorityBadge } from "@/features/maintenance/shared/PriorityBadge";
@@ -179,7 +181,10 @@ export function WorkRequestListScreen() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Work Requests</h1>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Work Requests</h1>
+                        <HelpDrawer help={workRequestListHelp} />
+                    </div>
                     <p className="text-neutral-500 dark:text-neutral-400 mt-1">Manage maintenance work requests</p>
                 </div>
                 {canCreate && (

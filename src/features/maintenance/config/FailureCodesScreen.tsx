@@ -23,6 +23,8 @@ import {
     useFailureCauses,
     useActionCodes,
 } from "@/features/maintenance/api/use-maintenance-queries";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
+import { failureCodesHelp } from "@/features/maintenance/help";
 import {
     useCreateFailureCodeSet,
     useUpdateFailureCodeSet,
@@ -743,7 +745,10 @@ export function FailureCodesScreen() {
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
             <div>
-                <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Failure Codes</h1>
+                <div className="flex items-center gap-2">
+                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Failure Codes</h1>
+                    <HelpDrawer help={failureCodesHelp} />
+                </div>
                 <p className="text-neutral-500 dark:text-neutral-400 mt-1">Manage failure code sets, modes, causes, and action codes</p>
             </div>
 

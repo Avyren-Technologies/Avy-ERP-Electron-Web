@@ -22,7 +22,9 @@ import { useCanPerform } from "@/hooks/useCanPerform";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PriorityBadge } from "@/features/maintenance/shared/PriorityBadge";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
 import { showSuccess, showApiError } from "@/lib/toast";
+import { breakdownListHelp } from "@/features/maintenance/help";
 import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 
@@ -300,7 +302,10 @@ export function BreakdownListScreen() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Breakdowns</h1>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Breakdowns</h1>
+                        <HelpDrawer help={breakdownListHelp} />
+                    </div>
                     <p className="text-neutral-500 dark:text-neutral-400 mt-1">Track and resolve equipment breakdowns</p>
                 </div>
                 {canCreate && (

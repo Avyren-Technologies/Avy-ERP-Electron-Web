@@ -9,6 +9,8 @@ import {
 } from "@/features/maintenance/api/use-maintenance-queries";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
+import { analyticsHelp } from "@/features/maintenance/help";
 
 function asArray<T>(value: unknown): T[] {
     return Array.isArray(value) ? value : [];
@@ -315,9 +317,12 @@ export function MaintenanceAnalyticsScreen() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">
-                        Maintenance Analytics
-                    </h1>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">
+                            Maintenance Analytics
+                        </h1>
+                        <HelpDrawer help={analyticsHelp} />
+                    </div>
                     <p className="text-neutral-500 dark:text-neutral-400 mt-1">
                         Asset performance, cost trends, and reliability insights
                     </p>

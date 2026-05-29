@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 import { usePMCalendar } from "@/features/maintenance/api/use-maintenance-queries";
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
 import { formatPMStrategyLabel } from "@/features/maintenance/pm-schedule/pm-schedule-form";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
+import { pmCalendarHelp } from "@/features/maintenance/help";
 
 /* ── Helpers ── */
 
@@ -110,7 +112,10 @@ export function PMCalendarScreen() {
                         <ArrowLeft size={18} />
                     </Link>
                     <div>
-                        <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">PM Calendar</h1>
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">PM Calendar</h1>
+                            <HelpDrawer help={pmCalendarHelp} />
+                        </div>
                         <p className="text-neutral-500 dark:text-neutral-400 mt-1">View preventive maintenance schedule</p>
                     </div>
                 </div>

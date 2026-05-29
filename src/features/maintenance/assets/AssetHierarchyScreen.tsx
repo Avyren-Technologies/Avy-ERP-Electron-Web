@@ -12,6 +12,8 @@ import { useAssetHierarchy } from "@/features/maintenance/api/use-maintenance-qu
 import { useCompanyLocations } from "@/features/company-admin/api/use-company-admin-queries";
 import { AssetOperationalBadge } from "@/features/maintenance/shared/AssetStatusBadge";
 import { CriticalityBadge } from "@/features/maintenance/shared/CriticalityBadge";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
+import { assetHierarchyHelp } from "@/features/maintenance/help";
 
 /* ── Types ── */
 
@@ -100,7 +102,10 @@ export function AssetHierarchyScreen() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Asset Hierarchy</h1>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Asset Hierarchy</h1>
+                        <HelpDrawer help={assetHierarchyHelp} />
+                    </div>
                     <p className="text-neutral-500 dark:text-neutral-400 mt-1">Parent-child relationships between assets</p>
                 </div>
                 <div className="flex items-center gap-2">

@@ -9,6 +9,8 @@ import { useCanPerform } from "@/hooks/useCanPerform";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
+import { contractDetailHelp } from "@/features/maintenance/help";
 
 export function ContractDetailScreen() {
     const { id } = useParams<{ id: string }>();
@@ -102,7 +104,10 @@ export function ContractDetailScreen() {
                     <ArrowLeft size={18} />
                 </button>
                 <div className="flex-1">
-                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">{contract.name ?? "Contract Detail"}</h1>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">{contract.name ?? "Contract Detail"}</h1>
+                        <HelpDrawer help={contractDetailHelp} />
+                    </div>
                     <p className="text-neutral-500 dark:text-neutral-400 mt-1">{contract.contractCode ?? ""} - {contract.contractType ?? ""}</p>
                 </div>
                 {daysLeft !== null && (

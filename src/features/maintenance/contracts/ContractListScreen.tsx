@@ -9,6 +9,8 @@ import { useCanPerform } from "@/hooks/useCanPerform";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
+import { contractListHelp } from "@/features/maintenance/help";
 
 /* ── Type Badge ── */
 
@@ -134,7 +136,10 @@ export function ContractListScreen() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Contracts</h1>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Contracts</h1>
+                        <HelpDrawer help={contractListHelp} />
+                    </div>
                     <p className="text-neutral-500 dark:text-neutral-400 mt-1">Manage maintenance contracts, AMCs, and warranties</p>
                 </div>
                 {canCreate && (

@@ -282,9 +282,6 @@ const PipReportsHubScreen = lazyNamed(() => import("./features/production/pip/Pi
 // ─── Operations Modules ───
 const InventoryScreen = lazyNamed(() => import("./features/inventory/InventoryScreen"), "InventoryScreen");
 const ProductionScreen = lazyNamed(() => import("./features/production/ProductionScreen"), "ProductionScreen");
-const MaintenanceScreen = lazyNamed(() => import("./features/maintenance/MaintenanceScreen"), "MaintenanceScreen");
-const WorkOrdersScreen = lazyNamed(() => import("./features/maintenance/WorkOrdersScreen"), "WorkOrdersScreen");
-const MachineRegistryScreen = lazyNamed(() => import("./features/maintenance/MachineRegistryScreen"), "MachineRegistryScreen");
 const MaintenanceDashboardScreen = lazyNamed(() => import("./features/maintenance/dashboard/MaintenanceDashboardScreen"), "MaintenanceDashboardScreen");
 
 // ─── Maintenance Config ───
@@ -670,8 +667,8 @@ function App() {
         <Route path="maintenance/analytics" element={<RequirePermission permission="maintenance:read"><MaintenanceAnalyticsScreen /></RequirePermission>} />
         <Route path="maintenance/reliability" element={<RequirePermission permission="maintenance:read"><ReliabilityDashboardScreen /></RequirePermission>} />
         <Route path="maintenance/reports" element={<RequirePermission permission="maintenance:read"><MaintenanceReportsScreen /></RequirePermission>} />
-        <Route path="maintenance/orders" element={<RequireRole roles={['super-admin', 'company-admin']}><WorkOrdersScreen /></RequireRole>} />
-        <Route path="maintenance/machines" element={<RequireRole roles={['super-admin', 'company-admin']}><MachineRegistryScreen /></RequireRole>} />
+        <Route path="maintenance/orders" element={<Navigate to="maintenance/work-requests" replace />} />
+        <Route path="maintenance/machines" element={<Navigate to="maintenance/assets" replace />} />
         <Route path="maintenance/config/failure-codes" element={<RequirePermission permission="maintenance:configure"><FailureCodesScreen /></RequirePermission>} />
         <Route path="maintenance/config/strategies" element={<RequirePermission permission="maintenance:configure"><StrategiesScreen /></RequirePermission>} />
         <Route path="maintenance/config/job-plans" element={<RequirePermission permission="maintenance:configure"><JobPlansScreen /></RequirePermission>} />

@@ -16,6 +16,9 @@ import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
 import { useStrategies } from "@/features/maintenance/api/use-maintenance-queries";
+import { HelpDrawer } from "@/components/ui/HelpDrawer";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
+import { strategiesHelp } from "@/features/maintenance/help";
 import {
     useCreateStrategy,
     useUpdateStrategy,
@@ -150,7 +153,10 @@ export function StrategiesScreen() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Maintenance Strategies</h1>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Maintenance Strategies</h1>
+                        <HelpDrawer help={strategiesHelp} />
+                    </div>
                     <p className="text-neutral-500 dark:text-neutral-400 mt-1">Define maintenance strategies and scheduling rules</p>
                 </div>
                 {canConfigure && (
@@ -242,7 +248,7 @@ export function StrategiesScreen() {
                                     className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Strategy Type</label>
+                                <label className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">Strategy Type <InfoTooltip content={strategiesHelp.fields!.strategyType} /></label>
                                 <select value={form.strategyType} onChange={(e) => handleTypeChange(e.target.value)}
                                     className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
                                     {STRATEGY_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
@@ -255,7 +261,7 @@ export function StrategiesScreen() {
                             </div>
                             <div>
                                 <div className="flex items-center justify-between mb-1.5">
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Trigger Config (JSON)</label>
+                                    <label className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">Trigger Config (JSON) <InfoTooltip content={strategiesHelp.fields!.triggerConfig} /></label>
                                     <button type="button" onClick={() => setForm((p) => ({ ...p, triggerConfig: STRATEGY_TEMPLATES[p.strategyType] ?? "" }))}
                                         className="text-xs font-bold text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
                                         Load Template
