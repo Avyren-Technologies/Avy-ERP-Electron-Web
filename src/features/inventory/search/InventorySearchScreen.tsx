@@ -27,7 +27,7 @@ export function InventorySearchScreen() {
     const [debouncedQuery, setDebouncedQuery] = useState('');
     const [entityType, setEntityType] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
-    const timerRef = useRef<ReturnType<typeof setTimeout>>();
+    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => { inputRef.current?.focus(); }, []);
 
