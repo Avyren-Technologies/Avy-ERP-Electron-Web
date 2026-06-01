@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+set -e
+
+# Skip when needed: SKIP_WEB_BUILD=1 git commit ...
+if [ -n "$SKIP_WEB_BUILD" ]; then
+  echo ">> Skipping web build (SKIP_WEB_BUILD is set)."
+  exit 0
+fi
+
+echo ">> Running pnpm run build (pre-commit)..."
+pnpm run build

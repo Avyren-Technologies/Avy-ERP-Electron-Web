@@ -98,6 +98,7 @@ const CALC_METHODS = [
     { value: "PERCENT_OF_BASIC", label: "% of Basic" },
     { value: "PERCENT_OF_GROSS", label: "% of Gross" },
     { value: "FORMULA", label: "Formula" },
+    { value: "BALANCE", label: "Balance (Auto)" },
 ];
 
 const CTC_BASIS_OPTIONS = [
@@ -240,15 +241,32 @@ export function SalaryStructureScreen() {
         }
         if (!basicAmt) basicAmt = Math.round(monthlyGross * 0.4);
 
-        return form.components.map((c) => {
+        const rows = form.components.map((c) => {
             const comp = salaryComponents.find((sc: any) => sc.id === c.componentId);
             let monthly = 0;
             if (c.calculationMethod === "FIXED") monthly = c.value;
             else if (c.calculationMethod === "PERCENT_OF_BASIC") monthly = Math.round(basicAmt * (c.value / 100));
             else if (c.calculationMethod === "PERCENT_OF_GROSS") monthly = Math.round(monthlyGross * (c.value / 100));
-            return { name: comp?.name ?? "Unknown", monthly };
+            // BALANCE handled below
+            const type: string = comp?.type ?? "EARNING";
+            return { name: comp?.name ?? "Unknown", monthly, isBalance: c.calculationMethod === "BALANCE", type };
         });
+
+        // Fill BALANCE components with the remainder
+        const totalBeforeBalance = rows.filter(r => !r.isBalance).reduce((s, r) => s + r.monthly, 0);
+        let balanceFilled = false;
+        for (const row of rows) {
+            if (row.isBalance && !balanceFilled) {
+                row.monthly = Math.max(0, Math.round(monthlyGross - totalBeforeBalance));
+                balanceFilled = true;
+            }
+        }
+
+        return rows;
     };
+
+    // Filter only EARNING components for the dropdown
+    const earningComponents = salaryComponents.filter((sc: any) => sc.type === "EARNING");
 
     // Statutory estimates based on inclusion flags
     const computeStatutoryEstimates = () => {
@@ -430,7 +448,7 @@ export function SalaryStructureScreen() {
                                                 <td className="py-2 px-4">
                                                     <select value={row.componentId} onChange={(e) => updateComponentRow(i, "componentId", e.target.value)} className="w-full px-2 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:text-white">
                                                         <option value="">Select component...</option>
-                                                        {salaryComponents.map((sc: any) => (<option key={sc.id} value={sc.id}>{sc.name}</option>))}
+                                                        {earningComponents.map((sc: any) => (<option key={sc.id} value={sc.id}>{sc.name}</option>))}
                                                     </select>
                                                 </td>
                                                 <td className="py-2 px-4">
@@ -439,7 +457,11 @@ export function SalaryStructureScreen() {
                                                     </select>
                                                 </td>
                                                 <td className="py-2 px-4">
-                                                    <input type="number" value={row.value} onChange={(e) => updateComponentRow(i, "value", Number(e.target.value))} className="w-full px-2 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm text-right font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:text-white" min={0} />
+                                                    {row.calculationMethod === "BALANCE" ? (
+                                                        <span className="block w-full px-2 py-1.5 text-sm text-right font-mono text-neutral-400 dark:text-neutral-500 italic">Auto</span>
+                                                    ) : (
+                                                        <input type="number" value={row.value} onChange={(e) => updateComponentRow(i, "value", Number(e.target.value))} className="w-full px-2 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm text-right font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:text-white" min={0} />
+                                                    )}
                                                 </td>
                                                 <td className="py-2 px-4 text-right">
                                                     <button onClick={() => removeComponentRow(i)} className="p-1.5 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors"><MinusCircle size={16} /></button>
@@ -468,18 +490,70 @@ export function SalaryStructureScreen() {
                                                 placeholder="1000000" min={0} />
                                         </div>
                                     </div>
-                                    <div className="bg-primary-50/50 dark:bg-primary-900/10 rounded-xl border border-primary-100 dark:border-primary-800/50 p-4">
-                                        {computePreview().map((p, i) => (
-                                            <div key={i} className="flex justify-between py-1.5 text-sm">
-                                                <span className="text-neutral-700 dark:text-neutral-300">{p.name}</span>
-                                                <span className="font-mono font-semibold text-primary-950 dark:text-white">{p.monthly > 0 ? `₹${p.monthly.toLocaleString("en-IN")}` : "—"}</span>
-                                            </div>
-                                        ))}
-                                        <div className="border-t border-primary-200 dark:border-primary-800/50 mt-2 pt-2 flex justify-between text-sm font-bold">
-                                            <span className="text-primary-950 dark:text-white">Total Monthly</span>
-                                            <span className="font-mono text-primary-700 dark:text-primary-400">₹{computePreview().reduce((s, p) => s + p.monthly, 0).toLocaleString("en-IN")}</span>
-                                        </div>
-                                    </div>
+                                    {(() => {
+                                        const preview = computePreview();
+                                        const earnings = preview.filter(p => p.type === "EARNING");
+                                        const deductions = preview.filter(p => p.type === "DEDUCTION");
+                                        const employerContribs = preview.filter(p => p.type === "EMPLOYER_CONTRIBUTION");
+                                        const grossSalary = earnings.reduce((s, p) => s + p.monthly, 0);
+                                        const totalDeductions = deductions.reduce((s, p) => s + p.monthly, 0);
+                                        const totalEmployer = employerContribs.reduce((s, p) => s + p.monthly, 0);
+                                        const ctcMonthly = grossSalary + totalEmployer;
+                                        return (
+                                            <>
+                                                <div className="bg-primary-50/50 dark:bg-primary-900/10 rounded-xl border border-primary-100 dark:border-primary-800/50 p-4">
+                                                    {earnings.map((p, i) => (
+                                                        <div key={i} className="flex justify-between py-1.5 text-sm">
+                                                            <span className="text-neutral-700 dark:text-neutral-300">{p.name}</span>
+                                                            <span className="font-mono font-semibold text-primary-950 dark:text-white">{p.monthly > 0 ? `₹${p.monthly.toLocaleString("en-IN")}` : "—"}</span>
+                                                        </div>
+                                                    ))}
+                                                    <div className="border-t border-primary-200 dark:border-primary-800/50 mt-2 pt-2 flex justify-between text-sm font-bold">
+                                                        <span className="text-primary-950 dark:text-white">Gross Salary</span>
+                                                        <span className="font-mono text-primary-700 dark:text-primary-400">₹{grossSalary.toLocaleString("en-IN")}</span>
+                                                    </div>
+                                                </div>
+                                                {deductions.length > 0 && (
+                                                    <div className="bg-red-50/50 dark:bg-red-900/10 rounded-xl border border-red-100 dark:border-red-800/50 p-4 mt-3">
+                                                        <p className="text-xs font-bold text-red-600 dark:text-red-400 uppercase tracking-wider mb-2">Employee Deductions</p>
+                                                        {deductions.map((p, i) => (
+                                                            <div key={i} className="flex justify-between py-1.5 text-sm">
+                                                                <span className="text-red-800 dark:text-red-300">{p.name}</span>
+                                                                <span className="font-mono font-semibold text-red-700 dark:text-red-400">₹{p.monthly.toLocaleString("en-IN")}</span>
+                                                            </div>
+                                                        ))}
+                                                        <div className="border-t border-red-200 dark:border-red-800/50 mt-2 pt-2 flex justify-between text-sm font-bold">
+                                                            <span className="text-red-800 dark:text-red-300">Total Deductions</span>
+                                                            <span className="font-mono text-red-700 dark:text-red-400">₹{totalDeductions.toLocaleString("en-IN")}</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {employerContribs.length > 0 && (
+                                                    <div className="bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-800/50 p-4 mt-3">
+                                                        <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2">Employer Contributions</p>
+                                                        {employerContribs.map((p, i) => (
+                                                            <div key={i} className="flex justify-between py-1.5 text-sm">
+                                                                <span className="text-blue-800 dark:text-blue-300">{p.name}</span>
+                                                                <span className="font-mono font-semibold text-blue-700 dark:text-blue-400">₹{p.monthly.toLocaleString("en-IN")}</span>
+                                                            </div>
+                                                        ))}
+                                                        <div className="border-t border-blue-200 dark:border-blue-800/50 mt-2 pt-2 flex justify-between text-sm font-bold">
+                                                            <span className="text-blue-800 dark:text-blue-300">Total Employer Cost</span>
+                                                            <span className="font-mono text-blue-700 dark:text-blue-400">₹{totalEmployer.toLocaleString("en-IN")}</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {totalEmployer > 0 && (
+                                                    <div className="bg-accent-50/50 dark:bg-accent-900/10 rounded-xl border border-accent-100 dark:border-accent-800/50 p-4 mt-3">
+                                                        <div className="flex justify-between text-sm font-bold">
+                                                            <span className="text-accent-900 dark:text-accent-200">CTC (Gross + Employer)</span>
+                                                            <span className="font-mono text-accent-700 dark:text-accent-400">₹{ctcMonthly.toLocaleString("en-IN")}</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </>
+                                        );
+                                    })()}
 
                                     {/* Statutory Estimates */}
                                     {computeStatutoryEstimates().length > 0 && (

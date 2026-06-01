@@ -192,6 +192,7 @@ const CALCULATION_METHODS = [
     { value: "PERCENT_OF_BASIC", label: "% of Basic" },
     { value: "PERCENT_OF_GROSS", label: "% of Gross" },
     { value: "FORMULA", label: "Custom Formula" },
+    { value: "BALANCE", label: "Balance (Auto-fill remainder)" },
 ];
 
 const TAX_TREATMENTS = [
@@ -329,6 +330,7 @@ export function SalaryComponentScreen() {
             case "PERCENT_OF_BASIC": return `${c.formulaValue ?? 0}% of Basic`;
             case "PERCENT_OF_GROSS": return `${c.formulaValue ?? 0}% of Gross`;
             case "FORMULA": return "Formula";
+            case "BALANCE": return "Balance (Auto)";
             default: return c.calculationMethod ?? "—";
         }
     };
@@ -462,11 +464,16 @@ export function SalaryComponentScreen() {
                             </div>
 
                             {/* Conditional: Fixed/Percentage value or Formula */}
-                            {form.calculationMethod !== "FORMULA" && (
+                            {form.calculationMethod !== "FORMULA" && form.calculationMethod !== "BALANCE" && (
                                 <NumberField label={form.calculationMethod === "FIXED" ? "Fixed Amount (₹)" : "Percentage (%)"} value={form.formulaValue} onChange={(v) => updateField("formulaValue", v)} min={0} />
                             )}
                             {form.calculationMethod === "FORMULA" && (
                                 <FormField label="Formula Expression" value={form.formula} onChange={(v) => updateField("formula", v)} placeholder="e.g. basic * 0.4" />
+                            )}
+                            {form.calculationMethod === "BALANCE" && (
+                                <div className="bg-primary-50 dark:bg-primary-900/20 rounded-xl p-3 border border-primary-200 dark:border-primary-800/50">
+                                    <p className="text-xs text-primary-700 dark:text-primary-400 font-medium">This component auto-fills the remaining amount so all components sum to the monthly gross (Annual CTC / 12). No value or formula needed.</p>
+                                </div>
                             )}
 
                             {/* Tax Treatment */}

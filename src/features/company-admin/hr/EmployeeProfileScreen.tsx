@@ -575,6 +575,17 @@ export function EmployeeProfileScreen() {
             }
         }
 
+        // Pass 4: BALANCE — fill remainder to match annual CTC
+        const totalBeforeBalance = Object.values(breakdown).reduce((s, v) => s + v, 0);
+        let balanceFilled = false;
+        for (const c of comps) {
+            if (c.calculationMethod === "BALANCE" && !balanceFilled) {
+                const label = c.component?.name ?? c.componentId;
+                breakdown[label] = Math.max(0, Math.round(annualCtc - totalBeforeBalance));
+                balanceFilled = true;
+            }
+        }
+
         // Compute statutory estimates based on inclusion flags
         const estimates: { label: string; monthly: number; annual: number }[] = [];
         const monthlyBreakdown: Record<string, number> = {};

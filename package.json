@@ -24,7 +24,8 @@
     "test:e2e:maintenance:api": "npx playwright test --project=maintenance:api",
     "test:e2e:inventory": "npx playwright test --project=auth-setup --project=inventory:api --project=inventory --headed",
     "test:e2e:inventory:api": "npx playwright test --project=inventory:api",
-    "restart": "git pull origin main && pnpm install && pnpm run build && pm2 restart avy-erp-app"
+    "restart": "git pull origin main && pnpm install && pnpm run build && pm2 restart avy-erp-app",
+    "prepare": "husky"
   },
   "build": {
     "appId": "com.avyren.avyerp",
@@ -90,6 +91,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "husky": "^9.1.7",
     "jsdom": "^29.0.0",
     "postcss": "^8.5.8",
     "react-router-dom": "^7.13.1",
