@@ -271,7 +271,7 @@ export function SalaryStructureScreen() {
     // Statutory estimates based on inclusion flags
     const computeStatutoryEstimates = () => {
         const preview = computePreview();
-        const estimates: { label: string; monthly: number }[] = [];
+        const estimates: { label: string; monthly: number; category: 'deduction' | 'employer' }[] = [];
         let pfWageBase = 0;
         let esiWageBase = 0;
         let gratuityWageBase = 0;
