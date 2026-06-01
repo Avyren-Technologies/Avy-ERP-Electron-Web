@@ -165,8 +165,9 @@ client.interceptors.response.use(
                 showError('Account Deactivated', error.response?.data?.message || 'Your company account is no longer active.');
                 // Force logout after a short delay so the toast is visible
                 setTimeout(() => {
-                    const { useAuthStore } = require('@/store/useAuthStore');
-                    useAuthStore.getState().signOut();
+                    void import('@/store/useAuthStore').then(({ useAuthStore }) => {
+                        useAuthStore.getState().signOut();
+                    });
                 }, 2000);
                 return Promise.reject(error);
             }
