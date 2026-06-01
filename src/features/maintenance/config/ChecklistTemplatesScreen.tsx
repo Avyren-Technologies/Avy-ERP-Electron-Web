@@ -160,6 +160,7 @@ function BuilderModal({
     const [description, setDescription] = useState(initialDescription);
     const [sections, setSections] = useState<SectionForm[]>(initialSections.length > 0 ? initialSections : [newSection()]);
     const [isActive, setIsActive] = useState(initialIsActive);
+    const [submitted, setSubmitted] = useState(false);
 
     const addSection = () => setSections((s) => [...s, newSection()]);
 
@@ -199,14 +200,42 @@ function BuilderModal({
     };
 
     const handleSubmit = () => {
+        setSubmitted(true);
+        let hasError = false;
+        const newSections = sections.map(sec => {
+            const isSecNameInvalid = !sec.name.trim();
+            const isPassThresholdInvalid = sec.passThreshold && (isNaN(Number(sec.passThreshold)) || Number(sec.passThreshold) < 0 || Number(sec.passThreshold) > 100);
+            const hasFieldErrors = sec.fields.some(f => !f.label.trim() || (f.fieldType === "DROPDOWN" && !f.config.trim()));
+            if (isSecNameInvalid || isPassThresholdInvalid || hasFieldErrors) {
+                hasError = true;
+                return { ...sec, collapsed: false };
+            }
+            return sec;
+        });
+
+        if (hasError) {
+            setSections(newSections);
+        }
+
         if (!name.trim()) { showApiError({ message: "Template name is required" }); return; }
-        for (const sec of sections) {
+        for (const sec of newSections) {
             if (!sec.name.trim()) { showApiError({ message: "All sections must have a name" }); return; }
+            if (sec.passThreshold) {
+                const val = Number(sec.passThreshold);
+                if (isNaN(val) || val < 0 || val > 100) {
+                    showApiError({ message: `Pass threshold for section "${sec.name}" must be a number between 0 and 100` });
+                    return;
+                }
+            }
             for (const f of sec.fields) {
                 if (!f.label.trim()) { showApiError({ message: "All fields must have a label" }); return; }
+                if (f.fieldType === "DROPDOWN" && !f.config.trim()) {
+                    showApiError({ message: `Dropdown field "${f.label}" requires options (comma separated)` });
+                    return;
+                }
             }
         }
-        onSave(name, description, sections, isActive);
+        onSave(name, description, newSections, isActive);
     };
 
     return (
@@ -222,7 +251,13 @@ function BuilderModal({
                         <div>
                             <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Template Name<span className="text-danger-500 ml-0.5">*</span></label>
                             <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Monthly Pump Inspection"
-                                className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                                className={cn(
+                                    "w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border rounded-xl text-sm focus:outline-none focus:ring-2 dark:text-white placeholder:text-neutral-400 transition-all",
+                                    submitted && !name.trim()
+                                        ? "border-danger-500 focus:ring-danger-500/20 focus:border-danger-500"
+                                        : "border-neutral-200 dark:border-neutral-700 focus:ring-primary-500/20 focus:border-primary-500"
+                                )} />
+                            {submitted && !name.trim() && <p className="text-xs text-danger-500 mt-1 font-medium">Template name is required</p>}
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Description</label>
@@ -238,66 +273,120 @@ function BuilderModal({
                             <button onClick={addSection} className="text-xs font-bold text-primary-600 hover:text-primary-700 dark:text-primary-400">+ Add Section</button>
                         </div>
 
-                        {sections.map((sec, si) => (
-                            <div key={si} className="border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden">
-                                {/* Section header */}
-                                <div className="bg-neutral-50 dark:bg-neutral-800 px-4 py-3 flex items-center gap-2">
-                                    <GripVertical size={14} className="text-neutral-400 flex-shrink-0" />
-                                    <div className="flex items-center gap-1">
-                                        <button onClick={() => moveSectionUp(si)} disabled={si === 0} className="p-0.5 text-neutral-400 hover:text-neutral-600 disabled:opacity-30"><ChevronUp size={14} /></button>
-                                        <button onClick={() => moveSectionDown(si)} disabled={si >= sections.length - 1} className="p-0.5 text-neutral-400 hover:text-neutral-600 disabled:opacity-30"><ChevronDown size={14} /></button>
-                                    </div>
-                                    <input type="text" value={sec.name} onChange={(e) => updateSection(si, { name: e.target.value })} placeholder="Section name"
-                                        className="flex-1 px-2 py-1 bg-transparent border-none text-sm font-bold text-primary-950 dark:text-white focus:outline-none placeholder:text-neutral-400" />
-                                    <div className="flex items-center gap-2 flex-shrink-0">
-                                        <label className="flex items-center gap-1 text-[10px] text-neutral-500">
-                                            <input type="checkbox" checked={sec.isMandatory} onChange={(e) => updateSection(si, { isMandatory: e.target.checked })} className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500" />
-                                            Required
-                                        </label>
-                                        <input type="number" value={sec.passThreshold} onChange={(e) => updateSection(si, { passThreshold: e.target.value })} placeholder="Pass %" min={0} max={100}
-                                            className="w-16 px-1.5 py-0.5 text-[10px] bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded text-center focus:outline-none dark:text-white" />
-                                        <button onClick={() => updateSection(si, { collapsed: !sec.collapsed })} className="p-1 text-neutral-400 hover:text-neutral-600">
-                                            {sec.collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
-                                        </button>
-                                        <button onClick={() => removeSection(si)} className="p-1 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded"><Trash2 size={12} /></button>
-                                    </div>
-                                </div>
+                        {sections.map((sec, si) => {
+                            const isSecNameInvalid = submitted && !sec.name.trim();
+                            const isPassThresholdInvalid = submitted && sec.passThreshold && (isNaN(Number(sec.passThreshold)) || Number(sec.passThreshold) < 0 || Number(sec.passThreshold) > 100);
+                            const hasFieldErrors = submitted && sec.fields.some(f => !f.label.trim() || (f.fieldType === "DROPDOWN" && !f.config.trim()));
+                            const isSectionInvalid = isSecNameInvalid || isPassThresholdInvalid || hasFieldErrors;
 
-                                {/* Fields */}
-                                {!sec.collapsed && (
-                                    <div className="p-4 space-y-2">
-                                        {sec.fields.map((f, fi) => (
-                                            <div key={fi} className="bg-neutral-50/50 dark:bg-neutral-800/50 rounded-lg px-3 py-2 space-y-2">
-                                                <div className="flex items-center gap-2">
-                                                    <GripVertical size={12} className="text-neutral-300 flex-shrink-0" />
-                                                    <input type="text" value={f.label} onChange={(e) => updateField(si, fi, { label: e.target.value })} placeholder="Field label"
-                                                        className="flex-1 px-2 py-1 bg-transparent border-none text-sm text-primary-950 dark:text-white focus:outline-none placeholder:text-neutral-400" />
-                                                    <select value={f.fieldType} onChange={(e) => updateField(si, fi, { fieldType: e.target.value })}
-                                                        className="px-2 py-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded text-xs focus:outline-none dark:text-white">
-                                                        {FIELD_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                                                    </select>
-                                                    <label className="flex items-center gap-1 text-[10px] text-neutral-500 flex-shrink-0">
-                                                        <input type="checkbox" checked={f.isMandatory} onChange={(e) => updateField(si, fi, { isMandatory: e.target.checked })} className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500" />
-                                                        Req
-                                                    </label>
-                                                    <button onClick={() => removeField(si, fi)} className="p-1 text-danger-400 hover:text-danger-600"><X size={12} /></button>
-                                                </div>
-                                                {f.fieldType === "DROPDOWN" ? (
-                                                    <input
-                                                        type="text"
-                                                        value={f.config}
-                                                        onChange={(e) => updateField(si, fi, { config: e.target.value })}
-                                                        placeholder="Options (comma separated)"
-                                                        className="w-full px-2 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded text-xs focus:outline-none dark:text-white placeholder:text-neutral-400"
-                                                    />
-                                                ) : null}
-                                            </div>
-                                        ))}
-                                        <button onClick={() => addField(si)} className="text-xs font-bold text-primary-600 dark:text-primary-400 hover:underline pl-6">+ Add Field</button>
+                            return (
+                                <div key={si} className={cn(
+                                    "border rounded-xl overflow-hidden transition-colors duration-200",
+                                    isSectionInvalid
+                                        ? "border-danger-500/50 dark:border-danger-500/40 bg-danger-50/5 dark:bg-danger-900/5 shadow-sm shadow-danger-500/5"
+                                        : "border-neutral-200 dark:border-neutral-700"
+                                )}>
+                                    {/* Section header */}
+                                    <div className="bg-neutral-50 dark:bg-neutral-800 px-4 py-3 flex items-center gap-2">
+                                        <GripVertical size={14} className="text-neutral-400 flex-shrink-0" />
+                                        <div className="flex items-center gap-1">
+                                            <button onClick={() => moveSectionUp(si)} disabled={si === 0} className="p-0.5 text-neutral-400 hover:text-neutral-600 disabled:opacity-30"><ChevronUp size={14} /></button>
+                                            <button onClick={() => moveSectionDown(si)} disabled={si >= sections.length - 1} className="p-0.5 text-neutral-400 hover:text-neutral-600 disabled:opacity-30"><ChevronDown size={14} /></button>
+                                        </div>
+                                        <div className="flex-1 flex flex-col">
+                                            <input type="text" value={sec.name} onChange={(e) => updateSection(si, { name: e.target.value })} placeholder="Section name"
+                                                className={cn(
+                                                    "px-2 py-1 bg-transparent text-sm font-bold focus:outline-none placeholder:text-neutral-400 border-b",
+                                                    isSecNameInvalid
+                                                        ? "border-danger-500 text-danger-600 dark:text-danger-400 placeholder:text-danger-400"
+                                                        : "border-transparent text-primary-950 dark:text-white"
+                                                )} />
+                                            {isSecNameInvalid && <span className="text-[10px] text-danger-500 pl-2 mt-0.5 font-medium">Section name is required</span>}
+                                        </div>
+                                        <div className="flex items-center gap-2 flex-shrink-0">
+                                            <label className="flex items-center gap-1 text-[10px] text-neutral-500">
+                                                <input type="checkbox" checked={sec.isMandatory} onChange={(e) => updateSection(si, { isMandatory: e.target.checked })} className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500" />
+                                                Required
+                                            </label>
+                                            <input type="number" value={sec.passThreshold} onChange={(e) => updateSection(si, { passThreshold: e.target.value })} placeholder="Pass %" min={0} max={100}
+                                                className={cn(
+                                                    "w-16 px-1.5 py-0.5 text-[10px] bg-white dark:bg-neutral-900 border rounded text-center focus:outline-none dark:text-white",
+                                                    isPassThresholdInvalid
+                                                        ? "border-danger-500 text-danger-500"
+                                                        : "border-neutral-200 dark:border-neutral-700"
+                                                )} />
+                                            {sec.collapsed && isSectionInvalid && (
+                                                <span className="text-[10px] font-bold text-danger-500 mr-1 animate-pulse">! Error Inside</span>
+                                            )}
+                                            <button onClick={() => updateSection(si, { collapsed: !sec.collapsed })} className="p-1 text-neutral-400 hover:text-neutral-600">
+                                                {sec.collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                                            </button>
+                                            <button onClick={() => removeSection(si)} className="p-1 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded"><Trash2 size={12} /></button>
+                                        </div>
                                     </div>
-                                )}
-                            </div>
-                        ))}
+
+                                    {/* Fields */}
+                                    {!sec.collapsed && (
+                                        <div className="p-4 space-y-2">
+                                            {sec.fields.map((f, fi) => {
+                                                const isFieldLabelInvalid = submitted && !f.label.trim();
+                                                const isDropdownOptionsInvalid = submitted && f.fieldType === "DROPDOWN" && !f.config.trim();
+
+                                                return (
+                                                    <div key={fi} className={cn(
+                                                        "bg-neutral-50/50 dark:bg-neutral-800/50 rounded-lg px-3 py-2 space-y-2 border transition-colors",
+                                                        isFieldLabelInvalid || isDropdownOptionsInvalid
+                                                            ? "border-danger-400/50 bg-danger-500/5"
+                                                            : "border-transparent"
+                                                    )}>
+                                                        <div className="flex items-center gap-2">
+                                                            <GripVertical size={12} className="text-neutral-300 flex-shrink-0" />
+                                                            <div className="flex-1 flex flex-col">
+                                                                <input type="text" value={f.label} onChange={(e) => updateField(si, fi, { label: e.target.value })} placeholder="Field label"
+                                                                    className={cn(
+                                                                        "px-2 py-1 bg-transparent text-sm focus:outline-none placeholder:text-neutral-400 border-b",
+                                                                        isFieldLabelInvalid
+                                                                            ? "border-danger-500 text-danger-600 dark:text-danger-400 placeholder:text-danger-400"
+                                                                            : "border-transparent text-primary-950 dark:text-white"
+                                                                    )} />
+                                                                {isFieldLabelInvalid && <span className="text-[9px] text-danger-500 pl-2 mt-0.5 font-medium">Field label is required</span>}
+                                                            </div>
+                                                            <select value={f.fieldType} onChange={(e) => updateField(si, fi, { fieldType: e.target.value })}
+                                                                className="px-2 py-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded text-xs focus:outline-none dark:text-white">
+                                                                {FIELD_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                                            </select>
+                                                            <label className="flex items-center gap-1 text-[10px] text-neutral-500 flex-shrink-0">
+                                                                <input type="checkbox" checked={f.isMandatory} onChange={(e) => updateField(si, fi, { isMandatory: e.target.checked })} className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500" />
+                                                                Req
+                                                            </label>
+                                                            <button onClick={() => removeField(si, fi)} className="p-1 text-danger-400 hover:text-danger-600"><X size={12} /></button>
+                                                        </div>
+                                                        {f.fieldType === "DROPDOWN" ? (
+                                                            <div>
+                                                                <input
+                                                                    type="text"
+                                                                    value={f.config}
+                                                                    onChange={(e) => updateField(si, fi, { config: e.target.value })}
+                                                                    placeholder="Options (comma separated)"
+                                                                    className={cn(
+                                                                        "w-full px-2 py-1.5 bg-white dark:bg-neutral-900 border text-xs focus:outline-none dark:text-white placeholder:text-neutral-400 transition-all rounded",
+                                                                        isDropdownOptionsInvalid
+                                                                            ? "border-danger-500 text-danger-600 dark:text-danger-400 placeholder:text-danger-400"
+                                                                            : "border-neutral-200 dark:border-neutral-700 focus:border-primary-500"
+                                                                    )}
+                                                                />
+                                                                {isDropdownOptionsInvalid && <p className="text-[10px] text-danger-500 mt-1 font-medium">Dropdown options are required</p>}
+                                                            </div>
+                                                        ) : null}
+                                                    </div>
+                                                );
+                                            })}
+                                            <button onClick={() => addField(si)} className="text-xs font-bold text-primary-600 dark:text-primary-400 hover:underline pl-6">+ Add Field</button>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
 
                     <div className="border-t border-neutral-100 dark:border-neutral-800 pt-4">
