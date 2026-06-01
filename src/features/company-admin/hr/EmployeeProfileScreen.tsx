@@ -810,6 +810,7 @@ export function EmployeeProfileScreen() {
         if (salary.annualCTC) payload.annualCtc = parseFloat(salary.annualCTC);
         if (salary.paymentMode) payload.paymentMode = salary.paymentMode;
         if (salary.salaryStructure) payload.salaryStructure = salary.salaryStructure;
+        if (salary.structureId) payload.salaryStructureId = salary.structureId;
 
         // Bank
         if (bank.accountNumber) payload.bankAccountNumber = bank.accountNumber;

@@ -13,6 +13,7 @@ import {
     Banknote,
     ChevronRight,
     Check,
+    Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -22,6 +23,7 @@ import {
 } from "@/features/company-admin/api/use-payroll-run-queries";
 import {
     useCreatePayrollRun,
+    useDeletePayrollRun,
     useLockAttendance,
     useReviewExceptions,
     useComputeSalaries,
@@ -194,6 +196,7 @@ export function PayrollRunScreen() {
     const entriesQuery = usePayrollEntries(selectedRunId ?? "");
 
     const createMutation = useCreatePayrollRun();
+    const deleteMutation = useDeletePayrollRun();
     const lockMutation = useLockAttendance();
     const reviewMutation = useReviewExceptions();
     const computeMutation = useComputeSalaries();
@@ -291,7 +294,30 @@ export function PayrollRunScreen() {
         }
     };
 
-    const anyMutating = lockMutation.isPending || reviewMutation.isPending || computeMutation.isPending || statutoryMutation.isPending || approveMutation.isPending || disburseMutation.isPending;
+    const handleDeleteRun = () => {
+        if (!selectedRunId || !runDetail) return;
+        const periodLabel = `${MONTHS[(runDetail.month ?? 1) - 1]} ${runDetail.year}`;
+        setConfirmAction({
+            title: "Delete Payroll Run",
+            message: `Delete the payroll run for ${periodLabel}? This action cannot be undone.`,
+            label: "Delete Run",
+            variant: "danger",
+            action: async () => {
+                await deleteMutation.mutateAsync(selectedRunId);
+                showSuccess("Deleted", "Payroll run deleted successfully.");
+                setSelectedRunId(null);
+            },
+        });
+    };
+
+    const anyMutating =
+        lockMutation.isPending ||
+        reviewMutation.isPending ||
+        computeMutation.isPending ||
+        statutoryMutation.isPending ||
+        approveMutation.isPending ||
+        disburseMutation.isPending ||
+        deleteMutation.isPending;
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -386,7 +412,19 @@ export function PayrollRunScreen() {
                                             {runDetail?.employeeCount ?? 0} employees &middot; Created {runDetail?.createdAt ? fmt.date(runDetail.createdAt) : ""}
                                         </p>
                                     </div>
-                                    <RunStatusBadge status={runDetail?.status ?? "draft"} />
+                                    <div className="flex items-center gap-3">
+                                        <RunStatusBadge status={runDetail?.status ?? "draft"} />
+                                        {runDetail?.status && !["disbursed", "archived"].includes(runDetail.status.toLowerCase()) && (
+                                            <button
+                                                onClick={handleDeleteRun}
+                                                disabled={deleteMutation.isPending}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-danger-600 dark:text-danger-400 bg-danger-50 dark:bg-danger-900/20 hover:bg-danger-100 dark:hover:bg-danger-900/40 border border-danger-200 dark:border-danger-800 transition-colors disabled:opacity-50"
+                                            >
+                                                {deleteMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                                                Delete Run
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                                 <StepperBar currentStep={wizardStep} completedStep={completedStep} />
                             </div>

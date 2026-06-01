@@ -24,6 +24,11 @@ async function getPayrollRun(id: string): Promise<ApiResponse<any>> {
     return response.data;
 }
 
+async function deletePayrollRun(id: string): Promise<ApiResponse<any>> {
+    const response = await client.delete(`/hr/payroll-runs/${id}`);
+    return response.data;
+}
+
 // 6-step wizard actions
 async function lockAttendance(id: string): Promise<ApiResponse<any>> {
     const response = await client.patch(`/hr/payroll-runs/${id}/lock-attendance`);
@@ -276,6 +281,7 @@ export const payrollRunApi = {
     listPayrollRuns,
     createPayrollRun,
     getPayrollRun,
+    deletePayrollRun,
     // 6-step wizard
     lockAttendance,
     reviewExceptions,

@@ -14,6 +14,16 @@ export function useCreatePayrollRun() {
     });
 }
 
+export function useDeletePayrollRun() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => payrollRunApi.deletePayrollRun(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: payrollRunKeys.runs() });
+        },
+    });
+}
+
 /** Step 1: Lock attendance */
 export function useLockAttendance() {
     const queryClient = useQueryClient();
