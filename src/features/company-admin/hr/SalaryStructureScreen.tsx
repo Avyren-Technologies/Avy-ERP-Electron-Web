@@ -290,24 +290,37 @@ export function SalaryStructureScreen() {
         if (pfConfig && pfWageBase > 0) {
             const capped = Math.min(pfWageBase, Number(pfConfig.wageCeiling ?? 15000));
             const pfEmp = Math.round(capped * Number(pfConfig.employeeRate ?? 12) / 100);
-            estimates.push({ label: "PF (Employee)", monthly: pfEmp });
+            const pfErEpf = Math.round(capped * Number(pfConfig.employerEpfRate ?? 3.67) / 100);
+            const pfErEps = Math.round(capped * Number(pfConfig.employerEpsRate ?? 8.33) / 100);
+            estimates.push({ label: "PF (Employee)", monthly: pfEmp, category: "deduction" as const });
+            estimates.push({ label: "PF (Employer)", monthly: pfErEpf + pfErEps, category: "employer" as const });
         }
 
         if (esiConfig) {
             const esiBase = esiWageBase > 0 ? esiWageBase : totalMonthly;
             if (esiBase <= Number(esiConfig.wageCeiling ?? 21000)) {
                 const esiEmp = Math.round(esiBase * Number(esiConfig.employeeRate ?? 0.75) / 100);
-                estimates.push({ label: "ESI (Employee)", monthly: esiEmp });
+                const esiEr = Math.round(esiBase * Number(esiConfig.employerRate ?? 3.25) / 100);
+                estimates.push({ label: "ESI (Employee)", monthly: esiEmp, category: "deduction" as const });
+                estimates.push({ label: "ESI (Employer)", monthly: esiEr, category: "employer" as const });
             }
         }
 
         if (gratuityConfig?.provisionMethod === "MONTHLY" && gratuityWageBase > 0) {
             const annualGratuity = (gratuityWageBase * 15 * 1) / 26;
             const capped = Math.min(annualGratuity, Number(gratuityConfig.maxAmount ?? 2000000));
-            estimates.push({ label: "Gratuity (Employer)", monthly: Math.round(capped / 12) });
+            estimates.push({ label: "Gratuity (Employer)", monthly: Math.round(capped / 12), category: "employer" as const });
         }
 
-        return estimates;
+        // Summary lines
+        const deductions = estimates.filter(e => e.category === "deduction");
+        const employerContribs = estimates.filter(e => e.category === "employer");
+        const totalDeductions = deductions.reduce((s, e) => s + e.monthly, 0);
+        const totalEmployer = employerContribs.reduce((s, e) => s + e.monthly, 0);
+        const netTakeHome = totalMonthly - totalDeductions;
+        const totalCtc = totalMonthly + totalEmployer;
+
+        return { items: estimates, totalDeductions, totalEmployer, netTakeHome, totalCtc, grossSalary: totalMonthly };
     };
 
     const getComponentName = (id: string) => salaryComponents.find((c: any) => c.id === id)?.name ?? id;
@@ -556,18 +569,49 @@ export function SalaryStructureScreen() {
                                     })()}
 
                                     {/* Statutory Estimates */}
-                                    {computeStatutoryEstimates().length > 0 && (
-                                        <div className="bg-amber-50/50 dark:bg-amber-900/10 rounded-xl border border-amber-200 dark:border-amber-800/50 p-4 mt-3">
-                                            <p className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-2">Statutory Deductions (Estimated)</p>
-                                            {computeStatutoryEstimates().map((est, i) => (
-                                                <div key={i} className="flex justify-between py-1.5 text-sm">
-                                                    <span className="text-amber-800 dark:text-amber-300">{est.label}</span>
-                                                    <span className="font-mono font-semibold text-amber-700 dark:text-amber-400">₹{est.monthly.toLocaleString("en-IN")}</span>
-                                                </div>
-                                            ))}
-                                            <p className="text-[10px] text-amber-500 mt-2">Based on current statutory config. Actual amounts vary with attendance and CTC.</p>
-                                        </div>
-                                    )}
+                                    {(() => {
+                                        const stat = computeStatutoryEstimates();
+                                        if (stat.items.length === 0) return null;
+                                        const deductions = stat.items.filter(e => e.category === "deduction");
+                                        const employer = stat.items.filter(e => e.category === "employer");
+                                        return (
+                                            <div className="space-y-3 mt-3">
+                                                {/* Employee Deductions */}
+                                                {deductions.length > 0 && (
+                                                    <div className="bg-amber-50/50 dark:bg-amber-900/10 rounded-xl border border-amber-200 dark:border-amber-800/50 p-4">
+                                                        <p className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-2">Employee Deductions (Estimated)</p>
+                                                        {deductions.map((est, i) => (
+                                                            <div key={i} className="flex justify-between py-1.5 text-sm">
+                                                                <span className="text-amber-800 dark:text-amber-300">{est.label}</span>
+                                                                <span className="font-mono font-semibold text-amber-700 dark:text-amber-400">₹{est.monthly.toLocaleString("en-IN")}</span>
+                                                            </div>
+                                                        ))}
+                                                        <div className="flex justify-between pt-2 mt-2 border-t border-amber-200 dark:border-amber-800/50 text-sm font-bold">
+                                                            <span className="text-amber-800 dark:text-amber-300">Est. Take-Home</span>
+                                                            <span className="font-mono text-amber-700 dark:text-amber-400">₹{stat.netTakeHome.toLocaleString("en-IN")}</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {/* Employer Contributions */}
+                                                {employer.length > 0 && (
+                                                    <div className="bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-200 dark:border-blue-800/50 p-4">
+                                                        <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2">Employer Contributions (Estimated)</p>
+                                                        {employer.map((est, i) => (
+                                                            <div key={i} className="flex justify-between py-1.5 text-sm">
+                                                                <span className="text-blue-800 dark:text-blue-300">{est.label}</span>
+                                                                <span className="font-mono font-semibold text-blue-700 dark:text-blue-400">₹{est.monthly.toLocaleString("en-IN")}</span>
+                                                            </div>
+                                                        ))}
+                                                        <div className="flex justify-between pt-2 mt-2 border-t border-blue-200 dark:border-blue-800/50 text-sm font-bold">
+                                                            <span className="text-blue-800 dark:text-blue-300">Total CTC</span>
+                                                            <span className="font-mono text-blue-700 dark:text-blue-400">₹{stat.totalCtc.toLocaleString("en-IN")}</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                <p className="text-[10px] text-neutral-400 px-1">Based on current statutory config. Actual amounts vary with attendance and CTC.</p>
+                                            </div>
+                                        );
+                                    })()}
                                 </>
                             )}
                         </div>
