@@ -587,7 +587,7 @@ export function EmployeeProfileScreen() {
         }
 
         // Compute statutory estimates based on inclusion flags
-        const estimates: { label: string; monthly: number; annual: number }[] = [];
+        const estimates: { label: string; monthly: number; annual: number; category: 'deduction' | 'employer' }[] = [];
         const monthlyBreakdown: Record<string, number> = {};
         for (const [label, annual] of Object.entries(breakdown)) {
             monthlyBreakdown[label] = Math.round(annual / 12);
@@ -615,8 +615,8 @@ export function EmployeeProfileScreen() {
             const capped = Math.min(pfWageBase, Number(pfConfig.wageCeiling ?? 15000));
             const pfEmp = Math.round(capped * Number(pfConfig.employeeRate ?? 12) / 100);
             const pfEr = Math.round(capped * (Number(pfConfig.employerEpfRate ?? 3.67) + Number(pfConfig.employerEpsRate ?? 8.33)) / 100);
-            estimates.push({ label: "PF (Employee)", monthly: pfEmp, annual: pfEmp * 12 });
-            estimates.push({ label: "PF (Employer)", monthly: pfEr, annual: pfEr * 12 });
+            estimates.push({ label: "PF (Employee)", monthly: pfEmp, annual: pfEmp * 12, category: 'deduction' });
+            estimates.push({ label: "PF (Employer)", monthly: pfEr, annual: pfEr * 12, category: 'employer' });
         }
 
         if (esiConfig) {
@@ -624,8 +624,8 @@ export function EmployeeProfileScreen() {
             if (esiBase <= Number(esiConfig.wageCeiling ?? 21000)) {
                 const esiEmp = Math.round(esiBase * Number(esiConfig.employeeRate ?? 0.75) / 100);
                 const esiEr = Math.round(esiBase * Number(esiConfig.employerRate ?? 3.25) / 100);
-                estimates.push({ label: "ESI (Employee)", monthly: esiEmp, annual: esiEmp * 12 });
-                estimates.push({ label: "ESI (Employer)", monthly: esiEr, annual: esiEr * 12 });
+                estimates.push({ label: "ESI (Employee)", monthly: esiEmp, annual: esiEmp * 12, category: 'deduction' });
+                estimates.push({ label: "ESI (Employer)", monthly: esiEr, annual: esiEr * 12, category: 'employer' });
             }
         }
 
@@ -635,7 +635,7 @@ export function EmployeeProfileScreen() {
                 const annualGratuity = (gBase * 15 * 1) / 26; // 1 year assumed for preview
                 const capped = Math.min(annualGratuity, Number(gratuityConfig.maxAmount ?? 2000000));
                 const monthlyProvision = Math.round(capped / 12);
-                estimates.push({ label: "Gratuity (Employer)", monthly: monthlyProvision, annual: monthlyProvision * 12 });
+                estimates.push({ label: "Gratuity (Employer)", monthly: monthlyProvision, annual: monthlyProvision * 12, category: 'employer' });
             }
         }
 
@@ -1487,39 +1487,100 @@ export function EmployeeProfileScreen() {
                                 )}
                             </div>
 
-                            {/* Statutory Deductions Estimate */}
-                            {salary.statutoryEstimates && salary.statutoryEstimates.length > 0 && (
-                                <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">Statutory Deductions (Estimated)</label>
-                                    <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800 overflow-hidden">
-                                        <table className="w-full text-sm">
-                                            <thead>
-                                                <tr className="bg-amber-100 dark:bg-amber-900/30 text-xs text-amber-600 dark:text-amber-400 uppercase">
-                                                    <th className="py-2.5 px-4 text-left font-bold">Deduction</th>
-                                                    <th className="py-2.5 px-4 text-right font-bold">Monthly</th>
-                                                    <th className="py-2.5 px-4 text-right font-bold">Annual</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {salary.statutoryEstimates.map((est: any) => (
-                                                    <tr key={est.label} className="border-t border-amber-200 dark:border-amber-800">
-                                                        <td className="py-2 px-4 text-amber-800 dark:text-amber-300 font-medium">{est.label}</td>
-                                                        <td className="py-2 px-4 text-right font-mono text-amber-700 dark:text-amber-400">
-                                                            {est.monthly.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                            {/* Statutory Deductions Estimate — Employee Deductions */}
+                            {salary.statutoryEstimates && salary.statutoryEstimates.filter((e: any) => e.category === 'deduction').length > 0 && (() => {
+                                const deductions = salary.statutoryEstimates.filter((e: any) => e.category === 'deduction');
+                                const totalDeductionMonthly = deductions.reduce((s: number, e: any) => s + e.monthly, 0);
+                                const monthlyGross = Math.round(Number(salary.annualCTC ?? 0) / 12);
+                                const estTakeHome = monthlyGross - totalDeductionMonthly;
+                                return (
+                                    <div>
+                                        <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">Employee Deductions (Estimated)</label>
+                                        <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800 overflow-hidden">
+                                            <table className="w-full text-sm">
+                                                <thead>
+                                                    <tr className="bg-amber-100 dark:bg-amber-900/30 text-xs text-amber-600 dark:text-amber-400 uppercase">
+                                                        <th className="py-2.5 px-4 text-left font-bold">Deduction</th>
+                                                        <th className="py-2.5 px-4 text-right font-bold">Monthly</th>
+                                                        <th className="py-2.5 px-4 text-right font-bold">Annual</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {deductions.map((est: any) => (
+                                                        <tr key={est.label} className="border-t border-amber-200 dark:border-amber-800">
+                                                            <td className="py-2 px-4 text-amber-800 dark:text-amber-300 font-medium">{est.label}</td>
+                                                            <td className="py-2 px-4 text-right font-mono text-amber-700 dark:text-amber-400">
+                                                                {est.monthly.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                                                            </td>
+                                                            <td className="py-2 px-4 text-right font-mono text-amber-700 dark:text-amber-400">
+                                                                {est.annual.toLocaleString("en-IN")}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                    <tr className="border-t-2 border-amber-300 dark:border-amber-700 bg-amber-100/50 dark:bg-amber-900/40">
+                                                        <td className="py-2 px-4 text-amber-900 dark:text-amber-200 font-bold text-sm">Est. Take-Home</td>
+                                                        <td className="py-2 px-4 text-right font-mono font-bold text-amber-900 dark:text-amber-200">
+                                                            {estTakeHome.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                                                         </td>
-                                                        <td className="py-2 px-4 text-right font-mono text-amber-700 dark:text-amber-400">
-                                                            {est.annual.toLocaleString("en-IN")}
+                                                        <td className="py-2 px-4 text-right font-mono font-bold text-amber-900 dark:text-amber-200">
+                                                            {(estTakeHome * 12).toLocaleString("en-IN")}
                                                         </td>
                                                     </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                        <div className="px-4 py-2 text-[10px] text-amber-500 dark:text-amber-500 border-t border-amber-200 dark:border-amber-800">
-                                            Estimates based on current statutory configuration. Actual amounts may vary based on attendance, LOP, and mid-month changes.
+                                                </tbody>
+                                            </table>
                                         </div>
                                     </div>
-                                </div>
-                            )}
+                                );
+                            })()}
+
+                            {/* Statutory Estimates — Employer Contributions */}
+                            {salary.statutoryEstimates && salary.statutoryEstimates.filter((e: any) => e.category === 'employer').length > 0 && (() => {
+                                const employerItems = salary.statutoryEstimates.filter((e: any) => e.category === 'employer');
+                                const totalEmployerMonthly = employerItems.reduce((s: number, e: any) => s + e.monthly, 0);
+                                const monthlyGross = Math.round(Number(salary.annualCTC ?? 0) / 12);
+                                const totalCtcMonthly = monthlyGross + totalEmployerMonthly;
+                                return (
+                                    <div>
+                                        <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">Employer Contributions (Estimated)</label>
+                                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 overflow-hidden">
+                                            <table className="w-full text-sm">
+                                                <thead>
+                                                    <tr className="bg-blue-100 dark:bg-blue-900/30 text-xs text-blue-600 dark:text-blue-400 uppercase">
+                                                        <th className="py-2.5 px-4 text-left font-bold">Contribution</th>
+                                                        <th className="py-2.5 px-4 text-right font-bold">Monthly</th>
+                                                        <th className="py-2.5 px-4 text-right font-bold">Annual</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {employerItems.map((est: any) => (
+                                                        <tr key={est.label} className="border-t border-blue-200 dark:border-blue-800">
+                                                            <td className="py-2 px-4 text-blue-800 dark:text-blue-300 font-medium">{est.label}</td>
+                                                            <td className="py-2 px-4 text-right font-mono text-blue-700 dark:text-blue-400">
+                                                                {est.monthly.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                                                            </td>
+                                                            <td className="py-2 px-4 text-right font-mono text-blue-700 dark:text-blue-400">
+                                                                {est.annual.toLocaleString("en-IN")}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                    <tr className="border-t-2 border-blue-300 dark:border-blue-700 bg-blue-100/50 dark:bg-blue-900/40">
+                                                        <td className="py-2 px-4 text-blue-900 dark:text-blue-200 font-bold text-sm">Total CTC</td>
+                                                        <td className="py-2 px-4 text-right font-mono font-bold text-blue-900 dark:text-blue-200">
+                                                            {totalCtcMonthly.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                                                        </td>
+                                                        <td className="py-2 px-4 text-right font-mono font-bold text-blue-900 dark:text-blue-200">
+                                                            {(totalCtcMonthly * 12).toLocaleString("en-IN")}
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                            <div className="px-4 py-2 text-[10px] text-blue-500 dark:text-blue-500 border-t border-blue-200 dark:border-blue-800">
+                                                Estimates based on current statutory configuration. Actual amounts may vary based on attendance, LOP, and mid-month changes.
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </div>
                     )}
 

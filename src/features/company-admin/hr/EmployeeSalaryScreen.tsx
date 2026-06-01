@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
-import { useEmployeeSalaries, useSalaryStructures, useSalaryComponents } from "@/features/company-admin/api/use-payroll-queries";
+import { useEmployeeSalaries, useSalaryStructures, useSalaryComponents, usePFConfig, useESIConfig, useGratuityConfig } from "@/features/company-admin/api/use-payroll-queries";
 import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
 import {
     useAssignEmployeeSalary,
@@ -85,8 +85,15 @@ export function EmployeeSalaryScreen() {
     const structuresQuery = useSalaryStructures();
     const employeesQuery = useEmployees();
     const componentsQuery = useSalaryComponents();
+    const pfConfigQuery = usePFConfig();
+    const esiConfigQuery = useESIConfig();
+    const gratuityConfigQuery = useGratuityConfig();
     const assignMutation = useAssignEmployeeSalary();
     const updateMutation = useUpdateEmployeeSalary();
+
+    const pfConfig: any = pfConfigQuery.data?.data ?? null;
+    const esiConfig: any = esiConfigQuery.data?.data ?? null;
+    const gratuityConfig: any = gratuityConfigQuery.data?.data ?? null;
 
     const [search, setSearch] = useState("");
     const [modalOpen, setModalOpen] = useState(false);
@@ -151,11 +158,12 @@ export function EmployeeSalaryScreen() {
         const structure = structures.find((s: any) => s.id === form.structureId);
         if (!structure?.components) return [];
         const comps = structure.components as any[];
-        const monthly = form.annualCtc / 12;
+        const monthlyGross = form.annualCtc / 12;
 
         // Resolve component details — enriched structures have `component` sub-object, fallback to separate lookup
-        const resolveName = (c: any) => c.component?.name ?? salaryComponents.find((sc: any) => sc.id === c.componentId)?.name ?? "Unknown";
-        const resolveCode = (c: any) => (c.component?.code ?? salaryComponents.find((sc: any) => sc.id === c.componentId)?.code ?? "").toUpperCase();
+        const resolveComp = (c: any) => c.component ?? salaryComponents.find((sc: any) => sc.id === c.componentId);
+        const resolveName = (c: any) => resolveComp(c)?.name ?? "Unknown";
+        const resolveCode = (c: any) => (resolveComp(c)?.code ?? "").toUpperCase();
         const getMethod = (c: any) => (c.calculationMethod ?? c.method ?? "").toUpperCase();
 
         // First pass: find basic amount
@@ -164,28 +172,96 @@ export function EmployeeSalaryScreen() {
         if (basicRow) {
             const m = getMethod(basicRow);
             if (m === "FIXED") basicAmt = Number(basicRow.value) || 0;
-            else if (m === "PERCENT_OF_GROSS" || m === "PERCENTAGE_OF_CTC") basicAmt = (monthly * (Number(basicRow.value) || 0)) / 100;
+            else if (m === "PERCENT_OF_GROSS" || m === "PERCENTAGE_OF_CTC") basicAmt = (monthlyGross * (Number(basicRow.value) || 0)) / 100;
         }
 
-        // Second pass: compute all components
-        return comps.map((c: any) => {
+        // Second pass: compute all non-BALANCE components
+        const rows = comps.map((c: any) => {
             const m = getMethod(c);
             const val = Number(c.value) || 0;
+            const isBalance = m === "BALANCE";
             let amt = 0;
             if (m === "FIXED") amt = val;
-            else if (m === "PERCENT_OF_GROSS" || m === "PERCENTAGE_OF_CTC") amt = (monthly * val) / 100;
+            else if (m === "PERCENT_OF_GROSS" || m === "PERCENTAGE_OF_CTC") amt = (monthlyGross * val) / 100;
             else if (m === "PERCENT_OF_BASIC" || m === "PERCENTAGE_OF_BASIC") amt = (basicAmt * val) / 100;
             else if (m === "FORMULA") {
                 const formula = (c.formula ?? c.formulaValue ?? "").toString().toLowerCase();
                 const match = formula.match(/([\d.]+)%?\s*of\s*(gross|basic)/);
                 if (match) {
                     const pct = parseFloat(match[1]);
-                    amt = match[2] === "basic" ? (basicAmt * pct) / 100 : (monthly * pct) / 100;
+                    amt = match[2] === "basic" ? (basicAmt * pct) / 100 : (monthlyGross * pct) / 100;
                 }
             }
-            return { name: resolveName(c), monthly: Math.round(amt) };
+            return { name: resolveName(c), monthly: Math.round(amt), isBalance, componentId: c.componentId };
         });
+
+        // Third pass: fill BALANCE components with remainder
+        const totalBeforeBalance = rows.filter(r => !r.isBalance).reduce((s, r) => s + r.monthly, 0);
+        let balanceFilled = false;
+        for (const row of rows) {
+            if (row.isBalance && !balanceFilled) {
+                row.monthly = Math.max(0, Math.round(monthlyGross - totalBeforeBalance));
+                balanceFilled = true;
+            }
+        }
+
+        return rows;
     }, [form.structureId, form.annualCtc, structures, salaryComponents]);
+
+    // Compute statutory estimates
+    const statutoryEstimates = useMemo(() => {
+        if (breakupPreview.length === 0) return null;
+        const estimates: { label: string; monthly: number; category: "deduction" | "employer" }[] = [];
+        const grossSalary = breakupPreview.reduce((s, p) => s + p.monthly, 0);
+
+        let pfWageBase = 0;
+        let esiWageBase = 0;
+        let gratuityWageBase = 0;
+
+        for (const row of breakupPreview) {
+            const comp = salaryComponents.find((sc: any) => sc.id === row.componentId);
+            if (!comp) continue;
+            if (comp.pfInclusion) pfWageBase += row.monthly;
+            if (comp.esiInclusion) esiWageBase += row.monthly;
+            if (comp.gratuityInclusion) gratuityWageBase += row.monthly;
+        }
+
+        if (pfConfig && pfWageBase > 0) {
+            const capped = Math.min(pfWageBase, Number(pfConfig.wageCeiling ?? 15000));
+            const pfEmp = Math.round(capped * Number(pfConfig.employeeRate ?? 12) / 100);
+            const pfErEpf = Math.round(capped * Number(pfConfig.employerEpfRate ?? 3.67) / 100);
+            const pfErEps = Math.round(capped * Number(pfConfig.employerEpsRate ?? 8.33) / 100);
+            estimates.push({ label: "PF (Employee)", monthly: pfEmp, category: "deduction" });
+            estimates.push({ label: "PF (Employer)", monthly: pfErEpf + pfErEps, category: "employer" });
+        }
+
+        if (esiConfig) {
+            const esiBase = esiWageBase > 0 ? esiWageBase : grossSalary;
+            if (esiBase <= Number(esiConfig.wageCeiling ?? 21000)) {
+                const esiEmp = Math.round(esiBase * Number(esiConfig.employeeRate ?? 0.75) / 100);
+                const esiEr = Math.round(esiBase * Number(esiConfig.employerRate ?? 3.25) / 100);
+                estimates.push({ label: "ESI (Employee)", monthly: esiEmp, category: "deduction" });
+                estimates.push({ label: "ESI (Employer)", monthly: esiEr, category: "employer" });
+            }
+        }
+
+        if (gratuityConfig?.provisionMethod === "MONTHLY" && gratuityWageBase > 0) {
+            const annualGratuity = (gratuityWageBase * 15 * 1) / 26;
+            const capped = Math.min(annualGratuity, Number(gratuityConfig.maxAmount ?? 2000000));
+            estimates.push({ label: "Gratuity (Employer)", monthly: Math.round(capped / 12), category: "employer" });
+        }
+
+        if (estimates.length === 0) return null;
+
+        const deductions = estimates.filter(e => e.category === "deduction");
+        const employer = estimates.filter(e => e.category === "employer");
+        const totalDeductions = deductions.reduce((s, e) => s + e.monthly, 0);
+        const totalEmployer = employer.reduce((s, e) => s + e.monthly, 0);
+        const netTakeHome = grossSalary - totalDeductions;
+        const totalCtc = grossSalary + totalEmployer;
+
+        return { items: estimates, deductions, employer, totalDeductions, totalEmployer, netTakeHome, totalCtc, grossSalary };
+    }, [breakupPreview, salaryComponents, pfConfig, esiConfig, gratuityConfig]);
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -292,10 +368,49 @@ export function EmployeeSalaryScreen() {
                                             </div>
                                         ))}
                                         <div className="border-t border-primary-200 dark:border-primary-800/50 mt-2 pt-2 flex justify-between text-sm font-bold">
-                                            <span className="text-primary-950 dark:text-white">Total Monthly</span>
+                                            <span className="text-primary-950 dark:text-white">Gross Salary</span>
                                             <span className="font-mono text-primary-700 dark:text-primary-400">₹{breakupPreview.reduce((s, p) => s + p.monthly, 0).toLocaleString("en-IN")}</span>
                                         </div>
                                     </div>
+
+                                    {/* Statutory Estimates */}
+                                    {statutoryEstimates && (
+                                        <div className="space-y-3">
+                                            {/* Employee Deductions */}
+                                            {statutoryEstimates.deductions.length > 0 && (
+                                                <div className="bg-amber-50/50 dark:bg-amber-900/10 rounded-xl border border-amber-200 dark:border-amber-800/50 p-4">
+                                                    <p className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-2">Employee Deductions (Estimated)</p>
+                                                    {statutoryEstimates.deductions.map((est, i) => (
+                                                        <div key={i} className="flex justify-between py-1.5 text-sm">
+                                                            <span className="text-amber-800 dark:text-amber-300">{est.label}</span>
+                                                            <span className="font-mono font-semibold text-amber-700 dark:text-amber-400">₹{est.monthly.toLocaleString("en-IN")}</span>
+                                                        </div>
+                                                    ))}
+                                                    <div className="flex justify-between pt-2 mt-2 border-t border-amber-200 dark:border-amber-800/50 text-sm font-bold">
+                                                        <span className="text-amber-800 dark:text-amber-300">Est. Take-Home</span>
+                                                        <span className="font-mono text-amber-700 dark:text-amber-400">₹{statutoryEstimates.netTakeHome.toLocaleString("en-IN")}</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {/* Employer Contributions */}
+                                            {statutoryEstimates.employer.length > 0 && (
+                                                <div className="bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-200 dark:border-blue-800/50 p-4">
+                                                    <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2">Employer Contributions (Estimated)</p>
+                                                    {statutoryEstimates.employer.map((est, i) => (
+                                                        <div key={i} className="flex justify-between py-1.5 text-sm">
+                                                            <span className="text-blue-800 dark:text-blue-300">{est.label}</span>
+                                                            <span className="font-mono font-semibold text-blue-700 dark:text-blue-400">₹{est.monthly.toLocaleString("en-IN")}</span>
+                                                        </div>
+                                                    ))}
+                                                    <div className="flex justify-between pt-2 mt-2 border-t border-blue-200 dark:border-blue-800/50 text-sm font-bold">
+                                                        <span className="text-blue-800 dark:text-blue-300">Total CTC</span>
+                                                        <span className="font-mono text-blue-700 dark:text-blue-400">₹{statutoryEstimates.totalCtc.toLocaleString("en-IN")}</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <p className="text-[10px] text-neutral-400 px-1">Based on current statutory config. Actual amounts vary with attendance and CTC.</p>
+                                        </div>
+                                    )}
                                 </>
                             )}
                         </div>
