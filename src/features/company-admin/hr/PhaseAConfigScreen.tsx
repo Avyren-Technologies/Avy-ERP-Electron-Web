@@ -521,9 +521,9 @@ export function PhaseAConfigScreen() {
                                     <Mail className="w-3.5 h-3.5" />
                                     payroll.support@avyerp.com
                                 </a>
-                                <a href="tel:+918012345678" className="flex items-center gap-2 text-[12.5px] text-white hover:text-white/90">
+                                <a href="tel:+91 9019189889" className="flex items-center gap-2 text-[12.5px] text-white hover:text-white/90">
                                     <Phone className="w-3.5 h-3.5" />
-                                    +91 80 1234 5678
+                                    +91 9019189889
                                 </a>
                             </div>
                         </div>

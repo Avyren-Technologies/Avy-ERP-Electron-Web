@@ -38,6 +38,8 @@ import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { usePayrollRuns, useFiscalYearKpis } from '@/features/company-admin/api/use-payroll-run-queries';
 import { useCreatePayrollRun, useDeletePayrollRun } from '@/features/company-admin/api/use-payroll-run-mutations';
 import { useConfigurationStatus } from '@/features/company-admin/api/use-payroll-phases-queries';
+import { useDepartments } from '@/features/company-admin/api/use-hr-queries';
+import { useCompanyLocations } from '@/features/company-admin/api/use-company-admin-queries';
 import { showSuccess, showApiError } from '@/lib/toast';
 import { SkeletonTable } from '@/components/ui/Skeleton';
 
@@ -61,7 +63,7 @@ const STATUS_TABS: { id: StatusFilter; label: string }[] = [
 
 function StatTile({
     icon: Icon, label, sub, value, tint,
-}: { icon: React.ComponentType<{ className?: string }>; label: string; sub?: React.ReactNode; value: React.ReactNode; tint: 'primary' | 'success' | 'warning' | 'accent' | 'danger' | 'emerald' }) {
+}: { icon: React.ComponentType<{ className?: string; strokeWidth?: number }>; label: string; sub?: React.ReactNode; value: React.ReactNode; tint: 'primary' | 'success' | 'warning' | 'accent' | 'danger' | 'emerald' }) {
     const tintMap = {
         primary: 'bg-primary-50 text-primary-600',
         success: 'bg-success-50 text-success-600',
@@ -71,15 +73,15 @@ function StatTile({
         emerald: 'bg-emerald-50 text-emerald-600',
     } as const;
     return (
-        <div className="rounded-2xl bg-white p-4 ring-1 ring-neutral-200 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-            <div className="flex items-start gap-3">
-                <div className={cn('w-11 h-11 rounded-xl flex items-center justify-center shrink-0', tintMap[tint])}>
-                    <Icon className="w-5 h-5" />
+        <div className="rounded-2xl bg-white px-4 py-5 ring-1 ring-neutral-200 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:shadow-md hover:ring-neutral-300">
+            <div className="flex items-center gap-4">
+                <div className={cn('w-12 h-12 rounded-full flex items-center justify-center shrink-0', tintMap[tint])}>
+                    <Icon className="w-5 h-5" strokeWidth={2.2} />
                 </div>
                 <div className="min-w-0 flex-1">
-                    <div className="text-[10.5px] font-bold uppercase tracking-wider text-neutral-500">{label}</div>
-                    <div className="mt-0.5 text-2xl font-bold text-neutral-900 leading-tight">{value}</div>
-                    {sub && <div className="text-[11.5px] text-neutral-500 mt-0.5">{sub}</div>}
+                    <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-neutral-500 leading-tight">{label}</div>
+                    <div className="mt-1.5 text-[28px] font-extrabold text-neutral-900 leading-none tabular-nums">{value}</div>
+                    {sub && <div className="text-[12px] mt-1.5 leading-tight">{sub}</div>}
                 </div>
             </div>
         </div>
@@ -94,29 +96,99 @@ function RunStatusPill({ status }: { status: string }) {
 
     if (isCompleted) {
         return (
-            <span className="inline-flex items-center gap-1 rounded-full bg-success-50 px-2.5 py-1 text-[11px] font-semibold text-success-700 ring-1 ring-success-200">
-                <Lock className="w-3 h-3" /> Completed
+            <span className="inline-flex items-center gap-1 rounded-full bg-success-50 px-2.5 py-1 text-[11px] font-semibold text-success-700 ring-1 ring-success-200 whitespace-nowrap">
+                <Lock className="w-3 h-3 shrink-0" /> Completed
             </span>
         );
     }
     if (isInProgress) {
         return (
-            <span className="inline-flex items-center gap-1 rounded-full bg-warning-50 px-2.5 py-1 text-[11px] font-semibold text-warning-700 ring-1 ring-warning-200">
-                <Hourglass className="w-3 h-3" /> In Progress
+            <span className="inline-flex items-center gap-1 rounded-full bg-warning-50 px-2.5 py-1 text-[11px] font-semibold text-warning-700 ring-1 ring-warning-200 whitespace-nowrap">
+                <Hourglass className="w-3 h-3 shrink-0" /> In Progress
             </span>
         );
     }
     if (isDraft) {
         return (
-            <span className="inline-flex items-center gap-1 rounded-full bg-accent-50 px-2.5 py-1 text-[11px] font-semibold text-accent-700 ring-1 ring-accent-200">
-                <Calendar className="w-3 h-3" /> Draft
+            <span className="inline-flex items-center gap-1 rounded-full bg-accent-50 px-2.5 py-1 text-[11px] font-semibold text-accent-700 ring-1 ring-accent-200 whitespace-nowrap">
+                <Calendar className="w-3 h-3 shrink-0" /> Draft
             </span>
         );
     }
     return (
-        <span className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2.5 py-1 text-[11px] font-semibold text-neutral-600 ring-1 ring-neutral-200">
+        <span className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2.5 py-1 text-[11px] font-semibold text-neutral-600 ring-1 ring-neutral-200 whitespace-nowrap">
             {status}
         </span>
+    );
+}
+
+/* ──────────────────────────────────────────────────────────────────────── */
+/* Generic filter dropdown                                                  */
+/* ──────────────────────────────────────────────────────────────────────── */
+
+interface DropdownOption { value: string; label: string; sub?: string }
+
+function FilterDropdown({
+    icon: Icon, label, value, options, onChange, accent, alignRight,
+}: {
+    icon?: React.ComponentType<{ className?: string }>;
+    label: string;
+    value: string;
+    options: DropdownOption[];
+    onChange: (v: string) => void;
+    accent?: boolean;
+    alignRight?: boolean;
+}) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (!open) return;
+        const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+        document.addEventListener('mousedown', h);
+        return () => document.removeEventListener('mousedown', h);
+    }, [open]);
+    const selected = options.find(o => o.value === value);
+    return (
+        <div className="relative" ref={ref}>
+            <button
+                onClick={() => setOpen(o => !o)}
+                className={cn(
+                    'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition',
+                    accent
+                        ? 'border-primary-200 bg-white text-primary-700 hover:bg-primary-50'
+                        : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50',
+                )}
+            >
+                {Icon && <Icon className="w-3 h-3" />}
+                {selected?.label ?? label}
+                <ChevronDown className={cn('w-3 h-3 transition-transform', open && 'rotate-180')} />
+            </button>
+            {open && (
+                <div className={cn(
+                    'absolute mt-2 w-56 max-h-72 overflow-y-auto rounded-xl border border-neutral-200 bg-white p-1.5 shadow-lg ring-1 ring-black/5 z-30',
+                    alignRight ? 'right-0' : 'left-0',
+                )}>
+                    {options.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-neutral-500">No options</div>
+                    ) : options.map(opt => (
+                        <button
+                            key={opt.value}
+                            onClick={() => { onChange(opt.value); setOpen(false); }}
+                            className={cn(
+                                'flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50',
+                                opt.value === value && 'bg-primary-50 text-primary-700',
+                            )}
+                        >
+                            <span className="min-w-0">
+                                <span className="block truncate">{opt.label}</span>
+                                {opt.sub && <span className="block text-[11px] text-neutral-500 truncate">{opt.sub}</span>}
+                            </span>
+                            {opt.value === value && <CheckCircle2 className="w-3.5 h-3.5 text-primary-600 shrink-0" />}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
     );
 }
 
@@ -300,6 +372,16 @@ export function PayrollRunScreen() {
     const [showNewRun, setShowNewRun] = useState(false);
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
+    /* Toolbar filter state */
+    const inferDefaultFyStart = () => {
+        const now = new Date();
+        return now.getMonth() + 1 >= 4 ? now.getFullYear() : now.getFullYear() - 1;
+    };
+    const [fyStart, setFyStart] = useState<number>(inferDefaultFyStart());
+    const [selectedDeptId, setSelectedDeptId] = useState<string>('all');
+    const [selectedLocationId, setSelectedLocationId] = useState<string>('all');
+    const [sortBy, setSortBy] = useState<'runDate' | 'status' | 'netPay' | 'employees'>('runDate');
+
     const limit = 8;
 
     const debounceRef = useRef<number | null>(null);
@@ -314,7 +396,41 @@ export function PayrollRunScreen() {
     const phaseAComplete = configStatus ? configStatus.completedCount >= configStatus.totalCount : true;
 
     const runsQuery = usePayrollRuns({ page, limit });
-    const kpisQuery = useFiscalYearKpis();
+    const kpisQuery = useFiscalYearKpis(fyStart);
+
+    /* Filter option sources */
+    const departmentsQuery = useDepartments();
+    const locationsQuery = useCompanyLocations();
+    const departments: any[] = (departmentsQuery.data?.data as any[]) ?? [];
+    const locations: any[] = (locationsQuery.data?.data as any[]) ?? [];
+
+    /* FY dropdown options (current FY + 4 prior) */
+    const fyOptions: DropdownOption[] = useMemo(() => {
+        const cur = inferDefaultFyStart();
+        const arr: DropdownOption[] = [];
+        for (let i = 0; i < 5; i++) {
+            const y = cur - i;
+            arr.push({ value: String(y), label: `FY ${y}-${String(y + 1).slice(-2)}` });
+        }
+        return arr;
+    }, []);
+
+    const deptOptions: DropdownOption[] = useMemo(() => [
+        { value: 'all', label: 'All Departments' },
+        ...departments.map((d: any) => ({ value: d.id, label: d.name })),
+    ], [departments]);
+
+    const locationOptions: DropdownOption[] = useMemo(() => [
+        { value: 'all', label: 'All Locations' },
+        ...locations.map((l: any) => ({ value: l.id, label: l.name, sub: l.city ?? undefined })),
+    ], [locations]);
+
+    const sortOptions: DropdownOption[] = [
+        { value: 'runDate',   label: 'Run Date (newest first)' },
+        { value: 'status',    label: 'Status' },
+        { value: 'netPay',    label: 'Net Pay (high → low)' },
+        { value: 'employees', label: 'Employees (high → low)' },
+    ];
 
     const runs: any[] = runsQuery.data?.data ?? [];
     const meta: any = runsQuery.data?.meta ?? null;
@@ -326,28 +442,55 @@ export function PayrollRunScreen() {
     const createMutation = useCreatePayrollRun();
     const deleteMutation = useDeletePayrollRun();
 
-    /* Local filter on top of paginated server response */
+    /* Local filter + sort on top of paginated server response */
     const filteredRuns = useMemo(() => {
-        return runs.filter((r: any) => {
+        const filtered = runs.filter((r: any) => {
             if (search) {
                 const q = search.toLowerCase();
                 const label = `${MONTHS[(r.month ?? 1) - 1]} ${r.year}`.toLowerCase();
                 if (!label.includes(q) && !(r.status ?? '').toLowerCase().includes(q)) return false;
             }
-            if (activeTab === 'all') return true;
+            // Fiscal-year filter (Indian FY: Apr–Mar)
+            const runFyStart = (r.month ?? 1) >= 4 ? r.year : r.year - 1;
+            if (runFyStart !== fyStart) return false;
+
+            // Status tab
             const s = (r.status ?? '').toLowerCase();
-            if (activeTab === 'draft') return s === 'draft';
-            if (activeTab === 'in_progress') return ['attendance_locked', 'exceptions_reviewed', 'computed', 'statutory_done', 'approved'].includes(s);
-            if (activeTab === 'completed') return ['disbursed', 'archived'].includes(s);
-            if (activeTab === 'upcoming') {
-                const now = new Date();
-                const runDate = new Date(r.year, (r.month ?? 1) - 1, 1);
-                return s === 'draft' && runDate > now;
+            if (activeTab !== 'all') {
+                if (activeTab === 'draft' && s !== 'draft') return false;
+                if (activeTab === 'in_progress' && !['attendance_locked', 'exceptions_reviewed', 'computed', 'statutory_done', 'approved'].includes(s)) return false;
+                if (activeTab === 'completed' && !['disbursed', 'archived'].includes(s)) return false;
+                if (activeTab === 'upcoming') {
+                    const now = new Date();
+                    const runDate = new Date(r.year, (r.month ?? 1) - 1, 1);
+                    if (!(s === 'draft' && runDate > now)) return false;
+                }
+                if (activeTab === 'archived' && s !== 'archived') return false;
+                if (activeTab === 'cancelled' && s !== 'cancelled') return false;
             }
-            if (activeTab === 'archived') return s === 'archived';
             return true;
         });
-    }, [runs, search, activeTab]);
+
+        // Sort
+        const STATUS_ORDER: Record<string, number> = {
+            draft: 0, attendance_locked: 1, exceptions_reviewed: 2, computed: 3,
+            statutory_done: 4, approved: 5, disbursed: 6, archived: 7,
+        };
+        const sorted = [...filtered];
+        if (sortBy === 'runDate') {
+            sorted.sort((a, b) => (b.year - a.year) || ((b.month ?? 1) - (a.month ?? 1)));
+        } else if (sortBy === 'status') {
+            sorted.sort((a, b) => (STATUS_ORDER[(b.status ?? '').toLowerCase()] ?? 0) - (STATUS_ORDER[(a.status ?? '').toLowerCase()] ?? 0));
+        } else if (sortBy === 'netPay') {
+            sorted.sort((a, b) => Number(b.totalNet ?? 0) - Number(a.totalNet ?? 0));
+        } else if (sortBy === 'employees') {
+            sorted.sort((a, b) => (b.employeeCount ?? 0) - (a.employeeCount ?? 0));
+        }
+        return sorted;
+    }, [runs, search, activeTab, fyStart, sortBy]);
+
+    /* Active-filter badge counter for the "Filters" button */
+    const activeFilterCount = (selectedDeptId !== 'all' ? 1 : 0) + (selectedLocationId !== 'all' ? 1 : 0);
 
     /* Close per-row kebab menu on outside click */
     useEffect(() => {
@@ -469,25 +612,45 @@ export function PayrollRunScreen() {
                                     className="w-64 rounded-lg border border-neutral-200 bg-white pl-8 pr-3 py-1.5 text-xs text-neutral-700 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-200"
                                 />
                             </div>
-                            <button className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-50">
-                                <Calendar className="w-3 h-3" /> {kpis?.fiscalYear ?? 'Current FY'} <ChevronDown className="w-3 h-3" />
-                            </button>
-                            <button className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-50">
-                                All Departments <ChevronDown className="w-3 h-3" />
-                            </button>
-                            <button className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-50">
-                                All Locations <ChevronDown className="w-3 h-3" />
-                            </button>
-                            <button className="inline-flex items-center gap-1.5 rounded-lg border border-primary-200 bg-white px-3 py-1.5 text-xs font-semibold text-primary-700 hover:bg-primary-50">
-                                <Filter className="w-3 h-3" /> Filters
+                            <FilterDropdown
+                                icon={Calendar}
+                                label="Current FY"
+                                value={String(fyStart)}
+                                options={fyOptions}
+                                onChange={(v) => { setFyStart(Number(v)); setPage(1); }}
+                            />
+                            <FilterDropdown
+                                label="All Departments"
+                                value={selectedDeptId}
+                                options={deptOptions}
+                                onChange={setSelectedDeptId}
+                            />
+                            <FilterDropdown
+                                label="All Locations"
+                                value={selectedLocationId}
+                                options={locationOptions}
+                                onChange={setSelectedLocationId}
+                            />
+                            <button
+                                onClick={() => { setSelectedDeptId('all'); setSelectedLocationId('all'); setSortBy('runDate'); setFyStart(inferDefaultFyStart()); }}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-primary-200 bg-white px-3 py-1.5 text-xs font-semibold text-primary-700 hover:bg-primary-50"
+                            >
+                                <Filter className="w-3 h-3" /> Reset
+                                {activeFilterCount > 0 && (
+                                    <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary-600 text-white text-[10px] font-bold">{activeFilterCount}</span>
+                                )}
                             </button>
                         </div>
                         <div className="flex items-center gap-2">
                             <span className="text-xs text-neutral-500">Sort by:</span>
-                            <button className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-50">
-                                Run Date <ChevronDown className="w-3 h-3" />
-                            </button>
-                            <button className="p-1.5 rounded-lg border border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-50">
+                            <FilterDropdown
+                                label="Run Date"
+                                value={sortBy}
+                                options={sortOptions}
+                                onChange={(v) => setSortBy(v as 'runDate' | 'status' | 'netPay' | 'employees')}
+                                alignRight
+                            />
+                            <button className="p-1.5 rounded-lg border border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-50" title="Grid view (coming soon)">
                                 <LayoutGrid className="w-4 h-4" />
                             </button>
                         </div>
@@ -508,7 +671,7 @@ export function PayrollRunScreen() {
                                         <th className="px-4 py-3 hidden lg:table-cell">Pay Date</th>
                                         <th className="px-4 py-3 hidden lg:table-cell">Employees</th>
                                         <th className="px-4 py-3">Net Pay (₹)</th>
-                                        <th className="px-4 py-3">Status</th>
+                                        <th className="px-4 py-3 whitespace-nowrap min-w-[120px]">Status</th>
                                         <th className="px-4 py-3 hidden xl:table-cell">Progress</th>
                                         <th className="px-4 py-3 hidden xl:table-cell">Created By</th>
                                         <th className="px-4 py-3 text-right">Actions</th>
@@ -565,7 +728,7 @@ export function PayrollRunScreen() {
                                                         </span>
                                                     ) : <span className="text-neutral-400">—</span>}
                                                 </td>
-                                                <td className="px-4 py-3.5"><RunStatusPill status={r.status ?? 'draft'} /></td>
+                                                <td className="px-4 py-3.5 whitespace-nowrap min-w-[120px]"><RunStatusPill status={r.status ?? 'draft'} /></td>
                                                 <td className="px-4 py-3.5 hidden xl:table-cell w-[180px]">
                                                     <div className="space-y-1.5">
                                                         <div className="flex items-center justify-between text-[11px]">
@@ -581,7 +744,7 @@ export function PayrollRunScreen() {
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3.5 hidden xl:table-cell whitespace-nowrap">
-                                                    <div className="text-[12.5px] font-semibold text-neutral-700">{r.createdByName ?? r.lockedBy ?? 'System'}</div>
+                                                    <div className="text-[12.5px] font-semibold text-neutral-700">{r.createdByName ?? r.lockedByName ?? r.computedByName ?? r.approvedByName ?? 'System'}</div>
                                                     <div className="text-[11px] text-neutral-500">{r.createdAt ? fmt.date(r.createdAt) : '—'}</div>
                                                 </td>
                                                 <td className="px-4 py-3.5 text-right">
@@ -719,8 +882,8 @@ export function PayrollRunScreen() {
                             <a href="mailto:payroll.support@avyerp.com" className="flex items-center gap-2 text-[12.5px] text-white hover:text-white/90">
                                 <Mail className="w-3.5 h-3.5" /> payroll.support@avyerp.com
                             </a>
-                            <a href="tel:+918012345678" className="flex items-center gap-2 text-[12.5px] text-white hover:text-white/90 mt-1.5">
-                                <Phone className="w-3.5 h-3.5" /> +91 80 1234 5678
+                            <a href="tel:+91 9019189889" className="flex items-center gap-2 text-[12.5px] text-white hover:text-white/90 mt-1.5">
+                                <Phone className="w-3.5 h-3.5" /> +91 9019189889
                             </a>
                         </div>
                     </div>
