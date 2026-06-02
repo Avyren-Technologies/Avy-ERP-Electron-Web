@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import {
     Plus,
@@ -15,7 +16,11 @@ import {
     Check,
     Trash2,
     ClipboardList,
+    ShieldAlert,
+    ListChecks,
+    ClipboardCheck,
 } from "lucide-react";
+import { useConfigurationStatus } from "@/features/company-admin/api/use-payroll-phases-queries";
 import { cn } from "@/lib/utils";
 import {
     usePayrollRuns,
@@ -188,8 +193,86 @@ function ConfirmDialog({
 
 /* ── Screen ── */
 
+function PayrollPhaseGuard({ totalSteps, completedSteps }: { totalSteps: number; completedSteps: number }) {
+    const navigate = useNavigate();
+    const remaining = totalSteps - completedSteps;
+    const progress = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
+
+    return (
+        <div className="space-y-6">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-amber-200 dark:border-amber-900/40 shadow-sm overflow-hidden">
+                <div className="bg-gradient-to-r from-amber-50 to-rose-50 dark:from-amber-950/30 dark:to-rose-950/30 px-8 py-6 border-b border-amber-200 dark:border-amber-900/40">
+                    <div className="flex items-start gap-4">
+                        <div className="p-3 rounded-2xl bg-amber-100 dark:bg-amber-900/40">
+                            <ShieldAlert className="w-7 h-7 text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <div className="flex-1">
+                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Payroll Run Blocked</h1>
+                            <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                                Complete <strong>Phase A — Configuration Prerequisites</strong> before running payroll. {remaining} step{remaining === 1 ? '' : 's'} remaining.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="px-8 py-6">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Phase A Progress</span>
+                        <span className="text-sm font-bold text-gray-900 dark:text-white">{completedSteps}/{totalSteps}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all" style={{ width: `${progress}%` }} />
+                    </div>
+                </div>
+
+                <div className="px-8 pb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button
+                        onClick={() => navigate('/app/company/hr/payroll-config-prerequisites')}
+                        className="group flex items-center gap-3 p-4 rounded-xl border-2 border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/20 hover:border-indigo-400 hover:shadow-md transition-all text-left"
+                    >
+                        <div className="p-2.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/40">
+                            <ListChecks className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                        </div>
+                        <div className="flex-1">
+                            <div className="font-semibold text-gray-900 dark:text-white">Open Phase A</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">Configuration prerequisites</div>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-indigo-500 group-hover:translate-x-0.5 transition-all" />
+                    </button>
+                    <button
+                        onClick={() => navigate('/app/company/hr/payroll-pre-run')}
+                        className="group flex items-center gap-3 p-4 rounded-xl border-2 border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-900/20 hover:border-violet-400 hover:shadow-md transition-all text-left"
+                    >
+                        <div className="p-2.5 rounded-lg bg-violet-100 dark:bg-violet-900/40">
+                            <ClipboardCheck className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                        </div>
+                        <div className="flex-1">
+                            <div className="font-semibold text-gray-900 dark:text-white">Open Phase B</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">Pre-run activities</div>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-violet-500 group-hover:translate-x-0.5 transition-all" />
+                    </button>
+                </div>
+            </div>
+
+            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Why is this blocked?</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                    A payroll run requires foundational configuration — salary components, structures, employee assignments, statutory rules, and attendance/leave policies. Running payroll without these in place leads to incorrect calculations, missing statutory deductions, and compliance risk. Phase A and Phase B verify everything is ready.
+                </p>
+            </div>
+        </div>
+    );
+}
+
 export function PayrollRunScreen() {
     const fmt = useCompanyFormatter();
+    const configStatusQuery = useConfigurationStatus();
+    const configStatus = configStatusQuery.data?.data;
+    const phaseAComplete = configStatus
+        ? configStatus.completedCount === configStatus.totalCount
+        : true; // optimistic: allow render while loading, guard below
+
     const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
     const [wizardStep, setWizardStep] = useState(0);
     const [newRunModal, setNewRunModal] = useState(false);
@@ -322,13 +405,26 @@ export function PayrollRunScreen() {
         disburseMutation.isPending ||
         deleteMutation.isPending;
 
+    // ── GUARD: Block payroll run management until Phase A is complete ──
+    if (configStatusQuery.isLoading) {
+        return (
+            <div className="flex items-center justify-center py-32">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+            </div>
+        );
+    }
+
+    if (configStatus && !phaseAComplete) {
+        return <PayrollPhaseGuard totalSteps={configStatus.totalCount} completedSteps={configStatus.completedCount} />;
+    }
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Payroll Runs</h1>
-                    <p className="text-neutral-500 dark:text-neutral-400 mt-1">Process payroll through a 7-step guided wizard</p>
+                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Phase C — Payroll Run Wizard</h1>
+                    <p className="text-neutral-500 dark:text-neutral-400 mt-1">Process payroll through a 6-step guided wizard</p>
                 </div>
                 <button
                     onClick={() => setNewRunModal(true)}

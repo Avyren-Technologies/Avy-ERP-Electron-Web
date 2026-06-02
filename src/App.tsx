@@ -124,6 +124,8 @@ const LoanScreen = lazyNamed(() => import("./features/company-admin/hr/LoanScree
 
 // ─── HR Payroll Operations ───
 const PayrollRunScreen = lazyNamed(() => import("./features/company-admin/hr/PayrollRunScreen"), "PayrollRunScreen");
+const PhaseAConfigScreen = lazyNamed(() => import("./features/company-admin/hr/PhaseAConfigScreen"), "PhaseAConfigScreen");
+const PhaseBPreRunScreen = lazyNamed(() => import("./features/company-admin/hr/PhaseBPreRunScreen"), "PhaseBPreRunScreen");
 const PayslipScreen = lazyNamed(() => import("./features/company-admin/hr/PayslipScreen"), "PayslipScreen");
 const SalaryHoldScreen = lazyNamed(() => import("./features/company-admin/hr/SalaryHoldScreen"), "SalaryHoldScreen");
 const SalaryRevisionScreen = lazyNamed(() => import("./features/company-admin/hr/SalaryRevisionScreen"), "SalaryRevisionScreen");
@@ -562,6 +564,9 @@ function App() {
         <Route path="company/hr/bank-config" element={<RequirePermission permission="hr.payroll-config:configure"><BankConfigScreen /></RequirePermission>} />
         <Route path="company/hr/loan-policies" element={<RequirePermission permission="hr.payroll-config:read"><LoanPolicyScreen /></RequirePermission>} />
         <Route path="company/hr/loans" element={<RequirePermission permission="hr.payroll-config:read"><LoanScreen /></RequirePermission>} />
+        {/* Company-admin Payroll Phases routes */}
+        <Route path="company/hr/payroll-config-prerequisites" element={<RequirePermission permission="hr.payroll-ops:read"><PhaseAConfigScreen /></RequirePermission>} />
+        <Route path="company/hr/payroll-pre-run" element={<RequirePermission permission="hr.payroll-ops:read"><PhaseBPreRunScreen /></RequirePermission>} />
         {/* Company-admin Payroll Operations routes */}
         <Route path="company/hr/payroll-runs" element={<RequirePermission permission="hr.payroll-ops:read"><PayrollRunScreen /></RequirePermission>} />
         <Route path="company/hr/payslips" element={<RequirePermission permission="hr.payroll-ops:read"><PayslipScreen /></RequirePermission>} />
