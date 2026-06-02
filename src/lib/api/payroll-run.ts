@@ -278,8 +278,18 @@ async function bulkEmailForm16(data: { financialYear: string }): Promise<ApiResp
 
 // ── Summary Endpoints ──
 
+async function getFiscalYearKpis(fyStart?: number): Promise<ApiResponse<any>> {
+    const response = await client.get('/hr/payroll-runs/kpi-summary', { params: fyStart ? { fyStart } : {} });
+    return response.data;
+}
+
 async function getAttendanceSummary(runId: string): Promise<ApiResponse<any>> {
     const response = await client.get(`/hr/payroll-runs/${runId}/attendance-summary`);
+    return response.data;
+}
+
+async function getAttendanceDetail(runId: string, params?: { page?: number; limit?: number; search?: string; department?: string }): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/payroll-runs/${runId}/attendance-detail`, { params });
     return response.data;
 }
 
@@ -317,7 +327,9 @@ export const payrollRunApi = {
     approveRun,
     disburseRun,
     // Summary endpoints
+    getFiscalYearKpis,
     getAttendanceSummary,
+    getAttendanceDetail,
     getComputeSummary,
     getStatutorySummary,
     getApprovalSummary,

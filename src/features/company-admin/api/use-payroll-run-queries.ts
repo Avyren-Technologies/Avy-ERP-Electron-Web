@@ -45,7 +45,13 @@ export const payrollRunKeys = {
         [...payrollRunKeys.all, 'statutory-dashboard'] as const,
 
     // Summary endpoints
+    fiscalYearKpis: (fyStart?: number) => fyStart != null
+        ? [...payrollRunKeys.all, 'fy-kpis', fyStart] as const
+        : [...payrollRunKeys.all, 'fy-kpis'] as const,
     attendanceSummary: (runId: string) => [...payrollRunKeys.all, 'attendance-summary', runId] as const,
+    attendanceDetail: (runId: string, params?: Record<string, unknown>) =>
+        params ? [...payrollRunKeys.all, 'attendance-detail', runId, params] as const
+              : [...payrollRunKeys.all, 'attendance-detail', runId] as const,
     computeSummary: (runId: string) => [...payrollRunKeys.all, 'compute-summary', runId] as const,
     statutorySummary: (runId: string) => [...payrollRunKeys.all, 'statutory-summary', runId] as const,
     approvalSummary: (runId: string) => [...payrollRunKeys.all, 'approval-summary', runId] as const,
@@ -229,6 +235,26 @@ export function useAttendanceSummary(runId: string) {
         enabled: !!runId,
         staleTime: 0,
         refetchOnMount: true,
+    });
+}
+
+export function useFiscalYearKpis(fyStart?: number) {
+    return useQuery({
+        queryKey: payrollRunKeys.fiscalYearKpis(fyStart),
+        queryFn: () => payrollRunApi.getFiscalYearKpis(fyStart),
+        staleTime: 60_000,
+        refetchOnMount: true,
+    });
+}
+
+export function useAttendanceDetail(runId: string, params?: { page?: number; limit?: number; search?: string; department?: string }) {
+    return useQuery({
+        queryKey: payrollRunKeys.attendanceDetail(runId, params as Record<string, unknown>),
+        queryFn: () => payrollRunApi.getAttendanceDetail(runId, params),
+        enabled: !!runId,
+        staleTime: 0,
+        refetchOnMount: true,
+        placeholderData: (prev) => prev,
     });
 }
 

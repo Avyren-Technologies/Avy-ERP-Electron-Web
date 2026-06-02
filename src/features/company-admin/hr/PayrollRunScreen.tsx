@@ -1,189 +1,169 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
+import { useMemo, useState, useRef, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
     Plus,
-    Loader2,
-    X,
+    Upload,
     Search,
-    Lock,
-    AlertTriangle,
-    Calculator,
-    Building2,
+    Filter,
+    Calendar,
     CheckCircle2,
+    Loader2,
+    Sparkles,
+    XCircle,
     Banknote,
+    Eye,
+    MoreVertical,
+    ChevronDown,
     ChevronRight,
-    Check,
+    ChevronLeft,
+    ChevronsLeft,
+    ChevronsRight,
+    LayoutGrid,
+    Copy,
+    FileSpreadsheet,
+    Settings as SettingsIcon,
     Trash2,
-    ClipboardList,
-    ShieldAlert,
-    ListChecks,
-    ClipboardCheck,
-} from "lucide-react";
-import { useConfigurationStatus } from "@/features/company-admin/api/use-payroll-phases-queries";
-import { cn } from "@/lib/utils";
-import {
-    usePayrollRuns,
-    usePayrollRun,
-} from "@/features/company-admin/api/use-payroll-run-queries";
-import {
-    useCreatePayrollRun,
-    useDeletePayrollRun,
-    useLockAttendance,
-    useReviewExceptions,
-    useComputeSalaries,
-    useComputeStatutory,
-    useApproveRun,
-    useDisburseRun,
-} from "@/features/company-admin/api/use-payroll-run-mutations";
-import { SkeletonTable } from "@/components/ui/Skeleton";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { showSuccess, showApiError } from "@/lib/toast";
-import { Step1AttendanceValidation } from "@/features/company-admin/hr/Step1AttendanceValidation";
-import { Step2PayrollExceptions } from "@/features/company-admin/hr/Step2PayrollExceptions";
-import { Step3PayrollComputation } from "@/features/company-admin/hr/Step3PayrollComputation";
-import { Step4StatutoryCompliance } from "@/features/company-admin/hr/Step4StatutoryCompliance";
-import { Step5PayrollApproval } from "@/features/company-admin/hr/Step5PayrollApproval";
-import { Step6Disbursement } from "@/features/company-admin/hr/Step6Disbursement";
-import { Step7PostPayroll } from "@/features/company-admin/hr/Step7PostPayroll";
+    Lock,
+    Hourglass,
+    BarChart3,
+    Headphones,
+    Phone,
+    Mail,
+    X,
+    TrendingUp,
+    TrendingDown,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
+import { usePayrollRuns, useFiscalYearKpis } from '@/features/company-admin/api/use-payroll-run-queries';
+import { useCreatePayrollRun, useDeletePayrollRun } from '@/features/company-admin/api/use-payroll-run-mutations';
+import { useConfigurationStatus } from '@/features/company-admin/api/use-payroll-phases-queries';
+import { showSuccess, showApiError } from '@/lib/toast';
+import { SkeletonTable } from '@/components/ui/Skeleton';
 
-/* ── Helpers ── */
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-const MONTHS = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
+type StatusFilter = 'all' | 'draft' | 'in_progress' | 'completed' | 'upcoming' | 'cancelled' | 'archived';
+
+const STATUS_TABS: { id: StatusFilter; label: string }[] = [
+    { id: 'all',         label: 'All Runs' },
+    { id: 'draft',       label: 'Draft' },
+    { id: 'in_progress', label: 'In Progress' },
+    { id: 'completed',   label: 'Completed' },
+    { id: 'upcoming',    label: 'Upcoming' },
+    { id: 'cancelled',   label: 'Cancelled' },
+    { id: 'archived',    label: 'Locked / Archived' },
 ];
 
-const formatCurrency = (v: unknown) => `₹${(Number(v) || 0).toLocaleString("en-IN")}`;
+/* ──────────────────────────────────────────────────────────────────────── */
+/* Atoms                                                                    */
+/* ──────────────────────────────────────────────────────────────────────── */
 
-const STEP_LABELS = [
-    "Lock Attendance",
-    "Review Exceptions",
-    "Compute Salaries",
-    "Statutory",
-    "Approve",
-    "Disburse",
-    "Post-Payroll",
-];
-
-const STEP_ICONS = [Lock, AlertTriangle, Calculator, Building2, CheckCircle2, Banknote, ClipboardList];
-
-const STATUS_STEP_MAP: Record<string, number> = {
-    draft: 0,
-    attendance_locked: 1,
-    exceptions_reviewed: 2,
-    computed: 3,
-    statutory_done: 4,
-    approved: 5,
-    disbursed: 6,
-    archived: 6,
-};
-
-const STATUS_LABELS: Record<string, string> = {
-    draft: "Draft",
-    attendance_locked: "Attendance Locked",
-    exceptions_reviewed: "Exceptions Reviewed",
-    computed: "Computed",
-    statutory_done: "Statutory Done",
-    approved: "Approved",
-    disbursed: "Disbursed",
-    archived: "Archived",
-};
-
-function RunStatusBadge({ status }: { status: string }) {
-    const s = status?.toLowerCase();
-    const colorMap: Record<string, string> = {
-        draft: "bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700",
-        attendance_locked: "bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50",
-        exceptions_reviewed: "bg-info-50 text-info-700 border-info-200 dark:bg-info-900/20 dark:text-info-400 dark:border-info-800/50",
-        computed: "bg-accent-50 text-accent-700 border-accent-200 dark:bg-accent-900/20 dark:text-accent-400 dark:border-accent-800/50",
-        statutory_done: "bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50",
-        approved: "bg-success-50 text-success-700 border-success-200 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50",
-        disbursed: "bg-success-50 text-success-700 border-success-200 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50",
-        archived: "bg-neutral-200 text-neutral-700 border-neutral-300 dark:bg-neutral-700 dark:text-neutral-300 dark:border-neutral-600",
-    };
-    const cls = colorMap[s] ?? colorMap.draft;
+function StatTile({
+    icon: Icon, label, sub, value, tint,
+}: { icon: React.ComponentType<{ className?: string }>; label: string; sub?: React.ReactNode; value: React.ReactNode; tint: 'primary' | 'success' | 'warning' | 'accent' | 'danger' | 'emerald' }) {
+    const tintMap = {
+        primary: 'bg-primary-50 text-primary-600',
+        success: 'bg-success-50 text-success-600',
+        warning: 'bg-warning-50 text-warning-600',
+        accent:  'bg-accent-50 text-accent-600',
+        danger:  'bg-danger-50 text-danger-600',
+        emerald: 'bg-emerald-50 text-emerald-600',
+    } as const;
     return (
-        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize whitespace-nowrap", cls)}>
-            {STATUS_LABELS[s] || status?.replace(/_/g, " ") || "Draft"}
-        </span>
-    );
-}
-
-/* ── Stepper ── */
-
-function StepperBar({ currentStep, completedStep }: { currentStep: number; completedStep: number }) {
-    return (
-        <div className="flex items-center gap-1 overflow-x-auto pb-2">
-            {STEP_LABELS.map((label, i) => {
-                const Icon = STEP_ICONS[i];
-                const isCompleted = i < completedStep;
-                const isCurrent = i === currentStep;
-                return (
-                    <div key={i} className="flex items-center gap-1">
-                        <div
-                            className={cn(
-                                "flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap",
-                                isCompleted
-                                    ? "bg-success-50 text-success-700 dark:bg-success-900/20 dark:text-success-400"
-                                    : isCurrent
-                                    ? "bg-primary-50 text-primary-700 border border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50"
-                                    : "bg-neutral-50 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500"
-                            )}
-                        >
-                            {isCompleted ? <Check size={14} /> : <Icon size={14} />}
-                            {label}
-                        </div>
-                        {i < STEP_LABELS.length - 1 && (
-                            <ChevronRight size={14} className={cn("text-neutral-300 dark:text-neutral-600 flex-shrink-0", isCompleted && "text-success-400")} />
-                        )}
-                    </div>
-                );
-            })}
+        <div className="rounded-2xl bg-white p-4 ring-1 ring-neutral-200 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            <div className="flex items-start gap-3">
+                <div className={cn('w-11 h-11 rounded-xl flex items-center justify-center shrink-0', tintMap[tint])}>
+                    <Icon className="w-5 h-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                    <div className="text-[10.5px] font-bold uppercase tracking-wider text-neutral-500">{label}</div>
+                    <div className="mt-0.5 text-2xl font-bold text-neutral-900 leading-tight">{value}</div>
+                    {sub && <div className="text-[11.5px] text-neutral-500 mt-0.5">{sub}</div>}
+                </div>
+            </div>
         </div>
     );
 }
 
-/* ── Confirm Modal ── */
+function RunStatusPill({ status }: { status: string }) {
+    const s = status?.toLowerCase();
+    const isCompleted = ['disbursed', 'archived'].includes(s);
+    const isInProgress = ['attendance_locked', 'exceptions_reviewed', 'computed', 'statutory_done', 'approved'].includes(s);
+    const isDraft = s === 'draft';
 
-function ConfirmDialog({
-    open,
-    title,
-    message,
-    confirmLabel,
-    loading,
-    onConfirm,
-    onCancel,
-    variant = "primary",
-}: {
-    open: boolean;
-    title: string;
-    message: string;
-    confirmLabel: string;
-    loading: boolean;
-    onConfirm: () => void;
-    onCancel: () => void;
-    variant?: "primary" | "danger" | "success";
-}) {
-    if (!open) return null;
-    const btnCls =
-        variant === "danger"
-            ? "bg-danger-600 hover:bg-danger-700"
-            : variant === "success"
-            ? "bg-success-600 hover:bg-success-700"
-            : "bg-primary-600 hover:bg-primary-700";
+    if (isCompleted) {
+        return (
+            <span className="inline-flex items-center gap-1 rounded-full bg-success-50 px-2.5 py-1 text-[11px] font-semibold text-success-700 ring-1 ring-success-200">
+                <Lock className="w-3 h-3" /> Completed
+            </span>
+        );
+    }
+    if (isInProgress) {
+        return (
+            <span className="inline-flex items-center gap-1 rounded-full bg-warning-50 px-2.5 py-1 text-[11px] font-semibold text-warning-700 ring-1 ring-warning-200">
+                <Hourglass className="w-3 h-3" /> In Progress
+            </span>
+        );
+    }
+    if (isDraft) {
+        return (
+            <span className="inline-flex items-center gap-1 rounded-full bg-accent-50 px-2.5 py-1 text-[11px] font-semibold text-accent-700 ring-1 ring-accent-200">
+                <Calendar className="w-3 h-3" /> Draft
+            </span>
+        );
+    }
+    return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2.5 py-1 text-[11px] font-semibold text-neutral-600 ring-1 ring-neutral-200">
+            {status}
+        </span>
+    );
+}
+
+function ProgressBar({ percent, color = 'success' }: { percent: number; color?: 'success' | 'warning' | 'neutral' }) {
+    const tintMap = { success: 'bg-success-500', warning: 'bg-warning-500', neutral: 'bg-neutral-400' } as const;
+    return (
+        <div className="w-full h-1.5 rounded-full bg-neutral-100 overflow-hidden">
+            <div className={cn('h-full rounded-full transition-all', tintMap[color])} style={{ width: `${Math.max(0, Math.min(100, percent))}%` }} />
+        </div>
+    );
+}
+
+/* ──────────────────────────────────────────────────────────────────────── */
+/* New Run modal                                                            */
+/* ──────────────────────────────────────────────────────────────────────── */
+
+function NewRunModal({
+    onClose, onSubmit, isPending,
+}: { onClose: () => void; onSubmit: (month: number, year: number) => void; isPending: boolean }) {
+    const [month, setMonth] = useState(new Date().getMonth() + 1);
+    const [year, setYear] = useState(new Date().getFullYear());
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200">
-                <h2 className="text-lg font-bold text-primary-950 dark:text-white mb-2">{title}</h2>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">{message}</p>
-                <div className="flex gap-3">
-                    <button onClick={onCancel} className="flex-1 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">
-                        Cancel
-                    </button>
-                    <button onClick={onConfirm} disabled={loading} className={cn("flex-1 py-3 rounded-xl text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2", btnCls)}>
-                        {loading && <Loader2 size={14} className="animate-spin" />}
-                        {confirmLabel}
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
+                    <h2 className="text-lg font-bold text-neutral-900">New Payroll Run</h2>
+                    <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-neutral-100 text-neutral-400"><X className="w-4 h-4" /></button>
+                </div>
+                <div className="p-6 space-y-4">
+                    <div>
+                        <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">Month</label>
+                        <select value={month} onChange={(e) => setMonth(Number(e.target.value))}
+                            className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20">
+                            {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">Year</label>
+                        <input type="number" value={year} onChange={(e) => setYear(Number(e.target.value))} min={2020} max={2040}
+                            className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20" />
+                    </div>
+                </div>
+                <div className="flex gap-3 px-6 py-4 border-t border-neutral-100">
+                    <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-neutral-200 text-sm font-bold text-neutral-700 hover:bg-neutral-50">Cancel</button>
+                    <button onClick={() => onSubmit(month, year)} disabled={isPending}
+                        className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2">
+                        {isPending && <Loader2 className="w-4 h-4 animate-spin" />} Create Run
                     </button>
                 </div>
             </div>
@@ -191,447 +171,571 @@ function ConfirmDialog({
     );
 }
 
-/* ── Screen ── */
+/* ──────────────────────────────────────────────────────────────────────── */
+/* Phase A guard                                                            */
+/* ──────────────────────────────────────────────────────────────────────── */
 
 function PayrollPhaseGuard({ totalSteps, completedSteps }: { totalSteps: number; completedSteps: number }) {
     const navigate = useNavigate();
     const remaining = totalSteps - completedSteps;
     const progress = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
-
     return (
-        <div className="space-y-6">
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-amber-200 dark:border-amber-900/40 shadow-sm overflow-hidden">
-                <div className="bg-gradient-to-r from-amber-50 to-rose-50 dark:from-amber-950/30 dark:to-rose-950/30 px-8 py-6 border-b border-amber-200 dark:border-amber-900/40">
-                    <div className="flex items-start gap-4">
-                        <div className="p-3 rounded-2xl bg-amber-100 dark:bg-amber-900/40">
-                            <ShieldAlert className="w-7 h-7 text-amber-600 dark:text-amber-400" />
-                        </div>
-                        <div className="flex-1">
-                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Payroll Run Blocked</h1>
-                            <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                                Complete <strong>Phase A — Configuration Prerequisites</strong> before running payroll. {remaining} step{remaining === 1 ? '' : 's'} remaining.
-                            </p>
-                        </div>
+        <div className="px-4 sm:px-6 lg:px-8 py-8 max-w-3xl mx-auto">
+            <div className="rounded-2xl bg-white border border-warning-200 shadow-sm overflow-hidden">
+                <div className="bg-gradient-to-r from-warning-50 to-rose-50 px-6 py-5 border-b border-warning-200 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-warning-100 text-warning-600 flex items-center justify-center">
+                        <Lock className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-bold text-neutral-900">Configuration required</h2>
+                        <p className="text-sm text-neutral-600">Complete Phase A before processing payroll runs.</p>
                     </div>
                 </div>
-
-                <div className="px-8 py-6">
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Phase A Progress</span>
-                        <span className="text-sm font-bold text-gray-900 dark:text-white">{completedSteps}/{totalSteps}</span>
+                <div className="p-6">
+                    <div className="flex items-center justify-between text-xs font-semibold mb-2">
+                        <span className="text-neutral-600">Phase A progress</span>
+                        <span className="text-neutral-900">{completedSteps}/{totalSteps}</span>
                     </div>
-                    <div className="h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all" style={{ width: `${progress}%` }} />
+                    <div className="h-2 rounded-full bg-neutral-100 overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-primary-500 to-accent-500" style={{ width: `${progress}%` }} />
+                    </div>
+                    <p className="mt-4 text-sm text-neutral-600">{remaining} step{remaining === 1 ? '' : 's'} remaining.</p>
+                    <div className="mt-5 flex gap-3">
+                        <button onClick={() => navigate('/app/company/hr/payroll-config-prerequisites')}
+                            className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary-600 to-accent-600 px-4 py-3 text-sm font-bold text-white shadow">
+                            Open Phase A <ChevronRight className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => navigate('/app/company/hr/payroll-pre-run')}
+                            className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-primary-200 bg-white px-4 py-3 text-sm font-bold text-primary-700 hover:bg-primary-50">
+                            Open Phase B
+                        </button>
                     </div>
                 </div>
-
-                <div className="px-8 pb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <button
-                        onClick={() => navigate('/app/company/hr/payroll-config-prerequisites')}
-                        className="group flex items-center gap-3 p-4 rounded-xl border-2 border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/20 hover:border-indigo-400 hover:shadow-md transition-all text-left"
-                    >
-                        <div className="p-2.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/40">
-                            <ListChecks className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                        </div>
-                        <div className="flex-1">
-                            <div className="font-semibold text-gray-900 dark:text-white">Open Phase A</div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">Configuration prerequisites</div>
-                        </div>
-                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-indigo-500 group-hover:translate-x-0.5 transition-all" />
-                    </button>
-                    <button
-                        onClick={() => navigate('/app/company/hr/payroll-pre-run')}
-                        className="group flex items-center gap-3 p-4 rounded-xl border-2 border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-900/20 hover:border-violet-400 hover:shadow-md transition-all text-left"
-                    >
-                        <div className="p-2.5 rounded-lg bg-violet-100 dark:bg-violet-900/40">
-                            <ClipboardCheck className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-                        </div>
-                        <div className="flex-1">
-                            <div className="font-semibold text-gray-900 dark:text-white">Open Phase B</div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">Pre-run activities</div>
-                        </div>
-                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-violet-500 group-hover:translate-x-0.5 transition-all" />
-                    </button>
-                </div>
-            </div>
-
-            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Why is this blocked?</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                    A payroll run requires foundational configuration — salary components, structures, employee assignments, statutory rules, and attendance/leave policies. Running payroll without these in place leads to incorrect calculations, missing statutory deductions, and compliance risk. Phase A and Phase B verify everything is ready.
-                </p>
             </div>
         </div>
     );
 }
 
+/* ──────────────────────────────────────────────────────────────────────── */
+/* Calendar widget                                                          */
+/* ──────────────────────────────────────────────────────────────────────── */
+
+function RunCalendar({ runs }: { runs: any[] }) {
+    const [cursor, setCursor] = useState(() => {
+        const now = new Date();
+        return { y: now.getFullYear(), m: now.getMonth() };
+    });
+    const monthLabel = `${MONTHS[cursor.m]} ${cursor.y}`;
+    const first = new Date(cursor.y, cursor.m, 1);
+    const lastDay = new Date(cursor.y, cursor.m + 1, 0).getDate();
+    const startOffset = first.getDay();
+    const today = new Date();
+    const isToday = (day: number) => today.getFullYear() === cursor.y && today.getMonth() === cursor.m && today.getDate() === day;
+
+    // Days with payroll runs
+    const runDays = new Set<number>();
+    runs.forEach(r => {
+        const runDate = new Date(r.year, (r.month ?? 1) - 1, 1); // first of month
+        if (runDate.getFullYear() === cursor.y && runDate.getMonth() === cursor.m) {
+            runDays.add(1); // first day of month is the conventional "run date"
+        }
+    });
+
+    const cells: (number | null)[] = [];
+    for (let i = 0; i < startOffset; i++) cells.push(null);
+    for (let d = 1; d <= lastDay; d++) cells.push(d);
+    while (cells.length % 7 !== 0) cells.push(null);
+
+    return (
+        <div className="rounded-2xl bg-white p-5 ring-1 ring-neutral-200 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-bold text-neutral-900">Payroll Run Calendar</h3>
+            </div>
+            <div className="flex items-center justify-between mb-2">
+                <button onClick={() => setCursor(c => c.m === 0 ? { y: c.y - 1, m: 11 } : { y: c.y, m: c.m - 1 })}
+                    className="p-1 rounded-md hover:bg-neutral-100 text-neutral-500">
+                    <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-sm font-bold text-neutral-900">{monthLabel}</span>
+                <button onClick={() => setCursor(c => c.m === 11 ? { y: c.y + 1, m: 0 } : { y: c.y, m: c.m + 1 })}
+                    className="p-1 rounded-md hover:bg-neutral-100 text-neutral-500">
+                    <ChevronRight className="w-4 h-4" />
+                </button>
+            </div>
+            <div className="grid grid-cols-7 gap-1 text-[10px] font-semibold text-neutral-500 text-center">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => <div key={d} className="py-1">{d}</div>)}
+            </div>
+            <div className="grid grid-cols-7 gap-1 mt-1">
+                {cells.map((day, i) => {
+                    if (day === null) return <div key={i} className="aspect-square" />;
+                    const has = runDays.has(day);
+                    return (
+                        <div key={i} className={cn(
+                            'aspect-square flex items-center justify-center text-[11px] rounded-md transition-colors',
+                            isToday(day) ? 'bg-primary-600 text-white font-bold'
+                                : has ? 'bg-success-50 text-success-700 font-semibold'
+                                : 'text-neutral-700 hover:bg-neutral-50',
+                        )}>
+                            {day}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+/* ──────────────────────────────────────────────────────────────────────── */
+/* Main screen                                                              */
+/* ──────────────────────────────────────────────────────────────────────── */
+
 export function PayrollRunScreen() {
+    const navigate = useNavigate();
     const fmt = useCompanyFormatter();
+
+    const [activeTab, setActiveTab] = useState<StatusFilter>('all');
+    const [searchInput, setSearchInput] = useState('');
+    const [search, setSearch] = useState('');
+    const [page, setPage] = useState(1);
+    const [showNewRun, setShowNewRun] = useState(false);
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+    const limit = 8;
+
+    const debounceRef = useRef<number | null>(null);
+    useEffect(() => {
+        if (debounceRef.current) window.clearTimeout(debounceRef.current);
+        debounceRef.current = window.setTimeout(() => { setSearch(searchInput); setPage(1); }, 300);
+        return () => { if (debounceRef.current) window.clearTimeout(debounceRef.current); };
+    }, [searchInput]);
+
     const configStatusQuery = useConfigurationStatus();
     const configStatus = configStatusQuery.data?.data;
-    const phaseAComplete = configStatus
-        ? configStatus.completedCount === configStatus.totalCount
-        : true; // optimistic: allow render while loading, guard below
+    const phaseAComplete = configStatus ? configStatus.completedCount >= configStatus.totalCount : true;
 
-    const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
-    const [wizardStep, setWizardStep] = useState(0);
-    const [newRunModal, setNewRunModal] = useState(false);
-    const [newMonth, setNewMonth] = useState(new Date().getMonth() + 1);
-    const [newYear, setNewYear] = useState(new Date().getFullYear());
-    const [confirmAction, setConfirmAction] = useState<{ title: string; message: string; label: string; action: () => Promise<void>; variant?: "primary" | "danger" | "success" } | null>(null);
-    const [search, setSearch] = useState("");
+    const runsQuery = usePayrollRuns({ page, limit });
+    const kpisQuery = useFiscalYearKpis();
 
-    const runsQuery = usePayrollRuns();
-    const runDetailQuery = usePayrollRun(selectedRunId ?? "");
+    const runs: any[] = runsQuery.data?.data ?? [];
+    const meta: any = runsQuery.data?.meta ?? null;
+    const total = meta?.total ?? runs.length;
+    const totalPages = Math.max(1, meta?.totalPages ?? Math.ceil(total / limit));
+
+    const kpis: any = kpisQuery.data?.data ?? null;
 
     const createMutation = useCreatePayrollRun();
     const deleteMutation = useDeletePayrollRun();
-    const lockMutation = useLockAttendance();
-    const reviewMutation = useReviewExceptions();
-    const computeMutation = useComputeSalaries();
-    const statutoryMutation = useComputeStatutory();
-    const approveMutation = useApproveRun();
-    const disburseMutation = useDisburseRun();
 
-    const runs: any[] = runsQuery.data?.data ?? [];
-    const runDetail: any = runDetailQuery.data?.data ?? null;
-
-    const completedStep = STATUS_STEP_MAP[runDetail?.status?.toLowerCase()] ?? 0;
-
-    const filteredRuns = runs.filter((r: any) => {
-        if (!search) return true;
-        const q = search.toLowerCase();
-        const label = `${MONTHS[(r.month ?? 1) - 1]} ${r.year}`.toLowerCase();
-        return label.includes(q) || r.status?.toLowerCase().includes(q);
-    });
-
-    const handleCreateRun = async () => {
-        try {
-            const result = await createMutation.mutateAsync({ month: newMonth, year: newYear });
-            showSuccess("Payroll Run Created", `Run for ${MONTHS[newMonth - 1]} ${newYear} created.`);
-            setNewRunModal(false);
-            if (result?.data?.id) {
-                setSelectedRunId(result.data.id);
-                setWizardStep(0);
+    /* Local filter on top of paginated server response */
+    const filteredRuns = useMemo(() => {
+        return runs.filter((r: any) => {
+            if (search) {
+                const q = search.toLowerCase();
+                const label = `${MONTHS[(r.month ?? 1) - 1]} ${r.year}`.toLowerCase();
+                if (!label.includes(q) && !(r.status ?? '').toLowerCase().includes(q)) return false;
             }
-        } catch (err) {
-            showApiError(err);
-        }
-    };
-
-    const selectRun = (run: any) => {
-        setSelectedRunId(run.id);
-        const step = STATUS_STEP_MAP[run.status?.toLowerCase()] ?? 0;
-        setWizardStep(Math.min(step, 6));
-    };
-
-    const handleStepAction = (step: number) => {
-        if (!selectedRunId) return;
-        const configs: Record<number, { title: string; message: string; label: string; action: () => Promise<void>; variant?: "primary" | "danger" | "success" }> = {
-            0: {
-                title: "Lock Attendance",
-                message: "This will lock attendance data for this payroll period. No further attendance changes will be allowed.",
-                label: "Lock Attendance",
-                action: async () => { await lockMutation.mutateAsync(selectedRunId); showSuccess("Attendance Locked", "Attendance has been locked for this payroll run."); setWizardStep(1); },
-            },
-            1: {
-                title: "Mark Exceptions Reviewed",
-                message: `Confirm that all exceptions have been reviewed before proceeding.`,
-                label: "Mark Reviewed",
-                action: async () => { await reviewMutation.mutateAsync(selectedRunId); showSuccess("Exceptions Reviewed", "All exceptions have been marked as reviewed."); setWizardStep(2); },
-            },
-            2: {
-                title: "Compute Salaries",
-                message: "This will compute gross, deductions, and net pay for all employees in this payroll run.",
-                label: "Compute",
-                action: async () => { await computeMutation.mutateAsync(selectedRunId); showSuccess("Salaries Computed", "Salary computation completed successfully."); setWizardStep(3); },
-            },
-            3: {
-                title: "Compute Statutory Deductions",
-                message: "This will calculate PF, ESI, PT, TDS, and LWF for all employees.",
-                label: "Compute Statutory",
-                action: async () => { await statutoryMutation.mutateAsync(selectedRunId); showSuccess("Statutory Computed", "Statutory deductions calculated successfully."); setWizardStep(4); },
-            },
-            4: {
-                title: "Approve Payroll Run",
-                message: "This will approve the payroll run. Please verify all amounts before proceeding.",
-                label: "Approve",
-                variant: "success",
-                action: async () => { await approveMutation.mutateAsync(selectedRunId); showSuccess("Payroll Approved", "Payroll run has been approved."); setWizardStep(5); },
-            },
-            5: {
-                title: "Disburse & Generate Payslips",
-                message: "This will mark salaries as disbursed and generate payslips for all employees. This action cannot be undone.",
-                label: "Disburse & Generate",
-                variant: "success",
-                action: async () => { await disburseMutation.mutateAsync(selectedRunId); showSuccess("Payroll Disbursed", "Salaries disbursed and payslips generated."); },
-            },
-        };
-        setConfirmAction(configs[step]);
-    };
-
-    const handleConfirm = async () => {
-        if (!confirmAction) return;
-        try {
-            await confirmAction.action();
-            setConfirmAction(null);
-        } catch (err) {
-            showApiError(err);
-        }
-    };
-
-    const handleDeleteRun = () => {
-        if (!selectedRunId || !runDetail) return;
-        const periodLabel = `${MONTHS[(runDetail.month ?? 1) - 1]} ${runDetail.year}`;
-        setConfirmAction({
-            title: "Delete Payroll Run",
-            message: `Delete the payroll run for ${periodLabel}? This action cannot be undone.`,
-            label: "Delete Run",
-            variant: "danger",
-            action: async () => {
-                await deleteMutation.mutateAsync(selectedRunId);
-                showSuccess("Deleted", "Payroll run deleted successfully.");
-                setSelectedRunId(null);
-            },
+            if (activeTab === 'all') return true;
+            const s = (r.status ?? '').toLowerCase();
+            if (activeTab === 'draft') return s === 'draft';
+            if (activeTab === 'in_progress') return ['attendance_locked', 'exceptions_reviewed', 'computed', 'statutory_done', 'approved'].includes(s);
+            if (activeTab === 'completed') return ['disbursed', 'archived'].includes(s);
+            if (activeTab === 'upcoming') {
+                const now = new Date();
+                const runDate = new Date(r.year, (r.month ?? 1) - 1, 1);
+                return s === 'draft' && runDate > now;
+            }
+            if (activeTab === 'archived') return s === 'archived';
+            return true;
         });
+    }, [runs, search, activeTab]);
+
+    /* Close per-row kebab menu on outside click */
+    useEffect(() => {
+        if (!openMenuId) return;
+        const h = () => setOpenMenuId(null);
+        document.addEventListener('click', h);
+        return () => document.removeEventListener('click', h);
+    }, [openMenuId]);
+
+    const handleCreateRun = async (month: number, year: number) => {
+        try {
+            const result = await createMutation.mutateAsync({ month, year });
+            showSuccess('Payroll Run Created', `Run for ${MONTHS[month - 1]} ${year} created.`);
+            setShowNewRun(false);
+            const newId = result?.data?.id;
+            if (newId) navigate(`/app/company/hr/payroll-runs/${newId}/wizard`);
+        } catch (err) {
+            showApiError(err);
+        }
     };
 
-    const anyMutating =
-        lockMutation.isPending ||
-        reviewMutation.isPending ||
-        computeMutation.isPending ||
-        statutoryMutation.isPending ||
-        approveMutation.isPending ||
-        disburseMutation.isPending ||
-        deleteMutation.isPending;
+    const handleDelete = async (runId: string, label: string) => {
+        if (!confirm(`Delete the payroll run for ${label}? This cannot be undone.`)) return;
+        try {
+            await deleteMutation.mutateAsync(runId);
+            showSuccess('Deleted', 'Payroll run deleted.');
+        } catch (err) {
+            showApiError(err);
+        }
+    };
 
-    // ── GUARD: Block payroll run management until Phase A is complete ──
+    /* ── Guard: incomplete Phase A ── */
     if (configStatusQuery.isLoading) {
         return (
             <div className="flex items-center justify-center py-32">
-                <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+                <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
             </div>
         );
     }
-
     if (configStatus && !phaseAComplete) {
         return <PayrollPhaseGuard totalSteps={configStatus.totalCount} completedSteps={configStatus.completedCount} />;
     }
 
+    const vsLastFY = kpis?.vsLastFYPct ?? 0;
+
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-[1600px] mx-auto font-inter space-y-5">
+            {/* Breadcrumb */}
+            <nav className="flex items-center gap-1.5 text-xs text-neutral-500">
+                <span className="text-neutral-600">Payroll</span>
+                <ChevronRight className="w-3 h-3" />
+                <span className="text-neutral-800 font-medium">Payroll Runs</span>
+            </nav>
+
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Phase C — Payroll Run Wizard</h1>
-                    <p className="text-neutral-500 dark:text-neutral-400 mt-1">Process payroll through a 6-step guided wizard</p>
+                    <h1 className="text-2xl sm:text-[28px] font-bold tracking-tight text-neutral-900">Payroll Runs</h1>
+                    <p className="text-sm text-neutral-500 mt-1.5">Create, manage and track all your payroll runs in one place.</p>
                 </div>
-                <button
-                    onClick={() => setNewRunModal(true)}
-                    className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none"
-                >
-                    <Plus className="w-5 h-5" />
-                    New Payroll Run
-                </button>
+                <div className="flex items-center gap-2.5">
+                    <button className="inline-flex items-center gap-2 rounded-lg border border-primary-200 bg-white px-4 py-2 text-sm font-semibold text-primary-700 shadow-sm hover:bg-primary-50">
+                        <Upload className="w-4 h-4" /> Import Payroll Run
+                    </button>
+                    <button onClick={() => setShowNewRun(true)}
+                        className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-primary-600 to-accent-600 px-4 py-2 text-sm font-bold text-white shadow-primary-500/25 shadow-md hover:from-primary-700 hover:to-accent-700">
+                        <Plus className="w-4 h-4" /> New Payroll Run
+                    </button>
+                </div>
             </div>
 
-            {/* Two-panel layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* Left: Run List */}
-                <div className="lg:col-span-4 xl:col-span-3 space-y-4">
-                    <div className="relative">
-                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-                        <input
-                            type="text"
-                            placeholder="Search runs..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
-                        />
+            {/* KPI strip (6 tiles) */}
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+                <StatTile icon={Calendar}     label="Total Payroll Runs"  value={kpis?.totalRuns ?? '—'}   sub={kpis?.fiscalYear ?? ''} tint="primary" />
+                <StatTile icon={CheckCircle2} label="Completed Runs"      value={kpis?.completed ?? '—'}   sub={kpis ? <span className="text-success-600 font-semibold">{kpis.completedPct}%</span> : null} tint="success" />
+                <StatTile icon={Hourglass}    label="In Progress Runs"    value={kpis?.inProgress ?? '—'}  sub={kpis ? <span className="text-warning-600 font-semibold">{kpis.inProgressPct}%</span> : null} tint="warning" />
+                <StatTile icon={Calendar}     label="Upcoming Runs"       value={kpis?.upcoming ?? '—'}    sub={kpis ? <span className="text-accent-600 font-semibold">{kpis.upcomingPct}%</span> : null} tint="accent" />
+                <StatTile icon={XCircle}      label="Cancelled Runs"      value={kpis?.cancelled ?? '—'}   sub={kpis ? <span className="text-danger-600 font-semibold">{kpis.cancelledPct}%</span> : null} tint="danger" />
+                <StatTile icon={Banknote}     label="Net Pay Disbursed (FY)"
+                    value={<span className="text-emerald-700">₹{Number(kpis?.netPayDisbursed ?? 0).toLocaleString('en-IN')}</span>}
+                    sub={kpis ? (
+                        <span className={cn('font-semibold inline-flex items-center gap-0.5', vsLastFY >= 0 ? 'text-success-600' : 'text-danger-600')}>
+                            {vsLastFY >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                            vs Last FY {vsLastFY >= 0 ? '+' : ''}{vsLastFY}%
+                        </span>
+                    ) : null}
+                    tint="emerald" />
+            </div>
+
+            {/* Two-column main */}
+            <div className="grid gap-5 xl:grid-cols-[1fr_340px]">
+                {/* Tabs + filters + table */}
+                <div className="rounded-2xl bg-white ring-1 ring-neutral-200 shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
+                    {/* Tabs */}
+                    <div className="flex gap-5 overflow-x-auto border-b border-neutral-100 px-5 pt-4">
+                        {STATUS_TABS.map(t => (
+                            <button
+                                key={t.id}
+                                onClick={() => { setActiveTab(t.id); setPage(1); }}
+                                className={cn(
+                                    'pb-3 text-sm font-bold border-b-2 transition whitespace-nowrap',
+                                    activeTab === t.id ? 'border-primary-600 text-primary-700' : 'border-transparent text-neutral-500 hover:text-neutral-800',
+                                )}
+                            >
+                                {t.label}
+                            </button>
+                        ))}
                     </div>
-                    <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm overflow-hidden">
+
+                    {/* Toolbar */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-neutral-100">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <div className="relative">
+                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+                                <input
+                                    value={searchInput}
+                                    onChange={(e) => setSearchInput(e.target.value)}
+                                    placeholder="Search by run name or period…"
+                                    className="w-64 rounded-lg border border-neutral-200 bg-white pl-8 pr-3 py-1.5 text-xs text-neutral-700 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                                />
+                            </div>
+                            <button className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-50">
+                                <Calendar className="w-3 h-3" /> {kpis?.fiscalYear ?? 'Current FY'} <ChevronDown className="w-3 h-3" />
+                            </button>
+                            <button className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-50">
+                                All Departments <ChevronDown className="w-3 h-3" />
+                            </button>
+                            <button className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-50">
+                                All Locations <ChevronDown className="w-3 h-3" />
+                            </button>
+                            <button className="inline-flex items-center gap-1.5 rounded-lg border border-primary-200 bg-white px-3 py-1.5 text-xs font-semibold text-primary-700 hover:bg-primary-50">
+                                <Filter className="w-3 h-3" /> Filters
+                            </button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-neutral-500">Sort by:</span>
+                            <button className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-50">
+                                Run Date <ChevronDown className="w-3 h-3" />
+                            </button>
+                            <button className="p-1.5 rounded-lg border border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-50">
+                                <LayoutGrid className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Table */}
+                    <div className="overflow-x-auto">
                         {runsQuery.isLoading ? (
-                            <div className="p-4 space-y-3">
-                                {[...Array(5)].map((_, i) => (
-                                    <div key={i} className="h-16 bg-neutral-100 dark:bg-neutral-800 rounded-xl animate-pulse" />
-                                ))}
-                            </div>
+                            <div className="p-5"><SkeletonTable rows={6} cols={9} /></div>
                         ) : filteredRuns.length === 0 ? (
-                            <div className="p-6 text-center">
-                                <p className="text-sm text-neutral-400">No payroll runs found</p>
-                            </div>
+                            <div className="px-6 py-12 text-center text-sm text-neutral-500">No payroll runs found.</div>
                         ) : (
-                            <div className="divide-y divide-neutral-100 dark:divide-neutral-800 max-h-[calc(100vh-300px)] overflow-y-auto">
-                                {filteredRuns.map((run: any) => (
-                                    <button
-                                        key={run.id}
-                                        onClick={() => selectRun(run)}
-                                        className={cn(
-                                            "w-full text-left px-4 py-3.5 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors",
-                                            selectedRunId === run.id && "bg-primary-50/50 dark:bg-primary-900/10 border-l-2 border-primary-500"
-                                        )}
-                                    >
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className="font-bold text-sm text-primary-950 dark:text-white">
-                                                {MONTHS[(run.month ?? 1) - 1]} {run.year}
-                                            </span>
-                                            <RunStatusBadge status={run.status ?? "draft"} />
-                                        </div>
-                                        <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
-                                            <span>{run.employeeCount ?? 0} employees</span>
-                                            <span className="font-mono">{formatCurrency(run.totalNet ?? run.totalNetPay ?? 0)}</span>
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-neutral-500 bg-neutral-50/60">
+                                        <th className="px-4 py-3">Run Name</th>
+                                        <th className="px-4 py-3 hidden md:table-cell">Payroll Period</th>
+                                        <th className="px-4 py-3 hidden lg:table-cell">Pay Date</th>
+                                        <th className="px-4 py-3 hidden lg:table-cell">Employees</th>
+                                        <th className="px-4 py-3">Net Pay (₹)</th>
+                                        <th className="px-4 py-3">Status</th>
+                                        <th className="px-4 py-3 hidden xl:table-cell">Progress</th>
+                                        <th className="px-4 py-3 hidden xl:table-cell">Created By</th>
+                                        <th className="px-4 py-3 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-neutral-100">
+                                    {filteredRuns.map((r) => {
+                                        const monthLabel = MONTHS[(r.month ?? 1) - 1];
+                                        const monthShort = monthLabel?.slice(0, 3).toUpperCase();
+                                        const monthStart = new Date(r.year, (r.month ?? 1) - 1, 1).toISOString();
+                                        const monthEnd = new Date(r.year, r.month ?? 1, 0).toISOString();
+                                        const payDate = new Date(r.year, r.month ?? 1, 5);
+                                        const s = (r.status ?? '').toLowerCase();
+                                        const completedStep = ({
+                                            draft: 0, attendance_locked: 1, exceptions_reviewed: 2, computed: 3,
+                                            statutory_done: 4, approved: 5, disbursed: 6, archived: 6,
+                                        } as Record<string, number>)[s] ?? 0;
+                                        const pct = Math.round((completedStep / 6) * 100);
+                                        const isCompleted = ['disbursed', 'archived'].includes(s);
+                                        const isCancelled = s === 'cancelled';
+                                        const progressColor: 'success' | 'warning' | 'neutral' = isCompleted ? 'success' : isCancelled ? 'neutral' : 'warning';
+
+                                        return (
+                                            <tr key={r.id} className="group hover:bg-neutral-50/60 cursor-pointer"
+                                                onClick={() => navigate(`/app/company/hr/payroll-runs/${r.id}/wizard`)}>
+                                                <td className="px-4 py-3.5">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-12 h-12 rounded-xl bg-primary-50 flex flex-col items-center justify-center shrink-0">
+                                                            <span className="text-[9px] font-bold text-primary-600 uppercase tracking-wider">{monthShort}</span>
+                                                            <span className="text-[10px] font-bold text-primary-700">{r.year}</span>
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-[13.5px] font-bold text-neutral-900 whitespace-nowrap">{monthLabel} {r.year} Payroll</div>
+                                                            <div className="text-[11.5px] text-neutral-500">Regular Payroll</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3.5 hidden md:table-cell whitespace-nowrap">
+                                                    <div className="text-[12.5px] text-neutral-700">{fmt.date(monthStart)} – {fmt.date(monthEnd)}</div>
+                                                    <div className="text-[11px] text-neutral-500">Monthly</div>
+                                                </td>
+                                                <td className="px-4 py-3.5 hidden lg:table-cell whitespace-nowrap">
+                                                    <div className="text-[12.5px] text-neutral-700">{fmt.date(payDate.toISOString())}</div>
+                                                    <div className="text-[11px] text-neutral-500">{payDate.toLocaleDateString('en-US', { weekday: 'long' })}</div>
+                                                </td>
+                                                <td className="px-4 py-3.5 hidden lg:table-cell">
+                                                    <div className="text-[12.5px] font-semibold text-neutral-700">{r.employeeCount ?? 0}</div>
+                                                    <div className="text-[11px] text-neutral-500">{isCancelled ? 'Cancelled' : 'Active'}</div>
+                                                </td>
+                                                <td className="px-4 py-3.5 whitespace-nowrap">
+                                                    {r.totalNet || r.totalNetPay ? (
+                                                        <span className="text-[13px] font-bold font-mono text-neutral-900">
+                                                            ₹{Number(r.totalNet ?? r.totalNetPay).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                                                        </span>
+                                                    ) : <span className="text-neutral-400">—</span>}
+                                                </td>
+                                                <td className="px-4 py-3.5"><RunStatusPill status={r.status ?? 'draft'} /></td>
+                                                <td className="px-4 py-3.5 hidden xl:table-cell w-[180px]">
+                                                    <div className="space-y-1.5">
+                                                        <div className="flex items-center justify-between text-[11px]">
+                                                            <span className={cn('font-semibold', isCompleted ? 'text-success-600' : isCancelled ? 'text-neutral-400' : 'text-warning-600')}>{pct}%</span>
+                                                        </div>
+                                                        <ProgressBar percent={pct} color={progressColor} />
+                                                        <div className="text-[10.5px] text-neutral-500">
+                                                            {isCompleted ? `Completed on ${r.lockedAt ? fmt.date(r.lockedAt) : fmt.date(monthEnd)}`
+                                                                : isCancelled ? 'Cancelled'
+                                                                : completedStep === 0 ? 'Not Started'
+                                                                : `Step ${completedStep} of 6`}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3.5 hidden xl:table-cell whitespace-nowrap">
+                                                    <div className="text-[12.5px] font-semibold text-neutral-700">{r.createdByName ?? r.lockedBy ?? 'System'}</div>
+                                                    <div className="text-[11px] text-neutral-500">{r.createdAt ? fmt.date(r.createdAt) : '—'}</div>
+                                                </td>
+                                                <td className="px-4 py-3.5 text-right">
+                                                    <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                                                        <button onClick={() => navigate(`/app/company/hr/payroll-runs/${r.id}/wizard`)}
+                                                            className="inline-flex items-center justify-center w-7 h-7 rounded-md text-neutral-400 hover:bg-neutral-100 hover:text-primary-600">
+                                                            <Eye className="w-4 h-4" />
+                                                        </button>
+                                                        <div className="relative">
+                                                            <button onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === r.id ? null : r.id); }}
+                                                                className="inline-flex items-center justify-center w-7 h-7 rounded-md text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700">
+                                                                <MoreVertical className="w-4 h-4" />
+                                                            </button>
+                                                            {openMenuId === r.id && (
+                                                                <div className="absolute right-0 top-8 w-48 rounded-xl border border-neutral-200 bg-white p-1.5 shadow-lg z-20"
+                                                                    onClick={(e) => e.stopPropagation()}>
+                                                                    <button onClick={() => navigate(`/app/company/hr/payroll-runs/${r.id}/wizard`)}
+                                                                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50">
+                                                                        <Eye className="w-4 h-4" /> View / Continue
+                                                                    </button>
+                                                                    {!['disbursed', 'archived'].includes(s) && (
+                                                                        <button onClick={() => handleDelete(r.id, `${monthLabel} ${r.year}`)}
+                                                                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-danger-600 hover:bg-danger-50">
+                                                                            <Trash2 className="w-4 h-4" /> Delete Run
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
                         )}
                     </div>
-                </div>
 
-                {/* Right: Wizard Panel */}
-                <div className="lg:col-span-8 xl:col-span-9">
-                    {!selectedRunId ? (
-                        <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm">
-                            <EmptyState icon="list" title="Select a payroll run" message="Choose a payroll run from the list or create a new one to get started." />
-                        </div>
-                    ) : runDetailQuery.isLoading ? (
-                        <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm">
-                            <SkeletonTable rows={6} cols={4} />
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {/* Run Header */}
-                            <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm p-5">
-                                <div className="flex items-center justify-between mb-4">
-                                    <div>
-                                        <h2 className="text-xl font-bold text-primary-950 dark:text-white">
-                                            {MONTHS[(runDetail?.month ?? 1) - 1]} {runDetail?.year} Payroll
-                                        </h2>
-                                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                                            {runDetail?.employeeCount ?? 0} employees &middot; Created {runDetail?.createdAt ? fmt.date(runDetail.createdAt) : ""}
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <RunStatusBadge status={runDetail?.status ?? "draft"} />
-                                        {runDetail?.status && !["disbursed", "archived"].includes(runDetail.status.toLowerCase()) && (
-                                            <button
-                                                onClick={handleDeleteRun}
-                                                disabled={deleteMutation.isPending}
-                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-danger-600 dark:text-danger-400 bg-danger-50 dark:bg-danger-900/20 hover:bg-danger-100 dark:hover:bg-danger-900/40 border border-danger-200 dark:border-danger-800 transition-colors disabled:opacity-50"
-                                            >
-                                                {deleteMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                                                Delete Run
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                                <StepperBar currentStep={wizardStep} completedStep={completedStep} />
-                            </div>
-
-                            {/* Step Content */}
-                            <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm p-6">
-                                {wizardStep === 0 && <Step1AttendanceValidation runId={selectedRunId!} runDetail={runDetail} completedStep={completedStep} onStepAction={() => handleStepAction(0)} anyMutating={anyMutating} />}
-                                {wizardStep === 1 && <Step2PayrollExceptions runId={selectedRunId!} runDetail={runDetail} completedStep={completedStep} onStepAction={() => handleStepAction(1)} anyMutating={anyMutating} />}
-                                {wizardStep === 2 && <Step3PayrollComputation runId={selectedRunId!} runDetail={runDetail} completedStep={completedStep} onStepAction={() => handleStepAction(2)} anyMutating={anyMutating} />}
-                                {wizardStep === 3 && <Step4StatutoryCompliance runId={selectedRunId!} runDetail={runDetail} completedStep={completedStep} onStepAction={() => handleStepAction(3)} anyMutating={anyMutating} />}
-                                {wizardStep === 4 && <Step5PayrollApproval runId={selectedRunId!} runDetail={runDetail} completedStep={completedStep} onStepAction={() => handleStepAction(4)} anyMutating={anyMutating} />}
-                                {wizardStep === 5 && <Step6Disbursement runId={selectedRunId!} runDetail={runDetail} completedStep={completedStep} onStepAction={() => handleStepAction(5)} anyMutating={anyMutating} />}
-                                {wizardStep === 6 && <Step7PostPayroll runId={selectedRunId!} runDetail={runDetail} completedStep={completedStep} onStepAction={() => {}} anyMutating={false} />}
-
-                                {/* Step Navigation */}
-                                <div className="flex items-center justify-between mt-6 pt-4 border-t border-neutral-100 dark:border-neutral-800">
-                                    <button
-                                        onClick={() => setWizardStep(Math.max(0, wizardStep - 1))}
-                                        disabled={wizardStep === 0}
-                                        className="px-4 py-2 rounded-xl text-sm font-bold text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors disabled:opacity-30"
-                                    >
-                                        Previous
+                    {total > 0 && (
+                        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-t border-neutral-100">
+                            <span className="text-[12px] text-neutral-500">
+                                Showing {(page - 1) * limit + 1} to {Math.min(page * limit, total)} of {total} payroll runs
+                            </span>
+                            <div className="flex items-center gap-1">
+                                <button disabled={page === 1} onClick={() => setPage(1)}
+                                    className={cn('w-7 h-7 rounded-md text-neutral-700 hover:bg-neutral-100', page === 1 && 'opacity-40 cursor-not-allowed')}>
+                                    <ChevronsLeft className="w-3.5 h-3.5 mx-auto" />
+                                </button>
+                                <button disabled={page === 1} onClick={() => setPage(p => p - 1)}
+                                    className={cn('w-7 h-7 rounded-md text-neutral-700 hover:bg-neutral-100', page === 1 && 'opacity-40 cursor-not-allowed')}>
+                                    <ChevronLeft className="w-3.5 h-3.5 mx-auto" />
+                                </button>
+                                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                    const p = i + 1;
+                                    return (
+                                        <button key={p} onClick={() => setPage(p)}
+                                            className={cn('min-w-[28px] h-7 px-2 rounded-md text-xs font-semibold',
+                                                p === page ? 'bg-primary-600 text-white' : 'text-neutral-700 hover:bg-neutral-100')}>
+                                            {p}
+                                        </button>
+                                    );
+                                })}
+                                {totalPages > 5 && <span className="px-2 text-xs text-neutral-400">…</span>}
+                                {totalPages > 5 && (
+                                    <button onClick={() => setPage(totalPages)}
+                                        className={cn('min-w-[28px] h-7 px-2 rounded-md text-xs font-semibold',
+                                            page === totalPages ? 'bg-primary-600 text-white' : 'text-neutral-700 hover:bg-neutral-100')}>
+                                        {totalPages}
                                     </button>
-                                    <div className="flex items-center gap-1">
-                                        {STEP_LABELS.map((_, i) => (
-                                            <button
-                                                key={i}
-                                                onClick={() => { if (i <= completedStep) setWizardStep(i); }}
-                                                className={cn(
-                                                    "w-2 h-2 rounded-full transition-all",
-                                                    i === wizardStep ? "w-6 bg-primary-600" : i < completedStep ? "bg-success-400" : "bg-neutral-300 dark:bg-neutral-600"
-                                                )}
-                                            />
-                                        ))}
-                                    </div>
-                                    <button
-                                        onClick={() => setWizardStep(Math.min(6, wizardStep + 1))}
-                                        disabled={wizardStep >= completedStep || wizardStep === 6}
-                                        className="px-4 py-2 rounded-xl text-sm font-bold text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors disabled:opacity-30"
-                                    >
-                                        Next
-                                    </button>
-                                </div>
+                                )}
+                                <button disabled={page === totalPages} onClick={() => setPage(p => p + 1)}
+                                    className={cn('w-7 h-7 rounded-md text-neutral-700 hover:bg-neutral-100', page === totalPages && 'opacity-40 cursor-not-allowed')}>
+                                    <ChevronRight className="w-3.5 h-3.5 mx-auto" />
+                                </button>
+                                <button disabled={page === totalPages} onClick={() => setPage(totalPages)}
+                                    className={cn('w-7 h-7 rounded-md text-neutral-700 hover:bg-neutral-100', page === totalPages && 'opacity-40 cursor-not-allowed')}>
+                                    <ChevronsRight className="w-3.5 h-3.5 mx-auto" />
+                                </button>
                             </div>
                         </div>
                     )}
                 </div>
-            </div>
 
-            {/* ── New Run Modal ── */}
-            {newRunModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm animate-in fade-in zoom-in-95 duration-200">
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
-                            <h2 className="text-lg font-bold text-primary-950 dark:text-white">New Payroll Run</h2>
-                            <button onClick={() => setNewRunModal(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
-                                <X size={18} />
-                            </button>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Month</label>
-                                <select
-                                    value={newMonth}
-                                    onChange={(e) => setNewMonth(Number(e.target.value))}
-                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
-                                >
-                                    {MONTHS.map((m, i) => (
-                                        <option key={i} value={i + 1}>{m}</option>
-                                    ))}
-                                </select>
+                {/* Right sidebar */}
+                <aside className="space-y-4">
+                    {/* Create New */}
+                    <div className="rounded-2xl bg-white p-5 ring-1 ring-neutral-200 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+                        <h3 className="text-sm font-bold text-neutral-900">Create New Payroll Run</h3>
+                        <p className="text-[12.5px] text-neutral-500 mt-1">Start a new payroll run for a specific month.</p>
+                        <button onClick={() => setShowNewRun(true)}
+                            className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary-600 to-accent-600 px-4 py-3 text-sm font-bold text-white shadow-primary-500/25 shadow-md hover:from-primary-700 hover:to-accent-700">
+                            <Plus className="w-4 h-4" /> New Payroll Run
+                        </button>
+                        <button className="mt-2 w-full inline-flex items-center justify-center gap-1 text-[12.5px] font-semibold text-primary-600 hover:text-primary-700">
+                            or Schedule in Advance <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+
+                    {/* Quick Actions */}
+                    <div className="rounded-2xl bg-white p-5 ring-1 ring-neutral-200 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+                        <h3 className="text-sm font-bold text-neutral-900 mb-3">Quick Actions</h3>
+                        <ul className="space-y-1">
+                            {[
+                                { icon: Copy, label: 'Duplicate Payroll Run', onClick: () => {} },
+                                { icon: Upload, label: 'Import Payroll Run', onClick: () => {} },
+                                { icon: FileSpreadsheet, label: 'Payroll Run Templates', onClick: () => {} },
+                                { icon: SettingsIcon, label: 'Configure Payroll Settings', onClick: () => navigate('/app/company/hr/payroll-config-prerequisites') },
+                            ].map(a => (
+                                <li key={a.label}>
+                                    <button onClick={a.onClick} className="group flex items-center gap-2.5 w-full rounded-lg px-2 py-2 text-[12.5px] text-neutral-700 hover:bg-neutral-50">
+                                        <a.icon className="w-3.5 h-3.5 text-primary-500" />
+                                        {a.label}
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    {/* Calendar */}
+                    <RunCalendar runs={runs} />
+
+                    {/* Need Help */}
+                    <div className="relative overflow-hidden rounded-2xl p-5 shadow-lg shadow-primary-500/20">
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary-600 via-primary-700 to-accent-700" />
+                        <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10 blur-2xl" />
+                        <div className="relative">
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className="w-9 h-9 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center">
+                                    <Headphones className="w-4 h-4 text-white" />
+                                </div>
+                                <h3 className="text-sm font-bold text-white">Need Help?</h3>
                             </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Year</label>
-                                <input
-                                    type="number"
-                                    value={newYear}
-                                    onChange={(e) => setNewYear(Number(e.target.value))}
-                                    min={2020}
-                                    max={2040}
-                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all"
-                                />
-                            </div>
-                        </div>
-                        <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
-                            <button onClick={() => setNewRunModal(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">
-                                Cancel
-                            </button>
-                            <button onClick={handleCreateRun} disabled={createMutation.isPending} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                                {createMutation.isPending && <Loader2 size={14} className="animate-spin" />}
-                                Create Run
-                            </button>
+                            <p className="text-[12.5px] text-white/80 mb-3">Contact Payroll Support Team</p>
+                            <a href="mailto:payroll.support@avyerp.com" className="flex items-center gap-2 text-[12.5px] text-white hover:text-white/90">
+                                <Mail className="w-3.5 h-3.5" /> payroll.support@avyerp.com
+                            </a>
+                            <a href="tel:+918012345678" className="flex items-center gap-2 text-[12.5px] text-white hover:text-white/90 mt-1.5">
+                                <Phone className="w-3.5 h-3.5" /> +91 80 1234 5678
+                            </a>
                         </div>
                     </div>
-                </div>
-            )}
+                </aside>
+            </div>
 
-            {/* ── Confirm Dialog ── */}
-            <ConfirmDialog
-                open={!!confirmAction}
-                title={confirmAction?.title ?? ""}
-                message={confirmAction?.message ?? ""}
-                confirmLabel={confirmAction?.label ?? "Confirm"}
-                loading={anyMutating}
-                onConfirm={handleConfirm}
-                onCancel={() => setConfirmAction(null)}
-                variant={confirmAction?.variant}
-            />
+            {showNewRun && (
+                <NewRunModal
+                    onClose={() => setShowNewRun(false)}
+                    onSubmit={handleCreateRun}
+                    isPending={createMutation.isPending}
+                />
+            )}
         </div>
     );
 }
+
+export default PayrollRunScreen;
