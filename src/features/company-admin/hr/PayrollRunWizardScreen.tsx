@@ -27,6 +27,7 @@ import {
     useDisburseRun,
 } from "@/features/company-admin/api/use-payroll-run-mutations";
 import { SkeletonTable } from "@/components/ui/Skeleton";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { showSuccess, showApiError } from "@/lib/toast";
 import { Step1AttendanceValidation } from "@/features/company-admin/hr/Step1AttendanceValidation";
 import { Step2PayrollExceptions } from "@/features/company-admin/hr/Step2PayrollExceptions";
@@ -119,30 +120,6 @@ function StepperBar({ currentStep, completedStep, onJump }: { currentStep: numbe
                         </div>
                     );
                 })}
-            </div>
-        </div>
-    );
-}
-
-function ConfirmDialog({ open, title, message, confirmLabel, loading, onConfirm, onCancel, variant = 'primary' }: {
-    open: boolean; title: string; message: string; confirmLabel: string;
-    loading: boolean; onConfirm: () => void; onCancel: () => void; variant?: 'primary' | 'danger' | 'success';
-}) {
-    if (!open) return null;
-    const btnCls = variant === 'danger' ? 'bg-danger-600 hover:bg-danger-700'
-        : variant === 'success' ? 'bg-success-600 hover:bg-success-700'
-        : 'bg-primary-600 hover:bg-primary-700';
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-7">
-                <h2 className="text-lg font-bold text-neutral-900 mb-2">{title}</h2>
-                <p className="text-sm text-neutral-500 mb-6">{message}</p>
-                <div className="flex gap-3">
-                    <button onClick={onCancel} className="flex-1 py-3 rounded-xl border border-neutral-200 text-sm font-bold text-neutral-700 hover:bg-neutral-50">Cancel</button>
-                    <button onClick={onConfirm} disabled={loading} className={cn('flex-1 py-3 rounded-xl text-white text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2', btnCls)}>
-                        {loading && <Loader2 size={14} className="animate-spin" />}{confirmLabel}
-                    </button>
-                </div>
             </div>
         </div>
     );
@@ -284,6 +261,7 @@ export function PayrollRunWizardScreen() {
                 title={confirmAction?.title ?? ''}
                 message={confirmAction?.message ?? ''}
                 confirmLabel={confirmAction?.label ?? 'Confirm'}
+                cancelLabel="Cancel"
                 loading={anyMutating}
                 onConfirm={handleConfirm}
                 onCancel={() => setConfirmAction(null)}

@@ -41,6 +41,7 @@ import { useConfigurationStatus } from '@/features/company-admin/api/use-payroll
 import { useDepartments } from '@/features/company-admin/api/use-hr-queries';
 import { useCompanyLocations } from '@/features/company-admin/api/use-company-admin-queries';
 import { showSuccess, showApiError } from '@/lib/toast';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { SkeletonTable } from '@/components/ui/Skeleton';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -371,6 +372,7 @@ export function PayrollRunScreen() {
     const [page, setPage] = useState(1);
     const [showNewRun, setShowNewRun] = useState(false);
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+    const [deleteConfirm, setDeleteConfirm] = useState<{ runId: string; label: string } | null>(null);
 
     /* Toolbar filter state */
     const inferDefaultFyStart = () => {
@@ -512,11 +514,17 @@ export function PayrollRunScreen() {
         }
     };
 
-    const handleDelete = async (runId: string, label: string) => {
-        if (!confirm(`Delete the payroll run for ${label}? This cannot be undone.`)) return;
+    const requestDelete = (runId: string, label: string) => {
+        setOpenMenuId(null);
+        setDeleteConfirm({ runId, label });
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!deleteConfirm) return;
         try {
-            await deleteMutation.mutateAsync(runId);
+            await deleteMutation.mutateAsync(deleteConfirm.runId);
             showSuccess('Deleted', 'Payroll run deleted.');
+            setDeleteConfirm(null);
         } catch (err) {
             showApiError(err);
         }
@@ -766,7 +774,7 @@ export function PayrollRunScreen() {
                                                                         <Eye className="w-4 h-4" /> View / Continue
                                                                     </button>
                                                                     {!['disbursed', 'archived'].includes(s) && (
-                                                                        <button onClick={() => handleDelete(r.id, `${monthLabel} ${r.year}`)}
+                                                                        <button onClick={() => requestDelete(r.id, `${monthLabel} ${r.year}`)}
                                                                             className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-danger-600 hover:bg-danger-50">
                                                                             <Trash2 className="w-4 h-4" /> Delete Run
                                                                         </button>
@@ -897,6 +905,21 @@ export function PayrollRunScreen() {
                     isPending={createMutation.isPending}
                 />
             )}
+
+            <ConfirmDialog
+                open={!!deleteConfirm}
+                title="Delete Payroll Run"
+                message={
+                    deleteConfirm
+                        ? `Delete the payroll run for ${deleteConfirm.label}? This action cannot be undone.`
+                        : ''
+                }
+                confirmLabel="Delete Run"
+                loading={deleteMutation.isPending}
+                onConfirm={handleConfirmDelete}
+                onCancel={() => setDeleteConfirm(null)}
+                variant="danger"
+            />
         </div>
     );
 }

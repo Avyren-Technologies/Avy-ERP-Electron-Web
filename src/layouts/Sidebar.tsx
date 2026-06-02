@@ -421,7 +421,7 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
                 'relative flex flex-col h-screen border-r border-neutral-200 dark:border-neutral-800',
                 'bg-white dark:bg-neutral-900',
                 'transition-all duration-300 ease-in-out z-20 flex-shrink-0',
-                collapsed ? 'w-[72px]' : 'w-[260px]'
+                collapsed ? 'w-[72px]' : 'w-[240px]'
             )}
         >
             {/* ---- Brand ---- */}

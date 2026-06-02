@@ -40,6 +40,11 @@ async function reviewExceptions(id: string): Promise<ApiResponse<any>> {
     return response.data;
 }
 
+async function resolveException(runId: string, exceptionIndex: number, action: 'RESOLVE' | 'SKIP', note?: string): Promise<ApiResponse<any>> {
+    const response = await client.patch(`/hr/payroll-runs/${runId}/exceptions/${exceptionIndex}/resolve`, { action, note });
+    return response.data;
+}
+
 async function computeSalaries(id: string): Promise<ApiResponse<any>> {
     const response = await client.patch(`/hr/payroll-runs/${id}/compute`);
     return response.data;
@@ -303,8 +308,28 @@ async function getStatutorySummary(runId: string): Promise<ApiResponse<any>> {
     return response.data;
 }
 
+async function getStatutoryFiles(runId: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/payroll-runs/${runId}/statutory-files`);
+    return response.data;
+}
+
+async function getDisbursementBreakdown(runId: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/payroll-runs/${runId}/disbursement-breakdown`);
+    return response.data;
+}
+
 async function getApprovalSummary(runId: string): Promise<ApiResponse<any>> {
     const response = await client.get(`/hr/payroll-runs/${runId}/approval-summary`);
+    return response.data;
+}
+
+async function saveApprovalNotes(runId: string, approvalNotes: string): Promise<ApiResponse<any>> {
+    const response = await client.patch(`/hr/payroll-runs/${runId}/approval-notes`, { approvalNotes });
+    return response.data;
+}
+
+async function archiveRun(runId: string, payload?: Record<string, unknown>): Promise<ApiResponse<any>> {
+    const response = await client.post(`/hr/payroll-runs/${runId}/archive`, payload ?? {});
     return response.data;
 }
 
@@ -322,6 +347,7 @@ export const payrollRunApi = {
     // 6-step wizard
     lockAttendance,
     reviewExceptions,
+    resolveException,
     computeSalaries,
     computeStatutory,
     approveRun,
@@ -331,6 +357,10 @@ export const payrollRunApi = {
     getAttendanceSummary,
     getAttendanceDetail,
     getComputeSummary,
+    getStatutoryFiles,
+    getDisbursementBreakdown,
+    saveApprovalNotes,
+    archiveRun,
     getStatutorySummary,
     getApprovalSummary,
     resetToCompute,

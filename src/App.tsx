@@ -127,6 +127,7 @@ const PayrollRunScreen = lazyNamed(() => import("./features/company-admin/hr/Pay
 const PayrollRunWizardScreen = lazyNamed(() => import("./features/company-admin/hr/PayrollRunWizardScreen"), "PayrollRunWizardScreen");
 const PhaseAConfigScreen = lazyNamed(() => import("./features/company-admin/hr/PhaseAConfigScreen"), "PhaseAConfigScreen");
 const PhaseBPreRunScreen = lazyNamed(() => import("./features/company-admin/hr/PhaseBPreRunScreen"), "PhaseBPreRunScreen");
+const PhaseDPostRunScreen = lazyNamed(() => import("./features/company-admin/hr/PhaseDPostRunScreen"), "PhaseDPostRunScreen");
 const PayslipScreen = lazyNamed(() => import("./features/company-admin/hr/PayslipScreen"), "PayslipScreen");
 const SalaryHoldScreen = lazyNamed(() => import("./features/company-admin/hr/SalaryHoldScreen"), "SalaryHoldScreen");
 const SalaryRevisionScreen = lazyNamed(() => import("./features/company-admin/hr/SalaryRevisionScreen"), "SalaryRevisionScreen");
@@ -571,6 +572,7 @@ function App() {
         {/* Company-admin Payroll Operations routes */}
         <Route path="company/hr/payroll-runs" element={<RequirePermission permission="hr.payroll-ops:read"><PayrollRunScreen /></RequirePermission>} />
         <Route path="company/hr/payroll-runs/:runId/wizard" element={<RequirePermission permission="hr.payroll-ops:read"><PayrollRunWizardScreen /></RequirePermission>} />
+        <Route path="company/hr/payroll-post-run" element={<RequirePermission permission="hr.payroll-ops:read"><PhaseDPostRunScreen /></RequirePermission>} />
         <Route path="company/hr/payslips" element={<RequirePermission permission="hr.payroll-ops:read"><PayslipScreen /></RequirePermission>} />
         <Route path="company/hr/salary-holds" element={<RequirePermission permission="hr.payroll-ops:read"><SalaryHoldScreen /></RequirePermission>} />
         <Route path="company/hr/salary-revisions" element={<RequirePermission permission="hr.payroll-ops:read"><SalaryRevisionScreen /></RequirePermission>} />

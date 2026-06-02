@@ -54,6 +54,8 @@ export const payrollRunKeys = {
               : [...payrollRunKeys.all, 'attendance-detail', runId] as const,
     computeSummary: (runId: string) => [...payrollRunKeys.all, 'compute-summary', runId] as const,
     statutorySummary: (runId: string) => [...payrollRunKeys.all, 'statutory-summary', runId] as const,
+    statutoryFiles: (runId: string) => [...payrollRunKeys.all, 'statutory-files', runId] as const,
+    disbursementBreakdown: (runId: string) => [...payrollRunKeys.all, 'disbursement-breakdown', runId] as const,
     approvalSummary: (runId: string) => [...payrollRunKeys.all, 'approval-summary', runId] as const,
 
     // Payroll Reports
@@ -271,6 +273,28 @@ export function useStatutorySummary(runId: string) {
         queryKey: payrollRunKeys.statutorySummary(runId),
         queryFn: () => payrollRunApi.getStatutorySummary(runId),
         enabled: !!runId,
+        staleTime: 0,
+        refetchOnMount: true,
+    });
+}
+
+export function useStatutoryFiles(runId: string) {
+    return useQuery({
+        queryKey: payrollRunKeys.statutoryFiles(runId),
+        queryFn: () => payrollRunApi.getStatutoryFiles(runId),
+        enabled: !!runId,
+        staleTime: 0,
+        refetchOnMount: true,
+    });
+}
+
+export function useDisbursementBreakdown(runId: string) {
+    return useQuery({
+        queryKey: payrollRunKeys.disbursementBreakdown(runId),
+        queryFn: () => payrollRunApi.getDisbursementBreakdown(runId),
+        enabled: !!runId,
+        staleTime: 0,
+        refetchOnMount: true,
     });
 }
 
@@ -279,5 +303,7 @@ export function useApprovalSummary(runId: string) {
         queryKey: payrollRunKeys.approvalSummary(runId),
         queryFn: () => payrollRunApi.getApprovalSummary(runId),
         enabled: !!runId,
+        staleTime: 0,
+        refetchOnMount: true,
     });
 }
