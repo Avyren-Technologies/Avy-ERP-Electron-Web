@@ -14,12 +14,12 @@ import {
     ChevronRight,
     Check,
     Trash2,
+    ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
     usePayrollRuns,
     usePayrollRun,
-    usePayrollEntries,
 } from "@/features/company-admin/api/use-payroll-run-queries";
 import {
     useCreatePayrollRun,
@@ -30,11 +30,17 @@ import {
     useComputeStatutory,
     useApproveRun,
     useDisburseRun,
-    useOverridePayrollEntry,
 } from "@/features/company-admin/api/use-payroll-run-mutations";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
+import { Step1AttendanceValidation } from "@/features/company-admin/hr/Step1AttendanceValidation";
+import { Step2PayrollExceptions } from "@/features/company-admin/hr/Step2PayrollExceptions";
+import { Step3PayrollComputation } from "@/features/company-admin/hr/Step3PayrollComputation";
+import { Step4StatutoryCompliance } from "@/features/company-admin/hr/Step4StatutoryCompliance";
+import { Step5PayrollApproval } from "@/features/company-admin/hr/Step5PayrollApproval";
+import { Step6Disbursement } from "@/features/company-admin/hr/Step6Disbursement";
+import { Step7PostPayroll } from "@/features/company-admin/hr/Step7PostPayroll";
 
 /* ── Helpers ── */
 
@@ -52,9 +58,10 @@ const STEP_LABELS = [
     "Statutory",
     "Approve",
     "Disburse",
+    "Post-Payroll",
 ];
 
-const STEP_ICONS = [Lock, AlertTriangle, Calculator, Building2, CheckCircle2, Banknote];
+const STEP_ICONS = [Lock, AlertTriangle, Calculator, Building2, CheckCircle2, Banknote, ClipboardList];
 
 const STATUS_STEP_MAP: Record<string, number> = {
     draft: 0,
@@ -193,7 +200,6 @@ export function PayrollRunScreen() {
 
     const runsQuery = usePayrollRuns();
     const runDetailQuery = usePayrollRun(selectedRunId ?? "");
-    const entriesQuery = usePayrollEntries(selectedRunId ?? "");
 
     const createMutation = useCreatePayrollRun();
     const deleteMutation = useDeletePayrollRun();
@@ -203,12 +209,9 @@ export function PayrollRunScreen() {
     const statutoryMutation = useComputeStatutory();
     const approveMutation = useApproveRun();
     const disburseMutation = useDisburseRun();
-    const overrideMutation = useOverridePayrollEntry();
 
     const runs: any[] = runsQuery.data?.data ?? [];
     const runDetail: any = runDetailQuery.data?.data ?? null;
-    const entries: any[] = entriesQuery.data?.data ?? [];
-    const exceptions = entries.filter((e: any) => e.isException);
 
     const completedStep = STATUS_STEP_MAP[runDetail?.status?.toLowerCase()] ?? 0;
 
@@ -236,7 +239,7 @@ export function PayrollRunScreen() {
     const selectRun = (run: any) => {
         setSelectedRunId(run.id);
         const step = STATUS_STEP_MAP[run.status?.toLowerCase()] ?? 0;
-        setWizardStep(Math.min(step, 5));
+        setWizardStep(Math.min(step, 6));
     };
 
     const handleStepAction = (step: number) => {
@@ -250,7 +253,7 @@ export function PayrollRunScreen() {
             },
             1: {
                 title: "Mark Exceptions Reviewed",
-                message: `${exceptions.length} exception(s) found. Confirm that all exceptions have been reviewed.`,
+                message: `Confirm that all exceptions have been reviewed before proceeding.`,
                 label: "Mark Reviewed",
                 action: async () => { await reviewMutation.mutateAsync(selectedRunId); showSuccess("Exceptions Reviewed", "All exceptions have been marked as reviewed."); setWizardStep(2); },
             },
@@ -325,7 +328,7 @@ export function PayrollRunScreen() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Payroll Runs</h1>
-                    <p className="text-neutral-500 dark:text-neutral-400 mt-1">Process payroll through a 6-step guided wizard</p>
+                    <p className="text-neutral-500 dark:text-neutral-400 mt-1">Process payroll through a 7-step guided wizard</p>
                 </div>
                 <button
                     onClick={() => setNewRunModal(true)}
@@ -431,299 +434,13 @@ export function PayrollRunScreen() {
 
                             {/* Step Content */}
                             <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm p-6">
-                                {/* Step 0: Lock Attendance */}
-                                {wizardStep === 0 && (
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-3 mb-4">
-                                            <div className="w-10 h-10 rounded-xl bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center">
-                                                <Lock size={20} className="text-primary-600 dark:text-primary-400" />
-                                            </div>
-                                            <div>
-                                                <h3 className="font-bold text-primary-950 dark:text-white">Step 1: Lock Attendance</h3>
-                                                <p className="text-xs text-neutral-500 dark:text-neutral-400">Review attendance summary and lock for payroll processing</p>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                            {[
-                                                { label: "Total Employees", value: runDetail?.employeeCount ?? 0 },
-                                                { label: "Present Days (Avg)", value: runDetail?.avgPresentDays ?? 0 },
-                                                { label: "Leave Days (Avg)", value: runDetail?.avgLeaveDays ?? 0 },
-                                                { label: "Exceptions", value: runDetail?.exceptionCount ?? 0 },
-                                            ].map((item) => (
-                                                <div key={item.label} className="rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 bg-neutral-50/50 dark:bg-neutral-800/30">
-                                                    <span className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">{item.label}</span>
-                                                    <p className="text-2xl font-extrabold text-primary-950 dark:text-white mt-1">{item.value}</p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                        {completedStep === 0 && (
-                                            <button onClick={() => handleStepAction(0)} disabled={anyMutating} className="mt-4 inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-50">
-                                                <Lock size={16} />
-                                                Lock Attendance
-                                            </button>
-                                        )}
-                                        {completedStep > 0 && (
-                                            <div className="flex items-center gap-2 mt-4 text-success-600 dark:text-success-400">
-                                                <Check size={16} />
-                                                <span className="text-sm font-bold">Attendance locked</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* Step 1: Review Exceptions */}
-                                {wizardStep === 1 && (
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-3 mb-4">
-                                            <div className="w-10 h-10 rounded-xl bg-warning-50 dark:bg-warning-900/20 flex items-center justify-center">
-                                                <AlertTriangle size={20} className="text-warning-600 dark:text-warning-400" />
-                                            </div>
-                                            <div>
-                                                <h3 className="font-bold text-primary-950 dark:text-white">Step 2: Review Exceptions</h3>
-                                                <p className="text-xs text-neutral-500 dark:text-neutral-400">Review and resolve attendance exceptions before computing salaries</p>
-                                            </div>
-                                        </div>
-                                        {entriesQuery.isLoading ? (
-                                            <SkeletonTable rows={5} cols={5} />
-                                        ) : exceptions.length === 0 ? (
-                                            <div className="bg-success-50/50 dark:bg-success-900/10 rounded-xl p-6 border border-success-100 dark:border-success-800/50 text-center">
-                                                <Check size={24} className="text-success-600 dark:text-success-400 mx-auto mb-2" />
-                                                <p className="font-bold text-success-700 dark:text-success-400">No exceptions found</p>
-                                                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">All attendance records are clean</p>
-                                            </div>
-                                        ) : (
-                                            <div className="overflow-x-auto">
-                                                <table className="w-full text-left border-collapse min-w-[700px]">
-                                                    <thead>
-                                                        <tr className="bg-neutral-50/50 dark:bg-neutral-800/30 border-b border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">
-                                                            <th className="py-3 px-4 font-bold">Employee</th>
-                                                            <th className="py-3 px-4 font-bold">Exception</th>
-                                                            <th className="py-3 px-4 font-bold">Days Affected</th>
-                                                            <th className="py-3 px-4 font-bold text-center">Status</th>
-                                                            <th className="py-3 px-4 font-bold text-right">Action</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="text-sm">
-                                                        {exceptions.map((exc: any) => (
-                                                            <tr key={exc.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
-                                                                <td className="py-3 px-4 font-bold text-primary-950 dark:text-white">{exc.employeeName ?? exc.employeeId}</td>
-                                                                <td className="py-3 px-4 text-neutral-600 dark:text-neutral-400">{exc.exceptionType ?? "Mismatch"}</td>
-                                                                <td className="py-3 px-4 text-neutral-600 dark:text-neutral-400">{exc.daysAffected ?? 1}</td>
-                                                                <td className="py-3 px-4 text-center">
-                                                                    <span className={cn(
-                                                                        "text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize",
-                                                                        exc.resolved
-                                                                            ? "bg-success-50 text-success-700 border-success-200 dark:bg-success-900/20 dark:text-success-400 dark:border-success-800/50"
-                                                                            : "bg-warning-50 text-warning-700 border-warning-200 dark:bg-warning-900/20 dark:text-warning-400 dark:border-warning-800/50"
-                                                                    )}>
-                                                                        {exc.resolved ? "Resolved" : "Pending"}
-                                                                    </span>
-                                                                </td>
-                                                                <td className="py-3 px-4 text-right">
-                                                                    <button
-                                                                        onClick={async () => {
-                                                                            try {
-                                                                                await overrideMutation.mutateAsync({ runId: selectedRunId!, entryId: exc.id, data: { action: "accept" } });
-                                                                                showSuccess("Exception Resolved", "Exception has been accepted.");
-                                                                            } catch (err) { showApiError(err); }
-                                                                        }}
-                                                                        disabled={exc.resolved || overrideMutation.isPending}
-                                                                        className="px-3 py-1.5 rounded-lg bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400 text-xs font-bold hover:bg-primary-100 dark:hover:bg-primary-900/40 transition-colors disabled:opacity-50"
-                                                                    >
-                                                                        Accept
-                                                                    </button>
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        )}
-                                        {completedStep === 1 && (
-                                            <button onClick={() => handleStepAction(1)} disabled={anyMutating} className="mt-4 inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-50">
-                                                <CheckCircle2 size={16} />
-                                                Mark All Reviewed
-                                            </button>
-                                        )}
-                                        {completedStep > 1 && (
-                                            <div className="flex items-center gap-2 mt-4 text-success-600 dark:text-success-400">
-                                                <Check size={16} />
-                                                <span className="text-sm font-bold">Exceptions reviewed</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* Step 2: Compute Salaries */}
-                                {wizardStep === 2 && (
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-3 mb-4">
-                                            <div className="w-10 h-10 rounded-xl bg-accent-50 dark:bg-accent-900/20 flex items-center justify-center">
-                                                <Calculator size={20} className="text-accent-600 dark:text-accent-400" />
-                                            </div>
-                                            <div>
-                                                <h3 className="font-bold text-primary-950 dark:text-white">Step 3: Compute Salaries</h3>
-                                                <p className="text-xs text-neutral-500 dark:text-neutral-400">Calculate gross pay, deductions, and net pay for all employees</p>
-                                            </div>
-                                        </div>
-                                        {completedStep >= 3 && (
-                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                {[
-                                                    { label: "Total Gross", value: formatCurrency(runDetail?.totalGross ?? 0) },
-                                                    { label: "Total Deductions", value: formatCurrency(runDetail?.totalDeductions ?? 0) },
-                                                    { label: "Total Net Pay", value: formatCurrency(runDetail?.totalNet ?? runDetail?.totalNetPay ?? 0) },
-                                                    { label: "Variance", value: `${runDetail?.variancePercent ?? 0}%` },
-                                                ].map((item) => (
-                                                    <div key={item.label} className="rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 bg-neutral-50/50 dark:bg-neutral-800/30">
-                                                        <span className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">{item.label}</span>
-                                                        <p className="text-xl font-extrabold text-primary-950 dark:text-white mt-1 font-mono">{item.value}</p>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                        {runDetail?.variancePercent > 10 && completedStep >= 3 && (
-                                            <div className="bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800/50 rounded-xl p-4 flex items-start gap-3">
-                                                <AlertTriangle size={18} className="text-warning-600 dark:text-warning-400 mt-0.5 flex-shrink-0" />
-                                                <div>
-                                                    <p className="text-sm font-bold text-warning-700 dark:text-warning-400">High Variance Warning</p>
-                                                    <p className="text-xs text-warning-600 dark:text-warning-400/80 mt-0.5">Payroll variance exceeds 10% compared to last month. Please review before proceeding.</p>
-                                                </div>
-                                            </div>
-                                        )}
-                                        {completedStep === 2 && (
-                                            <button onClick={() => handleStepAction(2)} disabled={anyMutating} className="mt-4 inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-50">
-                                                {computeMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Calculator size={16} />}
-                                                Compute Salaries
-                                            </button>
-                                        )}
-                                        {completedStep > 2 && (
-                                            <div className="flex items-center gap-2 mt-4 text-success-600 dark:text-success-400">
-                                                <Check size={16} />
-                                                <span className="text-sm font-bold">Salaries computed</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* Step 3: Statutory */}
-                                {wizardStep === 3 && (
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-3 mb-4">
-                                            <div className="w-10 h-10 rounded-xl bg-info-50 dark:bg-info-900/20 flex items-center justify-center">
-                                                <Building2 size={20} className="text-info-600 dark:text-info-400" />
-                                            </div>
-                                            <div>
-                                                <h3 className="font-bold text-primary-950 dark:text-white">Step 4: Statutory Deductions</h3>
-                                                <p className="text-xs text-neutral-500 dark:text-neutral-400">Calculate PF, ESI, PT, TDS, and LWF contributions</p>
-                                            </div>
-                                        </div>
-                                        {completedStep >= 4 && (
-                                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                                                {[
-                                                    { label: "PF", value: runDetail?.statutory?.pf ?? 0 },
-                                                    { label: "ESI", value: runDetail?.statutory?.esi ?? 0 },
-                                                    { label: "PT", value: runDetail?.statutory?.pt ?? 0 },
-                                                    { label: "TDS", value: runDetail?.statutory?.tds ?? 0 },
-                                                    { label: "LWF", value: runDetail?.statutory?.lwf ?? 0 },
-                                                ].map((item) => (
-                                                    <div key={item.label} className="rounded-xl border border-neutral-200 dark:border-neutral-700 p-4 bg-neutral-50/50 dark:bg-neutral-800/30 text-center">
-                                                        <span className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">{item.label}</span>
-                                                        <p className="text-lg font-extrabold text-primary-950 dark:text-white mt-1 font-mono">{formatCurrency(item.value)}</p>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                        {completedStep === 3 && (
-                                            <button onClick={() => handleStepAction(3)} disabled={anyMutating} className="mt-4 inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-50">
-                                                {statutoryMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Building2 size={16} />}
-                                                Compute Statutory
-                                            </button>
-                                        )}
-                                        {completedStep > 3 && (
-                                            <div className="flex items-center gap-2 mt-4 text-success-600 dark:text-success-400">
-                                                <Check size={16} />
-                                                <span className="text-sm font-bold">Statutory deductions computed</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* Step 4: Approve */}
-                                {wizardStep === 4 && (
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-3 mb-4">
-                                            <div className="w-10 h-10 rounded-xl bg-success-50 dark:bg-success-900/20 flex items-center justify-center">
-                                                <CheckCircle2 size={20} className="text-success-600 dark:text-success-400" />
-                                            </div>
-                                            <div>
-                                                <h3 className="font-bold text-primary-950 dark:text-white">Step 5: Approve Payroll</h3>
-                                                <p className="text-xs text-neutral-500 dark:text-neutral-400">Review final summary and approve the payroll run</p>
-                                            </div>
-                                        </div>
-                                        <div className="bg-neutral-50 dark:bg-neutral-800/30 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5">
-                                            <h4 className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">Final Summary</h4>
-                                            <div className="space-y-2.5">
-                                                {[
-                                                    { label: "Employees", value: String(runDetail?.employeeCount ?? 0) },
-                                                    { label: "Total Gross Pay", value: formatCurrency(runDetail?.totalGross ?? 0) },
-                                                    { label: "Total Deductions", value: formatCurrency(runDetail?.totalDeductions ?? 0) },
-                                                    { label: "Total Statutory", value: formatCurrency((runDetail?.statutory?.pf ?? 0) + (runDetail?.statutory?.esi ?? 0) + (runDetail?.statutory?.pt ?? 0) + (runDetail?.statutory?.tds ?? 0) + (runDetail?.statutory?.lwf ?? 0)) },
-                                                    { label: "Total Net Pay", value: formatCurrency(runDetail?.totalNet ?? runDetail?.totalNetPay ?? 0) },
-                                                ].map((item) => (
-                                                    <div key={item.label} className="flex items-center justify-between py-1.5">
-                                                        <span className="text-sm text-neutral-600 dark:text-neutral-400">{item.label}</span>
-                                                        <span className="text-sm font-bold font-mono text-primary-950 dark:text-white">{item.value}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        {completedStep === 4 && (
-                                            <button onClick={() => handleStepAction(4)} disabled={anyMutating} className="mt-4 inline-flex items-center gap-2 bg-success-600 hover:bg-success-700 text-white px-6 py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-50">
-                                                <CheckCircle2 size={16} />
-                                                Approve Payroll Run
-                                            </button>
-                                        )}
-                                        {completedStep > 4 && (
-                                            <div className="flex items-center gap-2 mt-4 text-success-600 dark:text-success-400">
-                                                <Check size={16} />
-                                                <span className="text-sm font-bold">Payroll approved</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* Step 5: Disburse */}
-                                {wizardStep === 5 && (
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-3 mb-4">
-                                            <div className="w-10 h-10 rounded-xl bg-success-50 dark:bg-success-900/20 flex items-center justify-center">
-                                                <Banknote size={20} className="text-success-600 dark:text-success-400" />
-                                            </div>
-                                            <div>
-                                                <h3 className="font-bold text-primary-950 dark:text-white">Step 6: Disburse & Generate Payslips</h3>
-                                                <p className="text-xs text-neutral-500 dark:text-neutral-400">Disburse salaries and generate employee payslips</p>
-                                            </div>
-                                        </div>
-                                        <div className="bg-success-50/50 dark:bg-success-900/10 rounded-xl border border-success-100 dark:border-success-800/50 p-5">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-sm font-bold text-success-700 dark:text-success-400">Total Disbursement Amount</span>
-                                                <span className="text-2xl font-extrabold font-mono text-success-700 dark:text-success-400">{formatCurrency(runDetail?.totalNet ?? runDetail?.totalNetPay ?? 0)}</span>
-                                            </div>
-                                        </div>
-                                        {completedStep === 5 && (
-                                            <button onClick={() => handleStepAction(5)} disabled={anyMutating} className="mt-4 inline-flex items-center gap-2 bg-success-600 hover:bg-success-700 text-white px-6 py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-50">
-                                                <Banknote size={16} />
-                                                Disburse & Generate Payslips
-                                            </button>
-                                        )}
-                                        {completedStep > 5 && (
-                                            <div className="flex items-center gap-2 mt-4 text-success-600 dark:text-success-400">
-                                                <Check size={16} />
-                                                <span className="text-sm font-bold">Payroll disbursed and payslips generated</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
+                                {wizardStep === 0 && <Step1AttendanceValidation runId={selectedRunId!} runDetail={runDetail} completedStep={completedStep} onStepAction={() => handleStepAction(0)} anyMutating={anyMutating} />}
+                                {wizardStep === 1 && <Step2PayrollExceptions runId={selectedRunId!} runDetail={runDetail} completedStep={completedStep} onStepAction={() => handleStepAction(1)} anyMutating={anyMutating} />}
+                                {wizardStep === 2 && <Step3PayrollComputation runId={selectedRunId!} runDetail={runDetail} completedStep={completedStep} onStepAction={() => handleStepAction(2)} anyMutating={anyMutating} />}
+                                {wizardStep === 3 && <Step4StatutoryCompliance runId={selectedRunId!} runDetail={runDetail} completedStep={completedStep} onStepAction={() => handleStepAction(3)} anyMutating={anyMutating} />}
+                                {wizardStep === 4 && <Step5PayrollApproval runId={selectedRunId!} runDetail={runDetail} completedStep={completedStep} onStepAction={() => handleStepAction(4)} anyMutating={anyMutating} />}
+                                {wizardStep === 5 && <Step6Disbursement runId={selectedRunId!} runDetail={runDetail} completedStep={completedStep} onStepAction={() => handleStepAction(5)} anyMutating={anyMutating} />}
+                                {wizardStep === 6 && <Step7PostPayroll runId={selectedRunId!} runDetail={runDetail} completedStep={completedStep} onStepAction={() => {}} anyMutating={false} />}
 
                                 {/* Step Navigation */}
                                 <div className="flex items-center justify-between mt-6 pt-4 border-t border-neutral-100 dark:border-neutral-800">
@@ -747,8 +464,8 @@ export function PayrollRunScreen() {
                                         ))}
                                     </div>
                                     <button
-                                        onClick={() => setWizardStep(Math.min(5, wizardStep + 1))}
-                                        disabled={wizardStep >= completedStep || wizardStep === 5}
+                                        onClick={() => setWizardStep(Math.min(6, wizardStep + 1))}
+                                        disabled={wizardStep >= completedStep || wizardStep === 6}
                                         className="px-4 py-2 rounded-xl text-sm font-bold text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors disabled:opacity-30"
                                     >
                                         Next

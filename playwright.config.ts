@@ -94,6 +94,24 @@ export default defineConfig({
       },
     },
 
+    /* ── Payroll module — API only ── */
+    {
+      name: 'payroll:api',
+      testMatch: /modules\/payroll\/tests\/api\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+
+    /* ── Payroll module — UI tests ── */
+    {
+      name: 'payroll',
+      testMatch: /modules\/payroll\/tests\/(?!api\.).*\.spec\.ts/,
+      dependencies: ['auth-setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'e2e/.auth/company-admin.json',
+      },
+    },
+
     /* ──────────────────────────────────────────────────────────
      * ADD NEW MODULES HERE — copy the maintenance pattern:
      *

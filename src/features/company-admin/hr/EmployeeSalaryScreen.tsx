@@ -81,7 +81,9 @@ const EMPTY_SALARY = {
 
 export function EmployeeSalaryScreen() {
     const fmt = useCompanyFormatter();
-    const { data, isLoading, isError } = useEmployeeSalaries();
+    const [page, setPage] = useState(1);
+    const limit = 25;
+    const { data, isLoading, isError } = useEmployeeSalaries({ page, limit });
     const structuresQuery = useSalaryStructures();
     const employeesQuery = useEmployees();
     const componentsQuery = useSalaryComponents();
@@ -101,6 +103,8 @@ export function EmployeeSalaryScreen() {
     const [form, setForm] = useState({ ...EMPTY_SALARY });
 
     const salaries: any[] = data?.data ?? [];
+    const meta = (data as { meta?: { page: number; limit: number; total: number; totalPages: number } })?.meta;
+    const total = meta?.total ?? salaries.length;
     const structures: any[] = structuresQuery.data?.data ?? [];
     const employees: any[] = employeesQuery.data?.data ?? [];
     const salaryComponents: any[] = componentsQuery.data?.data ?? [];
@@ -269,7 +273,11 @@ export function EmployeeSalaryScreen() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Employee Salary</h1>
-                    <p className="text-neutral-500 dark:text-neutral-400 mt-1">Assign and manage salary structures for employees</p>
+                    <p className="text-neutral-500 dark:text-neutral-400 mt-1">
+                        {total > 0
+                            ? `${total} assignment${total !== 1 ? "s" : ""} — assign and manage salary structures for employees`
+                            : "Assign and manage salary structures for employees"}
+                    </p>
                 </div>
                 <button onClick={openCreate} className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none">
                     <Plus className="w-5 h-5" />
@@ -281,7 +289,7 @@ export function EmployeeSalaryScreen() {
             <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm">
                 <div className="relative max-w-md w-full">
                     <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400 dark:text-neutral-500" />
-                    <input type="text" placeholder="Search by employee name, ID, or structure..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-11 pr-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
+                    <input type="text" placeholder="Search by employee name, ID, or structure..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="w-full pl-11 pr-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
                 </div>
             </div>
 
@@ -338,6 +346,33 @@ export function EmployeeSalaryScreen() {
                                 )}
                             </tbody>
                         </table>
+                    </div>
+                )}
+
+                {/* Pagination */}
+                {!isLoading && total > 0 && (
+                    <div className="px-6 py-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between text-sm text-neutral-500 dark:text-neutral-400 bg-neutral-50/50 dark:bg-neutral-900/50">
+                        <span className="font-medium">
+                            Showing {(page - 1) * limit + 1} to {Math.min(page * limit, total)} of {total} entries
+                        </span>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                className="px-3 py-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg font-medium hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors disabled:opacity-50"
+                                disabled={page <= 1}
+                            >
+                                Previous
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setPage((p) => p + 1)}
+                                className="px-3 py-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg font-medium hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors disabled:opacity-50"
+                                disabled={!meta || page >= (meta.totalPages ?? 1)}
+                            >
+                                Next
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>

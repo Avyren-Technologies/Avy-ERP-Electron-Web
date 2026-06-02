@@ -44,6 +44,12 @@ export const payrollRunKeys = {
     statutoryDashboard: () =>
         [...payrollRunKeys.all, 'statutory-dashboard'] as const,
 
+    // Summary endpoints
+    attendanceSummary: (runId: string) => [...payrollRunKeys.all, 'attendance-summary', runId] as const,
+    computeSummary: (runId: string) => [...payrollRunKeys.all, 'compute-summary', runId] as const,
+    statutorySummary: (runId: string) => [...payrollRunKeys.all, 'statutory-summary', runId] as const,
+    approvalSummary: (runId: string) => [...payrollRunKeys.all, 'approval-summary', runId] as const,
+
     // Payroll Reports
     salaryRegister: (params?: Record<string, unknown>) =>
         [...payrollRunKeys.all, 'salary-register', params] as const,
@@ -211,5 +217,41 @@ export function useVarianceReport(params?: Record<string, unknown>) {
         queryKey: payrollRunKeys.varianceReport(params),
         queryFn: () => payrollRunApi.getVarianceReport(params as any),
         enabled: !!params?.month && !!params?.year,
+    });
+}
+
+// ── Summary Queries ──
+
+export function useAttendanceSummary(runId: string) {
+    return useQuery({
+        queryKey: payrollRunKeys.attendanceSummary(runId),
+        queryFn: () => payrollRunApi.getAttendanceSummary(runId),
+        enabled: !!runId,
+        staleTime: 0,
+        refetchOnMount: true,
+    });
+}
+
+export function useComputeSummary(runId: string) {
+    return useQuery({
+        queryKey: payrollRunKeys.computeSummary(runId),
+        queryFn: () => payrollRunApi.getComputeSummary(runId),
+        enabled: !!runId,
+    });
+}
+
+export function useStatutorySummary(runId: string) {
+    return useQuery({
+        queryKey: payrollRunKeys.statutorySummary(runId),
+        queryFn: () => payrollRunApi.getStatutorySummary(runId),
+        enabled: !!runId,
+    });
+}
+
+export function useApprovalSummary(runId: string) {
+    return useQuery({
+        queryKey: payrollRunKeys.approvalSummary(runId),
+        queryFn: () => payrollRunApi.getApprovalSummary(runId),
+        enabled: !!runId,
     });
 }

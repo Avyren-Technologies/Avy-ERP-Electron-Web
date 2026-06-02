@@ -276,6 +276,33 @@ async function bulkEmailForm16(data: { financialYear: string }): Promise<ApiResp
     return response.data;
 }
 
+// ── Summary Endpoints ──
+
+async function getAttendanceSummary(runId: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/payroll-runs/${runId}/attendance-summary`);
+    return response.data;
+}
+
+async function getComputeSummary(runId: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/payroll-runs/${runId}/compute-summary`);
+    return response.data;
+}
+
+async function getStatutorySummary(runId: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/payroll-runs/${runId}/statutory-summary`);
+    return response.data;
+}
+
+async function getApprovalSummary(runId: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/payroll-runs/${runId}/approval-summary`);
+    return response.data;
+}
+
+async function resetToCompute(runId: string): Promise<ApiResponse<any>> {
+    const response = await client.patch(`/hr/payroll-runs/${runId}/reset-compute`);
+    return response.data;
+}
+
 export const payrollRunApi = {
     // Payroll Runs
     listPayrollRuns,
@@ -289,6 +316,12 @@ export const payrollRunApi = {
     computeStatutory,
     approveRun,
     disburseRun,
+    // Summary endpoints
+    getAttendanceSummary,
+    getComputeSummary,
+    getStatutorySummary,
+    getApprovalSummary,
+    resetToCompute,
     // Payroll Entries
     listPayrollEntries,
     getPayrollEntry,
