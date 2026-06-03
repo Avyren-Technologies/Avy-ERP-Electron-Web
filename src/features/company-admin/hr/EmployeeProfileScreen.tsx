@@ -63,12 +63,15 @@ import type { EmployeeStatus } from "@/lib/api/hr";
 
 /* ── Form Atoms ── */
 
-function FormField({ label, value, onChange, placeholder, type = "text", disabled = false, mono = false }: {
-    label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; disabled?: boolean; mono?: boolean;
+function FormField({ label, value, onChange, placeholder, type = "text", disabled = false, mono = false, required = false }: {
+    label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; disabled?: boolean; mono?: boolean; required?: boolean;
 }) {
     return (
         <div>
-            <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">{label}</label>
+            <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
+                {label}
+                {required && <span className="text-danger-500 ml-0.5">*</span>}
+            </label>
             <input
                 type={type}
                 value={value}
@@ -85,15 +88,18 @@ function FormField({ label, value, onChange, placeholder, type = "text", disable
     );
 }
 
-function SelectField({ label, value, onChange, options, placeholder, disabled = false, createLink }: {
+function SelectField({ label, value, onChange, options, placeholder, disabled = false, createLink, required = false }: {
     label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; placeholder?: string; disabled?: boolean;
-    createLink?: { href: string; label: string };
+    createLink?: { href: string; label: string }; required?: boolean;
 }) {
     const navigate = useNavigate();
     return (
         <div>
             <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">{label}</label>
+                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                    {label}
+                    {required && <span className="text-danger-500 ml-0.5">*</span>}
+                </label>
                 {createLink && !disabled && (
                     <button
                         type="button"
@@ -393,6 +399,7 @@ export function EmployeeProfileScreen() {
         const emp: any = employeeQuery.data.data;
 
         setProfilePhotoUrl(emp.profilePhotoUrl ?? null);
+        setCreateUserAccount(!!emp.user);
 
         setPersonal({
             firstName: emp.firstName ?? "",
@@ -759,6 +766,71 @@ export function EmployeeProfileScreen() {
     const saving = createMutation.isPending || updateMutation.isPending || isPhotoUploading || isDocUploading;
 
     const handleSave = async () => {
+        // --- Frontend Validation ---
+        // Personal Tab Validation
+        if (!personal.firstName?.trim()) {
+            showApiError({ message: "First Name is required." });
+            setActiveTab("personal");
+            return;
+        }
+        if (!personal.lastName?.trim()) {
+            showApiError({ message: "Last Name is required." });
+            setActiveTab("personal");
+            return;
+        }
+        if (!personal.dob) {
+            showApiError({ message: "Date of Birth is required." });
+            setActiveTab("personal");
+            return;
+        }
+        if (!personal.gender) {
+            showApiError({ message: "Gender is required." });
+            setActiveTab("personal");
+            return;
+        }
+        if (!personal.personalMobile?.trim() || personal.personalMobile.length < 10) {
+            showApiError({ message: "Personal Mobile number is required and must be at least 10 digits." });
+            setActiveTab("personal");
+            return;
+        }
+        if (!personal.emergencyName?.trim()) {
+            showApiError({ message: "Emergency Contact Name is required." });
+            setActiveTab("personal");
+            return;
+        }
+        if (!personal.emergencyRelation?.trim()) {
+            showApiError({ message: "Emergency Contact Relation is required." });
+            setActiveTab("personal");
+            return;
+        }
+        if (!personal.emergencyMobile?.trim() || personal.emergencyMobile.length < 10) {
+            showApiError({ message: "Emergency Contact Mobile is required and must be at least 10 digits." });
+            setActiveTab("personal");
+            return;
+        }
+
+        // Professional Tab Validation
+        if (!professional.joiningDate) {
+            showApiError({ message: "Joining Date is required." });
+            setActiveTab("professional");
+            return;
+        }
+        if (!professional.employeeTypeId) {
+            showApiError({ message: "Employee Type is required." });
+            setActiveTab("professional");
+            return;
+        }
+        if (!professional.designationId) {
+            showApiError({ message: "Designation is required." });
+            setActiveTab("professional");
+            return;
+        }
+        if (!professional.departmentId) {
+            showApiError({ message: "Department is required." });
+            setActiveTab("professional");
+            return;
+        }
+
         // Map frontend field names to backend schema field names
         const payload: Record<string, any> = {
             // Personal
@@ -766,7 +838,7 @@ export function EmployeeProfileScreen() {
             lastName: personal.lastName,
             dateOfBirth: personal.dob,
             personalMobile: personal.personalMobile ? personal.personalMobileCountryCode + personal.personalMobile : "",
-            personalEmail: personal.personalEmail,
+            personalEmail: personal.personalEmail || "",
             emergencyContactName: personal.emergencyName,
             emergencyContactRelation: personal.emergencyRelation,
             emergencyContactMobile: personal.emergencyMobile ? personal.emergencyMobileCountryCode + personal.emergencyMobile : "",
@@ -778,69 +850,84 @@ export function EmployeeProfileScreen() {
         };
 
         // Profile photo
-        if (profilePhotoUrl !== undefined) payload.profilePhotoUrl = profilePhotoUrl;
+        if (profilePhotoUrl !== undefined) {
+            payload.profilePhotoUrl = profilePhotoUrl || null;
+        }
 
-        // Gender and marital status (already using backend enum values)
-        if (personal.gender) payload.gender = personal.gender;
+        // Gender and marital status
+        payload.gender = personal.gender;
         if (personal.maritalStatus) payload.maritalStatus = personal.maritalStatus;
 
         // Optional personal fields
-        if (personal.middleName) payload.middleName = personal.middleName;
-        if (personal.bloodGroup) payload.bloodGroup = personal.bloodGroup;
-        // Combine father/mother into fatherMotherName
-        const parentNames = [personal.fatherName, personal.motherName].filter(Boolean).join(" / ");
-        if (parentNames) payload.fatherMotherName = parentNames;
-        if (personal.nationality) payload.nationality = personal.nationality;
-        if (personal.religion) payload.religion = personal.religion;
-        if (personal.category) payload.category = personal.category;
-        if (personal.altMobile) payload.alternativeMobile = personal.altMobile;
-        if (personal.officialEmail) payload.officialEmail = personal.officialEmail;
+        payload.middleName = personal.middleName || "";
+        payload.bloodGroup = personal.bloodGroup || "";
+        payload.fatherMotherName = [personal.fatherName, personal.motherName].filter(Boolean).join(" / ") || "";
+        payload.nationality = personal.nationality || "Indian";
+        payload.religion = personal.religion || "";
+        payload.category = personal.category || "";
+        payload.alternativeMobile = personal.altMobile || "";
+        payload.officialEmail = personal.officialEmail || "";
 
         // Addresses
-        if (personal.currentAddress?.line1) payload.currentAddress = personal.currentAddress;
+        if (personal.currentAddress?.line1?.trim()) {
+            payload.currentAddress = {
+                line1: personal.currentAddress.line1,
+                line2: personal.currentAddress.line2 || "",
+                city: personal.currentAddress.city || "",
+                state: personal.currentAddress.state || "",
+                pin: personal.currentAddress.pin || "",
+                country: "India",
+            };
+        }
+
         if (personal.sameAsCurrent) {
-            payload.permanentAddress = personal.currentAddress;
-        } else if (personal.permanentAddress?.line1) {
-            payload.permanentAddress = personal.permanentAddress;
+            payload.permanentAddress = payload.currentAddress;
+        } else if (personal.permanentAddress?.line1?.trim()) {
+            payload.permanentAddress = {
+                line1: personal.permanentAddress.line1,
+                line2: personal.permanentAddress.line2 || "",
+                city: personal.permanentAddress.city || "",
+                state: personal.permanentAddress.state || "",
+                pin: personal.permanentAddress.pin || "",
+                country: "India",
+            };
         }
 
         // Optional professional fields
-        if (professional.gradeId) payload.gradeId = professional.gradeId;
-        if (professional.reportingManagerId) payload.reportingManagerId = professional.reportingManagerId;
-        if (professional.functionalManagerId) payload.functionalManagerId = professional.functionalManagerId;
-        if (professional.shiftId) payload.shiftId = professional.shiftId;
-        if (professional.costCentreId) payload.costCentreId = professional.costCentreId;
-        if (professional.locationId) payload.locationId = professional.locationId;
-        if (professional.geofenceId) payload.geofenceId = professional.geofenceId;
-        if (professional.noticePeriod) payload.noticePeriodDays = parseInt(professional.noticePeriod);
-
-        // Work type (already using backend enum values)
+        payload.gradeId = professional.gradeId || undefined;
+        payload.reportingManagerId = professional.reportingManagerId || undefined;
+        payload.functionalManagerId = professional.functionalManagerId || undefined;
+        payload.shiftId = professional.shiftId || undefined;
+        payload.costCentreId = professional.costCentreId || undefined;
+        payload.locationId = professional.locationId || undefined;
+        payload.geofenceId = professional.geofenceId || undefined;
+        payload.noticePeriodDays = professional.noticePeriod ? parseInt(professional.noticePeriod, 10) : undefined;
         if (professional.workType) payload.workType = professional.workType;
 
         // Salary
-        if (salary.annualCTC) payload.annualCtc = parseFloat(salary.annualCTC);
-        if (salary.paymentMode) payload.paymentMode = salary.paymentMode;
-        if (salary.salaryStructure) payload.salaryStructure = salary.salaryStructure;
-        if (salary.structureId) payload.salaryStructureId = salary.structureId;
+        payload.annualCtc = salary.annualCTC ? parseFloat(salary.annualCTC) : undefined;
+        payload.paymentMode = salary.paymentMode || undefined;
+        payload.salaryStructure = salary.salaryStructure || undefined;
+        payload.salaryStructureId = salary.structureId || undefined;
 
         // Bank
-        if (bank.accountNumber) payload.bankAccountNumber = bank.accountNumber;
-        if (bank.ifscCode) payload.bankIfscCode = bank.ifscCode;
-        if (bank.bankName) payload.bankName = bank.bankName;
-        if (bank.branchName) payload.bankBranch = bank.branchName;
-        if (bank.accountType) payload.accountType = bank.accountType;
+        payload.bankAccountNumber = bank.accountNumber || "";
+        payload.bankIfscCode = bank.ifscCode || "";
+        payload.bankName = bank.bankName || "";
+        payload.bankBranch = bank.branchName || "";
+        payload.accountType = bank.accountType || undefined;
 
         // Statutory documents
-        if (documents.pan) payload.panNumber = documents.pan;
-        if (documents.aadhaar) payload.aadhaarNumber = documents.aadhaar;
-        if (documents.uan) payload.uan = documents.uan;
-        if (documents.esiIp) payload.esiIpNumber = documents.esiIp;
-        if (documents.passport) payload.passportNumber = documents.passport;
-        if (documents.dl) payload.drivingLicence = documents.dl;
-        if (documents.voterId) payload.voterId = documents.voterId;
+        payload.panNumber = documents.pan || "";
+        payload.aadhaarNumber = documents.aadhaar || "";
+        payload.uan = documents.uan || "";
+        payload.esiIpNumber = documents.esiIp || "";
+        payload.passportNumber = documents.passport || "";
+        payload.drivingLicence = documents.dl || "";
+        payload.voterId = documents.voterId || "";
 
         // Probation end date
-        if (professional.probationEndDate) payload.probationEndDate = professional.probationEndDate;
+        payload.probationEndDate = professional.probationEndDate || null;
 
         // Initial status (for new employees)
         if (isNew && initialStatus) payload.initialStatus = initialStatus;
@@ -1117,11 +1204,11 @@ export function EmployeeProfileScreen() {
 
                             {/* Basic Info */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <FormField label="First Name" value={personal.firstName} onChange={(v) => updatePersonal("firstName", v)} placeholder="First name" disabled={!editing} />
+                                <FormField label="First Name" value={personal.firstName} onChange={(v) => updatePersonal("firstName", v)} placeholder="First name" disabled={!editing} required={editing} />
                                 <FormField label="Middle Name" value={personal.middleName} onChange={(v) => updatePersonal("middleName", v)} placeholder="Middle name" disabled={!editing} />
-                                <FormField label="Last Name" value={personal.lastName} onChange={(v) => updatePersonal("lastName", v)} placeholder="Last name" disabled={!editing} />
-                                <FormField label="Date of Birth" value={personal.dob} onChange={(v) => updatePersonal("dob", v)} type="date" disabled={!editing} />
-                                <SelectField label="Gender" value={personal.gender} onChange={(v) => updatePersonal("gender", v)} disabled={!editing} options={[
+                                <FormField label="Last Name" value={personal.lastName} onChange={(v) => updatePersonal("lastName", v)} placeholder="Last name" disabled={!editing} required={editing} />
+                                <FormField label="Date of Birth" value={personal.dob} onChange={(v) => updatePersonal("dob", v)} type="date" disabled={!editing} required={editing} />
+                                <SelectField label="Gender" value={personal.gender} onChange={(v) => updatePersonal("gender", v)} disabled={!editing} required={editing} options={[
                                     { value: "MALE", label: "Male" },
                                     { value: "FEMALE", label: "Female" },
                                     { value: "NON_BINARY", label: "Non-Binary" },
@@ -1157,10 +1244,11 @@ export function EmployeeProfileScreen() {
                                     onPhoneChange={(v) => updatePersonal("personalMobile", v)}
                                     placeholder="98765 43210"
                                     disabled={!editing}
+                                    required={editing}
                                 />
                                 <FormField label="Alternate Mobile" value={personal.altMobile} onChange={(v) => updatePersonal("altMobile", v)} placeholder="Alternate number" disabled={!editing} />
-                                <FormField label="Personal Email" value={personal.personalEmail} onChange={(v) => updatePersonal("personalEmail", v)} type="email" placeholder="personal@email.com" disabled={!editing} />
-                                <FormField label="Official Email" value={personal.officialEmail} onChange={(v) => updatePersonal("officialEmail", v)} type="email" placeholder="name@company.com" disabled={!editing} />
+                                <FormField label="Personal Email" value={personal.personalEmail} onChange={(v) => updatePersonal("personalEmail", v)} type="email" placeholder="personal@email.com" disabled={!editing} required={editing && createUserAccount} />
+                                <FormField label="Official Email" value={personal.officialEmail} onChange={(v) => updatePersonal("officialEmail", v)} type="email" placeholder="name@company.com" disabled={!editing} required={editing && createUserAccount} />
                             </div>
 
                             {/* Current Address */}
@@ -1220,8 +1308,8 @@ export function EmployeeProfileScreen() {
                             {/* Emergency Contact */}
                             <SectionTitle title="Emergency Contact" icon={AlertCircle} />
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <FormField label="Contact Name" value={personal.emergencyName} onChange={(v) => updatePersonal("emergencyName", v)} placeholder="Full name" disabled={!editing} />
-                                <FormField label="Relation" value={personal.emergencyRelation} onChange={(v) => updatePersonal("emergencyRelation", v)} placeholder="e.g. Spouse, Parent" disabled={!editing} />
+                                <FormField label="Contact Name" value={personal.emergencyName} onChange={(v) => updatePersonal("emergencyName", v)} placeholder="Full name" disabled={!editing} required={editing} />
+                                <FormField label="Relation" value={personal.emergencyRelation} onChange={(v) => updatePersonal("emergencyRelation", v)} placeholder="e.g. Spouse, Parent" disabled={!editing} required={editing} />
                                 <PhoneInput
                                     label="Mobile"
                                     countryCode={personal.emergencyMobileCountryCode}
@@ -1230,6 +1318,7 @@ export function EmployeeProfileScreen() {
                                     onPhoneChange={(v) => updatePersonal("emergencyMobile", v)}
                                     placeholder="98765 43210"
                                     disabled={!editing}
+                                    required={editing}
                                 />
                             </div>
 
@@ -1256,7 +1345,7 @@ export function EmployeeProfileScreen() {
                                         {createUserAccount && (
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div className="relative">
-                                                    <FormField label="Password" value={userPassword} onChange={setUserPassword} placeholder="Min 6 characters" type={showPassword ? "text" : "password"} />
+                                                    <FormField label="Password" value={userPassword} onChange={setUserPassword} placeholder="Min 6 characters" type={showPassword ? "text" : "password"} required={createUserAccount} />
                                                     <button
                                                         type="button"
                                                         onClick={() => setShowPassword((v) => !v)}
@@ -1266,7 +1355,7 @@ export function EmployeeProfileScreen() {
                                                     </button>
                                                 </div>
                                                 <div className="relative">
-                                                    <FormField label="Confirm Password" value={confirmPassword} onChange={setConfirmPassword} placeholder="Re-enter password" type={showConfirmPassword ? "text" : "password"} />
+                                                    <FormField label="Confirm Password" value={confirmPassword} onChange={setConfirmPassword} placeholder="Re-enter password" type={showConfirmPassword ? "text" : "password"} required={createUserAccount} />
                                                     <button
                                                         type="button"
                                                         onClick={() => setShowConfirmPassword((v) => !v)}
@@ -1310,7 +1399,7 @@ export function EmployeeProfileScreen() {
                     {activeTab === "professional" && (
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <FormField label="Joining Date" value={professional.joiningDate} onChange={(v) => updateProfessional("joiningDate", v)} type="date" disabled={!editing} />
+                                <FormField label="Joining Date" value={professional.joiningDate} onChange={(v) => updateProfessional("joiningDate", v)} type="date" disabled={!editing} required={editing} />
                                 {isNew && (
                                     <SelectField
                                         label="Initial Status"
@@ -1325,9 +1414,9 @@ export function EmployeeProfileScreen() {
                                         placeholder="Select status..."
                                     />
                                 )}
-                                <SelectField label="Employee Type" value={professional.employeeTypeId} onChange={(v) => updateProfessional("employeeTypeId", v)} options={empTypeOptions} disabled={!editing} placeholder="Select type..." createLink={{ href: "/app/company/hr/employee-types", label: "Create Employee Type" }} />
-                                <SelectField label="Designation" value={professional.designationId} onChange={(v) => updateProfessional("designationId", v)} options={desigOptions} disabled={!editing} placeholder="Select designation..." createLink={{ href: "/app/company/hr/designations", label: "Create Designation" }} />
-                                <SelectField label="Department" value={professional.departmentId} onChange={(v) => updateProfessional("departmentId", v)} options={deptOptions} disabled={!editing} placeholder="Select department..." createLink={{ href: "/app/company/hr/departments", label: "Create Department" }} />
+                                <SelectField label="Employee Type" value={professional.employeeTypeId} onChange={(v) => updateProfessional("employeeTypeId", v)} options={empTypeOptions} disabled={!editing} placeholder="Select type..." createLink={{ href: "/app/company/hr/employee-types", label: "Create Employee Type" }} required={editing} />
+                                <SelectField label="Designation" value={professional.designationId} onChange={(v) => updateProfessional("designationId", v)} options={desigOptions} disabled={!editing} placeholder="Select designation..." createLink={{ href: "/app/company/hr/designations", label: "Create Designation" }} required={editing} />
+                                <SelectField label="Department" value={professional.departmentId} onChange={(v) => updateProfessional("departmentId", v)} options={deptOptions} disabled={!editing} placeholder="Select department..." createLink={{ href: "/app/company/hr/departments", label: "Create Department" }} required={editing} />
                                 <SelectField label="Grade" value={professional.gradeId} onChange={(v) => updateProfessional("gradeId", v)} options={gradeOptions} disabled={!editing} placeholder="Select grade..." createLink={{ href: "/app/company/hr/grades", label: "Create Grade" }} />
                                 <SelectField label="Reporting Manager" value={professional.reportingManagerId} onChange={(v) => updateProfessional("reportingManagerId", v)} options={managerOptions} disabled={!editing} placeholder="Search manager..." />
                                 <SelectField label="Functional Manager" value={professional.functionalManagerId} onChange={(v) => updateProfessional("functionalManagerId", v)} options={managerOptions} disabled={!editing} placeholder="Search manager..." />

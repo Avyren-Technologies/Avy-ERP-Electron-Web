@@ -92,6 +92,7 @@ export function MyLeaveScreen() {
     const formatDate = (d: string | null | undefined) => d ? fmt.date(d) : "—";
     const location = useLocation();
     const [modalOpen, setModalOpen] = useState(false);
+    const [dropdownOpen, setDropdownOpen] = useState(false);
     const [form, setForm] = useState({ ...EMPTY_FORM });
     const [documentKey, setDocumentKey] = useState<string | null>(null);
     const [documentName, setDocumentName] = useState<string | null>(null);
@@ -177,6 +178,7 @@ export function MyLeaveScreen() {
         setForm({ ...EMPTY_FORM });
         setDocumentKey(null);
         setDocumentName(null);
+        setDropdownOpen(false);
         setModalOpen(true);
     };
 
@@ -335,10 +337,84 @@ export function MyLeaveScreen() {
                         <div className="p-6 overflow-y-auto flex-1 space-y-4">
                             <div>
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Leave Type</label>
-                                <select value={form.leaveTypeId} onChange={(e) => setForm((p) => ({ ...p, leaveTypeId: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
-                                    <option value="">Select leave type...</option>
-                                    {leaveTypes.map((lt: any) => (<option key={lt.id} value={lt.id}>{lt.name}</option>))}
-                                </select>
+                                <div className="relative">
+                                    <button
+                                        type="button"
+                                        onClick={() => setDropdownOpen(!dropdownOpen)}
+                                        className="w-full flex items-center justify-between px-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all text-left"
+                                    >
+                                        <span className={form.leaveTypeId ? "text-neutral-900 dark:text-white font-medium" : "text-neutral-400 dark:text-neutral-500"}>
+                                            {form.leaveTypeId ? leaveTypeName(form.leaveTypeId) : "Select leave type..."}
+                                        </span>
+                                        <svg
+                                            className={cn("w-4 h-4 text-neutral-400 transition-transform duration-200", dropdownOpen && "transform rotate-180")}
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+
+                                    {dropdownOpen && (
+                                        <>
+                                            {/* Click-outside backdrop */}
+                                            <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
+                                            
+                                            {/* Dropdown panel */}
+                                            <div className="absolute left-0 right-0 mt-2 z-20 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xl max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-200 dark:scrollbar-thumb-neutral-800 py-1">
+                                                {leaveTypes.length === 0 ? (
+                                                    <div className="px-4 py-3 text-xs text-neutral-400 dark:text-neutral-500 text-center">No leave types available</div>
+                                                ) : (
+                                                    leaveTypes.map((lt: any) => {
+                                                        const bal = balances.find((b: any) => {
+                                                            const leaveLabel =
+                                                                normalizeLeaveTypeValue(b.leaveTypeName) ||
+                                                                normalizeLeaveTypeValue(b.leaveType) ||
+                                                                normalizeLeaveTypeValue(b.type) ||
+                                                                "";
+                                                            return leaveLabel.toLowerCase() === lt.name.toLowerCase();
+                                                        });
+                                                        const used = bal?.taken ?? bal?.used ?? 0;
+                                                        const total = bal?.entitled ?? bal?.total ?? bal?.allocated ?? 0;
+                                                        const available = bal?.balance ?? bal?.available ?? 0;
+                                                        
+                                                        return (
+                                                            <button
+                                                                key={lt.id}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setForm((p) => ({ ...p, leaveTypeId: lt.id }));
+                                                                    setDropdownOpen(false);
+                                                                }}
+                                                                className={cn(
+                                                                    "w-full text-left px-4 py-2.5 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800/50 last:border-0",
+                                                                    form.leaveTypeId === lt.id && "bg-primary-50/50 dark:bg-primary-900/20"
+                                                                )}
+                                                            >
+                                                                <div className="flex flex-col">
+                                                                    <span className={cn("text-sm font-medium", form.leaveTypeId === lt.id ? "text-primary-700 dark:text-primary-400 font-bold" : "text-neutral-700 dark:text-neutral-300")}>
+                                                                        {lt.name}
+                                                                    </span>
+                                                                    {total > 0 && (
+                                                                        <span className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">
+                                                                            {used} used out of {total} · {available} available
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {form.leaveTypeId === lt.id && (
+                                                                    <svg className="w-4 h-4 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                                    </svg>
+                                                                )}
+                                                            </button>
+                                                        );
+                                                    })
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
