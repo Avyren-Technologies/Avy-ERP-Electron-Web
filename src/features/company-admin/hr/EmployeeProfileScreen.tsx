@@ -1414,36 +1414,97 @@ export function EmployeeProfileScreen() {
                                         placeholder="Select status..."
                                     />
                                 )}
-                                <SelectField label="Employee Type" value={professional.employeeTypeId} onChange={(v) => updateProfessional("employeeTypeId", v)} options={empTypeOptions} disabled={!editing} placeholder="Select type..." createLink={{ href: "/app/company/hr/employee-types", label: "Create Employee Type" }} required={editing} />
-                                <SelectField label="Designation" value={professional.designationId} onChange={(v) => updateProfessional("designationId", v)} options={desigOptions} disabled={!editing} placeholder="Select designation..." createLink={{ href: "/app/company/hr/designations", label: "Create Designation" }} required={editing} />
-                                <SelectField label="Department" value={professional.departmentId} onChange={(v) => updateProfessional("departmentId", v)} options={deptOptions} disabled={!editing} placeholder="Select department..." createLink={{ href: "/app/company/hr/departments", label: "Create Department" }} required={editing} />
-                                <SelectField label="Grade" value={professional.gradeId} onChange={(v) => updateProfessional("gradeId", v)} options={gradeOptions} disabled={!editing} placeholder="Select grade..." createLink={{ href: "/app/company/hr/grades", label: "Create Grade" }} />
-                                <SelectField label="Reporting Manager" value={professional.reportingManagerId} onChange={(v) => updateProfessional("reportingManagerId", v)} options={managerOptions} disabled={!editing} placeholder="Search manager..." />
-                                <SelectField label="Functional Manager" value={professional.functionalManagerId} onChange={(v) => updateProfessional("functionalManagerId", v)} options={managerOptions} disabled={!editing} placeholder="Search manager..." />
-                                <SelectField label="Location" value={professional.locationId} onChange={(v) => { updateProfessional("locationId", v); updateProfessional("geofenceId", ""); }} options={locationOptions} disabled={!editing} placeholder="Select location..." createLink={{ href: "/app/company/locations", label: "Create Location" }} />
-                                <SelectField label="Shift" value={professional.shiftId} onChange={(v) => updateProfessional("shiftId", v)} options={shiftOptions} disabled={!editing} placeholder="Select shift..." createLink={{ href: "/app/company/shifts", label: "Create Shift" }} />
-                                <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Geofence</label>
-                                    <select
-                                        value={professional.geofenceId ?? ""}
-                                        onChange={(e) => updateProfessional("geofenceId", e.target.value || "")}
-                                        disabled={!editing || !professional.locationId}
-                                        className={cn(
-                                            "w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all",
-                                            (!editing || !professional.locationId) && "opacity-60 cursor-not-allowed bg-neutral-100 dark:bg-neutral-800/50"
-                                        )}
-                                    >
-                                        <option value="">No specific geofence</option>
-                                        {geofenceOptions.map((gf) => (
-                                            <option key={gf.id} value={gf.id}>
-                                                {gf.name} ({gf.radius}m){gf.isDefault ? " \u2014 Default" : ""}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-1">
-                                        {!professional.locationId ? "Select a location first" : "Geofence zone for attendance check-in"}
-                                    </p>
-                                </div>
+                                <SearchableSelect
+                                    label="Employee Type"
+                                    value={professional.employeeTypeId}
+                                    onChange={(v) => updateProfessional("employeeTypeId", v)}
+                                    options={empTypeOptions}
+                                    disabled={!editing}
+                                    placeholder="Select type..."
+                                    onCreateNew={editing ? () => navigate("/app/company/hr/employee-types") : undefined}
+                                    createNewLabel="Create Employee Type"
+                                    required={editing}
+                                />
+                                <SearchableSelect
+                                    label="Designation"
+                                    value={professional.designationId}
+                                    onChange={(v) => updateProfessional("designationId", v)}
+                                    options={desigOptions}
+                                    disabled={!editing}
+                                    placeholder="Select designation..."
+                                    onCreateNew={editing ? () => navigate("/app/company/hr/designations") : undefined}
+                                    createNewLabel="Create Designation"
+                                    required={editing}
+                                />
+                                <SearchableSelect
+                                    label="Department"
+                                    value={professional.departmentId}
+                                    onChange={(v) => updateProfessional("departmentId", v)}
+                                    options={deptOptions}
+                                    disabled={!editing}
+                                    placeholder="Select department..."
+                                    onCreateNew={editing ? () => navigate("/app/company/hr/departments") : undefined}
+                                    createNewLabel="Create Department"
+                                    required={editing}
+                                />
+                                <SearchableSelect
+                                    label="Grade"
+                                    value={professional.gradeId}
+                                    onChange={(v) => updateProfessional("gradeId", v)}
+                                    options={gradeOptions}
+                                    disabled={!editing}
+                                    placeholder="Select grade..."
+                                    onCreateNew={editing ? () => navigate("/app/company/hr/grades") : undefined}
+                                    createNewLabel="Create Grade"
+                                />
+                                <SearchableSelect
+                                    label="Reporting Manager"
+                                    value={professional.reportingManagerId}
+                                    onChange={(v) => updateProfessional("reportingManagerId", v)}
+                                    options={managerOptions}
+                                    disabled={!editing}
+                                    placeholder="Search manager..."
+                                />
+                                <SearchableSelect
+                                    label="Functional Manager"
+                                    value={professional.functionalManagerId}
+                                    onChange={(v) => updateProfessional("functionalManagerId", v)}
+                                    options={managerOptions}
+                                    disabled={!editing}
+                                    placeholder="Search manager..."
+                                />
+                                <SearchableSelect
+                                    label="Location"
+                                    value={professional.locationId}
+                                    onChange={(v) => { updateProfessional("locationId", v); updateProfessional("geofenceId", ""); }}
+                                    options={locationOptions}
+                                    disabled={!editing}
+                                    placeholder="Select location..."
+                                    onCreateNew={editing ? () => navigate("/app/company/locations") : undefined}
+                                    createNewLabel="Create Location"
+                                />
+                                <SearchableSelect
+                                    label="Shift"
+                                    value={professional.shiftId}
+                                    onChange={(v) => updateProfessional("shiftId", v)}
+                                    options={shiftOptions}
+                                    disabled={!editing}
+                                    placeholder="Select shift..."
+                                    onCreateNew={editing ? () => navigate("/app/company/shifts") : undefined}
+                                    createNewLabel="Create Shift"
+                                />
+                                <SearchableSelect
+                                    label="Geofence"
+                                    value={professional.geofenceId || ""}
+                                    onChange={(v) => updateProfessional("geofenceId", v)}
+                                    options={geofenceOptions.map((gf) => ({
+                                        value: gf.id,
+                                        label: `${gf.name} (${gf.radius}m)${gf.isDefault ? " — Default" : ""}`
+                                    }))}
+                                    disabled={!editing || !professional.locationId}
+                                    placeholder={!professional.locationId ? "Select a location first..." : "No specific geofence"}
+                                    tooltip={!professional.locationId ? "Select a location first" : "Geofence zone for attendance check-in"}
+                                />
                             </div>
 
                             <RadioGroup
@@ -1459,7 +1520,16 @@ export function EmployeeProfileScreen() {
                             />
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <SelectField label="Cost Centre" value={professional.costCentreId} onChange={(v) => updateProfessional("costCentreId", v)} options={costCentreOptions} disabled={!editing} placeholder="Select cost centre..." createLink={{ href: "/app/company/hr/cost-centres", label: "Create Cost Centre" }} />
+                                <SearchableSelect
+                                    label="Cost Centre"
+                                    value={professional.costCentreId}
+                                    onChange={(v) => updateProfessional("costCentreId", v)}
+                                    options={costCentreOptions}
+                                    disabled={!editing}
+                                    placeholder="Select cost centre..."
+                                    onCreateNew={editing ? () => navigate("/app/company/hr/cost-centres") : undefined}
+                                    createNewLabel="Create Cost Centre"
+                                />
                                 <div>
                                     <FormField label="Notice Period (days)" value={professional.noticePeriod} onChange={(v) => updateProfessional("noticePeriod", v)} type="number" placeholder="e.g. 90" disabled={!editing} />
                                     <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-1">
@@ -1514,30 +1584,21 @@ export function EmployeeProfileScreen() {
 
                             {/* Salary Structure Selector */}
                             {editing && (
-                                <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
-                                        Select Salary Structure
-                                    </label>
-                                    <select
-                                        value={salary.structureId}
-                                        onChange={(e) => {
-                                            const sid = e.target.value;
-                                            updateSalary("structureId", sid);
-                                            if (sid && salary.annualCTC) {
-                                                const structure = structures.find((s: any) => s.id === sid);
-                                                if (structure) computeSalaryBreakdown(structure, parseFloat(salary.annualCTC));
-                                            } else {
-                                                updateSalary("salaryStructure", null);
-                                            }
-                                        }}
-                                        className="w-full h-11 px-3 rounded-xl border-2 border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm focus:border-primary-500 outline-none"
-                                    >
-                                        <option value="">-- Select Structure --</option>
-                                        {structures.map((s: any) => (
-                                            <option key={s.id} value={s.id}>{s.name} ({s.code})</option>
-                                        ))}
-                                    </select>
-                                </div>
+                                <SearchableSelect
+                                    label="Select Salary Structure"
+                                    value={salary.structureId}
+                                    onChange={(sid) => {
+                                        updateSalary("structureId", sid);
+                                        if (sid && salary.annualCTC) {
+                                            const structure = structures.find((s: any) => s.id === sid);
+                                            if (structure) computeSalaryBreakdown(structure, parseFloat(salary.annualCTC));
+                                        } else {
+                                            updateSalary("salaryStructure", null);
+                                        }
+                                    }}
+                                    options={structures.map((s: any) => ({ value: s.id, label: `${s.name} (${s.code})` }))}
+                                    placeholder="Select Structure..."
+                                />
                             )}
 
                             {/* Salary Structure Preview */}
