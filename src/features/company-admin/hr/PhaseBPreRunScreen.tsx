@@ -53,6 +53,9 @@ interface BackendActivity {
     priority: Priority;
     pendingCount: number | null;
     blockerReason: string | null;
+    /** Backend-provided deep link for this activity. Each activity routes to the
+     * page where the user can actually resolve it (attendance, approvals, etc.). */
+    actionUrl?: string;
 }
 
 interface BackendChecklist {
@@ -149,7 +152,7 @@ function PriorityChip({ priority }: { priority: Priority }) {
     return <span className={cn('text-[11px] font-bold uppercase tracking-wider', map[priority])}>{priority}</span>;
 }
 
-function ActionLink({ status, runId }: { status: ActivityStatus; runId: string }) {
+function ActionLink({ status, actionUrl }: { status: ActivityStatus; actionUrl: string }) {
     let label = 'Start';
     let tint = 'text-primary-600 hover:text-primary-700';
     if (status === 'COMPLETE')         { label = 'View Details'; }
@@ -157,7 +160,7 @@ function ActionLink({ status, runId }: { status: ActivityStatus; runId: string }
     else if (status === 'BLOCKED')     { label = 'Resolve Issues'; tint = 'text-danger-600 hover:text-danger-700'; }
 
     return (
-        <Link to={`/app/company/hr/payroll-runs?runId=${runId}`} className={cn('inline-flex items-center gap-1 text-xs font-semibold whitespace-nowrap', tint)}>
+        <Link to={actionUrl} className={cn('inline-flex items-center gap-1 text-xs font-semibold whitespace-nowrap', tint)}>
             {label} <ChevronRight className="w-3.5 h-3.5" />
         </Link>
     );
@@ -288,7 +291,10 @@ export function PhaseBPreRunScreen() {
     const healthChecks = [
         {
             label: 'Attendance Closed',
-            sub: `${checklist.keyStats.totalEmployees - (get('verify_attendance')?.pendingCount ?? 0)} / ${checklist.keyStats.totalEmployees} employees`,
+            sub: (() => {
+                const pending = get('verify_attendance')?.pendingCount ?? 0;
+                return pending === 0 ? 'All attendance reviewed' : `${pending} record${pending === 1 ? '' : 's'} pending review`;
+            })(),
             ok: get('verify_attendance')?.status === 'COMPLETE',
             warn: false,
             icon: CalendarCheck,
@@ -372,7 +378,7 @@ export function PhaseBPreRunScreen() {
                     <PreRunActions onRefresh={onRefresh} onExport={onExport} />
                     <button
                         disabled={!allReady}
-                        onClick={() => navigate(`/app/company/hr/payroll-runs?runId=${checklist.run.id}`)}
+                        onClick={() => navigate(`/app/company/hr/payroll-runs/${checklist.run.id}/wizard`)}
                         className={cn(
                             'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold shadow-sm transition',
                             allReady
@@ -423,7 +429,7 @@ export function PhaseBPreRunScreen() {
                             Payroll Period
                         </div>
                         <button
-                            onClick={() => navigate(`/app/company/hr/payroll-runs?runId=${checklist.run.id}`)}
+                            onClick={() => navigate(`/app/company/hr/payroll-runs/${checklist.run.id}/wizard`)}
                             className="inline-flex items-center gap-1 text-xs font-semibold text-primary-600 hover:text-primary-700"
                         >
                             <Pencil className="w-3 h-3" /> Edit Period
@@ -539,7 +545,7 @@ export function PhaseBPreRunScreen() {
                                                     ~{meta.estMin} min
                                                 </td>
                                                 <td className="px-4 py-4 align-top text-right whitespace-nowrap">
-                                                    <ActionLink status={a.status} runId={checklist.run.id} />
+                                                    <ActionLink status={a.status} actionUrl={a.actionUrl ?? `/app/company/hr/payroll-runs/${checklist.run.id}/wizard`} />
                                                 </td>
                                             </tr>
                                         );
@@ -577,7 +583,7 @@ export function PhaseBPreRunScreen() {
                             <BarChart3 className="w-10 h-10 mx-auto text-neutral-300 mb-3" />
                             <p className="text-sm text-neutral-500">Full-run activities open inside the Payroll Run Wizard for the active payroll period.</p>
                             <button
-                                onClick={() => navigate(`/app/company/hr/payroll-runs?runId=${checklist.run.id}`)}
+                                onClick={() => navigate(`/app/company/hr/payroll-runs/${checklist.run.id}/wizard`)}
                                 className="mt-4 inline-flex items-center gap-2 rounded-lg border border-primary-200 bg-white px-4 py-2 text-sm font-semibold text-primary-700 hover:bg-primary-50"
                             >
                                 Open Payroll Run Wizard <ArrowRight className="w-3.5 h-3.5" />
@@ -727,7 +733,7 @@ export function PhaseBPreRunScreen() {
                         {!allReady && <span className="text-[11.5px] text-neutral-500">Resolve all issues to enable</span>}
                         <button
                             disabled={!allReady}
-                            onClick={() => navigate(`/app/company/hr/payroll-runs?runId=${checklist.run.id}`)}
+                            onClick={() => navigate(`/app/company/hr/payroll-runs/${checklist.run.id}/wizard`)}
                             className={cn(
                                 'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold shadow-sm transition',
                                 allReady
