@@ -1560,7 +1560,15 @@ export function GateCheckInScreen() {
                             <button onClick={() => setShowWalkIn(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
                             <button
                                 onClick={handleWalkIn}
-                                disabled={createMutation.isPending || !walkInForm.visitorName}
+                                disabled={
+                                    createMutation.isPending
+                                    || !walkInForm.visitorName.trim()
+                                    || !walkInForm.visitorMobile.trim()
+                                    || walkInForm.visitorMobile.trim().length < 10
+                                    || !walkInForm.purpose
+                                    || !walkInForm.visitorTypeId
+                                    || !walkInForm.plantId
+                                }
                                 className="flex-1 py-2.5 rounded-xl bg-success-600 hover:bg-success-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                             >
                                 {createMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <LogIn size={14} />}
