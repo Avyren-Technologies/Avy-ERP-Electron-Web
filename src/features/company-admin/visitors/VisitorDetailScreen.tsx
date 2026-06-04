@@ -157,7 +157,9 @@ export function VisitorDetailScreen() {
         setEditForm({
             visitorName: visit.visitorName || "",
             visitorMobile: visit.visitorMobile || "",
-            expectedDate: visit.expectedDate ? visit.expectedDate.slice(0, 10) : "",
+            // V11 fix — convert via company-timezone formatter to avoid the
+            // visitor jumping to the previous day on the UTC boundary.
+            expectedDate: visit.expectedDate ? fmt.parseToZoned(visit.expectedDate).toFormat("yyyy-LL-dd") : "",
             purpose: visit.purpose || "",
         });
         setShowEdit(true);

@@ -85,7 +85,10 @@ export function GroupVisitScreen() {
         setEditForm({
             groupName: g.groupName || "",
             purpose: g.purpose || "",
-            expectedDate: g.expectedDate ? g.expectedDate.slice(0, 10) : "",
+            // V11/Grp8 fix — use the company-timezone formatter to convert the
+            // ISO timestamp to a yyyy-mm-dd string. iso.slice(0,10) drops the
+            // visitor to the previous day on the UTC/local boundary.
+            expectedDate: g.expectedDate ? fmt.parseToZoned(g.expectedDate).toFormat("yyyy-LL-dd") : "",
             expectedTime: g.expectedTime || "",
         });
         setEditModalOpen(true);
@@ -269,7 +272,15 @@ export function GroupVisitScreen() {
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
                             <button onClick={() => setModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 transition-colors">Cancel</button>
-                            <button onClick={handleSave} disabled={createMutation.isPending || !form.groupName} className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                            <button onClick={handleSave} disabled={
+                                createMutation.isPending
+                                || !form.groupName.trim()
+                                || !form.hostEmployeeId
+                                || !form.purpose.trim()
+                                || !form.expectedDate
+                                || !form.plantId
+                                || form.members.filter(m => m.visitorName.trim() && m.visitorMobile.trim()).length < 2
+                            } className="flex-1 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                                 {createMutation.isPending && <Loader2 size={14} className="animate-spin" />}
                                 {createMutation.isPending ? "Creating..." : "Create Group"}
                             </button>

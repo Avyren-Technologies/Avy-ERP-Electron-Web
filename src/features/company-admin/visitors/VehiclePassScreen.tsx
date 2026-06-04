@@ -84,6 +84,15 @@ export function VehiclePassScreen() {
     const handlePrintPass = (pass: any) => {
         const printWindow = window.open("", "_blank", "width=600,height=800");
         if (!printWindow) return;
+        // Veh4 fix — pre-compute every dynamic field before writing the print
+        // template. Keeps the formatter call inside the React component scope.
+        const entryStr = pass.entryTime ? fmt.dateTime(pass.entryTime) : pass.createdAt ? fmt.dateTime(pass.createdAt) : "---";
+        const exitStr = pass.exitTime ? fmt.dateTime(pass.exitTime) : "---";
+        const validFromStr = pass.validFrom ? fmt.date(pass.validFrom) : null;
+        const validUntilStr = pass.validUntil ? fmt.date(pass.validUntil) : null;
+        const validityRow = validFromStr && validUntilStr
+            ? `<div class="detail-item detail-full"><div class="detail-label">Validity</div><div class="detail-value">${validFromStr} → ${validUntilStr}</div></div>`
+            : "";
         printWindow.document.write(`
             <!DOCTYPE html>
             <html>
@@ -138,11 +147,11 @@ export function VehiclePassScreen() {
                         </div>
                         <div class="detail-item">
                             <div class="detail-label">Entry Time</div>
-                            <div class="detail-value">${pass.entryTime ? fmt.dateTime(pass.entryTime) : pass.createdAt ? fmt.dateTime(pass.createdAt) : "---"}</div>
+                            <div class="detail-value">${entryStr}</div>
                         </div>
                         <div class="detail-item">
                             <div class="detail-label">Exit Time</div>
-                            <div class="detail-value">${pass.exitTime ? fmt.dateTime(pass.exitTime) : "---"}</div>
+                            <div class="detail-value">${exitStr}</div>
                         </div>
                         <div class="detail-item">
                             <div class="detail-label">Entry Gate</div>
@@ -152,6 +161,7 @@ export function VehiclePassScreen() {
                             <div class="detail-label">Status</div>
                             <div class="detail-value"><span class="status-badge ${pass.exitTime ? "status-exited" : "status-onsite"}">${pass.exitTime ? "Exited" : "On-Site"}</span></div>
                         </div>
+                        ${validityRow}
                     </div>
                     ${pass.materialDescription ? `<div class="detail-grid"><div class="detail-item detail-full"><div class="detail-label">Material Description</div><div class="detail-value">${pass.materialDescription}</div></div></div>` : ""}
                     <div class="instructions">Keep this pass visible on the vehicle dashboard at all times.</div>

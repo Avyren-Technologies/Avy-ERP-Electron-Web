@@ -83,7 +83,15 @@ export function MaterialPassScreen() {
     const handlePrintPass = (pass: any) => {
         const printWindow = window.open("", "_blank", "width=600,height=800");
         if (!printWindow) return;
+        // Mat3/Mat4 fix — pre-compute all dynamic strings before writing the
+        // template. The print window has no React context, so anything that
+        // needs the formatter must be resolved here.
         const returnStatusLabel = pass.returnStatus === "FULLY_RETURNED" ? "Returned" : pass.returnStatus === "PENDING_RETURN" ? "Pending Return" : pass.returnStatus === "PARTIAL" ? "Partial" : "N/A";
+        const createdAtStr = pass.createdAt ? fmt.dateTime(pass.createdAt) : "---";
+        const expectedReturnStr = pass.expectedReturnDate ? fmt.date(pass.expectedReturnDate) : null;
+        const expectedReturnRow = expectedReturnStr
+            ? `<div class="detail-item"><div class="detail-label">Expected Return</div><div class="detail-value">${expectedReturnStr}</div></div>`
+            : "";
         printWindow.document.write(`
             <!DOCTYPE html>
             <html>
@@ -147,8 +155,9 @@ export function MaterialPassScreen() {
                         </div>
                         <div class="detail-item">
                             <div class="detail-label">Date</div>
-                            <div class="detail-value">${pass.createdAt ? fmt.dateTime(pass.createdAt) : "---"}</div>
+                            <div class="detail-value">${createdAtStr}</div>
                         </div>
+                        ${expectedReturnRow}
                     </div>
                     <div class="instructions">This pass must be presented at the gate for material verification.</div>
                 </div>
