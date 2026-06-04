@@ -29,7 +29,7 @@ import {
 import { Html5Qrcode } from "html5-qrcode";
 import QRCodeReact from "react-qr-code";
 import {
-    useDashboardToday, useDashboardOnSite, useVisitByCode, useVmsConfig, useGates,
+    useDashboardOnSite, useVisitByCode, useVmsConfig, useGates,
     useGateOpsStats, useGateOpsExpectedMaterials, useGateOpsExpectedVisitors, useGateOpsExpectedVehicles, useGateOpsRecentActivity,
 } from "@/features/company-admin/api/use-visitor-queries";
 import {
@@ -578,7 +578,6 @@ export function GateCheckInScreen() {
     const locationsQuery = useCompanyLocations();
     const locations: any[] = (locationsQuery.data as any)?.data ?? [];
 
-    const todayQuery = useDashboardToday();
     const onSiteQuery = useDashboardOnSite();
     const codeQuery = useVisitByCode(searchCode);
     const configQuery = useVmsConfig();
@@ -599,10 +598,6 @@ export function GateCheckInScreen() {
     const vmsConfig = configQuery.data?.data;
     const gatesList: any[] = (gatesQuery.data?.data ?? []).filter((g: any) => g.isActive !== false);
 
-    const todayData = todayQuery.data?.data ?? {};
-    const expectedVisitors: any[] = (todayData.visitors ?? todayData.visits ?? []).filter(
-        (v: any) => v.status === "EXPECTED" || v.status === "ARRIVED"
-    );
     const onSiteVisitors: any[] = onSiteQuery.data?.data ?? [];
     const foundVisit = codeQuery.data?.data;
 
