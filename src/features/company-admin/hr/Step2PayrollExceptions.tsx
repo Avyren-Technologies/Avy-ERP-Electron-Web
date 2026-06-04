@@ -421,9 +421,13 @@ export function Step2PayrollExceptions({ runId, runDetail, completedStep, onStep
                         {isLoading ? (
                             <div className="p-5"><SkeletonTable rows={6} cols={9} /></div>
                         ) : paged.length === 0 ? (
-                            <div className="px-6 py-12 text-center text-sm text-neutral-500">
-                                {exceptions.length === 0 ? 'No exceptions detected. You can proceed to Step 3.' : 'No exceptions match the current filters.'}
-                            </div>
+                            exceptions.length === 0 ? (
+                                <ExceptionCatalogueEmpty />
+                            ) : (
+                                <div className="px-6 py-12 text-center text-sm text-neutral-500">
+                                    No exceptions match the current filters.
+                                </div>
+                            )
                         ) : (
                             <table className="w-full text-sm">
                                 <thead>
@@ -732,5 +736,81 @@ function PaginationBtn({ children, disabled, onClick }: { children: React.ReactN
         >
             {children}
         </button>
+    );
+}
+
+/* ──────────────────────────────────────────────────────────────────────── */
+/* Exception catalogue — shown when zero exceptions are detected            */
+/* This documents WHAT the system checks so users can cross-verify          */
+/* ──────────────────────────────────────────────────────────────────────── */
+
+const EXCEPTION_CATALOGUE: Array<{ type: string; label: string; priority: Priority; category: 'info' | 'warning' | 'critical'; trigger: string; impact: string }> = [
+    { type: 'NEW_HIRE',          label: 'New hire pro-ration',    priority: 'LOW',    category: 'info',     trigger: 'Employee joined in this payroll month',                            impact: 'Pro-rated salary may apply' },
+    { type: 'EXIT_IN_MONTH',     label: 'Exit pro-ration / F&F',  priority: 'LOW',    category: 'info',     trigger: 'Last working date falls in this month',                            impact: 'Full & final may apply' },
+    { type: 'SALARY_HOLD',       label: 'Salary on hold',         priority: 'MEDIUM', category: 'warning',  trigger: 'Unreleased SalaryHold record for this run',                         impact: 'Full salary may be withheld' },
+    { type: 'NO_PAN',            label: 'Missing PAN',            priority: 'MEDIUM', category: 'warning',  trigger: 'Active employee has no PAN on file',                               impact: 'TDS deducted at maximum slab' },
+    { type: 'NO_DEPARTMENT',     label: 'Missing department',     priority: 'MEDIUM', category: 'warning',  trigger: 'Employee has no department mapping',                               impact: 'Cost-centre reporting affected' },
+    { type: 'NO_SALARY_RECORD',  label: 'No current salary',      priority: 'HIGH',   category: 'critical', trigger: 'Active employee has no EmployeeSalary with isCurrent=true',        impact: 'Cannot be computed — must resolve' },
+    { type: 'NO_BANK_ACCOUNT',   label: 'Missing bank account',   priority: 'HIGH',   category: 'critical', trigger: 'Employee has current salary but no bank account number',           impact: 'Disbursement will fail for this employee' },
+];
+
+function ExceptionCatalogueEmpty() {
+    const priorityTint: Record<Priority, { bg: string; text: string; ring: string }> = {
+        HIGH:   { bg: 'bg-danger-50',  text: 'text-danger-700',  ring: 'ring-danger-200' },
+        MEDIUM: { bg: 'bg-warning-50', text: 'text-warning-700', ring: 'ring-warning-200' },
+        LOW:    { bg: 'bg-info-50',    text: 'text-info-700',    ring: 'ring-info-200' },
+    };
+    return (
+        <div className="px-6 py-8">
+            <div className="text-center mb-6">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-success-50 text-success-600 mb-2">
+                    <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <h3 className="text-base font-bold text-neutral-900">No exceptions detected</h3>
+                <p className="text-[12.5px] text-neutral-500 mt-1 max-w-md mx-auto">
+                    All employees passed validation for this payroll period. You can proceed to Step 3 — Compute Salaries.
+                </p>
+            </div>
+
+            <div className="mt-6">
+                <div className="flex items-center gap-2 mb-3">
+                    <Info className="w-4 h-4 text-info-500" />
+                    <h4 className="text-[13px] font-bold text-neutral-900">What we checked</h4>
+                </div>
+                <p className="text-[12px] text-neutral-500 mb-3">
+                    Use this checklist to verify the data quality of your payroll for this period. An exception would have appeared if any of these conditions were met for any active employee.
+                </p>
+                <div className="overflow-x-auto rounded-xl ring-1 ring-neutral-200">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="text-left text-[10.5px] font-semibold uppercase tracking-wider text-neutral-500 bg-neutral-50/60">
+                                <th className="px-3 py-2.5">Exception</th>
+                                <th className="px-3 py-2.5">Priority</th>
+                                <th className="px-3 py-2.5">Trigger condition</th>
+                                <th className="px-3 py-2.5">Impact when raised</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-neutral-100">
+                            {EXCEPTION_CATALOGUE.map(e => (
+                                <tr key={e.type} className="hover:bg-neutral-50/60">
+                                    <td className="px-3 py-2.5">
+                                        <div className="text-[12.5px] font-semibold text-neutral-900">{e.label}</div>
+                                        <code className="text-[10.5px] text-neutral-500 font-mono">{e.type}</code>
+                                    </td>
+                                    <td className="px-3 py-2.5">
+                                        <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 whitespace-nowrap',
+                                            priorityTint[e.priority].bg, priorityTint[e.priority].text, priorityTint[e.priority].ring)}>
+                                            {e.priority}
+                                        </span>
+                                    </td>
+                                    <td className="px-3 py-2.5 text-[12px] text-neutral-700">{e.trigger}</td>
+                                    <td className="px-3 py-2.5 text-[12px] text-neutral-600">{e.impact}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     );
 }

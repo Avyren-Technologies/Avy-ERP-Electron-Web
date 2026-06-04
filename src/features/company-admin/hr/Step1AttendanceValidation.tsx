@@ -24,11 +24,24 @@ import {
     RefreshCcw,
     Download,
     Loader2,
+    ShieldAlert,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAttendanceSummary, useAttendanceDetail } from '@/features/company-admin/api/use-payroll-run-queries';
+import {
+    useAttendanceSummary,
+    useAttendanceDetail,
+    useBulkLockAttendance,
+    useBulkUnlockAttendance,
+} from '@/features/company-admin/api/use-payroll-run-queries';
+import { payrollRunApi } from '@/lib/api/payroll-run';
 import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { SkeletonTable } from '@/components/ui/Skeleton';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
+import { BulkActionsDropdown } from './payroll-wizard-modals';
+import { showSuccess, showApiError } from '@/lib/toast';
+
+const CUID_RE = /^c[a-z0-9]{24}$/i;
+const looksLikeCuid = (v: unknown): boolean => typeof v === 'string' && CUID_RE.test(v);
 
 interface StepProps {
     runId: string;
@@ -45,13 +58,14 @@ const MONTHS = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'Jul
 /* ──────────────────────────────────────────────────────────────────────── */
 
 function StatTile({
-    icon: Icon, label, value, sub, tint = 'primary',
+    icon: Icon, label, value, sub, tint = 'primary', valueTitle,
 }: {
     icon: React.ComponentType<{ className?: string }>;
     label: string;
     value: React.ReactNode;
     sub?: string;
     tint?: 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'accent';
+    valueTitle?: string;
 }) {
     const tintMap = {
         primary: 'bg-primary-50 text-primary-600',
@@ -66,10 +80,15 @@ function StatTile({
             <div className={cn('w-11 h-11 rounded-xl flex items-center justify-center shrink-0', tintMap[tint])}>
                 <Icon className="w-5 h-5" />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
                 <div className="text-[10.5px] font-bold uppercase tracking-wider text-neutral-500">{label}</div>
-                <div className="text-xl font-bold text-neutral-900 mt-0.5 leading-tight">{value}</div>
-                {sub && <div className="text-[11px] text-neutral-500 mt-0.5">{sub}</div>}
+                <div
+                    className="text-xl font-bold text-neutral-900 mt-0.5 leading-tight truncate"
+                    title={valueTitle ?? (typeof value === 'string' || typeof value === 'number' ? String(value) : undefined)}
+                >
+                    {value}
+                </div>
+                {sub && <div className="text-[11px] text-neutral-500 mt-0.5 truncate" title={sub}>{sub}</div>}
             </div>
         </div>
     );
@@ -162,6 +181,16 @@ export function Step1AttendanceValidation({ runId, runDetail, completedStep, onS
     const [page, setPage] = useState(1);
     const limit = 8;
 
+    /* Filters / selection / bulk actions state */
+    const [filtersOpen, setFiltersOpen] = useState(false);
+    const [statusFilter, setStatusFilter] = useState<'all' | 'OK' | 'HAS_ISSUES' | 'OVERRIDE' | 'NO_DATA'>('all');
+    const [departmentFilter, setDepartmentFilter] = useState<string>('');
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [bulkOpen, setBulkOpen] = useState(false);
+    const [lockDisclosureOpen, setLockDisclosureOpen] = useState(true);
+    /* Row "view details" modal — shows why this employee row is NO_DATA / HAS_ISSUES */
+    const [detailRow, setDetailRow] = useState<any | null>(null);
+
     /* Debounced search input */
     const debounceRef = useRef<number | null>(null);
     useEffect(() => {
@@ -175,7 +204,16 @@ export function Step1AttendanceValidation({ runId, runDetail, completedStep, onS
 
     const { data: summaryResp, isLoading: summaryLoading, refetch: refetchSummary } = useAttendanceSummary(runId);
     const { data: detailResp, isLoading: detailLoading, isFetching: detailFetching, refetch: refetchDetail } =
-        useAttendanceDetail(runId, { page, limit, search: search || undefined });
+        useAttendanceDetail(runId, {
+            page,
+            limit,
+            search: search || undefined,
+            ...(departmentFilter ? { department: departmentFilter } : {}),
+        });
+
+    const bulkLockMutation = useBulkLockAttendance();
+    const bulkUnlockMutation = useBulkUnlockAttendance();
+    const [exporting, setExporting] = useState(false);
 
     const summary = summaryResp?.data;
     const detail = detailResp?.data;
@@ -184,13 +222,32 @@ export function Step1AttendanceValidation({ runId, runDetail, completedStep, onS
     const totalEmployees = detail?.total ?? 0;
     const totalPages = Math.max(1, Math.ceil(totalEmployees / limit));
 
-    const counts = useMemo(() => {
-        const c = { ready: 0, notReady: 0 };
-        employees.forEach(e => {
-            if (e.status === 'OK') c.ready++;
-            else c.notReady++;
-        });
-        return c;
+    /* Client-side status filter (server-side support would be ideal but is not exposed yet) */
+    const filteredEmployees = useMemo(() => {
+        if (statusFilter === 'all') return employees;
+        return employees.filter(e => e.status === statusFilter);
+    }, [employees, statusFilter]);
+
+    /* GLOBAL counts — sourced from /attendance-summary endpoint, NOT current page rows */
+    const globalCounts = useMemo(() => {
+        const lockStatus: any = (summaryResp?.data as any)?.lockStatus ?? {};
+        const ready = Number(lockStatus.ready ?? 0);
+        const notReady = Number(lockStatus.notReady ?? lockStatus.has_issues ?? 0);
+        const noData = Number(lockStatus.noData ?? 0);
+        const total = ready + notReady + noData;
+        return { ready, notReady, noData, total };
+    }, [summaryResp]);
+
+    /* Lock summary chart — always from global /attendance-summary lockStatus */
+    const lockChartReady = globalCounts.ready;
+    const lockChartNotReady = globalCounts.notReady + globalCounts.noData;
+    const lockChartDenom = Math.max(1, globalCounts.total);
+
+    /* Available departments for filter (from current page — caveat noted in report) */
+    const departmentOptions = useMemo(() => {
+        const set = new Set<string>();
+        employees.forEach(e => { if (e.department) set.add(e.department); });
+        return Array.from(set).sort();
     }, [employees]);
 
     const overridePending = summary?.overrideSummary?.pending ?? 0;
@@ -209,7 +266,9 @@ export function Step1AttendanceValidation({ runId, runDetail, completedStep, onS
     const monthEnd = month && year ? new Date(year, month, 0) : null;
     const cutoffDate = monthEnd;
 
-    const lockedBy = runDetail?.lockedBy;
+    /* Prefer joined name; fall back defensively to a label if backend returned only the CUID */
+    const lockedByRaw = runDetail?.lockedByName ?? runDetail?.lockedBy ?? null;
+    const lockedBy = looksLikeCuid(lockedByRaw) ? 'Unknown User' : lockedByRaw;
     const lockedAt = runDetail?.lockedAt;
 
     const vs = summary?.vsLastMonth;
@@ -224,7 +283,121 @@ export function Step1AttendanceValidation({ runId, runDetail, completedStep, onS
     const presentPercent = withSalary > 0 ? ((attendancePresent / withSalary) * 100).toFixed(2) : '0.00';
 
     const onRefresh = () => { refetchSummary(); refetchDetail(); };
-    const onExport = () => window.print();
+
+    /* Download a Blob using the standard object-URL + anchor click + revoke pattern. */
+    const downloadBlob = (blob: Blob, filename: string) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    };
+
+    const exportFilename = () => {
+        const m = runDetail?.month;
+        const y = runDetail?.year;
+        const period = m && y ? `${y}-${String(m).padStart(2, '0')}` : 'period';
+        return `attendance-${period}.xlsx`;
+    };
+
+    const onExport = async () => {
+        if (!runId) return;
+        try {
+            setExporting(true);
+            const blob = await payrollRunApi.exportAttendance(runId);
+            downloadBlob(blob, exportFilename());
+            showSuccess('Export ready', 'Attendance Excel downloaded.');
+        } catch (err) {
+            showApiError(err);
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    /* Selection helpers */
+    const visibleIds = filteredEmployees.map(e => e.employeeId);
+    const allVisibleSelected = visibleIds.length > 0 && visibleIds.every(id => selectedIds.has(id));
+    const someVisibleSelected = visibleIds.some(id => selectedIds.has(id));
+    const toggleSelectAll = () => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (allVisibleSelected) {
+                visibleIds.forEach(id => next.delete(id));
+            } else {
+                visibleIds.forEach(id => next.add(id));
+            }
+            return next;
+        });
+    };
+    const toggleSelect = (id: string) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const onBulkLock = () => {
+        const ids = Array.from(selectedIds);
+        if (ids.length === 0) return;
+        bulkLockMutation.mutate(
+            { runId, employeeIds: ids },
+            {
+                onSuccess: () => {
+                    showSuccess('Attendance Locked', `Locked attendance for ${ids.length} employee(s).`);
+                    setSelectedIds(new Set());
+                    refetchSummary();
+                    refetchDetail();
+                },
+                onError: (err) => showApiError(err),
+            },
+        );
+    };
+    const onBulkUnlock = () => {
+        const ids = Array.from(selectedIds);
+        if (ids.length === 0) return;
+        bulkUnlockMutation.mutate(
+            { runId, employeeIds: ids },
+            {
+                onSuccess: () => {
+                    showSuccess('Attendance Unlocked', `Unlocked attendance for ${ids.length} employee(s).`);
+                    setSelectedIds(new Set());
+                    refetchSummary();
+                    refetchDetail();
+                },
+                onError: (err) => showApiError(err),
+            },
+        );
+    };
+    const onBulkExport = async () => {
+        const ids = Array.from(selectedIds);
+        if (!runId) return;
+        try {
+            setExporting(true);
+            const blob = await payrollRunApi.exportAttendance(runId, ids);
+            downloadBlob(blob, exportFilename());
+            showSuccess('Export ready', `Exported ${ids.length || 'all'} record(s).`);
+        } catch (err) {
+            showApiError(err);
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    /* Reset selection when filters/search/page change */
+    useEffect(() => { setSelectedIds(new Set()); }, [search, statusFilter, departmentFilter, page]);
+
+    /* Indeterminate checkbox effect */
+    const selectAllRef = useRef<HTMLInputElement>(null);
+    useEffect(() => {
+        if (selectAllRef.current) {
+            selectAllRef.current.indeterminate = !allVisibleSelected && someVisibleSelected;
+        }
+    }, [allVisibleSelected, someVisibleSelected]);
 
     return (
         <div className="space-y-5">
@@ -247,7 +420,13 @@ export function Step1AttendanceValidation({ runId, runDetail, completedStep, onS
                     <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 rounded-xl bg-neutral-50/70 p-3 ring-1 ring-neutral-100">
                         <MetaPill icon={Calendar}      label="Payroll Period" value={monthStart && monthEnd ? `${fmt.date(monthStart.toISOString())} – ${fmt.date(monthEnd.toISOString())}` : '—'} tint="info" />
                         <MetaPill icon={Clock}         label="Cut-off Day"    value={cutoffDate ? fmt.date(cutoffDate.toISOString()) : '—'} tint="accent" />
-                        <MetaPill icon={Calculator}   label="LOP Method"     value="÷ Working Days" tint="warning" />
+                        <MetaPill
+                            icon={Calculator}
+                            label="LOP Method"
+                            value="÷ Working Days"
+                            tint="warning"
+                            tooltip="LOP = (Basic Salary ÷ Working Days in Month) × LOP Days. Working Days excludes weekly offs and holidays."
+                        />
                         <MetaPill icon={CheckCircle2} label="Pro-rata Rules" value="Enabled" tint="success" />
                     </div>
                 </div>
@@ -279,6 +458,7 @@ export function Step1AttendanceValidation({ runId, runDetail, completedStep, onS
                 <StatTile icon={Calculator}    label="LOP Days (Total)"     value={totalLOP.toFixed(1)} sub="Across all employees" tint="danger" />
                 <StatTile icon={User}          label="Attendance Locked By"
                     value={isAlreadyLocked ? (lockedBy ?? '—') : '—'}
+                    valueTitle={isAlreadyLocked ? (lockedBy ?? '—') : 'Not Locked Yet'}
                     sub={isAlreadyLocked ? 'See activity log' : 'Not Locked Yet'} tint="info" />
                 <StatTile icon={Clock}         label="Attendance Locked On"
                     value={isAlreadyLocked && lockedAt ? fmt.date(lockedAt) : '—'}
@@ -315,11 +495,28 @@ export function Step1AttendanceValidation({ runId, runDetail, completedStep, onS
                             ))}
                         </div>
                         <div className="flex flex-wrap items-center gap-2 pb-3">
-                            <button className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-50">
-                                Bulk Actions <ChevronDown className="w-3 h-3" />
-                            </button>
-                            <button className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-50">
+                            <BulkActionsDropdown
+                                open={bulkOpen}
+                                onToggle={() => setBulkOpen(o => !o)}
+                                onClose={() => setBulkOpen(false)}
+                                selectedCount={selectedIds.size}
+                                onLock={onBulkLock}
+                                onUnlock={onBulkUnlock}
+                                onExport={onBulkExport}
+                            />
+                            <button
+                                onClick={() => setFiltersOpen(o => !o)}
+                                className={cn(
+                                    'inline-flex items-center gap-1.5 rounded-lg border bg-white px-3 py-1.5 text-xs font-semibold transition',
+                                    filtersOpen ? 'border-primary-300 bg-primary-50 text-primary-700' : 'border-neutral-200 text-neutral-700 hover:bg-neutral-50',
+                                )}
+                            >
                                 <Filter className="w-3 h-3" /> Filters
+                                {(statusFilter !== 'all' || departmentFilter) && (
+                                    <span className="rounded-full bg-primary-100 text-primary-700 px-1.5 text-[10px] font-bold">
+                                        {[statusFilter !== 'all', !!departmentFilter].filter(Boolean).length}
+                                    </span>
+                                )}
                             </button>
                             <div className="relative">
                                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
@@ -333,12 +530,50 @@ export function Step1AttendanceValidation({ runId, runDetail, completedStep, onS
                         </div>
                     </div>
 
+                    {filtersOpen && (
+                        <div className="border-b border-neutral-100 bg-neutral-50/40 px-5 py-3 flex flex-wrap items-center gap-3">
+                            <div className="flex items-center gap-2">
+                                <label className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">Status</label>
+                                <select
+                                    value={statusFilter}
+                                    onChange={(e) => { setStatusFilter(e.target.value as any); setPage(1); }}
+                                    className="rounded-lg border border-neutral-200 bg-white px-2 py-1 text-xs text-neutral-700 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                                >
+                                    <option value="all">All</option>
+                                    <option value="OK">Ready</option>
+                                    <option value="HAS_ISSUES">Issues</option>
+                                    <option value="OVERRIDE">Override</option>
+                                    <option value="NO_DATA">No Data</option>
+                                </select>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <label className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">Department</label>
+                                <select
+                                    value={departmentFilter}
+                                    onChange={(e) => { setDepartmentFilter(e.target.value); setPage(1); }}
+                                    className="rounded-lg border border-neutral-200 bg-white px-2 py-1 text-xs text-neutral-700 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                                >
+                                    <option value="">All Departments</option>
+                                    {departmentOptions.map(d => <option key={d} value={d}>{d}</option>)}
+                                </select>
+                            </div>
+                            {(statusFilter !== 'all' || departmentFilter) && (
+                                <button
+                                    onClick={() => { setStatusFilter('all'); setDepartmentFilter(''); setPage(1); }}
+                                    className="ml-auto text-[11.5px] font-semibold text-primary-600 hover:text-primary-700"
+                                >
+                                    Reset filters
+                                </button>
+                            )}
+                        </div>
+                    )}
+
                     {activeTab === 'attendance' ? (
                         <>
                             <div className="overflow-x-auto">
                                 {detailLoading && !detail ? (
                                     <div className="p-5"><SkeletonTable rows={6} cols={9} /></div>
-                                ) : employees.length === 0 ? (
+                                ) : filteredEmployees.length === 0 ? (
                                     <div className="px-6 py-12 text-center text-sm text-neutral-500">
                                         No employees found{search ? ` for "${search}"` : ''}.
                                     </div>
@@ -346,7 +581,16 @@ export function Step1AttendanceValidation({ runId, runDetail, completedStep, onS
                                     <table className="w-full text-sm">
                                         <thead>
                                             <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-neutral-500 bg-neutral-50/60">
-                                                <th className="px-4 py-3 w-10"><input type="checkbox" className="rounded border-neutral-300" /></th>
+                                                <th className="px-4 py-3 w-10">
+                                                    <input
+                                                        ref={selectAllRef}
+                                                        type="checkbox"
+                                                        className="rounded border-neutral-300"
+                                                        checked={allVisibleSelected}
+                                                        onChange={toggleSelectAll}
+                                                        aria-label="Select all visible employees"
+                                                    />
+                                                </th>
                                                 <th className="px-4 py-3 whitespace-nowrap">Employee ID</th>
                                                 <th className="px-4 py-3">Employee Name</th>
                                                 <th className="px-4 py-3 hidden md:table-cell">Department</th>
@@ -359,11 +603,20 @@ export function Step1AttendanceValidation({ runId, runDetail, completedStep, onS
                                             </tr>
                                         </thead>
                                         <tbody className={cn('divide-y divide-neutral-100', detailFetching && 'opacity-60 transition-opacity')}>
-                                            {employees.map((emp) => {
+                                            {filteredEmployees.map((emp) => {
                                                 const hasIssues = emp.status === 'HAS_ISSUES';
+                                                const isChecked = selectedIds.has(emp.employeeId);
                                                 return (
-                                                    <tr key={emp.employeeId} className="group hover:bg-neutral-50/60">
-                                                        <td className="px-4 py-3.5"><input type="checkbox" className="rounded border-neutral-300" /></td>
+                                                    <tr key={emp.employeeId} className={cn('group hover:bg-neutral-50/60', isChecked && 'bg-primary-50/30')}>
+                                                        <td className="px-4 py-3.5">
+                                                            <input
+                                                                type="checkbox"
+                                                                className="rounded border-neutral-300"
+                                                                checked={isChecked}
+                                                                onChange={() => toggleSelect(emp.employeeId)}
+                                                                aria-label={`Select ${emp.firstName} ${emp.lastName}`}
+                                                            />
+                                                        </td>
                                                         <td className="px-4 py-3.5 text-[12.5px] font-semibold text-neutral-700 whitespace-nowrap">{emp.employeeCode}</td>
                                                         <td className="px-4 py-3.5 text-[13px] font-semibold text-neutral-900 whitespace-nowrap">{emp.firstName} {emp.lastName}</td>
                                                         <td className="px-4 py-3.5 text-[12.5px] text-neutral-600 hidden md:table-cell whitespace-nowrap">{emp.department ?? '—'}</td>
@@ -375,7 +628,13 @@ export function Step1AttendanceValidation({ runId, runDetail, completedStep, onS
                                                         <td className="px-4 py-3.5 text-[12.5px] text-neutral-700 hidden lg:table-cell">{emp.otHours.toFixed(1)}</td>
                                                         <td className="px-4 py-3.5"><StatusPill status={emp.status} /></td>
                                                         <td className="px-4 py-3.5 text-right">
-                                                            <button className="inline-flex items-center justify-center w-7 h-7 rounded-md text-neutral-400 hover:bg-neutral-100 hover:text-primary-600">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setDetailRow(emp)}
+                                                                title="View attendance details and issue reason"
+                                                                aria-label={`View details for ${emp.firstName} ${emp.lastName}`}
+                                                                className="inline-flex items-center justify-center w-7 h-7 rounded-md text-neutral-500 hover:bg-neutral-100 hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                                            >
                                                                 <Eye className="w-4 h-4" />
                                                             </button>
                                                         </td>
@@ -414,15 +673,25 @@ export function Step1AttendanceValidation({ runId, runDetail, completedStep, onS
                 {/* Sidebar */}
                 <aside className="space-y-4">
                     <div className="rounded-2xl bg-white p-5 ring-1 ring-neutral-200 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-                        <h3 className="text-sm font-bold text-neutral-900 mb-3">Attendance Lock Summary</h3>
-                        <div className="flex items-center gap-4">
-                            <LockSummaryDonut ready={counts.ready} override={overridePending} notReady={counts.notReady} />
-                            <div className="space-y-2 flex-1 min-w-0">
-                                <LegendRow color="#10B981" label="Ready to Lock"           value={counts.ready}    pct={totalEmployees > 0 ? (counts.ready / totalEmployees) * 100 : 0} />
-                                <LegendRow color="#F59E0B" label="Overrides Pending"       value={overridePending} pct={totalEmployees > 0 ? (overridePending / totalEmployees) * 100 : 0} />
-                                <LegendRow color="#EF4444" label="Not Ready"               value={counts.notReady} pct={totalEmployees > 0 ? (counts.notReady / totalEmployees) * 100 : 0} />
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                                <h3 className="text-sm font-bold text-neutral-900">Attendance Lock Summary</h3>
+                                <InfoTooltip content="Company-wide lock readiness for all employees in this payroll run (with current salary). Counts do not change when you paginate or filter the attendance table. Ready = attendance captured with no absent or LOP days. Not Ready = has absent or LOP records. Overrides Pending = manual adjustments awaiting approval." />
                             </div>
+                            <span className="text-[10.5px] font-semibold text-neutral-500 shrink-0">Global</span>
                         </div>
+                        {summaryLoading ? (
+                            <div className="h-[130px] animate-pulse rounded-xl bg-neutral-100" />
+                        ) : (
+                            <div className="flex items-center gap-4">
+                                <LockSummaryDonut ready={lockChartReady} override={overridePending} notReady={lockChartNotReady} />
+                                <div className="space-y-2 flex-1 min-w-0">
+                                    <LegendRow color="#10B981" label="Ready to Lock"     value={lockChartReady}     pct={(lockChartReady / lockChartDenom) * 100} />
+                                    <LegendRow color="#F59E0B" label="Overrides Pending" value={overridePending}    pct={(overridePending / lockChartDenom) * 100} />
+                                    <LegendRow color="#EF4444" label="Not Ready"         value={lockChartNotReady}  pct={(lockChartNotReady / lockChartDenom) * 100} />
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="rounded-2xl bg-white p-5 ring-1 ring-neutral-200 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
@@ -460,6 +729,34 @@ export function Step1AttendanceValidation({ runId, runDetail, completedStep, onS
                     </div>
                 </aside>
             </div>
+
+            {/* ── Lock Disclosure (what gets locked) ────────────────── */}
+            {!isAlreadyLocked && (
+                <div className="rounded-2xl bg-info-50/40 p-4 ring-1 ring-info-200">
+                    <button
+                        type="button"
+                        onClick={() => setLockDisclosureOpen(o => !o)}
+                        className="flex items-center gap-2 text-[13px] font-semibold text-info-900"
+                    >
+                        <ShieldAlert className="w-4 h-4 text-info-600" />
+                        What gets locked when you proceed?
+                        <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', lockDisclosureOpen && 'rotate-180')} />
+                    </button>
+                    {lockDisclosureOpen && (
+                        <div className="mt-2 text-[12.5px] text-info-900/90 leading-relaxed pl-6">
+                            When you lock attendance for this period, the following becomes immutable:
+                            <ul className="list-disc pl-5 mt-1.5 space-y-0.5">
+                                <li>Daily attendance records (in/out, late, half-day)</li>
+                                <li>Leave applications already approved for this period</li>
+                                <li>Overtime entries logged in-period</li>
+                                <li>Any manual attendance adjustments</li>
+                            </ul>
+                            Once locked, only an admin override can modify these. Make sure all attendance corrections
+                            are completed before locking.
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* ── Warning + Lock CTA ────────────────────────────────── */}
             {!isAlreadyLocked && (
@@ -510,6 +807,122 @@ export function Step1AttendanceValidation({ runId, runDetail, completedStep, onS
                     You will be able to unlock with approved request if required.
                 </p>
             )}
+
+            {/* Row "view details" modal — opens when user clicks the eye icon on a table row */}
+            {detailRow && (
+                <AttendanceRowDetailModal row={detailRow} onClose={() => setDetailRow(null)} />
+            )}
+        </div>
+    );
+}
+
+/* ──────────────────────────────────────────────────────────────────────── */
+/* Attendance row detail modal                                              */
+/* ──────────────────────────────────────────────────────────────────────── */
+
+function AttendanceRowDetailModal({ row, onClose }: { row: any; onClose: () => void }) {
+    const status: 'OK' | 'HAS_ISSUES' | 'NO_DATA' = row.status ?? 'OK';
+    const reasons: string[] = Array.isArray(row.reasons) ? row.reasons : [];
+    const suggestions: string[] = Array.isArray(row.suggestions) ? row.suggestions : [];
+
+    const statusBadge =
+        status === 'OK'
+            ? { label: 'Ready', cls: 'bg-success-50 text-success-700 ring-success-200' }
+            : status === 'NO_DATA'
+              ? { label: 'No Data', cls: 'bg-neutral-100 text-neutral-700 ring-neutral-200' }
+              : { label: 'Has Issues', cls: 'bg-danger-50 text-danger-700 ring-danger-200' };
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40 backdrop-blur-sm p-4"
+            role="dialog"
+            aria-modal="true"
+            onClick={onClose}
+        >
+            <div
+                className="w-full max-w-md rounded-2xl bg-white shadow-xl ring-1 ring-neutral-200"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex items-start justify-between p-5 border-b border-neutral-100">
+                    <div className="min-w-0">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">Attendance Detail</p>
+                        <h3 className="mt-0.5 text-base font-bold text-neutral-900 truncate">
+                            {row.firstName} {row.lastName}
+                        </h3>
+                        <p className="text-xs text-neutral-500 mt-0.5">
+                            {row.employeeCode}{row.department ? ` · ${row.department}` : ''}
+                        </p>
+                    </div>
+                    <span className={cn('inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1', statusBadge.cls)}>
+                        {statusBadge.label}
+                    </span>
+                </div>
+
+                <div className="p-5 space-y-4">
+                    <div className="grid grid-cols-4 gap-2">
+                        <SummaryStat label="Working" value={Number(row.workingDays ?? 0)} />
+                        <SummaryStat label="Present" value={Number(row.present ?? 0)} tint="success" />
+                        <SummaryStat label="Absent"  value={Number(row.absent ?? 0)} tint={Number(row.absent ?? 0) > 0 ? 'danger' : 'neutral'} />
+                        <SummaryStat label="LOP"     value={Number(row.lop ?? 0)} tint={Number(row.lop ?? 0) > 0 ? 'warning' : 'neutral'} />
+                    </div>
+
+                    {reasons.length > 0 ? (
+                        <div className="rounded-xl bg-danger-50/60 ring-1 ring-danger-200 p-3.5">
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                                <AlertTriangle className="w-4 h-4 text-danger-600" />
+                                <p className="text-[12.5px] font-bold text-danger-800">Issue Reason</p>
+                            </div>
+                            <ul className="ml-1 list-disc list-inside space-y-1 text-[12.5px] text-danger-900">
+                                {reasons.map((r, i) => <li key={i}>{r}</li>)}
+                            </ul>
+                        </div>
+                    ) : (
+                        <div className="rounded-xl bg-success-50/60 ring-1 ring-success-200 p-3.5">
+                            <div className="flex items-center gap-1.5">
+                                <CheckCircle2 className="w-4 h-4 text-success-600" />
+                                <p className="text-[12.5px] font-bold text-success-800">All attendance checks passed</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {suggestions.length > 0 && (
+                        <div className="rounded-xl bg-info-50/60 ring-1 ring-info-200 p-3.5">
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                                <Info className="w-4 h-4 text-info-600" />
+                                <p className="text-[12.5px] font-bold text-info-800">Suggested Action</p>
+                            </div>
+                            <ul className="ml-1 list-disc list-inside space-y-1 text-[12.5px] text-info-900">
+                                {suggestions.map((s, i) => <li key={i}>{s}</li>)}
+                            </ul>
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex items-center justify-end gap-2 p-4 border-t border-neutral-100 bg-neutral-50/40 rounded-b-2xl">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3.5 py-1.5 text-[12.5px] font-semibold text-neutral-700 hover:bg-neutral-50"
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function SummaryStat({ label, value, tint = 'neutral' }: { label: string; value: number; tint?: 'neutral' | 'success' | 'warning' | 'danger' }) {
+    const tintCls = {
+        neutral: 'text-neutral-900',
+        success: 'text-success-700',
+        warning: 'text-warning-700',
+        danger:  'text-danger-700',
+    }[tint];
+    return (
+        <div className="rounded-lg bg-neutral-50/70 ring-1 ring-neutral-200 p-2 text-center">
+            <div className={cn('text-base font-bold', tintCls)}>{value}</div>
+            <div className="text-[10.5px] font-semibold uppercase tracking-wider text-neutral-500 mt-0.5">{label}</div>
         </div>
     );
 }
@@ -519,8 +932,8 @@ export function Step1AttendanceValidation({ runId, runDetail, completedStep, onS
 /* ──────────────────────────────────────────────────────────────────────── */
 
 function MetaPill({
-    icon: Icon, label, value, tint,
-}: { icon: React.ComponentType<{ className?: string }>; label: string; value: string; tint: 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'accent' }) {
+    icon: Icon, label, value, tint, tooltip,
+}: { icon: React.ComponentType<{ className?: string }>; label: string; value: string; tint: 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'accent'; tooltip?: string }) {
     const tintMap = {
         primary: 'bg-primary-100 text-primary-600',
         success: 'bg-success-100 text-success-600',
@@ -530,12 +943,15 @@ function MetaPill({
         accent:  'bg-accent-100 text-accent-600',
     } as const;
     return (
-        <div className="flex items-center gap-2.5 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0" title={value}>
             <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center shrink-0', tintMap[tint])}>
                 <Icon className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">{label}</div>
+                <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-neutral-500">
+                    <span>{label}</span>
+                    {tooltip && <InfoTooltip content={tooltip} />}
+                </div>
                 <div className="text-[12.5px] font-bold text-neutral-900 truncate">{value}</div>
             </div>
         </div>

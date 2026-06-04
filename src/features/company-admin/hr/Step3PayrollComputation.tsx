@@ -38,6 +38,7 @@ import { useResetToCompute } from '@/features/company-admin/api/use-payroll-run-
 import { useCompanyFormatter } from '@/hooks/useCompanyFormatter';
 import { SkeletonTable } from '@/components/ui/Skeleton';
 import { showSuccess, showApiError } from '@/lib/toast';
+import { RowIssueModal, type RowIssueDetail } from './payroll-wizard-modals';
 
 interface StepProps {
     runId: string;
@@ -154,6 +155,7 @@ export function Step3PayrollComputation({ runId, runDetail, completedStep, onSte
     const [tab, setTab] = useState<'all' | 'exceptions'>('all');
     const [page, setPage] = useState(1);
     const pageSize = 10;
+    const [issueDetail, setIssueDetail] = useState<RowIssueDetail | null>(null);
 
     useEffect(() => {
         const t = setTimeout(() => { setDebounced(search); setPage(1); }, 300);
@@ -358,7 +360,30 @@ export function Step3PayrollComputation({ runId, runDetail, completedStep, onSte
                                                 )}
                                             </td>
                                             <td className="px-4 py-3.5 text-right">
-                                                <button className="inline-flex items-center justify-center w-7 h-7 rounded-md text-neutral-400 hover:bg-neutral-100 hover:text-primary-600">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const matched = exceptionRows.find((ex: any) =>
+                                                            ex.employeeId === r.employeeId
+                                                            || ex.employeeCode === r.employeeCode
+                                                            || ex.employee === r.employeeName,
+                                                        );
+                                                        setIssueDetail({
+                                                            employeeName: r.employeeName,
+                                                            employeeCode: r.employeeCode,
+                                                            department: r.department ?? null,
+                                                            exceptionType: matched?.type ?? matched?.exceptionType ?? (r.isException ? 'Computation Exception' : 'Entry Details'),
+                                                            severity: matched?.severity ?? (r.isException ? 'HIGH' : 'LOW'),
+                                                            note: matched?.message ?? matched?.note ?? r.exceptionNote ?? (r.isException ? 'Computation flagged this employee. Review the variance against last period.' : 'No issues detected. View shows computed values for reference.'),
+                                                            suggestedResolution: matched?.suggestion ?? matched?.resolution ?? (r.isException ? 'Review attendance, salary structure and pay-period inputs; re-run computation after corrections.' : undefined),
+                                                            grossEarnings: r.grossEarnings,
+                                                            totalDeductions: r.totalDeductions,
+                                                            netPay: r.netPay,
+                                                        });
+                                                    }}
+                                                    className="inline-flex items-center justify-center w-7 h-7 rounded-md text-neutral-400 hover:bg-neutral-100 hover:text-primary-600"
+                                                    aria-label="View issue details"
+                                                >
                                                     <Eye className="w-4 h-4" />
                                                 </button>
                                             </td>
@@ -502,6 +527,13 @@ export function Step3PayrollComputation({ runId, runDetail, completedStep, onSte
                     </button>
                 </div>
             </div>
+
+            {/* Row Issue modal */}
+            <RowIssueModal
+                open={!!issueDetail}
+                onClose={() => setIssueDetail(null)}
+                detail={issueDetail}
+            />
         </div>
     );
 }

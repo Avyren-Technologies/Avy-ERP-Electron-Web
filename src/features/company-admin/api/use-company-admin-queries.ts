@@ -246,12 +246,17 @@ export function useSupportTickets(params?: { status?: string; category?: string;
     });
 }
 
-/** Navigation manifest — cached 5 minutes, drives sidebar rendering */
+/**
+ * Navigation manifest — cached 2 minutes, drives sidebar rendering.
+ * Shorter TTL (was 5min) so dynamic lock state (e.g. Phase B → Phase C gating)
+ * refreshes quickly after the user resolves blocking pre-run activities.
+ */
 export function useNavigationManifest() {
     return useQuery({
         queryKey: companyAdminKeys.navigationManifest(),
         queryFn: () => companyAdminApi.getNavigationManifest(),
-        staleTime: 5 * 60 * 1000,
+        staleTime: 2 * 60 * 1000,
+        refetchOnWindowFocus: true,
     });
 }
 

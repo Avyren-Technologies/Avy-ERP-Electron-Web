@@ -33,6 +33,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
     useDisbursementBreakdown,
+    useDisbursementSummary,
+    useDisbursementBatches,
     usePayrollRun,
     useStatutoryFiles,
 } from '@/features/company-admin/api/use-payroll-run-queries';
@@ -74,6 +76,8 @@ function StatTile({
         violet:  'bg-violet-50 text-violet-600',
         neutral: 'bg-neutral-100 text-neutral-700',
     } as const;
+    const valueTitle = typeof value === 'string' || typeof value === 'number' ? String(value) : undefined;
+    const subTitle = typeof sub === 'string' || typeof sub === 'number' ? String(sub) : undefined;
     return (
         <div className="rounded-2xl bg-white px-4 py-4 ring-1 ring-neutral-200 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             <div className="flex items-center gap-3">
@@ -81,9 +85,9 @@ function StatTile({
                     <Icon className="w-5 h-5" strokeWidth={2.2} />
                 </div>
                 <div className="min-w-0 flex-1">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 leading-tight">{label}</div>
-                    <div className="mt-0.5 text-[16px] font-extrabold text-neutral-900 leading-tight tabular-nums truncate">{value}</div>
-                    {sub && <div className="text-[11px] text-neutral-500 mt-0.5 truncate">{sub}</div>}
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 leading-tight" title={label}>{label}</div>
+                    <div className="mt-0.5 text-[16px] font-extrabold text-neutral-900 leading-tight tabular-nums truncate" title={valueTitle}>{value}</div>
+                    {sub && <div className="text-[11px] text-neutral-500 mt-0.5 truncate" title={subTitle}>{sub}</div>}
                 </div>
             </div>
         </div>
@@ -192,6 +196,8 @@ export function Step6Disbursement({ runId, runDetail, completedStep, onStepActio
     const isArchived = status === 'ARCHIVED';
 
     const breakdownQuery = useDisbursementBreakdown(runId);
+    const summaryQuery = useDisbursementSummary(runId);
+    const batchesQuery = useDisbursementBatches(runId);
     const filesQuery = useStatutoryFiles(runId);
     const runDetailQuery = usePayrollRun(runId);
 
@@ -199,11 +205,22 @@ export function Step6Disbursement({ runId, runDetail, completedStep, onStepActio
     const archiveMutation = useArchiveRun();
 
     const breakdown: any = breakdownQuery.data?.data ?? null;
+    const disbursementSummary: any = summaryQuery.data?.data ?? null;
+    const disbursementBatchesData: any = batchesQuery.data?.data ?? null;
     const filesData: any = filesQuery.data?.data ?? null;
 
-    /* Disbursement metrics */
-    const totals = breakdown?.totals ?? {};
-    const distribution = breakdown?.distributionStatus ?? {};
+    const summaryUnavailable = (summaryQuery.error as any)?.response?.status === 404;
+    const batchesUnavailable = (batchesQuery.error as any)?.response?.status === 404;
+    const batches: any[] = useMemo(() => {
+        if (!disbursementBatchesData) return [];
+        if (Array.isArray(disbursementBatchesData)) return disbursementBatchesData;
+        if (Array.isArray(disbursementBatchesData.batches)) return disbursementBatchesData.batches;
+        return [];
+    }, [disbursementBatchesData]);
+
+    /* Disbursement metrics — prefer new disbursementSummary endpoint, fall back to legacy breakdown */
+    const totals = disbursementSummary?.totals ?? breakdown?.totals ?? {};
+    const distribution = disbursementSummary?.distributionStatus ?? breakdown?.distributionStatus ?? {};
     const employees = Number(totals.totalEmployees ?? runDetail?.employeeCount ?? 0);
     const netDisbursed = Number(totals.netDisbursed ?? runDetail?.totalNet ?? 0);
     const bankTransferTotal = Number(totals.netDisbursed ?? runDetail?.totalNet ?? 0);
@@ -211,6 +228,8 @@ export function Step6Disbursement({ runId, runDetail, completedStep, onStepActio
     const successful = Number(distribution?.processed?.count ?? (isDisbursed ? employees : 0));
     const pending = Number(distribution?.pending?.count ?? 0);
     const failed = Number(distribution?.failed?.count ?? 0);
+    const reversed = Number(distribution?.reversed?.count ?? 0);
+    const manualReprocess = Number(distribution?.manualReprocess?.count ?? 0);
     const totalTx = successful + pending + failed || employees;
     const successPct = totalTx > 0 ? (successful / totalTx) * 100 : 0;
     const failedPct = totalTx > 0 ? (failed / totalTx) * 100 : 0;
@@ -252,7 +271,13 @@ export function Step6Disbursement({ runId, runDetail, completedStep, onStepActio
         return `PAYROLL_${MONTHS_SHORT[runDetail.month]?.toUpperCase()}${runDetail.year}_${disbursedAt ? new Date(disbursedAt).toISOString().slice(0, 10).replace(/-/g, '') : new Date().toISOString().slice(0, 10).replace(/-/g, '')}.txt`;
     }, [runDetail, disbursedAt]);
 
-    const onRefresh = () => { breakdownQuery.refetch(); filesQuery.refetch(); runDetailQuery.refetch(); };
+    const onRefresh = () => {
+        breakdownQuery.refetch();
+        summaryQuery.refetch();
+        batchesQuery.refetch();
+        filesQuery.refetch();
+        runDetailQuery.refetch();
+    };
     const onExport = () => window.print();
 
     const handleDisburse = () => {
@@ -373,8 +398,8 @@ export function Step6Disbursement({ runId, runDetail, completedStep, onStepActio
                                 <BreakdownLine color="#10B981" label="Successful Transfers"        value={successful} total={totalTx} />
                                 <BreakdownLine color="#F59E0B" label="Pending Bank Acknowledgement" value={pending}    total={totalTx} />
                                 <BreakdownLine color="#EF4444" label="Rejected by Bank"             value={failed}     total={totalTx} />
-                                <BreakdownLine color="#94A3B8" label="Reversed Transactions"        value={0}          total={totalTx} />
-                                <BreakdownLine color="#94A3B8" label="Manual Reprocessing Required" value={0}          total={totalTx} />
+                                <BreakdownLine color="#94A3B8" label="Reversed Transactions"        value={reversed}        total={totalTx} />
+                                <BreakdownLine color="#94A3B8" label="Manual Reprocessing Required" value={manualReprocess} total={totalTx} />
                             </ul>
                             <a href="#" className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-semibold text-primary-600 hover:text-primary-700">
                                 View Bank Transfer Details →
@@ -437,6 +462,68 @@ export function Step6Disbursement({ runId, runDetail, completedStep, onStepActio
                         Request Unlock (CFO Only) →
                     </a>
                 </div>
+            </div>
+
+            {/* Disbursement Batches (new endpoint — empty state on 404 or empty array) */}
+            <div className="rounded-2xl bg-white p-5 ring-1 ring-neutral-200 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+                <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-bold text-neutral-900">Disbursement Batches</h3>
+                    {summaryUnavailable && (
+                        <span className="text-[10.5px] text-neutral-500">Summary endpoint unavailable</span>
+                    )}
+                </div>
+                {batchesQuery.isLoading ? (
+                    <div className="text-[12.5px] text-neutral-500">Loading batches…</div>
+                ) : batchesUnavailable ? (
+                    <div className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50/40 px-4 py-8 text-center">
+                        <Info className="w-6 h-6 mx-auto text-neutral-400 mb-2" />
+                        <p className="text-[12.5px] text-neutral-500">Disbursement batch data not yet available.</p>
+                    </div>
+                ) : batches.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50/40 px-4 py-8 text-center">
+                        <Info className="w-6 h-6 mx-auto text-neutral-400 mb-2" />
+                        <p className="text-[12.5px] text-neutral-500">No disbursement batches recorded for this run.</p>
+                    </div>
+                ) : (
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-neutral-500 bg-neutral-50/60">
+                                <th className="px-4 py-2.5">Batch</th>
+                                <th className="px-4 py-2.5">Bank / Method</th>
+                                <th className="px-4 py-2.5 text-right">Employees</th>
+                                <th className="px-4 py-2.5 text-right">Amount</th>
+                                <th className="px-4 py-2.5">Status</th>
+                                <th className="px-4 py-2.5">Scheduled</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-neutral-100">
+                            {batches.map((b: any, idx: number) => {
+                                const batchStatus = String(b.status ?? '').toUpperCase();
+                                const tint = batchStatus === 'SUCCESS' || batchStatus === 'PROCESSED'
+                                    ? 'bg-success-50 text-success-700 ring-success-200'
+                                    : batchStatus === 'FAILED'
+                                      ? 'bg-danger-50 text-danger-700 ring-danger-200'
+                                      : 'bg-warning-50 text-warning-700 ring-warning-200';
+                                return (
+                                    <tr key={b.id ?? idx}>
+                                        <td className="px-4 py-2.5 text-[12.5px] font-bold text-neutral-900">{b.batchId ?? b.id ?? `Batch ${idx + 1}`}</td>
+                                        <td className="px-4 py-2.5 text-[12.5px] text-neutral-700">{b.bankName ?? b.method ?? '—'}</td>
+                                        <td className="px-4 py-2.5 text-right text-[12.5px]">{Number(b.employees ?? b.count ?? 0)}</td>
+                                        <td className="px-4 py-2.5 text-right text-[12.5px] font-mono">{formatINR(Number(b.amount ?? 0))}</td>
+                                        <td className="px-4 py-2.5">
+                                            <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1', tint)}>
+                                                {batchStatus || 'PENDING'}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-2.5 text-[12px] text-neutral-600">
+                                            {b.scheduledAt ? `${fmt.date(b.scheduledAt)} ${fmt.time(b.scheduledAt)}` : '—'}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                )}
             </div>
 
             {/* Lower row: Archive Artifacts + Bank File Summary + Next Steps */}

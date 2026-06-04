@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Car, Plus, Loader2, X, Search, LogOut, Eye, QrCode, Printer } from "lucide-react";
+import { Car, Plus, Loader2, X, Search, LogOut, Eye, QrCode, Printer, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useVehiclePasses, useGates } from "@/features/company-admin/api/use-visitor-queries";
 import { useCreateVehiclePass, useRecordVehicleExit } from "@/features/company-admin/api/use-visitor-mutations";
@@ -13,7 +13,7 @@ import { showSuccess, showApiError } from "@/lib/toast";
 
 const VEHICLE_TYPES = ["CAR", "TWO_WHEELER", "AUTO", "TRUCK", "VAN", "TEMPO", "BUS"] as const;
 
-const EMPTY_FORM = { vehicleRegNumber: "", vehicleType: "CAR", driverName: "", driverMobile: "", purpose: "", visitId: "", materialDescription: "", entryGateId: "", plantId: "" };
+const EMPTY_FORM = { vehicleRegNumber: "", vehicleType: "CAR", driverName: "", driverMobile: "", purpose: "", visitId: "", materialDescription: "", entryGateId: "", plantId: "", validDays: "30" };
 
 export function VehiclePassScreen() {
     const fmt = useCompanyFormatter();
@@ -46,6 +46,9 @@ export function VehiclePassScreen() {
 
     const handleSave = async () => {
         try {
+            const now = new Date();
+            const days = Number((form.validDays || "30").trim());
+            const validUntil = new Date(now.getTime() + (Number.isFinite(days) && days > 0 ? days : 30) * 86_400_000);
             const payload = {
                 vehicleRegNumber: form.vehicleRegNumber,
                 vehicleType: form.vehicleType,
@@ -56,6 +59,8 @@ export function VehiclePassScreen() {
                 materialDescription: form.materialDescription || undefined,
                 entryGateId: form.entryGateId,
                 plantId: form.plantId,
+                validFrom: now.toISOString(),
+                validUntil: validUntil.toISOString(),
             };
             await createMutation.mutateAsync(payload);
             showSuccess("Vehicle Pass Created", `Pass for ${form.vehicleRegNumber} has been created.`);
@@ -165,11 +170,16 @@ export function VehiclePassScreen() {
                     <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Vehicle Gate Passes</h1>
                     <p className="text-neutral-500 dark:text-neutral-400 mt-1">Track vehicle entry and exit</p>
                 </div>
-                {canCreate && (
-                    <button onClick={() => { setForm({ ...EMPTY_FORM }); setModalOpen(true); }} className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none">
-                        <Plus className="w-5 h-5" /> New Vehicle Pass
-                    </button>
-                )}
+                <div className="flex items-center gap-2">
+                    <a href="/app/company/visitors/pass-history" className="inline-flex items-center gap-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 text-primary-700 dark:text-primary-300 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-neutral-50 transition-colors">
+                        <History className="w-4 h-4" /> History
+                    </a>
+                    {canCreate && (
+                        <button onClick={() => { setForm({ ...EMPTY_FORM }); setModalOpen(true); }} className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none">
+                            <Plus className="w-5 h-5" /> New Vehicle Pass
+                        </button>
+                    )}
+                </div>
             </div>
 
             <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm">
@@ -298,6 +308,11 @@ export function VehiclePassScreen() {
                                 </div>
                             </div>
                             <div><label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">Material Description</label><textarea value={form.materialDescription} onChange={(e) => updateField("materialDescription", e.target.value)} rows={2} placeholder="Description of materials carried" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm dark:text-white placeholder:text-neutral-400 transition-all resize-none" /></div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">Pass valid for (days)</label>
+                                <input type="number" min={1} value={form.validDays} onChange={(e) => updateField("validDays", e.target.value)} placeholder="30" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm dark:text-white" />
+                                <p className="text-[10px] text-neutral-400 mt-1">In-house vehicles can have long validity (365); single-use deliveries use 1.</p>
+                            </div>
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
                             <button onClick={() => setModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 transition-colors">Cancel</button>

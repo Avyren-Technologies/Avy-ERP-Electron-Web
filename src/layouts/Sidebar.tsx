@@ -19,8 +19,9 @@ import {
     Target, Flag, MessageSquare, Star, Brain, GitFork,
     UserPlus, GraduationCap, Award, FileSignature, AlertTriangle, Gavel,
     ArrowLeftRight, LogIn, CheckCircle2,
-    Warehouse, Factory, Eye, FileDiff, Cog, HardHat,
+    Warehouse, Factory, Eye, FileDiff, Cog, HardHat, Lock,
 } from 'lucide-react';
+import { showWarning } from '@/lib/toast';
 
 // Module separator → icon + accent color mapping for collapsed card state
 const MODULE_CARD_CONFIG: Record<string, { icon: React.ComponentType<any>; accent: string; iconBg: string; hoverBg: string }> = {
@@ -53,6 +54,8 @@ interface ManifestNavItem {
     requiredPerm: string | null;
     module: string | null;
     children?: { label: string; path: string }[];
+    locked?: boolean;
+    lockReason?: string;
 }
 
 interface ManifestSection {
@@ -359,6 +362,8 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
                     path: i.path,
                     children: i.children,
                     badge: (i as any).badge as number | undefined,
+                    locked: i.locked === true,
+                    lockReason: i.lockReason,
                 })),
         };
     });
@@ -624,16 +629,28 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
                                         <div className="space-y-0.5">
                                             {section.items.map((item) => {
                                                 const active = isItemActive(item);
+                                                const isLocked = item.locked === true;
+                                                const lockMsg = item.lockReason ?? 'This action is currently unavailable';
                                                 return (
                                                     <NavLink
                                                         key={`${section.group}::${item.path}`}
                                                         to={item.path}
-                                                        data-active={active ? "true" : undefined}
+                                                        data-active={active ? 'true' : undefined}
+                                                        title={isLocked ? lockMsg : undefined}
+                                                        aria-disabled={isLocked || undefined}
+                                                        onClick={(e) => {
+                                                            if (isLocked) {
+                                                                e.preventDefault();
+                                                                showWarning('Locked', lockMsg);
+                                                            }
+                                                        }}
                                                         className={cn(
                                                             'flex items-center gap-2.5 pl-[48px] pr-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 group/sub relative',
-                                                            active
+                                                            isLocked && 'opacity-50 cursor-not-allowed hover:bg-transparent dark:hover:bg-transparent',
+                                                            !isLocked && active
                                                                 ? 'text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 font-semibold'
-                                                                : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800'
+                                                                : !isLocked && 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800',
+                                                            isLocked && 'text-neutral-400 dark:text-neutral-500',
                                                         )}
                                                     >
                                                         {/* Horizontal connector */}
@@ -646,7 +663,10 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
                                                             'absolute left-[35px] top-1/2 -translate-y-1/2 w-[5px] h-[5px] rounded-full flex-shrink-0 pointer-events-none',
                                                             active ? 'bg-primary-600 dark:bg-primary-400' : 'bg-neutral-300 dark:bg-neutral-600'
                                                         )} />
-                                                        {item.label}
+                                                        <span className="flex-1 truncate">{item.label}</span>
+                                                        {isLocked && (
+                                                            <Lock size={11} strokeWidth={2.4} className="text-neutral-400 dark:text-neutral-500 flex-shrink-0" />
+                                                        )}
                                                     </NavLink>
                                                 );
                                             })}
@@ -661,28 +681,37 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
                             const active = isItemActive(item);
                             const hasChildren = item.children && item.children.length > 0;
                             const isOpen = openGroups[item.path];
+                            const isLocked = item.locked === true;
+                            const lockMsg = item.lockReason ?? 'This action is currently unavailable';
 
                             return (
                                 <div key={`${section.group}::${item.path}`}>
                                     {/* Main Nav Item */}
                                     <button
-                                        onMouseEnter={(e) => handleMouseEnter(e, item.label)}
+                                        onMouseEnter={(e) => handleMouseEnter(e, isLocked ? `${item.label} — ${lockMsg}` : item.label)}
                                         onMouseLeave={handleMouseLeave}
                                         onClick={() => {
+                                            if (isLocked) {
+                                                showWarning('Locked', lockMsg);
+                                                return;
+                                            }
                                             if (hasChildren && !collapsed) {
                                                 toggleGroup(item.path);
                                             } else {
                                                 navigate(item.path);
                                             }
                                         }}
-                                        title={undefined}
-                                        data-active={active && !hasChildren ? "true" : undefined}
+                                        title={isLocked ? lockMsg : undefined}
+                                        aria-disabled={isLocked || undefined}
+                                        data-active={active && !hasChildren ? 'true' : undefined}
                                         className={cn(
                                             'w-full flex items-center gap-3 rounded-xl transition-all duration-150 group relative',
                                             collapsed ? 'px-2.5 py-2.5 justify-center' : 'px-3 py-2.5',
-                                            active
+                                            isLocked && 'opacity-50 cursor-not-allowed hover:bg-transparent dark:hover:bg-transparent',
+                                            !isLocked && active
                                                 ? 'bg-primary-50 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
-                                                : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-200'
+                                                : !isLocked && 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-200',
+                                            isLocked && 'text-neutral-400 dark:text-neutral-500',
                                         )}
                                     >
                                         {/* Active indicator bar */}
@@ -709,7 +738,10 @@ export function Sidebar({ collapsed, onCollapse, manifestSections }: SidebarProp
                                                         {item.badge}
                                                     </span>
                                                 )}
-                                                {hasChildren && (
+                                                {isLocked && (
+                                                    <Lock size={13} strokeWidth={2.4} className="text-neutral-400 dark:text-neutral-500 flex-shrink-0" />
+                                                )}
+                                                {hasChildren && !isLocked && (
                                                     <ChevronDown
                                                         size={13}
                                                         className={cn(

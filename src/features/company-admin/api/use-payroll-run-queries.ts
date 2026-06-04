@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { payrollRunApi } from '@/lib/api/payroll-run';
 
 export const payrollRunKeys = {
@@ -55,8 +55,17 @@ export const payrollRunKeys = {
     computeSummary: (runId: string) => [...payrollRunKeys.all, 'compute-summary', runId] as const,
     statutorySummary: (runId: string) => [...payrollRunKeys.all, 'statutory-summary', runId] as const,
     statutoryFiles: (runId: string) => [...payrollRunKeys.all, 'statutory-files', runId] as const,
+    statutoryDetails: (runId: string, category: string) => [...payrollRunKeys.all, 'statutory-details', runId, category] as const,
+    computationLog: (runId: string) => [...payrollRunKeys.all, 'computation-log', runId] as const,
     disbursementBreakdown: (runId: string) => [...payrollRunKeys.all, 'disbursement-breakdown', runId] as const,
     approvalSummary: (runId: string) => [...payrollRunKeys.all, 'approval-summary', runId] as const,
+    approvalWorkflow: (runId: string) => [...payrollRunKeys.all, 'approval-workflow', runId] as const,
+    componentBreakdown: (runId: string) => [...payrollRunKeys.all, 'component-breakdown', runId] as const,
+    disbursementSummary: (runId: string) => [...payrollRunKeys.all, 'disbursement-summary', runId] as const,
+    disbursementBatches: (runId: string) => [...payrollRunKeys.all, 'disbursement-batches', runId] as const,
+    attendanceLockSummary: (runId: string) => [...payrollRunKeys.all, 'attendance-lock-summary', runId] as const,
+    attendance: (runId: string) => [...payrollRunKeys.all, 'attendance', runId] as const,
+    detail: (runId: string) => [...payrollRunKeys.all, 'detail', runId] as const,
 
     // Payroll Reports
     salaryRegister: (params?: Record<string, unknown>) =>
@@ -288,6 +297,32 @@ export function useStatutoryFiles(runId: string) {
     });
 }
 
+export function useStatutoryDetails(
+    runId: string,
+    category: 'PF' | 'ESI' | 'PT' | 'TDS' | 'LWF',
+    enabled = true,
+) {
+    return useQuery({
+        queryKey: payrollRunKeys.statutoryDetails(runId, category),
+        queryFn: () => payrollRunApi.getStatutoryDetails(runId, category),
+        enabled: !!runId && enabled,
+        staleTime: 0,
+        refetchOnMount: true,
+        retry: false,
+    });
+}
+
+export function useComputationLog(runId: string, enabled = true) {
+    return useQuery({
+        queryKey: payrollRunKeys.computationLog(runId),
+        queryFn: () => payrollRunApi.getComputationLog(runId),
+        enabled: !!runId && enabled,
+        staleTime: 0,
+        refetchOnMount: true,
+        retry: false,
+    });
+}
+
 export function useDisbursementBreakdown(runId: string) {
     return useQuery({
         queryKey: payrollRunKeys.disbursementBreakdown(runId),
@@ -305,5 +340,104 @@ export function useApprovalSummary(runId: string) {
         enabled: !!runId,
         staleTime: 0,
         refetchOnMount: true,
+    });
+}
+
+export function useApprovalWorkflow(runId: string) {
+    return useQuery({
+        queryKey: payrollRunKeys.approvalWorkflow(runId),
+        queryFn: () => payrollRunApi.getApprovalWorkflow(runId),
+        enabled: !!runId,
+        staleTime: 0,
+        refetchOnMount: true,
+        retry: (failureCount, err: any) => {
+            // Don't retry on 404 — endpoint or workflow simply not configured
+            if (err?.response?.status === 404) return false;
+            return failureCount < 1;
+        },
+    });
+}
+
+export function useComponentBreakdown(runId: string) {
+    return useQuery({
+        queryKey: payrollRunKeys.componentBreakdown(runId),
+        queryFn: () => payrollRunApi.getComponentBreakdown(runId),
+        enabled: !!runId,
+        staleTime: 0,
+        refetchOnMount: true,
+        retry: (failureCount, err: any) => {
+            if (err?.response?.status === 404) return false;
+            return failureCount < 1;
+        },
+    });
+}
+
+/** Disbursement summary (Step 6). No retry on 404. */
+export function useDisbursementSummary(runId: string) {
+    return useQuery({
+        queryKey: payrollRunKeys.disbursementSummary(runId),
+        queryFn: () => payrollRunApi.getDisbursementSummary(runId),
+        enabled: !!runId,
+        staleTime: 0,
+        refetchOnMount: true,
+        retry: (failureCount, err: any) => {
+            if (err?.response?.status === 404) return false;
+            return failureCount < 1;
+        },
+    });
+}
+
+/** Disbursement batches (Step 6). No retry on 404. */
+export function useDisbursementBatches(runId: string) {
+    return useQuery({
+        queryKey: payrollRunKeys.disbursementBatches(runId),
+        queryFn: () => payrollRunApi.getDisbursementBatches(runId),
+        enabled: !!runId,
+        staleTime: 0,
+        refetchOnMount: true,
+        retry: (failureCount, err: any) => {
+            if (err?.response?.status === 404) return false;
+            return failureCount < 1;
+        },
+    });
+}
+
+// ── Step 1 — Bulk attendance mutations ──
+
+/**
+ * Step 1: Bulk-lock attendance for selected employees.
+ * Invalidates attendance summary, attendance detail, and run detail
+ * so the wizard refreshes its state after the mutation succeeds.
+ */
+export function useBulkLockAttendance() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ runId, employeeIds }: { runId: string; employeeIds: string[] }) =>
+            payrollRunApi.bulkLockAttendance(runId, employeeIds),
+        onSuccess: (_, vars) => {
+            queryClient.invalidateQueries({ queryKey: payrollRunKeys.attendanceSummary(vars.runId) });
+            queryClient.invalidateQueries({ queryKey: payrollRunKeys.attendanceDetail(vars.runId) });
+            queryClient.invalidateQueries({ queryKey: payrollRunKeys.attendanceLockSummary(vars.runId) });
+            queryClient.invalidateQueries({ queryKey: payrollRunKeys.attendance(vars.runId) });
+            queryClient.invalidateQueries({ queryKey: payrollRunKeys.run(vars.runId) });
+            queryClient.invalidateQueries({ queryKey: payrollRunKeys.detail(vars.runId) });
+        },
+    });
+}
+
+/** Step 1: Bulk-unlock attendance for selected employees. */
+export function useBulkUnlockAttendance() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ runId, employeeIds }: { runId: string; employeeIds: string[] }) =>
+            payrollRunApi.bulkUnlockAttendance(runId, employeeIds),
+        onSuccess: (_, vars) => {
+            queryClient.invalidateQueries({ queryKey: payrollRunKeys.attendanceSummary(vars.runId) });
+            queryClient.invalidateQueries({ queryKey: payrollRunKeys.attendanceDetail(vars.runId) });
+            queryClient.invalidateQueries({ queryKey: payrollRunKeys.attendanceLockSummary(vars.runId) });
+            queryClient.invalidateQueries({ queryKey: payrollRunKeys.attendance(vars.runId) });
+            queryClient.invalidateQueries({ queryKey: payrollRunKeys.run(vars.runId) });
+            queryClient.invalidateQueries({ queryKey: payrollRunKeys.detail(vars.runId) });
+        },
     });
 }

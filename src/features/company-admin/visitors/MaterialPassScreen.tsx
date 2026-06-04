@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Package, Plus, Loader2, X, Search, RotateCcw, Eye, QrCode, Printer } from "lucide-react";
+import { Package, Plus, Loader2, X, Search, RotateCcw, Eye, QrCode, Printer, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMaterialPasses, useGates } from "@/features/company-admin/api/use-visitor-queries";
 import { useCreateMaterialPass, useReturnMaterialPass } from "@/features/company-admin/api/use-visitor-mutations";
@@ -166,11 +166,16 @@ export function MaterialPassScreen() {
                     <h1 className="text-3xl font-bold text-primary-950 dark:text-white tracking-tight">Material Gate Passes</h1>
                     <p className="text-neutral-500 dark:text-neutral-400 mt-1">Track material inward and outward movement</p>
                 </div>
-                {canCreate && (
-                    <button onClick={() => { setForm({ ...EMPTY_FORM }); setModalOpen(true); }} className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none">
-                        <Plus className="w-5 h-5" /> New Material Pass
-                    </button>
-                )}
+                <div className="flex items-center gap-2">
+                    <a href="/app/company/visitors/pass-history" className="inline-flex items-center gap-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 text-primary-700 dark:text-primary-300 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-neutral-50 transition-colors">
+                        <History className="w-4 h-4" /> History
+                    </a>
+                    {canCreate && (
+                        <button onClick={() => { setForm({ ...EMPTY_FORM }); setModalOpen(true); }} className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-primary-500/20 transition-all dark:shadow-none">
+                            <Plus className="w-5 h-5" /> New Material Pass
+                        </button>
+                    )}
+                </div>
             </div>
 
             <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm">

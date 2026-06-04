@@ -1,5 +1,6 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { EditPeriodModal, PendingItemsModal, type PendingItem } from './payroll-wizard-modals';
 import {
     Calendar,
     Clock,
@@ -220,9 +221,11 @@ const DOCUMENTS = [
 export function PhaseBPreRunScreen() {
     const navigate = useNavigate();
     const fmt = useCompanyFormatter();
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const explicitRunId = searchParams.get('runId') ?? '';
     const [activeTab, setActiveTab] = useState<'pre-run' | 'full-run'>('pre-run');
+    const [editPeriodOpen, setEditPeriodOpen] = useState(false);
+    const [pendingItemsOpen, setPendingItemsOpen] = useState(false);
 
     /* ── 1. Resolve active runId ── */
     const { data: runsResp, isLoading: runsLoading } = usePayrollRuns({ pageSize: 20 });
@@ -336,8 +339,9 @@ export function PhaseBPreRunScreen() {
         },
     ];
 
-    const pendingItems = acts
-        .filter(a => a.status === 'BLOCKED' || (a.status === 'PENDING' && (a.pendingCount ?? 0) > 0))
+    const allPendingActivities = acts.filter(a => a.status === 'BLOCKED' || (a.status === 'PENDING' && (a.pendingCount ?? 0) > 0));
+
+    const pendingItems = allPendingActivities
         .slice(0, 4)
         .map(a => ({
             label: a.name,
@@ -345,6 +349,20 @@ export function PhaseBPreRunScreen() {
             priority: a.priority,
             id: a.id,
         }));
+
+    const allPendingItems: PendingItem[] = allPendingActivities.map(a => {
+        const meta = ACTIVITY_META[a.id];
+        return {
+            id: a.id,
+            title: a.name,
+            description: a.blockerReason || a.description || undefined,
+            severity: a.priority,
+            status: a.status,
+            owner: meta?.ownerRole,
+            eta: meta?.estMin != null ? `~${meta.estMin} min` : undefined,
+            actionUrl: a.actionUrl,
+        };
+    });
 
     const periodLabel = `${MONTHS[checklist.run.month]} ${checklist.run.year} Payroll`;
     const monthStart = new Date(checklist.run.year, checklist.run.month - 1, 1).toISOString();
@@ -429,7 +447,7 @@ export function PhaseBPreRunScreen() {
                             Payroll Period
                         </div>
                         <button
-                            onClick={() => navigate(`/app/company/hr/payroll-runs/${checklist.run.id}/wizard`)}
+                            onClick={() => setEditPeriodOpen(true)}
                             className="inline-flex items-center gap-1 text-xs font-semibold text-primary-600 hover:text-primary-700"
                         >
                             <Pencil className="w-3 h-3" /> Edit Period
@@ -633,7 +651,19 @@ export function PhaseBPreRunScreen() {
                     <div className="rounded-2xl bg-white p-5 ring-1 ring-neutral-200 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
                         <div className="flex items-center justify-between mb-3">
                             <h3 className="text-sm font-bold text-neutral-900">Pending Items Requiring Attention</h3>
-                            <Link to="#" className="text-[11.5px] font-semibold text-primary-600 hover:text-primary-700">View All</Link>
+                            <button
+                                type="button"
+                                onClick={() => setPendingItemsOpen(true)}
+                                disabled={allPendingItems.length === 0}
+                                className={cn(
+                                    'text-[11.5px] font-semibold',
+                                    allPendingItems.length === 0
+                                        ? 'text-neutral-400 cursor-not-allowed'
+                                        : 'text-primary-600 hover:text-primary-700',
+                                )}
+                            >
+                                View All
+                            </button>
                         </div>
                         {pendingItems.length === 0 ? (
                             <p className="text-[12px] text-neutral-500">No pending items 🎉</p>
@@ -747,6 +777,36 @@ export function PhaseBPreRunScreen() {
                     </div>
                 </div>
             </div>
+
+            {/* Edit Period switcher */}
+            <EditPeriodModal
+                open={editPeriodOpen}
+                onClose={() => setEditPeriodOpen(false)}
+                runs={runsList.map(r => ({
+                    id: r.id,
+                    month: r.month,
+                    year: r.year,
+                    status: r.status,
+                    employeeCount: r.employeeCount,
+                }))}
+                currentRunId={checklist.run.id}
+                onSelect={(id) => {
+                    const params = new URLSearchParams(searchParams);
+                    params.set('runId', id);
+                    setSearchParams(params, { replace: true });
+                }}
+            />
+
+            {/* All Pending Items modal */}
+            <PendingItemsModal
+                open={pendingItemsOpen}
+                onClose={() => setPendingItemsOpen(false)}
+                items={allPendingItems}
+                onItemAction={(item) => {
+                    setPendingItemsOpen(false);
+                    if (item.actionUrl) navigate(item.actionUrl);
+                }}
+            />
         </div>
     );
 }

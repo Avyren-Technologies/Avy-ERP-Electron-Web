@@ -319,8 +319,28 @@ async function createVehiclePass(data: any): Promise<ApiResponse<any>> {
     return response.data;
 }
 
+async function recordVehicleEntry(id: string, data?: any): Promise<ApiResponse<any>> {
+    const response = await client.post(`/visitors/vehicle-passes/${id}/record-entry`, data ?? {});
+    return response.data;
+}
+
 async function recordVehicleExit(id: string, data?: any): Promise<ApiResponse<any>> {
     const response = await client.post(`/visitors/vehicle-passes/${id}/exit`, data ?? {});
+    return response.data;
+}
+
+async function revokeVehiclePass(id: string, data: { reason: string }): Promise<ApiResponse<any>> {
+    const response = await client.post(`/visitors/vehicle-passes/${id}/revoke`, data);
+    return response.data;
+}
+
+async function getVehiclePass(id: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/visitors/vehicle-passes/${id}`);
+    return response.data;
+}
+
+async function getVehiclePassEvents(id: string, params?: any): Promise<ApiResponse<any>> {
+    const response = await client.get(`/visitors/vehicle-passes/${id}/events`, { params });
     return response.data;
 }
 
@@ -330,6 +350,8 @@ async function listMaterialPasses(params?: {
     page?: number;
     limit?: number;
     search?: string;
+    status?: string;
+    type?: string;
 }): Promise<ApiResponse<any>> {
     const response = await client.get('/visitors/material-passes', { params });
     return response.data;
@@ -340,8 +362,55 @@ async function createMaterialPass(data: any): Promise<ApiResponse<any>> {
     return response.data;
 }
 
+async function recordMaterialEntry(id: string, data?: any): Promise<ApiResponse<any>> {
+    const response = await client.post(`/visitors/material-passes/${id}/record-entry`, data ?? {});
+    return response.data;
+}
+
 async function returnMaterialPass(id: string, data?: any): Promise<ApiResponse<any>> {
     const response = await client.post(`/visitors/material-passes/${id}/return`, data ?? {});
+    return response.data;
+}
+
+async function cancelMaterialPass(id: string, data: { reason: string }): Promise<ApiResponse<any>> {
+    const response = await client.post(`/visitors/material-passes/${id}/cancel`, data);
+    return response.data;
+}
+
+async function getMaterialPass(id: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/visitors/material-passes/${id}`);
+    return response.data;
+}
+
+async function getMaterialPassEvents(id: string, params?: any): Promise<ApiResponse<any>> {
+    const response = await client.get(`/visitors/material-passes/${id}/events`, { params });
+    return response.data;
+}
+
+// ── Gate Ops dashboard ──
+
+async function getGateOpsStats(params?: { plantId?: string }): Promise<ApiResponse<any>> {
+    const response = await client.get('/visitors/gate-ops/stats', { params });
+    return response.data;
+}
+
+async function getGateOpsExpectedMaterials(params?: { plantId?: string; limit?: number }): Promise<ApiResponse<any>> {
+    const response = await client.get('/visitors/gate-ops/expected-materials', { params });
+    return response.data;
+}
+
+async function getGateOpsExpectedVisitors(params?: { plantId?: string; limit?: number }): Promise<ApiResponse<any>> {
+    const response = await client.get('/visitors/gate-ops/expected-visitors', { params });
+    return response.data;
+}
+
+async function getGateOpsExpectedVehicles(params?: { plantId?: string; limit?: number }): Promise<ApiResponse<any>> {
+    const response = await client.get('/visitors/gate-ops/expected-vehicles', { params });
+    return response.data;
+}
+
+async function getGateOpsRecentActivity(params?: { plantId?: string; limit?: number }): Promise<ApiResponse<any>> {
+    const response = await client.get('/visitors/gate-ops/recent-activity', { params });
     return response.data;
 }
 
@@ -489,12 +558,26 @@ export const visitorsApi = {
     batchCheckOutGroupVisit,
     // Vehicle Passes
     listVehiclePasses,
+    getVehiclePass,
+    getVehiclePassEvents,
     createVehiclePass,
+    recordVehicleEntry,
     recordVehicleExit,
+    revokeVehiclePass,
     // Material Passes
     listMaterialPasses,
+    getMaterialPass,
+    getMaterialPassEvents,
     createMaterialPass,
+    recordMaterialEntry,
     returnMaterialPass,
+    cancelMaterialPass,
+    // Gate Ops
+    getGateOpsStats,
+    getGateOpsExpectedMaterials,
+    getGateOpsExpectedVisitors,
+    getGateOpsExpectedVehicles,
+    getGateOpsRecentActivity,
     // Dashboard
     getDashboardToday,
     getDashboardOnSite,

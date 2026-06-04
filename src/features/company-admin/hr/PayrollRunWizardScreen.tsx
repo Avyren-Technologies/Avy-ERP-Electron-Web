@@ -35,7 +35,7 @@ import { Step3PayrollComputation } from "@/features/company-admin/hr/Step3Payrol
 import { Step4StatutoryCompliance } from "@/features/company-admin/hr/Step4StatutoryCompliance";
 import { Step5PayrollApproval } from "@/features/company-admin/hr/Step5PayrollApproval";
 import { Step6Disbursement } from "@/features/company-admin/hr/Step6Disbursement";
-import { Step7PostPayroll } from "@/features/company-admin/hr/Step7PostPayroll";
+// Step7PostPayroll moved to a dedicated route — see PhaseDPostRunScreen.tsx
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -43,9 +43,20 @@ const STEP_LABELS = ['Lock Attendance', 'Review Exceptions', 'Compute Salaries',
 const STEP_DESCRIPTIONS = ['Freeze attendance data', 'Inspect & resolve issues', 'Preview, compute & lock', 'PF, ESI, PT, TDS & filings', 'Manager / Finance approval', 'Disburse, archive & lock', 'Reports & exports'];
 const STEP_ICONS = [Lock, AlertTriangle, Calculator, Building2, CheckCircle2, Banknote, ClipboardList];
 
+/**
+ * Map run.status → wizard step index (0-based, points at the step that should be ACTIVE).
+ * Phase C wizard has 6 visible steps (0..5). Disbursed/archived runs stay on the last
+ * Phase-C step (Disburse) with a "completed" state — Phase D is a separate route.
+ */
 const STATUS_STEP_MAP: Record<string, number> = {
-    draft: 0, attendance_locked: 1, exceptions_reviewed: 2, computed: 3,
-    statutory_done: 4, approved: 5, disbursed: 6, archived: 6,
+    draft:               0,  // -> Step 1 (Lock Attendance) active
+    attendance_locked:   1,  // -> Step 2 (Review Exceptions) active
+    exceptions_reviewed: 2,  // -> Step 3 (Compute Salaries) active
+    computed:            3,  // -> Step 4 (Statutory) active
+    statutory_done:      4,  // -> Step 5 (Approval) active
+    approved:            5,  // -> Step 6 (Disburse & Archive) active
+    disbursed:           5,  // -> stay on Step 6, showing completed state
+    archived:            5,  // -> stay on Step 6, showing archived state
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -146,13 +157,40 @@ export function PayrollRunWizardScreen() {
 
     const completedStep = STATUS_STEP_MAP[runDetail?.status?.toLowerCase()] ?? 0;
 
-    /* Sync wizardStep with run status on first load */
+    /* Sync wizardStep with run status whenever status changes.
+     * Cap at 5 — Phase C has 6 visible steps (indices 0..5). Post-payroll lives at /payroll-post-run. */
     useEffect(() => {
-        if (runDetail) setWizardStep(Math.min(completedStep, 6));
-    }, [runDetail?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+        if (runDetail) setWizardStep(Math.min(completedStep, 5));
+    }, [runDetail?.status, completedStep]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleStepAction = (step: number) => {
         if (!runId) return;
+
+        // Defensive: skip stale "compute" actions if the run has already progressed
+        // past the corresponding status. Prevents the backend 400
+        // "must be in COMPUTED status (current: STATUTORY_DONE)" error when a
+        // user double-clicks a partly-disabled action button.
+        const currentStatus = (runDetail?.status ?? '').toUpperCase();
+        const STATUS_RANK: Record<string, number> = {
+            DRAFT: 0,
+            LOCKED: 1,
+            REVIEWED: 2,
+            COMPUTED: 3,
+            STATUTORY_DONE: 4,
+            APPROVED: 5,
+            DISBURSED: 6,
+            ARCHIVED: 7,
+        };
+        const currentRank = STATUS_RANK[currentStatus] ?? 0;
+        // step 0 advances to LOCKED (rank 1), step 1 → REVIEWED (2), step 2 → COMPUTED (3),
+        // step 3 → STATUTORY_DONE (4), step 4 → APPROVED (5), step 5 → DISBURSED (6).
+        const requiredRank = step + 1;
+        if (currentRank >= requiredRank) {
+            // Already past this step — just advance the wizard view instead of re-running the mutation.
+            setWizardStep(Math.min(step + 1, 5));
+            return;
+        }
+
         const configs: Record<number, { title: string; message: string; label: string; action: () => Promise<void>; variant?: 'primary' | 'danger' | 'success' }> = {
             0: { title: 'Lock Attendance', message: 'This will lock attendance data for this payroll period.', label: 'Lock Attendance',
                 action: async () => { await lockMutation.mutateAsync(runId); showSuccess('Attendance Locked', 'Attendance locked.'); setWizardStep(1); } },
@@ -253,7 +291,7 @@ export function PayrollRunWizardScreen() {
                 {wizardStep === 3 && <Step4StatutoryCompliance runId={runId!} runDetail={runDetail} completedStep={completedStep} onStepAction={() => handleStepAction(3)} anyMutating={anyMutating} />}
                 {wizardStep === 4 && <Step5PayrollApproval     runId={runId!} runDetail={runDetail} completedStep={completedStep} onStepAction={() => handleStepAction(4)} anyMutating={anyMutating} />}
                 {wizardStep === 5 && <Step6Disbursement        runId={runId!} runDetail={runDetail} completedStep={completedStep} onStepAction={() => handleStepAction(5)} anyMutating={anyMutating} />}
-                {wizardStep === 6 && <Step7PostPayroll         runId={runId!} runDetail={runDetail} completedStep={completedStep} onStepAction={() => {}} anyMutating={false} />}
+                {/* Phase D (Post-Payroll) is a separate route — /app/company/hr/payroll-post-run */}
             </div>
 
             <ConfirmDialog

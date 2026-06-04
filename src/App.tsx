@@ -230,6 +230,7 @@ const RecurringPassScreen = lazyNamed(() => import("./features/company-admin/vis
 const VMSSettingsScreen = lazyNamed(() => import("./features/company-admin/visitors/VMSSettingsScreen"), "VMSSettingsScreen");
 const VehiclePassScreen = lazyNamed(() => import("./features/company-admin/visitors/VehiclePassScreen"), "VehiclePassScreen");
 const MaterialPassScreen = lazyNamed(() => import("./features/company-admin/visitors/MaterialPassScreen"), "MaterialPassScreen");
+const PassHistoryScreen = lazyNamed(() => import("./features/company-admin/visitors/PassHistoryScreen"), "PassHistoryScreen");
 const GroupVisitScreen = lazyNamed(() => import("./features/company-admin/visitors/GroupVisitScreen"), "GroupVisitScreen");
 const SafetyInductionScreen = lazyNamed(() => import("./features/company-admin/visitors/SafetyInductionScreen"), "SafetyInductionScreen");
 const EmergencyMusterScreen = lazyNamed(() => import("./features/company-admin/visitors/EmergencyMusterScreen"), "EmergencyMusterScreen");
@@ -677,6 +678,7 @@ function App() {
         <Route path="company/visitors/settings" element={<RequirePermission permission="visitors.settings:read"><VMSSettingsScreen /></RequirePermission>} />
         <Route path="company/visitors/vehicle-passes" element={<RequirePermission permission="visitors.vehicle-passes:read"><VehiclePassScreen /></RequirePermission>} />
         <Route path="company/visitors/material-passes" element={<RequirePermission permission="visitors.material-passes:read"><MaterialPassScreen /></RequirePermission>} />
+        <Route path="company/visitors/pass-history" element={<RequirePermission permission="visitors.visits:read"><PassHistoryScreen /></RequirePermission>} />
         <Route path="company/visitors/group-visits" element={<RequirePermission permission="visitors.group-visits:read"><GroupVisitScreen /></RequirePermission>} />
         <Route path="company/visitors/settings/inductions" element={<RequirePermission permission="visitors.inductions:read"><SafetyInductionScreen /></RequirePermission>} />
         <Route path="company/visitors/denied-entries" element={<RequirePermission permission="visitors.denied-entries:read"><DeniedEntriesScreen /></RequirePermission>} />

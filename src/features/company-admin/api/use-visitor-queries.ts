@@ -60,6 +60,33 @@ export const visitorKeys = {
         ? [...visitorKeys.all, 'analytics', params] as const
         : [...visitorKeys.all, 'analytics'] as const,
     musterList: () => [...visitorKeys.all, 'muster-list'] as const,
+
+    // Pass detail + event timeline
+    vehiclePass: (id: string) => [...visitorKeys.all, 'vehicle-pass', id] as const,
+    materialPass: (id: string) => [...visitorKeys.all, 'material-pass', id] as const,
+    vehiclePassEvents: (id: string, params?: Record<string, unknown>) => params
+        ? [...visitorKeys.all, 'vehicle-pass-events', id, params] as const
+        : [...visitorKeys.all, 'vehicle-pass-events', id] as const,
+    materialPassEvents: (id: string, params?: Record<string, unknown>) => params
+        ? [...visitorKeys.all, 'material-pass-events', id, params] as const
+        : [...visitorKeys.all, 'material-pass-events', id] as const,
+
+    // Gate Ops dashboard
+    gateOpsStats: (params?: Record<string, unknown>) => params
+        ? [...visitorKeys.all, 'gate-ops-stats', params] as const
+        : [...visitorKeys.all, 'gate-ops-stats'] as const,
+    gateOpsExpectedMaterials: (params?: Record<string, unknown>) => params
+        ? [...visitorKeys.all, 'gate-ops-expected-materials', params] as const
+        : [...visitorKeys.all, 'gate-ops-expected-materials'] as const,
+    gateOpsExpectedVisitors: (params?: Record<string, unknown>) => params
+        ? [...visitorKeys.all, 'gate-ops-expected-visitors', params] as const
+        : [...visitorKeys.all, 'gate-ops-expected-visitors'] as const,
+    gateOpsExpectedVehicles: (params?: Record<string, unknown>) => params
+        ? [...visitorKeys.all, 'gate-ops-expected-vehicles', params] as const
+        : [...visitorKeys.all, 'gate-ops-expected-vehicles'] as const,
+    gateOpsRecentActivity: (params?: Record<string, unknown>) => params
+        ? [...visitorKeys.all, 'gate-ops-recent-activity', params] as const
+        : [...visitorKeys.all, 'gate-ops-recent-activity'] as const,
 };
 
 // ── Visits ──
@@ -266,5 +293,81 @@ export function useMusterList() {
     return useQuery({
         queryKey: visitorKeys.musterList(),
         queryFn: () => visitorsApi.getMusterList(),
+    });
+}
+
+// ── Pass detail + event timeline ──
+
+export function useMaterialPass(id: string) {
+    return useQuery({
+        queryKey: visitorKeys.materialPass(id),
+        queryFn: () => visitorsApi.getMaterialPass(id),
+        enabled: !!id,
+    });
+}
+
+export function useMaterialPassEvents(id: string, params?: Record<string, unknown>) {
+    return useQuery({
+        queryKey: visitorKeys.materialPassEvents(id, params),
+        queryFn: () => visitorsApi.getMaterialPassEvents(id, params as any),
+        enabled: !!id,
+    });
+}
+
+export function useVehiclePass(id: string) {
+    return useQuery({
+        queryKey: visitorKeys.vehiclePass(id),
+        queryFn: () => visitorsApi.getVehiclePass(id),
+        enabled: !!id,
+    });
+}
+
+export function useVehiclePassEvents(id: string, params?: Record<string, unknown>) {
+    return useQuery({
+        queryKey: visitorKeys.vehiclePassEvents(id, params),
+        queryFn: () => visitorsApi.getVehiclePassEvents(id, params as any),
+        enabled: !!id,
+    });
+}
+
+// ── Gate Ops dashboard ──
+
+export function useGateOpsStats(params?: Record<string, unknown>) {
+    return useQuery({
+        queryKey: visitorKeys.gateOpsStats(params),
+        queryFn: () => visitorsApi.getGateOpsStats(params as any),
+        refetchInterval: 30_000,
+    });
+}
+
+export function useGateOpsExpectedMaterials(params?: Record<string, unknown>) {
+    return useQuery({
+        queryKey: visitorKeys.gateOpsExpectedMaterials(params),
+        queryFn: () => visitorsApi.getGateOpsExpectedMaterials(params as any),
+        refetchInterval: 60_000,
+    });
+}
+
+export function useGateOpsExpectedVisitors(params?: Record<string, unknown>) {
+    return useQuery({
+        queryKey: visitorKeys.gateOpsExpectedVisitors(params),
+        queryFn: () => visitorsApi.getGateOpsExpectedVisitors(params as any),
+        refetchInterval: 60_000,
+    });
+}
+
+export function useGateOpsExpectedVehicles(params?: Record<string, unknown>) {
+    return useQuery({
+        queryKey: visitorKeys.gateOpsExpectedVehicles(params),
+        queryFn: () => visitorsApi.getGateOpsExpectedVehicles(params as any),
+        refetchInterval: 60_000,
+    });
+}
+
+export function useGateOpsRecentActivity(params?: Record<string, unknown>) {
+    return useQuery({
+        queryKey: visitorKeys.gateOpsRecentActivity(params),
+        queryFn: () => visitorsApi.getGateOpsRecentActivity(params as any),
+        refetchInterval: 30_000,
     });
 }

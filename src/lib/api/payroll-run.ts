@@ -313,6 +313,21 @@ async function getStatutoryFiles(runId: string): Promise<ApiResponse<any>> {
     return response.data;
 }
 
+async function getStatutoryDetails(
+    runId: string,
+    category: 'PF' | 'ESI' | 'PT' | 'TDS' | 'LWF',
+): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/payroll-runs/${runId}/statutory-details`, {
+        params: { category },
+    });
+    return response.data;
+}
+
+async function getComputationLog(runId: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/payroll-runs/${runId}/computation-log`);
+    return response.data;
+}
+
 async function getDisbursementBreakdown(runId: string): Promise<ApiResponse<any>> {
     const response = await client.get(`/hr/payroll-runs/${runId}/disbursement-breakdown`);
     return response.data;
@@ -321,6 +336,56 @@ async function getDisbursementBreakdown(runId: string): Promise<ApiResponse<any>
 async function getApprovalSummary(runId: string): Promise<ApiResponse<any>> {
     const response = await client.get(`/hr/payroll-runs/${runId}/approval-summary`);
     return response.data;
+}
+
+async function getApprovalWorkflow(runId: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/payroll-runs/${runId}/approval-workflow`);
+    return response.data;
+}
+
+async function getComponentBreakdown(runId: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/payroll-runs/${runId}/component-breakdown`);
+    return response.data;
+}
+
+async function getDisbursementSummary(runId: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/payroll-runs/${runId}/disbursement-summary`);
+    return response.data;
+}
+
+async function getDisbursementBatches(runId: string): Promise<ApiResponse<any>> {
+    const response = await client.get(`/hr/payroll-runs/${runId}/disbursement-batches`);
+    return response.data;
+}
+
+async function bulkLockAttendance(runId: string, employeeIds: string[]): Promise<ApiResponse<any>> {
+    const response = await client.post(`/hr/payroll-runs/${runId}/attendance/bulk-lock`, { employeeIds });
+    return response.data;
+}
+
+async function bulkUnlockAttendance(runId: string, employeeIds: string[]): Promise<ApiResponse<any>> {
+    const response = await client.post(`/hr/payroll-runs/${runId}/attendance/bulk-unlock`, { employeeIds });
+    return response.data;
+}
+
+async function exportAttendance(runId: string, employeeIds?: string[]): Promise<Blob> {
+    const params: Record<string, string> = {};
+    if (employeeIds && employeeIds.length > 0) params.employeeIds = employeeIds.join(',');
+    const response = await client.get(`/hr/payroll-runs/${runId}/attendance/export`, {
+        params,
+        responseType: 'blob',
+    });
+    return response.data as Blob;
+}
+
+async function downloadStatutoryFile(
+    runId: string,
+    type: 'pf-ecr' | 'esi-return' | 'pt-return' | 'tds-return',
+): Promise<Blob> {
+    const response = await client.get(`/hr/payroll-runs/${runId}/statutory-files/${type}`, {
+        responseType: 'blob',
+    });
+    return response.data as Blob;
 }
 
 async function saveApprovalNotes(runId: string, approvalNotes: string): Promise<ApiResponse<any>> {
@@ -358,11 +423,21 @@ export const payrollRunApi = {
     getAttendanceDetail,
     getComputeSummary,
     getStatutoryFiles,
+    getStatutoryDetails,
+    getComputationLog,
     getDisbursementBreakdown,
     saveApprovalNotes,
     archiveRun,
     getStatutorySummary,
     getApprovalSummary,
+    getApprovalWorkflow,
+    getComponentBreakdown,
+    getDisbursementSummary,
+    getDisbursementBatches,
+    bulkLockAttendance,
+    bulkUnlockAttendance,
+    exportAttendance,
+    downloadStatutoryFile,
     resetToCompute,
     // Payroll Entries
     listPayrollEntries,
