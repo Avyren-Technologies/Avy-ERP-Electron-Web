@@ -98,13 +98,23 @@ const CALC_METHODS = [
     { value: "PERCENT_OF_BASIC", label: "% of Basic" },
     { value: "PERCENT_OF_GROSS", label: "% of Gross" },
     { value: "FORMULA", label: "Formula" },
+    { value: "VARIABLE", label: "Variable" },
     { value: "BALANCE", label: "Balance (Auto)" },
 ];
 
 const CTC_BASIS_OPTIONS = [
     { value: "CTC", label: "Annual CTC" },
-    { value: "TAKE_HOME", label: "Take Home" },
+    { value: "MONTHLY_CTC", label: "Monthly CTC" },
+    { value: "TAKE_HOME", label: "Annual Take Home" },
+    { value: "MONTHLY_TAKE_HOME", label: "Monthly Take Home" },
 ];
+
+const SAMPLE_CTC_LABELS: Record<string, string> = {
+    CTC: "Sample Annual CTC",
+    MONTHLY_CTC: "Sample Monthly CTC",
+    TAKE_HOME: "Sample Annual Take-Home",
+    MONTHLY_TAKE_HOME: "Sample Monthly Take-Home",
+};
 
 /* ── Empty form ── */
 
@@ -190,7 +200,7 @@ export function SalaryStructureScreen() {
                 components: form.components.map((c) => ({
                     componentId: c.componentId,
                     calculationMethod: c.calculationMethod,
-                    value: c.value || undefined,
+                    value: c.calculationMethod === "VARIABLE" ? (Number(c.value) || 0) : (c.value || undefined),
                     formula: c.calculationMethod === "FORMULA" ? c.formula : undefined,
                 })),
                 isActive: form.isActive,
@@ -225,11 +235,15 @@ export function SalaryStructureScreen() {
     };
 
     // Live preview computation
-    const ctcNum = Number(sampleCTC) || 0;
-    const monthlyGross = Math.round(ctcNum / 12);
+    const sampleInput = Number(sampleCTC) || 0;
+    // Convert sample input to annual CTC based on basis (TAKE_HOME variants treated like CTC variants for preview)
+    const annualCtcNum = (form.ctcBasis === "MONTHLY_CTC" || form.ctcBasis === "MONTHLY_TAKE_HOME")
+        ? sampleInput * 12
+        : sampleInput;
+    const monthlyGross = Math.round(annualCtcNum / 12);
 
     const computePreview = () => {
-        // First pass: find basic amount
+        // First pass: find basic amount (component code === 'BASIC' check preserved)
         let basicAmt = 0;
         for (const c of form.components) {
             const comp = salaryComponents.find((sc: any) => sc.id === c.componentId);
@@ -241,18 +255,30 @@ export function SalaryStructureScreen() {
         }
         if (!basicAmt) basicAmt = Math.round(monthlyGross * 0.4);
 
+        // Order: FIXED → %_GROSS → %_BASIC → FORMULA → VARIABLE → BALANCE
         const rows = form.components.map((c) => {
             const comp = salaryComponents.find((sc: any) => sc.id === c.componentId);
             let monthly = 0;
             if (c.calculationMethod === "FIXED") monthly = c.value;
-            else if (c.calculationMethod === "PERCENT_OF_BASIC") monthly = Math.round(basicAmt * (c.value / 100));
             else if (c.calculationMethod === "PERCENT_OF_GROSS") monthly = Math.round(monthlyGross * (c.value / 100));
+            else if (c.calculationMethod === "PERCENT_OF_BASIC") monthly = Math.round(basicAmt * (c.value / 100));
+            else if (c.calculationMethod === "FORMULA") {
+                const formula = (c.formula ?? "").toString().toLowerCase();
+                const match = formula.match(/([\d.]+)%?\s*of\s*(gross|basic)/);
+                if (match) {
+                    const pct = parseFloat(match[1]);
+                    monthly = match[2] === "basic" ? Math.round(basicAmt * pct / 100) : Math.round(monthlyGross * pct / 100);
+                }
+            } else if (c.calculationMethod === "VARIABLE") {
+                // Structure component's `value` is the monthly default amount
+                monthly = Math.round(Number(c.value) || 0);
+            }
             // BALANCE handled below
             const type: string = comp?.type ?? "EARNING";
             return { name: comp?.name ?? "Unknown", monthly, isBalance: c.calculationMethod === "BALANCE", type };
         });
 
-        // Fill BALANCE components with the remainder
+        // Fill BALANCE components with the remainder (auto-shrinks as variables/etc. fill in)
         const totalBeforeBalance = rows.filter(r => !r.isBalance).reduce((s, r) => s + r.monthly, 0);
         let balanceFilled = false;
         for (const row of rows) {
@@ -473,7 +499,12 @@ export function SalaryStructureScreen() {
                                                     {row.calculationMethod === "BALANCE" ? (
                                                         <span className="block w-full px-2 py-1.5 text-sm text-right font-mono text-neutral-400 dark:text-neutral-500 italic">Auto</span>
                                                     ) : (
-                                                        <input type="number" value={row.value} onChange={(e) => updateComponentRow(i, "value", Number(e.target.value))} className="w-full px-2 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm text-right font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:text-white" min={0} />
+                                                        <>
+                                                            <input type="number" value={row.value} onChange={(e) => updateComponentRow(i, "value", Number(e.target.value))} className="w-full px-2 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm text-right font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:text-white" min={0} />
+                                                            {row.calculationMethod === "VARIABLE" && (
+                                                                <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-1 text-right">Per-employee default (editable when assigning)</p>
+                                                            )}
+                                                        </>
                                                     )}
                                                 </td>
                                                 <td className="py-2 px-4 text-right">
@@ -495,7 +526,7 @@ export function SalaryStructureScreen() {
                                 <>
                                     <SectionLabel title="Monthly Breakup Preview" />
                                     <div className="mb-3">
-                                        <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Sample Annual CTC</label>
+                                        <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">{SAMPLE_CTC_LABELS[form.ctcBasis] ?? "Sample Annual CTC"}</label>
                                         <div className="relative max-w-xs">
                                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">₹</span>
                                             <input type="number" value={sampleCTC} onChange={(e) => setSampleCTC(e.target.value)}

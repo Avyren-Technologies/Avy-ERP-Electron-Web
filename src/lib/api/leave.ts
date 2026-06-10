@@ -64,9 +64,15 @@ async function listBalances(params?: {
     page?: number;
     limit?: number;
     employeeId?: string;
+    employeeIds?: string[];
     year?: number;
 }): Promise<ApiResponse<any>> {
-    const response = await client.get('/hr/leave-balances', { params });
+    // Serialize `employeeIds` as a CSV string so it round-trips through axios
+    // params without `[]` bracket suffixes the backend doesn't expect.
+    const { employeeIds, ...rest } = params ?? {};
+    const finalParams: Record<string, unknown> = { ...rest };
+    if (employeeIds && employeeIds.length > 0) finalParams.employeeIds = employeeIds.join(',');
+    const response = await client.get('/hr/leave-balances', { params: finalParams });
     return response.data;
 }
 

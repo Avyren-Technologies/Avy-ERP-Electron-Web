@@ -51,7 +51,8 @@ import {
     useDeleteEmployee,
     useDeleteDocument,
 } from "@/features/company-admin/api/use-hr-mutations";
-import { useSalaryStructures, useSalaryComponents, usePFConfig, useESIConfig, useGratuityConfig } from "@/features/company-admin/api/use-payroll-queries";
+import { useSalaryStructures, useSalaryComponents, usePFConfig, useESIConfig, useGratuityConfig, useEmployeeSalaries } from "@/features/company-admin/api/use-payroll-queries";
+import { useAssignEmployeeSalary, useUpdateEmployeeSalary } from "@/features/company-admin/api/use-payroll-mutations";
 import { useGeofencesForDropdown } from "@/features/company-admin/api/use-geofence-queries";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { PhoneInput } from "@/components/ui/PhoneInput";
@@ -242,7 +243,18 @@ const EMPTY_SALARY = {
     salaryStructure: null as any,
     structureId: "",
     statutoryEstimates: null as { label: string; monthly: number; annual: number }[] | null,
+    variableOverrides: {} as Record<string, number>,
 };
+
+const CTC_LABEL_BY_BASIS_EP: Record<string, string> = {
+    CTC: "Annual CTC",
+    MONTHLY_CTC: "Monthly CTC",
+    TAKE_HOME: "Annual Take Home",
+    MONTHLY_TAKE_HOME: "Monthly Take Home",
+};
+
+const isMonthlyBasisEP = (basis?: string | null) =>
+    basis === "MONTHLY_CTC" || basis === "MONTHLY_TAKE_HOME";
 
 const EMPTY_BANK = {
     ifscCode: "", bankName: "", branchName: "",
@@ -342,12 +354,19 @@ export function EmployeeProfileScreen() {
     const { data: gratuityConfigData } = useGratuityConfig();
     const gratuityConfig = (gratuityConfigData as any)?.data;
 
+    // Employee salary record (for variableOverrides hydration & sync)
+    const employeeSalariesQuery = useEmployeeSalaries(isNew ? undefined : { employeeId: id });
+    const employeeSalaries: any[] = (employeeSalariesQuery.data as any)?.data ?? [];
+    const currentEmployeeSalary = employeeSalaries.find((es: any) => es.isCurrent !== false) ?? employeeSalaries[0] ?? null;
+
     // Mutations
     const createMutation = useCreateEmployee();
     const updateMutation = useUpdateEmployee();
     const statusMutation = useUpdateEmployeeStatus();
     const deleteEmployeeMutation = useDeleteEmployee();
     const deleteDocMutation = useDeleteDocument();
+    const assignSalaryMutation = useAssignEmployeeSalary();
+    const updateSalaryMutation = useUpdateEmployeeSalary();
 
     // R2 file upload hooks
     const employeeId = isNew ? 'new' : id!;
@@ -457,12 +476,31 @@ export function EmployeeProfileScreen() {
             probationEndDate: emp.probationEndDate ? new Date(emp.probationEndDate).toISOString().split("T")[0] : "",
         });
 
+        // Basis-aware display: divide by 12 for monthly variants
+        const sId = emp.salaryStructureId ?? "";
+        const sStruct = structures.find((s: any) => s.id === sId);
+        const sBasis = sStruct?.ctcBasis ?? "CTC";
+        const annual = Number(emp.annualCtc ?? 0);
+        const display = annual ? (isMonthlyBasisEP(sBasis) ? Math.round((annual / 12) * 100) / 100 : annual) : 0;
+
+        // Hydrate variable overrides from EmployeeSalary record or structure defaults
+        const overrides: Record<string, number> = {};
+        const saved = (currentEmployeeSalary?.variableOverrides ?? {}) as Record<string, number>;
+        for (const c of (sStruct?.components ?? [])) {
+            if ((c.calculationMethod ?? "").toUpperCase() !== "VARIABLE") continue;
+            const code = (c.component?.code ?? allComponents.find((sc: any) => sc.id === c.componentId)?.code ?? "").toString();
+            if (!code) continue;
+            const fallback = Number(c.value ?? 0);
+            overrides[code] = saved[code] !== undefined ? Number(saved[code]) : fallback;
+        }
+
         setSalary({
-            annualCTC: emp.annualCtc?.toString() ?? "",
+            annualCTC: display ? display.toString() : "",
             paymentMode: emp.paymentMode ?? "NEFT",
             salaryStructure: emp.salaryStructure ?? null,
-            structureId: emp.salaryStructureId ?? "",
+            structureId: sId,
             statutoryEstimates: null,
+            variableOverrides: overrides,
         });
 
         setBank({
@@ -483,7 +521,8 @@ export function EmployeeProfileScreen() {
             dl: emp.drivingLicence ?? "",
             voterId: emp.voterId ?? "",
         });
-    }, [employeeQuery.data, isNew]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [employeeQuery.data, isNew, structures, currentEmployeeSalary, allComponents]);
 
     useEffect(() => {
         if (isNew) {
@@ -508,7 +547,7 @@ export function EmployeeProfileScreen() {
         if (draft) {
             setPersonal(draft.personal ?? { ...EMPTY_PERSONAL });
             setProfessional(draft.professional ?? { ...EMPTY_PROFESSIONAL });
-            setSalary(draft.salary ?? { ...EMPTY_SALARY });
+            setSalary({ ...EMPTY_SALARY, ...(draft.salary ?? {}), variableOverrides: draft.salary?.variableOverrides ?? {} });
             setBank(draft.bank ?? { ...EMPTY_BANK });
             setDocuments(draft.documents ?? { ...EMPTY_DOCUMENTS });
             showSuccess('Draft Restored', 'Your previously saved employee form data has been restored.');
@@ -551,38 +590,64 @@ export function EmployeeProfileScreen() {
     const updateProfessional = (key: string, value: any) => setProfessional((p) => ({ ...p, [key]: value }));
     const updateSalary = (key: string, value: any) => setSalary((p) => ({ ...p, [key]: value }));
 
-    const computeSalaryBreakdown = useCallback((structure: any, annualCtc: number) => {
+    const computeSalaryBreakdown = useCallback((structure: any, annualCtc: number, overrides?: Record<string, number>) => {
         const comps = structure.components as any[] ?? [];
         const breakdown: Record<string, number> = {};
         let basicAmount = 0;
+        const overridesRef = overrides ?? {};
 
-        // Pass 1: PERCENT_OF_GROSS
-        for (const c of comps) {
-            if (c.calculationMethod === "PERCENT_OF_GROSS") {
-                const annual = (c.value / 100) * annualCtc;
-                const label = c.component?.name ?? c.componentId;
-                breakdown[label] = Math.round(annual);
-                if ((c.component?.code ?? c.component?.name ?? "").toUpperCase().includes("BASIC")) {
-                    basicAmount = annual;
-                }
-            }
-        }
-        // Pass 2: PERCENT_OF_BASIC
-        for (const c of comps) {
-            if (c.calculationMethod === "PERCENT_OF_BASIC") {
-                const label = c.component?.name ?? c.componentId;
-                breakdown[label] = Math.round((c.value / 100) * basicAmount);
-            }
-        }
-        // Pass 3: FIXED (monthly value × 12)
+        // Pass 1 (FIXED): monthly value × 12 → annual
         for (const c of comps) {
             if (c.calculationMethod === "FIXED") {
                 const label = c.component?.name ?? c.componentId;
                 breakdown[label] = Math.round(c.value * 12);
             }
         }
+        // Pass 2 (PERCENT_OF_GROSS): pct × annualCtc
+        for (const c of comps) {
+            if (c.calculationMethod === "PERCENT_OF_GROSS") {
+                const annual = (c.value / 100) * annualCtc;
+                const label = c.component?.name ?? c.componentId;
+                breakdown[label] = Math.round(annual);
+                if ((c.component?.code ?? "").toUpperCase() === "BASIC") {
+                    basicAmount = annual;
+                }
+            }
+        }
+        // Pass 3 (PERCENT_OF_BASIC): pct × basicAmount (annual)
+        for (const c of comps) {
+            if (c.calculationMethod === "PERCENT_OF_BASIC") {
+                const label = c.component?.name ?? c.componentId;
+                breakdown[label] = Math.round((c.value / 100) * basicAmount);
+            }
+        }
+        // Pass 4 (FORMULA): "X% of basic|gross"
+        for (const c of comps) {
+            if (c.calculationMethod === "FORMULA") {
+                const formula = (c.formula ?? "").toString().toLowerCase();
+                const match = formula.match(/([\d.]+)%?\s*of\s*(gross|basic)/);
+                let annual = 0;
+                if (match) {
+                    const pct = parseFloat(match[1]);
+                    annual = match[2] === "basic" ? (basicAmount * pct) / 100 : (annualCtc * pct) / 100;
+                }
+                const label = c.component?.name ?? c.componentId;
+                breakdown[label] = Math.round(annual);
+            }
+        }
+        // Pass 5 (VARIABLE): monthly amount from overrides (or component default) × 12
+        for (const c of comps) {
+            if (c.calculationMethod === "VARIABLE") {
+                const code = (c.component?.code ?? "").toString();
+                const monthly = code && overridesRef[code] !== undefined
+                    ? Number(overridesRef[code])
+                    : Number(c.value ?? 0);
+                const label = c.component?.name ?? c.componentId;
+                breakdown[label] = Math.round(monthly * 12);
+            }
+        }
 
-        // Pass 4: BALANCE — fill remainder to match annual CTC
+        // Pass 6 (BALANCE): fill remainder to match annual CTC (auto-shrinks)
         const totalBeforeBalance = Object.values(breakdown).reduce((s, v) => s + v, 0);
         let balanceFilled = false;
         for (const c of comps) {
@@ -904,8 +969,13 @@ export function EmployeeProfileScreen() {
         payload.noticePeriodDays = professional.noticePeriod ? parseInt(professional.noticePeriod, 10) : undefined;
         if (professional.workType) payload.workType = professional.workType;
 
-        // Salary
-        payload.annualCtc = salary.annualCTC ? parseFloat(salary.annualCTC) : undefined;
+        // Salary — basis-aware: convert monthly input to annual before persisting
+        const _structForSave = structures.find((s: any) => s.id === salary.structureId);
+        const _inputCtc = salary.annualCTC ? parseFloat(salary.annualCTC) : undefined;
+        const _annualForSave = _inputCtc !== undefined
+            ? (isMonthlyBasisEP(_structForSave?.ctcBasis) ? Math.round(_inputCtc * 12) : Math.round(_inputCtc))
+            : undefined;
+        payload.annualCtc = _annualForSave;
         payload.paymentMode = salary.paymentMode || undefined;
         payload.salaryStructure = salary.salaryStructure || undefined;
         payload.salaryStructureId = salary.structureId || undefined;
@@ -959,12 +1029,31 @@ export function EmployeeProfileScreen() {
             if (userLocationId) payload.userLocationId = userLocationId;
         }
 
+        // Determine whether the selected structure has VARIABLE components — if so, sync overrides
+        const _structForSync = structures.find((s: any) => s.id === salary.structureId);
+        const _hasVariable = (_structForSync?.components ?? []).some((c: any) => (c.calculationMethod ?? "").toUpperCase() === "VARIABLE");
+        const _overrides = salary.variableOverrides ?? {};
+
         try {
             if (isNew) {
                 const result = await createMutation.mutateAsync(payload);
                 clearDraft();
                 showSuccess("Employee Created", `${personal.firstName} ${personal.lastName} has been added.`);
                 const newId = (result as any)?.data?.id;
+                // Sync variableOverrides to EmployeeSalary (employee endpoint auto-creates the record;
+                // we patch it afterwards if VARIABLE components exist)
+                if (_hasVariable && newId && salary.structureId && _annualForSave) {
+                    try {
+                        await assignSalaryMutation.mutateAsync({
+                            employeeId: newId,
+                            structureId: salary.structureId,
+                            annualCtc: _annualForSave,
+                            variableOverrides: _overrides,
+                        });
+                    } catch (_err) {
+                        // non-fatal: variable overrides sync best-effort
+                    }
+                }
                 if (newId) {
                     navigate(`/app/company/hr/employees/${newId}`, { replace: true });
                 } else {
@@ -972,6 +1061,16 @@ export function EmployeeProfileScreen() {
                 }
             } else {
                 await updateMutation.mutateAsync({ id: id!, data: payload });
+                if (_hasVariable && currentEmployeeSalary?.id) {
+                    try {
+                        await updateSalaryMutation.mutateAsync({
+                            id: currentEmployeeSalary.id,
+                            data: { variableOverrides: _overrides },
+                        });
+                    } catch (_err) {
+                        // non-fatal: variable overrides sync best-effort
+                    }
+                }
                 showSuccess("Employee Updated", `${personal.firstName} ${personal.lastName} has been saved.`);
                 setEditing(false);
             }
@@ -1559,14 +1658,53 @@ export function EmployeeProfileScreen() {
                     )}
 
                     {/* ── Salary Tab ── */}
-                    {activeTab === "salary" && (
+                    {activeTab === "salary" && (() => {
+                        const selectedStructureEP = structures.find((s: any) => s.id === salary.structureId) ?? null;
+                        const selectedBasisEP: string = selectedStructureEP?.ctcBasis ?? "CTC";
+                        const monthlyBasisEP = isMonthlyBasisEP(selectedBasisEP);
+                        const displayCtcNum = parseFloat(salary.annualCTC || "0") || 0;
+                        const annualCtcEP = monthlyBasisEP ? Math.round(displayCtcNum * 12) : Math.round(displayCtcNum);
+                        const ctcLabelEP = CTC_LABEL_BY_BASIS_EP[selectedBasisEP] ?? "Annual CTC";
+
+                        const variableComponentsEP = (selectedStructureEP?.components ?? [])
+                            .filter((c: any) => (c.calculationMethod ?? "").toUpperCase() === "VARIABLE")
+                            .map((c: any) => {
+                                const comp = c.component ?? allComponents.find((sc: any) => sc.id === c.componentId);
+                                return {
+                                    componentId: c.componentId,
+                                    code: (comp?.code ?? "").toString(),
+                                    name: comp?.name ?? "Unknown",
+                                    defaultMonthly: Math.round(Number(c.value ?? 0)),
+                                };
+                            })
+                            .filter((r: any) => r.code);
+
+                        // Warning: total before BALANCE exceeds monthly gross
+                        let variableWarningEP = false;
+                        if (variableComponentsEP.length > 0 && annualCtcEP > 0 && salary.salaryStructure) {
+                            const monthlyGross = annualCtcEP / 12;
+                            let totalBeforeBalance = 0;
+                            for (const c of selectedStructureEP?.components ?? []) {
+                                if ((c.calculationMethod ?? "").toUpperCase() === "BALANCE") continue;
+                                const label = c.component?.name ?? c.componentId;
+                                const annual = Number((salary.salaryStructure as Record<string, number>)[label] ?? 0);
+                                totalBeforeBalance += annual / 12;
+                            }
+                            variableWarningEP = totalBeforeBalance > monthlyGross + 0.01;
+                        }
+
+                        return (
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <FormField label="Annual CTC" value={salary.annualCTC} onChange={(v) => {
+                                <FormField label={ctcLabelEP} value={salary.annualCTC} onChange={(v) => {
                                     updateSalary("annualCTC", v);
                                     if (salary.structureId && v) {
                                         const structure = structures.find((s: any) => s.id === salary.structureId);
-                                        if (structure) computeSalaryBreakdown(structure, parseFloat(v));
+                                        if (structure) {
+                                            const inputNum = parseFloat(v) || 0;
+                                            const annual = isMonthlyBasisEP(structure.ctcBasis) ? inputNum * 12 : inputNum;
+                                            computeSalaryBreakdown(structure, annual, salary.variableOverrides);
+                                        }
                                     }
                                 }} type="number" placeholder="e.g. 1200000" disabled={!editing} />
                             </div>
@@ -1589,9 +1727,20 @@ export function EmployeeProfileScreen() {
                                     value={salary.structureId}
                                     onChange={(sid) => {
                                         updateSalary("structureId", sid);
-                                        if (sid && salary.annualCTC) {
-                                            const structure = structures.find((s: any) => s.id === sid);
-                                            if (structure) computeSalaryBreakdown(structure, parseFloat(salary.annualCTC));
+                                        const structure = structures.find((s: any) => s.id === sid);
+                                        // Prefill variable overrides from structure defaults
+                                        const overrides: Record<string, number> = {};
+                                        for (const c of (structure?.components ?? [])) {
+                                            if ((c.calculationMethod ?? "").toUpperCase() !== "VARIABLE") continue;
+                                            const code = (c.component?.code ?? allComponents.find((sc: any) => sc.id === c.componentId)?.code ?? "").toString();
+                                            if (!code) continue;
+                                            overrides[code] = Number(c.value ?? 0);
+                                        }
+                                        updateSalary("variableOverrides", overrides);
+                                        if (sid && salary.annualCTC && structure) {
+                                            const inputNum = parseFloat(salary.annualCTC) || 0;
+                                            const annual = isMonthlyBasisEP(structure.ctcBasis) ? inputNum * 12 : inputNum;
+                                            computeSalaryBreakdown(structure, annual, overrides);
                                         } else {
                                             updateSalary("salaryStructure", null);
                                         }
@@ -1599,6 +1748,44 @@ export function EmployeeProfileScreen() {
                                     options={structures.map((s: any) => ({ value: s.id, label: `${s.name} (${s.code})` }))}
                                     placeholder="Select Structure..."
                                 />
+                            )}
+
+                            {/* Variable Components */}
+                            {variableComponentsEP.length > 0 && (
+                                <div>
+                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">Variable Components</label>
+                                    <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-700 p-3 space-y-2">
+                                        {variableComponentsEP.map((v: any) => (
+                                            <div key={v.code} className="flex items-center gap-3">
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-semibold text-primary-950 dark:text-white">{v.name}</p>
+                                                    <p className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono">{v.code}</p>
+                                                </div>
+                                                <div className="w-40">
+                                                    <label className="block text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">Monthly amount (₹)</label>
+                                                    <input
+                                                        type="number"
+                                                        value={(salary.variableOverrides[v.code] ?? v.defaultMonthly)}
+                                                        onChange={(e) => {
+                                                            const nextVal = Number(e.target.value) || 0;
+                                                            const nextOverrides = { ...salary.variableOverrides, [v.code]: nextVal };
+                                                            updateSalary("variableOverrides", nextOverrides);
+                                                            if (selectedStructureEP && annualCtcEP) {
+                                                                computeSalaryBreakdown(selectedStructureEP, annualCtcEP, nextOverrides);
+                                                            }
+                                                        }}
+                                                        min={0}
+                                                        disabled={!editing}
+                                                        className="w-full px-2 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm text-right font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:text-white disabled:opacity-60"
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {variableWarningEP && (
+                                            <p className="text-xs font-semibold text-red-600 dark:text-red-400 mt-2">Variable amounts exceed remaining CTC. Balance component will be ₹0.</p>
+                                        )}
+                                    </div>
+                                </div>
                             )}
 
                             {/* Salary Structure Preview */}
@@ -1732,7 +1919,8 @@ export function EmployeeProfileScreen() {
                                 );
                             })()}
                         </div>
-                    )}
+                        );
+                    })()}
 
                     {/* ── Bank Tab ── */}
                     {activeTab === "bank" && (

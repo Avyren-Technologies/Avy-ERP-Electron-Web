@@ -164,7 +164,9 @@ export function Step5PayrollApproval({ runId, runDetail, completedStep, onStepAc
 
     const approval: any = approvalQuery.data?.data ?? null;
     const statutory: any = statutoryQuery.data?.data ?? null;
-    const workflow: any = workflowQuery.data?.data ?? null;
+    // Backend returns: { success, data: { workflow, approvalRequest, message } }.
+    // Drill one extra level to extract the actual workflow object (with `steps`).
+    const workflow: any = workflowQuery.data?.data?.workflow ?? null;
     const components: any = componentQuery.data?.data ?? null;
 
     // Backend `getApprovalSummary` nests executive metrics under `summary`,
@@ -300,8 +302,9 @@ export function Step5PayrollApproval({ runId, runDetail, completedStep, onStepAc
     };
 
     /* Approval workflow — fetched from backend `GET /hr/payroll-runs/:id/approval-workflow`.
-       Backend returns the configured ApprovalWorkflow row for trigger PAYROLL_RUN_APPROVAL,
-       with parsed `steps` (each step: { level, approverRole, name, status?, approverName?, approvedAt? }). */
+       Backend returns the configured ApprovalWorkflow row for trigger PAYROLL_APPROVAL (alias: PAYROLL_RUN_APPROVAL),
+       wrapped as { workflow, approvalRequest, message }. We unwrap `workflow` which contains
+       `steps` (each step: { stepOrder, approverRole, approverName, slaHours, ... }). */
     const workflowMissing = workflowQuery.isError
         || (workflowQuery.isSuccess && (!workflow || !Array.isArray(workflow?.steps) || workflow.steps.length === 0));
     const workflowSteps: any[] = Array.isArray(workflow?.steps) ? workflow.steps : [];
@@ -728,7 +731,7 @@ export function Step5PayrollApproval({ runId, runDetail, completedStep, onStepAc
                                     <AlertTriangle className="w-10 h-10 mx-auto text-warning-600 mb-3" />
                                     <h4 className="text-[14px] font-bold text-neutral-900">No Approval Workflow Configured</h4>
                                     <p className="mt-2 text-[12.5px] text-neutral-600 max-w-md mx-auto leading-relaxed">
-                                        No <span className="font-semibold">PAYROLL_RUN_APPROVAL</span> workflow has been configured for this company.
+                                        No <span className="font-semibold">Payroll Approval</span> workflow has been configured for this company.
                                         Without an approval chain, payroll cannot move through proper financial governance.
                                     </p>
                                     <Link
@@ -792,8 +795,8 @@ export function Step5PayrollApproval({ runId, runDetail, completedStep, onStepAc
 
                                     <div className="mt-4 rounded-lg bg-info-50/60 px-3 py-2 text-[11.5px] text-info-800 ring-1 ring-info-100">
                                         <Info className="inline w-3.5 h-3.5 mr-1 -mt-0.5" />
-                                        Workflow definition is sourced from <span className="font-semibold">Approval Workflows → PAYROLL_RUN_APPROVAL</span>.
-                                        {workflow?.workflowName && <> Active workflow: <span className="font-semibold">{workflow.workflowName}</span>.</>}
+                                        Workflow definition is sourced from <span className="font-semibold">Approval Workflows → Payroll Approval</span>.
+                                        {(workflow?.name || workflow?.workflowName) && <> Active workflow: <span className="font-semibold">{workflow.name ?? workflow.workflowName}</span>.</>}
                                     </div>
                                 </>
                             )}
@@ -817,7 +820,7 @@ export function Step5PayrollApproval({ runId, runDetail, completedStep, onStepAc
                                 <AlertTriangle className="w-5 h-5 text-warning-600 mx-auto mb-1.5" />
                                 <p className="text-[11.5px] text-warning-900 font-semibold">Not configured</p>
                                 <p className="mt-1 text-[10.5px] text-neutral-600 leading-snug">
-                                    No PAYROLL_RUN_APPROVAL workflow is set up.
+                                    No Payroll Approval workflow is set up.
                                 </p>
                                 <Link to="/app/company/hr/approval-workflows" className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-primary-600 hover:text-primary-700">
                                     Configure Now <ArrowRight className="w-3 h-3" />

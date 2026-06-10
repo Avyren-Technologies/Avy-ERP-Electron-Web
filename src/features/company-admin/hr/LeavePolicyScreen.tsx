@@ -18,6 +18,7 @@ import {
 } from "@/features/company-admin/api/use-leave-mutations";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Shared form atoms ── */
@@ -175,8 +176,7 @@ const ASSIGNMENT_LEVELS = [
 const EMPTY_POLICY = {
     leaveTypeId: "",
     assignmentLevel: "company",
-    assignmentTargetId: "",
-    assignmentTargetName: "",
+    assignmentTargetIds: [] as string[],
     overrideAnnualEntitlement: false,
     annualEntitlement: 0,
     overrideCarryForward: false,
@@ -185,6 +185,19 @@ const EMPTY_POLICY = {
     encashmentMaxDays: 0,
     notes: "",
 };
+
+const LEVELS_WITH_TARGET_DROPDOWN = new Set(["department", "designation", "grade", "employee-type"]);
+
+/* Backend uses `employeeType`; UI uses `employee-type`. Map both ways. */
+function toBackendLevel(uiLevel: string): string {
+    return uiLevel === "employee-type" ? "employeeType" : uiLevel === "employee" ? "individual" : uiLevel;
+}
+function toUiLevel(backendLevel: string | undefined | null): string {
+    if (!backendLevel) return "company";
+    if (backendLevel === "employeeType") return "employee-type";
+    if (backendLevel === "individual") return "employee";
+    return backendLevel;
+}
 
 /* ── Screen ── */
 
@@ -202,8 +215,9 @@ export function LeavePolicyScreen() {
     const [search, setSearch] = useState("");
     const [modalOpen, setModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [editingGroupPolicyIds, setEditingGroupPolicyIds] = useState<string[]>([]);
     const [form, setForm] = useState({ ...EMPTY_POLICY });
-    const [deleteTarget, setDeleteTarget] = useState<any>(null);
+    const [deleteTarget, setDeleteTarget] = useState<PolicyGroup | null>(null);
 
     const policies: any[] = data?.data ?? [];
     const leaveTypes: any[] = leaveTypesQuery.data?.data ?? [];
@@ -212,7 +226,63 @@ export function LeavePolicyScreen() {
     const grades: any[] = gradesQuery.data?.data ?? [];
     const empTypes: any[] = empTypesQuery.data?.data ?? [];
 
+    /* Group rows by (leaveType, level, overrides). All grouped policies share
+       the same override profile and differ only by assignment target. */
+    const stableStringify = (val: any): string => {
+        if (val === null || val === undefined) return "null";
+        if (typeof val !== "object") return JSON.stringify(val);
+        if (Array.isArray(val)) return `[${val.map(stableStringify).join(",")}]`;
+        const keys = Object.keys(val).sort();
+        return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(val[k])}`).join(",")}}`;
+    };
+
+    interface PolicyGroup {
+        groupKey: string;
+        leaveTypeId: string;
+        assignmentLevel: string;
+        overrides: Record<string, any> | null;
+        policyIds: string[];
+        assignmentIds: string[];
+    }
+
+    const groups: PolicyGroup[] = (() => {
+        const map = new Map<string, PolicyGroup>();
+        for (const p of policies) {
+            const key = `${p.leaveTypeId}::${p.assignmentLevel}::${stableStringify(p.overrides ?? null)}`;
+            const existing = map.get(key);
+            if (existing) {
+                existing.policyIds.push(p.id);
+                if (p.assignmentId) existing.assignmentIds.push(p.assignmentId);
+            } else {
+                map.set(key, {
+                    groupKey: key,
+                    leaveTypeId: p.leaveTypeId,
+                    assignmentLevel: p.assignmentLevel,
+                    overrides: p.overrides ?? null,
+                    policyIds: [p.id],
+                    assignmentIds: p.assignmentId ? [p.assignmentId] : [],
+                });
+            }
+        }
+        return Array.from(map.values());
+    })();
+
     const leaveTypeName = (id: string) => leaveTypes.find((lt: any) => lt.id === id)?.name ?? id;
+
+    /* Resolve target display name from local master lists since the backend
+       does not denormalize this onto the LeavePolicy row. */
+    const resolveTargetName = (level: string, assignmentId?: string | null): string => {
+        if (!assignmentId) return "";
+        const uiLevel = toUiLevel(level);
+        const lookup: Record<string, any[]> = {
+            department: departments,
+            designation: designations,
+            grade: grades,
+            "employee-type": empTypes,
+        };
+        const list = lookup[uiLevel] ?? [];
+        return list.find((x: any) => x.id === assignmentId)?.name ?? "";
+    };
 
     const getTargetOptions = (): { value: string; label: string }[] => {
         switch (form.assignmentLevel) {
@@ -229,49 +299,92 @@ export function LeavePolicyScreen() {
         }
     };
 
-    const filtered = policies.filter((p: any) => {
+    const filtered = groups.filter((g) => {
         if (!search) return true;
         const s = search.toLowerCase();
-        const ltName = leaveTypeName(p.leaveTypeId)?.toLowerCase();
+        const ltName = leaveTypeName(g.leaveTypeId)?.toLowerCase() ?? "";
+        const targetNames = g.assignmentIds.map((id) => resolveTargetName(g.assignmentLevel, id).toLowerCase()).join(" ");
         return (
-            ltName?.includes(s) ||
-            p.assignmentLevel?.toLowerCase().includes(s) ||
-            p.assignmentTargetName?.toLowerCase().includes(s)
+            ltName.includes(s) ||
+            g.assignmentLevel?.toLowerCase().includes(s) ||
+            targetNames.includes(s)
         );
     });
 
     const openCreate = () => {
         setEditingId(null);
+        setEditingGroupPolicyIds([]);
         setForm({ ...EMPTY_POLICY });
         setModalOpen(true);
     };
 
-    const openEdit = (p: any) => {
-        setEditingId(p.id);
+    const openEdit = (g: PolicyGroup) => {
+        setEditingId(g.policyIds[0] ?? null);
+        setEditingGroupPolicyIds(g.policyIds);
+        const overrides = (g.overrides ?? {}) as Record<string, any>;
         setForm({
-            leaveTypeId: p.leaveTypeId ?? "",
-            assignmentLevel: p.assignmentLevel ?? "company",
-            assignmentTargetId: p.assignmentTargetId ?? "",
-            assignmentTargetName: p.assignmentTargetName ?? "",
-            overrideAnnualEntitlement: p.overrideAnnualEntitlement ?? false,
-            annualEntitlement: p.annualEntitlement ?? 0,
-            overrideCarryForward: p.overrideCarryForward ?? false,
-            carryForwardMaxDays: p.carryForwardMaxDays ?? 0,
-            overrideEncashment: p.overrideEncashment ?? false,
-            encashmentMaxDays: p.encashmentMaxDays ?? 0,
-            notes: p.notes ?? "",
+            leaveTypeId: g.leaveTypeId ?? "",
+            assignmentLevel: toUiLevel(g.assignmentLevel),
+            assignmentTargetIds: [...g.assignmentIds],
+            overrideAnnualEntitlement: overrides.annualEntitlement != null,
+            annualEntitlement: Number(overrides.annualEntitlement ?? 0),
+            overrideCarryForward: overrides.maxCarryForwardDays != null,
+            carryForwardMaxDays: Number(overrides.maxCarryForwardDays ?? 0),
+            overrideEncashment: overrides.maxEncashableDays != null,
+            encashmentMaxDays: Number(overrides.maxEncashableDays ?? 0),
+            notes: overrides.notes ?? "",
         });
         setModalOpen(true);
     };
 
+    const buildOverridesPayload = () => {
+        const o: Record<string, any> = {};
+        if (form.overrideAnnualEntitlement) o.annualEntitlement = Number(form.annualEntitlement);
+        if (form.overrideCarryForward) o.maxCarryForwardDays = Number(form.carryForwardMaxDays);
+        if (form.overrideEncashment) o.maxEncashableDays = Number(form.encashmentMaxDays);
+        if (form.notes?.trim()) o.notes = form.notes.trim();
+        return Object.keys(o).length > 0 ? o : null;
+    };
+
     const handleSave = async () => {
+        const backendLevel = toBackendLevel(form.assignmentLevel);
+        const needsTarget = LEVELS_WITH_TARGET_DROPDOWN.has(form.assignmentLevel) || form.assignmentLevel === "employee";
+
+        if (!form.leaveTypeId) {
+            showApiError(new Error("Please select a leave type"));
+            return;
+        }
+        if (needsTarget && form.assignmentTargetIds.length === 0) {
+            showApiError(new Error("Please select at least one target"));
+            return;
+        }
+
+        const payload: Record<string, any> = {
+            leaveTypeId: form.leaveTypeId,
+            assignmentLevel: backendLevel,
+            overrides: buildOverridesPayload(),
+        };
+        if (needsTarget) payload.assignmentIds = form.assignmentTargetIds;
+        // Pass full group to backend so removed targets get deleted.
+        if (editingId && editingGroupPolicyIds.length > 0) payload.policyIds = editingGroupPolicyIds;
+
         try {
             if (editingId) {
-                await updateMutation.mutateAsync({ id: editingId, data: form });
-                showSuccess("Policy Updated", "Leave policy has been updated.");
+                await updateMutation.mutateAsync({ id: editingId, data: payload });
+                showSuccess(
+                    "Policy Updated",
+                    form.assignmentTargetIds.length > 1
+                        ? `Leave policy applied to ${form.assignmentTargetIds.length} targets.`
+                        : "Leave policy has been updated.",
+                );
             } else {
-                await createMutation.mutateAsync(form);
-                showSuccess("Policy Created", "Leave policy has been added.");
+                await createMutation.mutateAsync(payload);
+                showSuccess(
+                    "Policy Created",
+                    form.assignmentTargetIds.length > 1
+                        ? `Leave policy created for ${form.assignmentTargetIds.length} targets.`
+                        : "Leave policy has been added.",
+                );
             }
             setModalOpen(false);
         } catch (err) {
@@ -282,8 +395,12 @@ export function LeavePolicyScreen() {
     const handleDelete = async () => {
         if (!deleteTarget) return;
         try {
-            await deleteMutation.mutateAsync(deleteTarget.id);
-            showSuccess("Policy Deleted", "Leave policy has been removed.");
+            await Promise.all(deleteTarget.policyIds.map((id) => deleteMutation.mutateAsync(id)));
+            const n = deleteTarget.policyIds.length;
+            showSuccess(
+                "Policy Deleted",
+                n > 1 ? `${n} leave policy entries have been removed.` : "Leave policy has been removed.",
+            );
             setDeleteTarget(null);
         } catch (err) {
             showApiError(err);
@@ -293,12 +410,36 @@ export function LeavePolicyScreen() {
     const saving = createMutation.isPending || updateMutation.isPending;
     const updateField = (key: string, value: any) => setForm((p) => ({ ...p, [key]: value }));
 
-    const buildOverrideSummary = (p: any) => {
+    const buildOverrideSummary = (overrides: Record<string, any> | null) => {
+        const o = (overrides ?? {}) as Record<string, any>;
         const parts: string[] = [];
-        if (p.overrideAnnualEntitlement) parts.push(`${p.annualEntitlement}d entitlement`);
-        if (p.overrideCarryForward) parts.push(`CF: ${p.carryForwardMaxDays}d`);
-        if (p.overrideEncashment) parts.push(`Enc: ${p.encashmentMaxDays}d`);
+        if (o.annualEntitlement != null) parts.push(`${o.annualEntitlement}d entitlement`);
+        if (o.maxCarryForwardDays != null) parts.push(`CF: ${o.maxCarryForwardDays}d`);
+        if (o.maxEncashableDays != null) parts.push(`Enc: ${o.maxEncashableDays}d`);
         return parts.length > 0 ? parts.join(", ") : "— (inherits defaults)";
+    };
+
+    const renderTargetCell = (g: PolicyGroup) => {
+        if (g.assignmentLevel === "company") return "All Employees";
+        if (g.assignmentIds.length === 0) return "—";
+        const names = g.assignmentIds.map((id) => resolveTargetName(g.assignmentLevel, id) || id);
+        if (names.length <= 3) {
+            return (
+                <div className="flex flex-wrap gap-1">
+                    {names.map((n) => (
+                        <span key={n} className="inline-block px-2 py-0.5 rounded-md bg-neutral-100 dark:bg-neutral-800 text-[11px] font-semibold text-neutral-700 dark:text-neutral-300">{n}</span>
+                    ))}
+                </div>
+            );
+        }
+        return (
+            <div className="flex flex-wrap gap-1" title={names.join(", ")}>
+                {names.slice(0, 2).map((n) => (
+                    <span key={n} className="inline-block px-2 py-0.5 rounded-md bg-neutral-100 dark:bg-neutral-800 text-[11px] font-semibold text-neutral-700 dark:text-neutral-300">{n}</span>
+                ))}
+                <span className="inline-block px-2 py-0.5 rounded-md bg-primary-50 dark:bg-primary-900/30 text-[11px] font-bold text-primary-700 dark:text-primary-300">+{names.length - 2} more</span>
+            </div>
+        );
     };
 
     return (
@@ -355,9 +496,9 @@ export function LeavePolicyScreen() {
                                 </tr>
                             </thead>
                             <tbody className="text-sm">
-                                {filtered.map((p: any) => (
+                                {filtered.map((g) => (
                                     <tr
-                                        key={p.id}
+                                        key={g.groupKey}
                                         className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors"
                                     >
                                         <td className="py-4 px-6">
@@ -365,20 +506,20 @@ export function LeavePolicyScreen() {
                                                 <div className="w-8 h-8 rounded-lg bg-accent-50 dark:bg-accent-900/30 flex items-center justify-center shrink-0">
                                                     <Shield className="w-4 h-4 text-accent-600 dark:text-accent-400" />
                                                 </div>
-                                                <span className="font-bold text-primary-950 dark:text-white">{leaveTypeName(p.leaveTypeId)}</span>
+                                                <span className="font-bold text-primary-950 dark:text-white">{leaveTypeName(g.leaveTypeId)}</span>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6"><LevelBadge level={p.assignmentLevel} /></td>
+                                        <td className="py-4 px-6"><LevelBadge level={toUiLevel(g.assignmentLevel)} /></td>
                                         <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">
-                                            {p.assignmentLevel === "company" ? "All Employees" : p.assignmentTargetName || "—"}
+                                            {renderTargetCell(g)}
                                         </td>
-                                        <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{buildOverrideSummary(p)}</td>
+                                        <td className="py-4 px-6 text-xs text-neutral-600 dark:text-neutral-400">{buildOverrideSummary(g.overrides)}</td>
                                         <td className="py-4 px-6 text-right">
                                             <div className="flex items-center justify-end gap-1">
-                                                <button onClick={() => openEdit(p)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit">
+                                                <button onClick={() => openEdit(g)} className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors" title="Edit">
                                                     <Edit3 size={15} />
                                                 </button>
-                                                <button onClick={() => setDeleteTarget(p)} className="p-2 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors" title="Delete">
+                                                <button onClick={() => setDeleteTarget(g)} className="p-2 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors" title="Delete">
                                                     <Trash2 size={15} />
                                                 </button>
                                             </div>
@@ -422,35 +563,69 @@ export function LeavePolicyScreen() {
                                 value={form.assignmentLevel}
                                 onChange={(v) => {
                                     updateField("assignmentLevel", v);
-                                    updateField("assignmentTargetId", "");
-                                    updateField("assignmentTargetName", "");
+                                    updateField("assignmentTargetIds", []);
                                 }}
                                 options={ASSIGNMENT_LEVELS}
                             />
 
-                            {form.assignmentLevel !== "company" && form.assignmentLevel !== "employee" && (
-                                <SelectField
-                                    label="Target"
-                                    value={form.assignmentTargetId}
-                                    onChange={(v) => {
-                                        updateField("assignmentTargetId", v);
-                                        const opts = getTargetOptions();
-                                        const match = opts.find((o) => o.value === v);
-                                        updateField("assignmentTargetName", match?.label ?? "");
-                                    }}
-                                    options={getTargetOptions()}
-                                    placeholder="Select target..."
-                                />
+                            {LEVELS_WITH_TARGET_DROPDOWN.has(form.assignmentLevel) && (
+                                <div>
+                                    <SearchableSelect
+                                        label={
+                                            form.assignmentTargetIds.length > 1
+                                                ? `Targets (${form.assignmentTargetIds.length} selected)`
+                                                : "Target"
+                                        }
+                                        value=""
+                                        onChange={() => { /* unused in multi mode */ }}
+                                        options={getTargetOptions().map((o) => ({ value: o.value, label: o.label }))}
+                                        placeholder={editingId ? "Edit targets..." : "Select one or more targets..."}
+                                        multiple
+                                        selectedValues={form.assignmentTargetIds}
+                                        onMultiChange={(vals) => updateField("assignmentTargetIds", vals)}
+                                        required
+                                    />
+                                    {form.assignmentTargetIds.length > 0 && (
+                                        <div className="mt-2 flex flex-wrap gap-1.5">
+                                            {form.assignmentTargetIds.map((id) => {
+                                                const label = getTargetOptions().find((o) => o.value === id)?.label ?? id;
+                                                return (
+                                                    <span
+                                                        key={id}
+                                                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-xs font-semibold"
+                                                    >
+                                                        {label}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                updateField(
+                                                                    "assignmentTargetIds",
+                                                                    form.assignmentTargetIds.filter((x) => x !== id),
+                                                                )
+                                                            }
+                                                            className="hover:text-danger-600"
+                                                            aria-label={`Remove ${label}`}
+                                                        >
+                                                            <X size={12} />
+                                                        </button>
+                                                    </span>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                    {editingId && (
+                                        <p className="mt-1.5 text-[11px] text-neutral-500 dark:text-neutral-400">
+                                            Saving applies the current overrides to all selected targets. Targets removed here are deleted.
+                                        </p>
+                                    )}
+                                </div>
                             )}
 
                             {form.assignmentLevel === "employee" && (
                                 <FormField
-                                    label="Employee ID or Name"
-                                    value={form.assignmentTargetId}
-                                    onChange={(v) => {
-                                        updateField("assignmentTargetId", v);
-                                        updateField("assignmentTargetName", v);
-                                    }}
+                                    label="Employee ID"
+                                    value={form.assignmentTargetIds[0] ?? ""}
+                                    onChange={(v) => updateField("assignmentTargetIds", v ? [v] : [])}
                                     placeholder="Enter employee ID..."
                                 />
                             )}
@@ -494,7 +669,9 @@ export function LeavePolicyScreen() {
                     <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-sm p-7 animate-in fade-in zoom-in-95 duration-200">
                         <h2 className="text-lg font-bold text-danger-700 dark:text-danger-400 mb-2">Delete Policy?</h2>
                         <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                            This will permanently remove this leave policy assignment. Affected employees will revert to default rules.
+                            {deleteTarget.policyIds.length > 1
+                                ? `This will permanently remove this leave policy from ${deleteTarget.policyIds.length} targets. Affected employees will revert to default rules.`
+                                : "This will permanently remove this leave policy assignment. Affected employees will revert to default rules."}
                         </p>
                         <div className="flex gap-3 mt-6">
                             <button onClick={() => setDeleteTarget(null)} className="flex-1 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">Cancel</button>

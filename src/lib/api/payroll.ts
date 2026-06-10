@@ -1,6 +1,54 @@
 import { client } from './client';
 import type { ApiResponse } from './auth';
 
+// ── Shared payroll types ──
+
+export type CalculationMethod =
+    | 'FIXED'
+    | 'PERCENT_OF_BASIC'
+    | 'PERCENT_OF_GROSS'
+    | 'FORMULA'
+    | 'VARIABLE'
+    | 'BALANCE';
+
+export type CtcBasis = 'CTC' | 'MONTHLY_CTC' | 'TAKE_HOME' | 'MONTHLY_TAKE_HOME';
+
+export interface SalaryStructureComponent {
+    componentId: string;
+    calculationMethod: CalculationMethod;
+    value?: number;
+    formula?: string;
+    component?: { id: string; code: string; name: string; type?: string };
+}
+
+export interface AssignEmployeeSalaryRequest {
+    employeeId: string;
+    structureId: string;
+    annualCtc: number;
+    effectiveFrom?: string;
+    variableOverrides?: Record<string, number>;
+}
+
+export interface UpdateEmployeeSalaryRequest {
+    employeeId?: string;
+    structureId?: string;
+    annualCtc?: number;
+    effectiveFrom?: string;
+    variableOverrides?: Record<string, number>;
+}
+
+export interface EmployeeSalary {
+    id: string;
+    employeeId: string;
+    structureId: string;
+    annualCtc: number | string;
+    monthlyGross?: number | string;
+    components?: Record<string, number> | null;
+    variableOverrides?: Record<string, number> | null;
+    effectiveFrom?: string;
+    isCurrent?: boolean;
+}
+
 // ── Salary Components ──
 
 async function listSalaryComponents(params?: {
@@ -79,12 +127,17 @@ async function getEmployeeSalary(id: string): Promise<ApiResponse<any>> {
     return response.data;
 }
 
-async function assignEmployeeSalary(data: any): Promise<ApiResponse<any>> {
+async function assignEmployeeSalary(
+    data: AssignEmployeeSalaryRequest | Record<string, unknown>,
+): Promise<ApiResponse<EmployeeSalary>> {
     const response = await client.post('/hr/employee-salaries', data);
     return response.data;
 }
 
-async function updateEmployeeSalary(id: string, data: any): Promise<ApiResponse<any>> {
+async function updateEmployeeSalary(
+    id: string,
+    data: UpdateEmployeeSalaryRequest | Record<string, unknown>,
+): Promise<ApiResponse<EmployeeSalary>> {
     const response = await client.patch(`/hr/employee-salaries/${id}`, data);
     return response.data;
 }

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, Fragment } from "react";
+import { useState, useMemo, useRef, useEffect, Fragment } from "react";
 import {
     Wallet,
     Search,
@@ -277,8 +277,20 @@ export function LeaveBalanceScreen() {
     const fmt = useCompanyFormatter();
 
     const [search, setSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [year, setYear] = useState(String(currentYear));
+    const [page, setPage] = useState(1);
+    const PAGE_SIZE = 20;
     const [expandedRow, setExpandedRow] = useState<string | null>(null);
+
+    // Debounce search → resets page and triggers server filter.
+    useEffect(() => {
+        const t = setTimeout(() => {
+            setDebouncedSearch(search.trim());
+            setPage(1);
+        }, 300);
+        return () => clearTimeout(t);
+    }, [search]);
 
     // Adjust modal state
     const [adjustModal, setAdjustModal] = useState(false);
@@ -340,9 +352,29 @@ export function LeaveBalanceScreen() {
 
     // ── Queries & Mutations ──
 
-    const { data, isLoading, isError } = useLeaveBalances({ year: Number(year), limit: 100 });
+    // Employees are the unit of pagination; balances are fetched for the
+    // visible page only so we don't bottleneck on 8 leave types × N employees.
+    const employeesQuery = useEmployees({
+        page,
+        limit: PAGE_SIZE,
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
+    });
+    const visibleEmployees: any[] = employeesQuery.data?.data ?? [];
+    const visibleEmployeeIds = useMemo(() => visibleEmployees.map((e: any) => e.id), [visibleEmployees]);
+    const employeesMeta = (employeesQuery.data as any)?.meta ?? {};
+    const totalEmployees: number = employeesMeta.total ?? visibleEmployees.length;
+    const totalPages: number = employeesMeta.totalPages ?? Math.max(1, Math.ceil(totalEmployees / PAGE_SIZE));
+
+    const { data, isLoading, isError } = useLeaveBalances({
+        year: Number(year),
+        // Fetch all balance rows for the visible employee set in one shot.
+        // When the page is empty (initial load / no employees yet) we skip
+        // the balance fetch by sending no ids — backend returns empty when
+        // the array filter resolves to no employees.
+        employeeIds: visibleEmployeeIds.length > 0 ? visibleEmployeeIds : ['__none__'],
+        limit: 1000,
+    });
     const leaveTypesQuery = useLeaveTypes();
-    const employeesQuery = useEmployees({ limit: 100 });
     const adjustMutation = useAdjustLeaveBalance();
     const updateBalanceMutation = useUpdateBalance();
     const encashMutation = useEncashBalance();
@@ -355,7 +387,12 @@ export function LeaveBalanceScreen() {
 
     const rawBalances: any[] = data?.data ?? [];
     const leaveTypes: any[] = leaveTypesQuery.data?.data ?? [];
-    const employees: any[] = employeesQuery.data?.data ?? [];
+    // Full employee list (high limit) — used only for the Adjust/Initialize
+    // modal dropdowns where the user picks any employee, not just the visible
+    // table page. Separate from `visibleEmployees` to keep the table query
+    // small and the dropdown complete.
+    const allEmployeesQuery = useEmployees({ limit: 1000 });
+    const employees: any[] = allEmployeesQuery.data?.data ?? [];
 
     const employeeOptions = useMemo(() =>
         employees.map((e: any) => ({
@@ -404,12 +441,10 @@ export function LeaveBalanceScreen() {
         groupedByEmployee[key].push(b);
     });
 
-    // Filter by search
-    const filteredEmployees = Object.keys(groupedByEmployee).filter((empId) => {
-        if (!search) return true;
-        const name = employeeName(empId).toLowerCase();
-        return name.includes(search.toLowerCase());
-    });
+    // The "filtered" list is driven by the server (page + search), preserving
+    // the API order. We render in employee order rather than balance order so
+    // employees with no balance rows yet still appear (they'll show 0/0).
+    const filteredEmployees = visibleEmployeeIds;
 
     // Get active leave type columns (take first 6 for display)
     const activeLeaveTypes = leaveTypes.filter((lt: any) => lt.status?.toLowerCase() === "active" || !lt.status).slice(0, 6);
@@ -723,7 +758,7 @@ export function LeaveBalanceScreen() {
                             </thead>
                             <tbody className="text-sm">
                                 {filteredEmployees.map((empId) => {
-                                    const empBalances = groupedByEmployee[empId];
+                                    const empBalances = groupedByEmployee[empId] ?? [];
                                     const totals = getTotals(empBalances);
                                     const isExpanded = expandedRow === empId;
                                     return (
@@ -837,6 +872,37 @@ export function LeaveBalanceScreen() {
                                 )}
                             </tbody>
                         </table>
+                        {totalEmployees > 0 && (
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">
+                                <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                                    Showing <span className="font-bold text-primary-950 dark:text-white">{(page - 1) * PAGE_SIZE + 1}</span>
+                                    {" "}–{" "}
+                                    <span className="font-bold text-primary-950 dark:text-white">{Math.min(page * PAGE_SIZE, totalEmployees)}</span>
+                                    {" "}of{" "}
+                                    <span className="font-bold text-primary-950 dark:text-white">{totalEmployees}</span>
+                                    {" "}employees
+                                </p>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                        disabled={page <= 1}
+                                        className="px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 text-xs font-bold text-neutral-700 dark:text-neutral-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                                    >
+                                        Prev
+                                    </button>
+                                    <span className="px-3 py-1.5 text-xs font-bold text-primary-950 dark:text-white">
+                                        Page {page} of {totalPages}
+                                    </span>
+                                    <button
+                                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                        disabled={page >= totalPages}
+                                        className="px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 text-xs font-bold text-neutral-700 dark:text-neutral-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

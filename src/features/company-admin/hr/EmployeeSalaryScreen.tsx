@@ -77,6 +77,16 @@ const EMPTY_SALARY = {
     effectiveFrom: "",
 };
 
+const CTC_LABEL_BY_BASIS: Record<string, string> = {
+    CTC: "Annual CTC (₹)",
+    MONTHLY_CTC: "Monthly CTC (₹)",
+    TAKE_HOME: "Annual Take Home (₹)",
+    MONTHLY_TAKE_HOME: "Monthly Take Home (₹)",
+};
+
+const isMonthlyBasis = (basis?: string | null) =>
+    basis === "MONTHLY_CTC" || basis === "MONTHLY_TAKE_HOME";
+
 /* ── Screen ── */
 
 export function EmployeeSalaryScreen() {
@@ -101,6 +111,9 @@ export function EmployeeSalaryScreen() {
     const [modalOpen, setModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [form, setForm] = useState({ ...EMPTY_SALARY });
+    // User-entered amount (in basis currency: monthly or annual depending on structure)
+    const [displayCtc, setDisplayCtc] = useState<number>(0);
+    const [variableOverrides, setVariableOverrides] = useState<Record<string, number>>({});
 
     const salaries: any[] = data?.data ?? [];
     const meta = (data as { meta?: { page: number; limit: number; total: number; totalPages: number } })?.meta;
@@ -128,25 +141,58 @@ export function EmployeeSalaryScreen() {
         );
     });
 
-    const openCreate = () => { setEditingId(null); setForm({ ...EMPTY_SALARY }); setModalOpen(true); };
+    const openCreate = () => {
+        setEditingId(null);
+        setForm({ ...EMPTY_SALARY });
+        setDisplayCtc(0);
+        setVariableOverrides({});
+        setModalOpen(true);
+    };
     const openEdit = (s: any) => {
         setEditingId(s.id);
+        const annual = Number(s.annualCtc ?? 0);
+        const structure = structures.find((st: any) => st.id === s.structureId);
+        const basis = structure?.ctcBasis ?? "CTC";
+        const display = isMonthlyBasis(basis) ? Math.round((annual / 12) * 100) / 100 : annual;
         setForm({
             employeeId: s.employeeId ?? "",
             structureId: s.structureId ?? "",
-            annualCtc: s.annualCtc ?? 0,
+            annualCtc: annual,
             effectiveFrom: s.effectiveFrom ?? "",
         });
+        setDisplayCtc(display);
+        // Hydrate variable overrides from saved record or structure defaults
+        const overrides: Record<string, number> = {};
+        const saved = (s.variableOverrides ?? {}) as Record<string, number>;
+        for (const c of (structure?.components ?? [])) {
+            if ((c.calculationMethod ?? "").toUpperCase() !== "VARIABLE") continue;
+            const code = (c.component?.code ?? salaryComponents.find((sc: any) => sc.id === c.componentId)?.code ?? "").toString();
+            if (!code) continue;
+            const fallback = Number(c.value ?? 0);
+            overrides[code] = saved[code] !== undefined ? Number(saved[code]) : fallback;
+        }
+        setVariableOverrides(overrides);
         setModalOpen(true);
     };
 
     const handleSave = async () => {
         try {
+            const structure = structures.find((s: any) => s.id === form.structureId);
+            const basis = structure?.ctcBasis ?? "CTC";
+            const annualCtc = isMonthlyBasis(basis) ? Math.round(displayCtc * 12) : Math.round(displayCtc);
+            const hasVariable = (structure?.components ?? []).some((c: any) => (c.calculationMethod ?? "").toUpperCase() === "VARIABLE");
+            const payload: Record<string, unknown> = {
+                employeeId: form.employeeId,
+                structureId: form.structureId,
+                annualCtc,
+                effectiveFrom: form.effectiveFrom || undefined,
+            };
+            if (hasVariable) payload.variableOverrides = effectiveVariableOverrides;
             if (editingId) {
-                await updateMutation.mutateAsync({ id: editingId, data: form });
+                await updateMutation.mutateAsync({ id: editingId, data: payload });
                 showSuccess("Salary Updated", "Employee salary has been updated.");
             } else {
-                await assignMutation.mutateAsync(form);
+                await assignMutation.mutateAsync(payload);
                 showSuccess("Salary Assigned", "Employee salary has been assigned.");
             }
             setModalOpen(false);
@@ -156,13 +202,46 @@ export function EmployeeSalaryScreen() {
     const saving = assignMutation.isPending || updateMutation.isPending;
     const updateField = (key: string, value: any) => setForm((p) => ({ ...p, [key]: value }));
 
+    const selectedStructure = useMemo(
+        () => structures.find((s: any) => s.id === form.structureId) ?? null,
+        [structures, form.structureId],
+    );
+    const selectedBasis: string = selectedStructure?.ctcBasis ?? "CTC";
+    const monthlyBasis = isMonthlyBasis(selectedBasis);
+
+    // Annual CTC derived from displayed input (basis-aware)
+    const annualCtcForCompute = monthlyBasis ? Math.round(displayCtc * 12) : Math.round(displayCtc);
+
+    // Variable component rows from the selected structure
+    const variableComponents = useMemo(() => {
+        if (!selectedStructure?.components) return [] as { componentId: string; code: string; name: string; defaultMonthly: number }[];
+        return (selectedStructure.components as any[])
+            .filter((c) => (c.calculationMethod ?? "").toUpperCase() === "VARIABLE")
+            .map((c) => {
+                const comp = c.component ?? salaryComponents.find((sc: any) => sc.id === c.componentId);
+                return {
+                    componentId: c.componentId,
+                    code: (comp?.code ?? "").toString(),
+                    name: comp?.name ?? "Unknown",
+                    defaultMonthly: Math.round(Number(c.value ?? 0)),
+                };
+            })
+            .filter((r) => r.code);
+    }, [selectedStructure, salaryComponents]);
+
+    // Effective overrides: user-edited values fall back to structure defaults.
+    // Plain derivation (React Compiler will memoize); avoids in-effect state syncs.
+    const effectiveVariableOverrides: Record<string, number> = Object.fromEntries(
+        variableComponents.map((v) => [v.code, variableOverrides[v.code] !== undefined ? variableOverrides[v.code] : v.defaultMonthly]),
+    );
+
     // Compute breakup preview based on selected structure & CTC
     const breakupPreview = useMemo(() => {
-        if (!form.structureId || !form.annualCtc) return [];
-        const structure = structures.find((s: any) => s.id === form.structureId);
+        if (!form.structureId || !annualCtcForCompute) return [] as { name: string; monthly: number; isBalance: boolean; componentId: string }[];
+        const structure = selectedStructure;
         if (!structure?.components) return [];
         const comps = structure.components as any[];
-        const monthlyGross = form.annualCtc / 12;
+        const monthlyGross = annualCtcForCompute / 12;
 
         // Resolve component details — enriched structures have `component` sub-object, fallback to separate lookup
         const resolveComp = (c: any) => c.component ?? salaryComponents.find((sc: any) => sc.id === c.componentId);
@@ -170,7 +249,7 @@ export function EmployeeSalaryScreen() {
         const resolveCode = (c: any) => (resolveComp(c)?.code ?? "").toUpperCase();
         const getMethod = (c: any) => (c.calculationMethod ?? c.method ?? "").toUpperCase();
 
-        // First pass: find basic amount
+        // First pass: find basic amount (code === 'BASIC' check preserved)
         const basicRow = comps.find((c: any) => resolveCode(c) === "BASIC");
         let basicAmt = 0;
         if (basicRow) {
@@ -179,11 +258,12 @@ export function EmployeeSalaryScreen() {
             else if (m === "PERCENT_OF_GROSS" || m === "PERCENTAGE_OF_CTC") basicAmt = (monthlyGross * (Number(basicRow.value) || 0)) / 100;
         }
 
-        // Second pass: compute all non-BALANCE components
+        // Order: FIXED → %_GROSS → %_BASIC → FORMULA → VARIABLE → BALANCE
         const rows = comps.map((c: any) => {
             const m = getMethod(c);
             const val = Number(c.value) || 0;
             const isBalance = m === "BALANCE";
+            const code = resolveComp(c)?.code as string | undefined;
             let amt = 0;
             if (m === "FIXED") amt = val;
             else if (m === "PERCENT_OF_GROSS" || m === "PERCENTAGE_OF_CTC") amt = (monthlyGross * val) / 100;
@@ -195,22 +275,32 @@ export function EmployeeSalaryScreen() {
                     const pct = parseFloat(match[1]);
                     amt = match[2] === "basic" ? (basicAmt * pct) / 100 : (monthlyGross * pct) / 100;
                 }
+            } else if (m === "VARIABLE") {
+                amt = code && effectiveVariableOverrides[code] !== undefined ? Number(effectiveVariableOverrides[code]) : val;
             }
-            return { name: resolveName(c), monthly: Math.round(amt), isBalance, componentId: c.componentId };
+            return { name: resolveName(c), monthly: Math.round(amt * 100) / 100, isBalance, componentId: c.componentId };
         });
 
-        // Third pass: fill BALANCE components with remainder
+        // Fill BALANCE components with remainder (auto-shrinks)
         const totalBeforeBalance = rows.filter(r => !r.isBalance).reduce((s, r) => s + r.monthly, 0);
         let balanceFilled = false;
         for (const row of rows) {
             if (row.isBalance && !balanceFilled) {
-                row.monthly = Math.max(0, Math.round(monthlyGross - totalBeforeBalance));
+                row.monthly = Math.max(0, Math.round((monthlyGross - totalBeforeBalance) * 100) / 100);
                 balanceFilled = true;
             }
         }
 
         return rows;
-    }, [form.structureId, form.annualCtc, structures, salaryComponents]);
+    }, [form.structureId, annualCtcForCompute, selectedStructure, salaryComponents, effectiveVariableOverrides]);
+
+    // Warning: variables + fixed components exceed monthly gross before BALANCE
+    const variableWarning = useMemo(() => {
+        if (variableComponents.length === 0 || !breakupPreview.length || !annualCtcForCompute) return false;
+        const monthlyGross = annualCtcForCompute / 12;
+        const totalBeforeBalance = breakupPreview.filter(r => !r.isBalance).reduce((s, r) => s + r.monthly, 0);
+        return totalBeforeBalance > monthlyGross + 0.01;
+    }, [breakupPreview, variableComponents, annualCtcForCompute]);
 
     // Compute statutory estimates
     const statutoryEstimates = useMemo(() => {
@@ -388,8 +478,38 @@ export function EmployeeSalaryScreen() {
                         <div className="p-6 overflow-y-auto flex-1 space-y-4">
                             <SelectField label="Employee" value={form.employeeId} onChange={(v) => updateField("employeeId", v)} options={employees.map((e: any) => ({ value: e.id, label: `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim() || e.id }))} placeholder="Select employee..." />
                             <SelectField label="Salary Structure" value={form.structureId} onChange={(v) => updateField("structureId", v)} options={structures.map((s: any) => ({ value: s.id, label: s.name }))} placeholder="Select structure..." />
-                            <NumberField label="Annual CTC (₹)" value={form.annualCtc} onChange={(v) => updateField("annualCtc", v)} min={0} />
+                            <NumberField label={CTC_LABEL_BY_BASIS[selectedBasis] ?? "Annual CTC (₹)"} value={displayCtc} onChange={(v) => setDisplayCtc(v)} min={0} />
                             <FormField label="Effective From" value={form.effectiveFrom} onChange={(v) => updateField("effectiveFrom", v)} type="date" />
+
+                            {/* Variable Components (only when structure has VARIABLE-method components) */}
+                            {variableComponents.length > 0 && (
+                                <div>
+                                    <SectionLabel title="Variable Components" />
+                                    <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-700 p-3 space-y-2">
+                                        {variableComponents.map((v) => (
+                                            <div key={v.code} className="flex items-center gap-3">
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-semibold text-primary-950 dark:text-white">{v.name}</p>
+                                                    <p className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono">{v.code}</p>
+                                                </div>
+                                                <div className="w-40">
+                                                    <label className="block text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1">Monthly amount (₹)</label>
+                                                    <input
+                                                        type="number"
+                                                        value={effectiveVariableOverrides[v.code] ?? v.defaultMonthly}
+                                                        onChange={(e) => setVariableOverrides((prev) => ({ ...prev, [v.code]: Number(e.target.value) || 0 }))}
+                                                        min={0}
+                                                        className="w-full px-2 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm text-right font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:text-white"
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {variableWarning && (
+                                            <p className="text-xs font-semibold text-red-600 dark:text-red-400 mt-2">Variable amounts exceed remaining CTC. Balance component will be ₹0.</p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Breakup Preview */}
                             {breakupPreview.length > 0 && (
