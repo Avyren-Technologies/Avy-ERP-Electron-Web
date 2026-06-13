@@ -108,6 +108,82 @@ export interface PipIncentiveConfig {
   method1Name: string;
   method2Enabled: boolean;
   method2Name: string;
+  differentiateExtraHours: boolean;
+  defaultShiftHours: number;
+  extraHoursWarnThreshold: number;
+  splitExtraHoursEarning: boolean;
+  extraHoursEarningCode: string;
+}
+
+export interface PipExtraHoursEntry {
+  id: string;
+  companyId: string;
+  locationId?: string;
+  entryDate: string;
+  shiftId: string;
+  operatorId: string;
+  sessionRef?: string;
+  machineId: string;
+  partId: string;
+  slabConfigId: string;
+  operationId?: string;
+  extraHoursWorked: number;
+  shiftHours: number;
+  shiftTargetQty: number;
+  hourlyRate: number;
+  extraHoursTarget: number;
+  qtyProduced: number;
+  incentiveQty: number;
+  slab1Rate: number;
+  incentiveAmount: number;
+  calcBreakdown?: Record<string, unknown>;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  // Included relations (populated by backend when listing entries)
+  operator?: { id: string; firstName: string; lastName: string; employeeId: string };
+  slabConfig?: {
+    id: string;
+    machine?: { id: string; assetCode: string; assetName: string };
+    part?: { id: string; partNumber: string; name: string };
+  };
+}
+
+export interface ExtraHoursResult {
+  totalIncentive: number;
+  extraHoursWorked: number;
+  shiftHours: number;
+  parts: Array<{
+    partId: string;
+    partNumber: string;
+    partName: string;
+    machineId: string;
+    machineCode: string;
+    qtyProduced: number;
+    shiftTargetQty: number;
+    slab1Rate: number;
+    hourlyRate: number;
+    extraHoursTarget: number;
+    incentiveQty: number;
+    incentiveAmount: number;
+    breakdown: string;
+  }>;
+}
+
+export interface SaveExtraHoursEntriesPayload {
+  entryDate: string;
+  shiftId: string;
+  operatorId: string;
+  sessionRef?: string;
+  locationId?: string;
+  extraHoursWorked: number;
+  entries: Array<{
+    machineId: string;
+    partId: string;
+    slabConfigId: string;
+    operationId?: string;
+    qtyProduced: number;
+  }>;
 }
 
 export interface PipMonthlyReport {
@@ -289,6 +365,22 @@ async function reversePayrollMerge(id: string): Promise<ApiResponse<Record<strin
     return response.data;
 }
 
+// Extra Hours Entries
+async function saveExtraHoursEntries(data: SaveExtraHoursEntriesPayload): Promise<ApiResponse<{ sessionRef: string; entries: PipExtraHoursEntry[]; calculation: ExtraHoursResult }>> {
+    const response = await client.post('/production/pip/extra-hours-entries', data);
+    return response.data;
+}
+
+async function listExtraHoursEntries(params?: { page?: number; limit?: number; entryDate?: string; shiftId?: string; operatorId?: string; machineId?: string; partId?: string; status?: string; locationId?: string }): Promise<ApiResponse<PipExtraHoursEntry[]>> {
+    const response = await client.get('/production/pip/extra-hours-entries', { params });
+    return response.data;
+}
+
+async function deleteExtraHoursEntries(sessionRef: string): Promise<ApiResponse<void>> {
+    const response = await client.delete(`/production/pip/extra-hours-entries/${sessionRef}`);
+    return response.data;
+}
+
 // Process Categories
 async function listProcessCategories(params?: Record<string, unknown>): Promise<ApiResponse<ProcessCategory[]>> {
     const response = await client.get('/production/pip/process-categories', { params });
@@ -370,6 +462,9 @@ export const pipApi = {
     listDailyEntries,
     getDailyEntrySummary,
     deleteDailyEntries,
+    saveExtraHoursEntries,
+    listExtraHoursEntries,
+    deleteExtraHoursEntries,
     simulateIncentive,
     getDashboardMetrics,
     generateMonthlyReport,
