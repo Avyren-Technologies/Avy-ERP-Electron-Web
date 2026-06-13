@@ -34,7 +34,6 @@ import { computeProbationEndIsoFromMasters } from "@/lib/probation-end-date";
 import { resolveCostCentreIdForDepartment } from "@/lib/employee-org-defaults";
 import {
     useEmployee,
-    useEmployees,
     useDepartments,
     useDesignations,
     useGrades,
@@ -57,6 +56,7 @@ import { useGeofencesForDropdown } from "@/features/company-admin/api/use-geofen
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { EmployeePicker } from "@/components/ui/EmployeePicker";
 import { showSuccess, showApiError } from "@/lib/toast";
 import { useFileUpload } from "@/hooks/useFileUpload";
 import { useFileUrl } from "@/hooks/useFileUrl";
@@ -336,7 +336,6 @@ export function EmployeeProfileScreen() {
     const gradesQuery = useGrades();
     const employeeTypesQuery = useEmployeeTypes();
     const costCentresQuery = useCostCentres();
-    const employeesQuery = useEmployees({ limit: 500 });
     const locationsQuery = useCompanyLocations();
     const shiftsQuery = useCompanyShifts();
     const geofenceQuery = useGeofencesForDropdown(professional.locationId || undefined);
@@ -403,15 +402,6 @@ export function EmployeeProfileScreen() {
     const locationOptions = useMemo(() => (locationsQuery.data?.data ?? []).map((l: any) => ({ value: l.id, label: l.name })), [locationsQuery.data]);
     const shiftOptions = useMemo(() => (shiftsQuery.data?.data ?? []).map((s: any) => ({ value: s.id, label: s.name })), [shiftsQuery.data]);
     const geofenceOptions = useMemo(() => ((geofenceQuery.data?.data ?? geofenceQuery.data) ?? []) as { id: string; name: string; radius: number; isDefault: boolean }[], [geofenceQuery.data]);
-    const managerOptions = useMemo(() => (employeesQuery.data?.data ?? []).filter((e: any) => e.id !== id).map((e: any) => {
-        const name = [e.firstName, e.lastName].filter(Boolean).join(" ") || e.officialEmail || e.id;
-        const empId = e.employeeId ?? "";
-        // Tenant RBAC role name (same as auth profile roleName); fallback to job title if no user/role.
-        const roleLabel = e.rbacRoleName ?? e.designation?.name ?? e.designationName ?? "";
-        const parts = [name, empId && `(${empId})`, roleLabel && `— ${roleLabel}`].filter(Boolean);
-        return { value: e.id, label: parts.join(" ") };
-    }), [employeesQuery.data, id]);
-
     // Populate from API
     useEffect(() => {
         if (isNew || !employeeQuery.data?.data) return;
@@ -1556,21 +1546,41 @@ export function EmployeeProfileScreen() {
                                     onCreateNew={editing ? () => navigate("/app/company/hr/grades") : undefined}
                                     createNewLabel="Create Grade"
                                 />
-                                <SearchableSelect
+                                <EmployeePicker
                                     label="Reporting Manager"
-                                    value={professional.reportingManagerId}
-                                    onChange={(v) => updateProfessional("reportingManagerId", v)}
-                                    options={managerOptions}
+                                    value={professional.reportingManagerId || null}
+                                    onChange={(v) => updateProfessional("reportingManagerId", v ?? "")}
                                     disabled={!editing}
                                     placeholder="Search manager..."
+                                    excludeIds={!isNew && id ? [id] : []}
+                                    initialEmployee={(() => {
+                                        const mgr = emp?.reportingManager;
+                                        if (!mgr || !professional.reportingManagerId) return undefined;
+                                        return {
+                                            id: professional.reportingManagerId,
+                                            firstName: mgr.firstName ?? "",
+                                            lastName: mgr.lastName ?? "",
+                                            employeeId: mgr.employeeId,
+                                        };
+                                    })()}
                                 />
-                                <SearchableSelect
+                                <EmployeePicker
                                     label="Functional Manager"
-                                    value={professional.functionalManagerId}
-                                    onChange={(v) => updateProfessional("functionalManagerId", v)}
-                                    options={managerOptions}
+                                    value={professional.functionalManagerId || null}
+                                    onChange={(v) => updateProfessional("functionalManagerId", v ?? "")}
                                     disabled={!editing}
                                     placeholder="Search manager..."
+                                    excludeIds={!isNew && id ? [id] : []}
+                                    initialEmployee={(() => {
+                                        const mgr = emp?.functionalManager;
+                                        if (!mgr || !professional.functionalManagerId) return undefined;
+                                        return {
+                                            id: professional.functionalManagerId,
+                                            firstName: mgr.firstName ?? "",
+                                            lastName: mgr.lastName ?? "",
+                                            employeeId: mgr.employeeId,
+                                        };
+                                    })()}
                                 />
                                 <SearchableSelect
                                     label="Location"

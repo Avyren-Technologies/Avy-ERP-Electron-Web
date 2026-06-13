@@ -1,6 +1,35 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { payrollApi } from '@/lib/api/payroll';
+import type { StatutoryToggles } from '@/lib/api/payroll';
 import { payrollKeys } from './use-payroll-queries';
+
+// ── Statutory Toggles ──
+
+export function useUpdateStatutoryToggles() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: Partial<StatutoryToggles>) => payrollApi.updateStatutoryToggles(data),
+        onMutate: async (variables) => {
+            await queryClient.cancelQueries({ queryKey: payrollKeys.statutoryToggles() });
+            const previous = queryClient.getQueryData<any>(payrollKeys.statutoryToggles());
+            if (previous?.data) {
+                queryClient.setQueryData(payrollKeys.statutoryToggles(), {
+                    ...previous,
+                    data: { ...previous.data, ...variables },
+                });
+            }
+            return { previous };
+        },
+        onError: (_err, _vars, context) => {
+            if (context?.previous) {
+                queryClient.setQueryData(payrollKeys.statutoryToggles(), context.previous);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: payrollKeys.statutoryToggles() });
+        },
+    });
+}
 
 // ── Salary Components ──
 

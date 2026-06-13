@@ -6,6 +6,8 @@ export const attendanceKeys = {
     records: (params?: Record<string, unknown>) => [...attendanceKeys.all, 'records', params] as const,
     record: (id: string) => [...attendanceKeys.all, 'record', id] as const,
     summary: () => [...attendanceKeys.all, 'summary'] as const,
+    rangeSummary: (params: Record<string, unknown>) => [...attendanceKeys.all, 'range-summary', params] as const,
+    calendar: (params: Record<string, unknown>) => [...attendanceKeys.all, 'calendar', params] as const,
     rules: () => [...attendanceKeys.all, 'rules'] as const,
     overrides: (params?: Record<string, unknown>) => [...attendanceKeys.all, 'overrides', params] as const,
     holidays: (params?: Record<string, unknown>) => [...attendanceKeys.all, 'holidays', params] as const,
@@ -39,6 +41,50 @@ export function useAttendanceSummary() {
     return useQuery({
         queryKey: attendanceKeys.summary(),
         queryFn: () => attendanceApi.getSummary(),
+    });
+}
+
+// ── Range Summary ──
+
+export interface AttendanceRangeSummaryParams {
+    dateFrom: string;
+    dateTo: string;
+    departmentId?: string;
+    locationId?: string;
+    designationId?: string;
+    employeeTypeId?: string;
+    shiftId?: string;
+}
+
+export function useAttendanceRangeSummary(params: AttendanceRangeSummaryParams) {
+    return useQuery({
+        queryKey: attendanceKeys.rangeSummary(params as unknown as Record<string, unknown>),
+        queryFn: () => attendanceApi.getRangeSummary(params),
+        enabled: !!params.dateFrom && !!params.dateTo,
+    });
+}
+
+// ── Calendar ──
+
+export interface AttendanceCalendarParams {
+    dateFrom: string;
+    dateTo: string;
+    page?: number;
+    limit?: number;
+    employeeIds?: string[];
+    departmentId?: string;
+    locationId?: string;
+    designationId?: string;
+    employeeTypeId?: string;
+    shiftId?: string;
+    search?: string;
+}
+
+export function useAttendanceCalendar(params: AttendanceCalendarParams) {
+    return useQuery({
+        queryKey: attendanceKeys.calendar(params as unknown as Record<string, unknown>),
+        queryFn: () => attendanceApi.getCalendar(params),
+        enabled: !!params.dateFrom && !!params.dateTo,
     });
 }
 

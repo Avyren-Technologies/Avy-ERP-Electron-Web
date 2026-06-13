@@ -11,7 +11,7 @@ import {
     MinusCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useSalaryStructures, useSalaryComponents, usePFConfig, useESIConfig, useGratuityConfig } from "@/features/company-admin/api/use-payroll-queries";
+import { useSalaryStructures, useSalaryComponents, usePFConfig, useESIConfig, useGratuityConfig, useStatutoryToggles } from "@/features/company-admin/api/use-payroll-queries";
 import { useGrades, useDesignations, useEmployeeTypes } from "@/features/company-admin/api/use-hr-queries";
 import {
     useCreateSalaryStructure,
@@ -143,6 +143,21 @@ export function SalaryStructureScreen() {
     const esiConfig = (esiConfigData as any)?.data;
     const { data: gratuityConfigData } = useGratuityConfig();
     const gratuityConfig = (gratuityConfigData as any)?.data;
+    const { data: togglesData } = useStatutoryToggles();
+    const toggles = ((togglesData as any)?.data ?? {}) as Record<string, boolean>;
+    const pfEnabled = toggles.pfEnabled !== false;
+    const esiEnabled = toggles.esiEnabled !== false;
+    const gratuityEnabled = toggles.gratuityEnabled !== false;
+    const ptEnabled = toggles.ptEnabled !== false;
+    const lwfEnabled = toggles.lwfEnabled !== false;
+    const bonusEnabled = toggles.bonusEnabled !== false;
+    const disabledStatutoryNames: string[] = [];
+    if (!pfEnabled) disabledStatutoryNames.push("PF");
+    if (!esiEnabled) disabledStatutoryNames.push("ESI");
+    if (!ptEnabled) disabledStatutoryNames.push("PT");
+    if (!lwfEnabled) disabledStatutoryNames.push("LWF");
+    if (!gratuityEnabled) disabledStatutoryNames.push("Gratuity");
+    if (!bonusEnabled) disabledStatutoryNames.push("Bonus");
     const createMutation = useCreateSalaryStructure();
     const updateMutation = useUpdateSalaryStructure();
     const deleteMutation = useDeleteSalaryStructure();
@@ -313,7 +328,7 @@ export function SalaryStructureScreen() {
             if (comp.gratuityInclusion) gratuityWageBase += monthlyVal;
         }
 
-        if (pfConfig && pfWageBase > 0) {
+        if (pfConfig && pfEnabled && pfWageBase > 0) {
             const capped = Math.min(pfWageBase, Number(pfConfig.wageCeiling ?? 15000));
             const pfEmp = Math.round(capped * Number(pfConfig.employeeRate ?? 12) / 100);
             const pfErEpf = Math.round(capped * Number(pfConfig.employerEpfRate ?? 3.67) / 100);
@@ -322,7 +337,7 @@ export function SalaryStructureScreen() {
             estimates.push({ label: "PF (Employer)", monthly: pfErEpf + pfErEps, category: "employer" as const });
         }
 
-        if (esiConfig) {
+        if (esiConfig && esiEnabled) {
             const esiBase = esiWageBase > 0 ? esiWageBase : totalMonthly;
             if (esiBase <= Number(esiConfig.wageCeiling ?? 21000)) {
                 const esiEmp = Math.round(esiBase * Number(esiConfig.employeeRate ?? 0.75) / 100);
@@ -332,7 +347,7 @@ export function SalaryStructureScreen() {
             }
         }
 
-        if (gratuityConfig?.provisionMethod === "MONTHLY" && gratuityWageBase > 0) {
+        if (gratuityConfig?.provisionMethod === "MONTHLY" && gratuityEnabled && gratuityWageBase > 0) {
             const annualGratuity = (gratuityWageBase * 15 * 1) / 26;
             const capped = Math.min(annualGratuity, Number(gratuityConfig.maxAmount ?? 2000000));
             estimates.push({ label: "Gratuity (Employer)", monthly: Math.round(capped / 12), category: "employer" as const });
@@ -471,6 +486,11 @@ export function SalaryStructureScreen() {
                             <MultiSelectField label="Employee Types" selected={form.applicableTypeIds} onChange={(v) => updateField("applicableTypeIds", v)} options={empTypes.map((e: any) => ({ value: e.id ?? e.code, label: e.name }))} />
 
                             <SectionLabel title="Component Breakup" />
+                            {disabledStatutoryNames.length > 0 && (
+                                <div className="text-[11px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg px-3 py-2">
+                                    {disabledStatutoryNames.join(", ")} {disabledStatutoryNames.length === 1 ? "is" : "are"} disabled in your Statutory Components settings &mdash; enable them there to use here. Disabled statutory contributions will not appear in the estimated breakup.
+                                </div>
+                            )}
                             <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
                                 <table className="w-full text-left text-sm">
                                     <thead>

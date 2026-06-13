@@ -19,7 +19,7 @@ import { useVisitorTypes, useGates } from "@/features/company-admin/api/use-visi
 import { showSuccess, showApiError } from "@/lib/toast";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { PhoneInput } from "@/components/ui/PhoneInput";
-import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
+import { EmployeePicker } from "@/components/ui/EmployeePicker";
 import { useCompanyLocations } from "@/features/company-admin/api/use-company-admin-queries";
 
 /* ── Form atoms ── */
@@ -344,7 +344,6 @@ export function PreRegisterVisitorScreen() {
     const createMutation = useCreateVisit();
     const visitorTypesQuery = useVisitorTypes();
     const gatesQuery = useGates();
-    const employeesQuery = useEmployees({ limit: 500 });
     const locationsQuery = useCompanyLocations();
 
     const [form, setForm] = useState({ ...EMPTY_FORM });
@@ -354,7 +353,6 @@ export function PreRegisterVisitorScreen() {
 
     const visitorTypes: any[] = visitorTypesQuery.data?.data ?? [];
     const gates: any[] = gatesQuery.data?.data ?? [];
-    const employees: any[] = employeesQuery.data?.data ?? [];
     const locations: any[] = (locationsQuery.data as any)?.data ?? [];
 
     const filteredGates = gates.filter((g: any) => !form.plantId || g.plantId === form.plantId);
@@ -456,16 +454,12 @@ export function PreRegisterVisitorScreen() {
 
                 <SectionLabel title="Host & Location" />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <SearchableSelect
+                    <EmployeePicker
                         label="Host Employee"
-                        value={form.hostEmployeeId}
-                        onChange={(v) => updateField("hostEmployeeId", v)}
-                        options={employees.map((e: any) => ({
-                            value: e.id,
-                            label: `${e.firstName} ${e.lastName}`,
-                            sublabel: e.designation?.name ?? e.department?.name ?? e.employeeCode ?? "",
-                        }))}
+                        value={form.hostEmployeeId || null}
+                        onChange={(id) => updateField("hostEmployeeId", id ?? "")}
                         placeholder="Search employee..."
+                        status="ACTIVE"
                     />
                     <SearchableSelect
                         label="Location (Plant)"

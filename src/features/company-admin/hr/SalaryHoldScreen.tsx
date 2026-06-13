@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { useSalaryHolds, usePayrollRuns } from "@/features/company-admin/api/use-payroll-run-queries";
 import { useCreateSalaryHold, useReleaseSalaryHold } from "@/features/company-admin/api/use-payroll-run-mutations";
 import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
+import { EmployeePicker } from "@/components/ui/EmployeePicker";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
@@ -248,15 +249,12 @@ export function SalaryHoldScreen() {
                                     ))}
                                 </select>
                             </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Employee</label>
-                                <select value={form.employeeId} onChange={(e) => updateField("employeeId", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
-                                    <option value="">Select employee...</option>
-                                    {employees.map((e: any) => (
-                                        <option key={e.id} value={e.id}>{`${e.firstName ?? ""} ${e.lastName ?? ""}`.trim() || e.id}</option>
-                                    ))}
-                                </select>
-                            </div>
+                            <EmployeePicker
+                                label="Employee"
+                                value={form.employeeId || null}
+                                onChange={(id) => updateField("employeeId", id ?? "")}
+                                placeholder="Select employee..."
+                            />
                             <div>
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Hold Type</label>
                                 <select value={form.holdType} onChange={(e) => updateField("holdType", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">

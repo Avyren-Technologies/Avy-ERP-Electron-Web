@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSuccessionPlans, useNineBoxData, useBenchStrength } from "@/features/company-admin/api/use-performance-queries";
-import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
 import {
     useCreateSuccessionPlan,
     useUpdateSuccessionPlan,
@@ -25,6 +24,7 @@ import {
 } from "@/features/company-admin/api/use-performance-mutations";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { EmployeePicker } from "@/components/ui/EmployeePicker";
 import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Constants ── */
@@ -54,7 +54,7 @@ const NINE_BOX_LABELS: Record<string, { label: string; color: string; desc: stri
 const EMPTY_FORM = {
     position: "",
     role: "",
-    successors: [{ employeeId: "", readiness: "ONE_YEAR", notes: "" }],
+    successors: [{ employeeId: "", employee: null as any, readiness: "ONE_YEAR", notes: "" }],
 };
 
 /* ── Helpers ── */
@@ -90,20 +90,18 @@ export function SuccessionScreen() {
     const { data, isLoading, isError } = useSuccessionPlans(Object.keys(params).length ? params : undefined);
     const nineBoxQuery = useNineBoxData();
     const benchQuery = useBenchStrength();
-    const employeesQuery = useEmployees();
     const createMutation = useCreateSuccessionPlan();
     const updateMutation = useUpdateSuccessionPlan();
     const deleteMutation = useDeleteSuccessionPlan();
 
     const plans: any[] = data?.data ?? [];
-    const employees: any[] = employeesQuery.data?.data ?? [];
     const nineBoxData: any = nineBoxQuery.data?.data ?? null;
     const benchData: any[] = benchQuery.data?.data ?? [];
 
     const employeeName = (idOrRecord: string | any, nestedField = 'employee', idField = 'employeeId') => {
         const id = typeof idOrRecord === 'string' ? idOrRecord : idOrRecord?.[idField];
         const record = typeof idOrRecord === 'string' ? null : idOrRecord;
-        const emp = record?.[nestedField] ?? employees.find((e: any) => e.id === id);
+        const emp = record?.[nestedField];
         if (!emp) return id || '—';
         return `${emp.firstName ?? ''} ${emp.lastName ?? ''}`.trim() || emp.fullName || emp.employeeCode || emp.email || id || '—';
     };
@@ -150,7 +148,7 @@ export function SuccessionScreen() {
 
     const openCreate = () => {
         setEditingId(null);
-        setForm({ ...EMPTY_FORM, successors: [{ employeeId: "", readiness: "ONE_YEAR", notes: "" }] });
+        setForm({ ...EMPTY_FORM, successors: [{ employeeId: "", employee: null, readiness: "ONE_YEAR", notes: "" }] });
         setModalOpen(true);
     };
 
@@ -161,15 +159,16 @@ export function SuccessionScreen() {
             role: p.role ?? p.criticalRoleDesignation?.name ?? "",
             successors: p.successors?.length ? p.successors.map((s: any) => ({
                 employeeId: s.employeeId ?? "",
+                employee: s.employee ?? null,
                 readiness: s.readiness ?? "ONE_YEAR",
                 notes: s.notes ?? "",
-            })) : [{ employeeId: "", readiness: "ONE_YEAR", notes: "" }],
+            })) : [{ employeeId: "", employee: null, readiness: "ONE_YEAR", notes: "" }],
         });
         setModalOpen(true);
     };
 
     const addSuccessor = () => {
-        setForm((p: any) => ({ ...p, successors: [...p.successors, { employeeId: "", readiness: "ONE_YEAR", notes: "" }] }));
+        setForm((p: any) => ({ ...p, successors: [...p.successors, { employeeId: "", employee: null, readiness: "ONE_YEAR", notes: "" }] }));
     };
 
     const removeSuccessor = (index: number) => {
@@ -565,13 +564,22 @@ export function SuccessionScreen() {
                                             )}
                                         </div>
                                         <div className="grid grid-cols-2 gap-3">
-                                            <div>
-                                                <label className="block text-[10px] text-neutral-400 mb-1">Employee</label>
-                                                <select value={s.employeeId} onChange={(e) => updateSuccessor(index, "employeeId", e.target.value)} className="w-full px-3 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm focus:outline-none dark:text-white">
-                                                    <option value="">Select...</option>
-                                                    {employees.map((e: any) => <option key={e.id} value={e.id}>{[e.firstName, e.lastName].filter(Boolean).join(" ") || e.fullName || e.email}</option>)}
-                                                </select>
-                                            </div>
+                                            <EmployeePicker
+                                                value={s.employeeId || null}
+                                                onChange={(id) => updateSuccessor(index, "employeeId", id ?? "")}
+                                                label="Employee"
+                                                placeholder="Select..."
+                                                excludeIds={form.successors
+                                                    .map((other: any, i: number) => (i !== index ? other.employeeId : ""))
+                                                    .filter((id: string) => !!id)}
+                                                initialEmployee={s.employee ? {
+                                                    id: s.employee.id ?? s.employeeId,
+                                                    firstName: s.employee.firstName ?? "",
+                                                    middleName: s.employee.middleName ?? null,
+                                                    lastName: s.employee.lastName ?? "",
+                                                    employeeId: s.employee.employeeId,
+                                                } : undefined}
+                                            />
                                             <div>
                                                 <label className="block text-[10px] text-neutral-400 mb-1">Readiness</label>
                                                 <select value={s.readiness} onChange={(e) => updateSuccessor(index, "readiness", e.target.value)} className="w-full px-3 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm focus:outline-none dark:text-white">

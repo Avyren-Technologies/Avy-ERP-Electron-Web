@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useSkills, useSkillMappings, useSkillGapAnalysis } from "@/features/company-admin/api/use-performance-queries";
 import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
+import { EmployeePicker } from "@/components/ui/EmployeePicker";
 import {
     useCreateSkill,
     useUpdateSkill,
@@ -422,13 +423,12 @@ export function SkillScreen() {
                             <button onClick={() => setMappingModalOpen(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"><X size={18} /></button>
                         </div>
                         <div className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Employee</label>
-                                <select value={mappingForm.employeeId} onChange={(e) => setMappingForm((p) => ({ ...p, employeeId: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
-                                    <option value="">Select employee...</option>
-                                    {employees.map((e: any) => <option key={e.id} value={e.id}>{[e.firstName, e.lastName].filter(Boolean).join(" ") || e.fullName || e.email}</option>)}
-                                </select>
-                            </div>
+                            <EmployeePicker
+                                label="Employee"
+                                value={mappingForm.employeeId || null}
+                                onChange={(id) => setMappingForm((p) => ({ ...p, employeeId: id ?? "" }))}
+                                placeholder="Select employee..."
+                            />
                             <div>
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Skill</label>
                                 <select value={mappingForm.skillId} onChange={(e) => setMappingForm((p) => ({ ...p, skillId: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
@@ -475,13 +475,12 @@ export function SkillScreen() {
                             <button onClick={() => setGapModalOpen(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"><X size={18} /></button>
                         </div>
                         <div className="p-6 overflow-y-auto flex-1 space-y-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Select Employee</label>
-                                <select value={gapEmployeeId} onChange={(e) => setGapEmployeeId(e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
-                                    <option value="">Select employee...</option>
-                                    {employees.map((e: any) => <option key={e.id} value={e.id}>{[e.firstName, e.lastName].filter(Boolean).join(" ") || e.fullName || e.email}</option>)}
-                                </select>
-                            </div>
+                            <EmployeePicker
+                                label="Select Employee"
+                                value={gapEmployeeId || null}
+                                onChange={(id) => setGapEmployeeId(id ?? "")}
+                                placeholder="Select employee..."
+                            />
 
                             {gapQuery.isLoading ? (
                                 <div className="flex items-center justify-center py-12"><Loader2 className="w-8 h-8 text-primary-400 animate-spin" /></div>

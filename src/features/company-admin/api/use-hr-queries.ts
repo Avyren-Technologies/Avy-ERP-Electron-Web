@@ -4,6 +4,9 @@ import { hrApi } from '@/lib/api/hr';
 /** Page size for employee pickers (assign modals, async selects). */
 export const EMPLOYEE_PICKER_PAGE_SIZE = 25;
 
+/** Page size for the reusable EmployeePicker dropdown component. */
+export const EMPLOYEE_DROPDOWN_PAGE_SIZE = 50;
+
 export const hrKeys = {
     all: ['hr'] as const,
     departments: () => [...hrKeys.all, 'departments'] as const,
@@ -17,6 +20,21 @@ export const hrKeys = {
     costCentres: () => [...hrKeys.all, 'cost-centres'] as const,
     costCentre: (id: string) => [...hrKeys.all, 'cost-centre', id] as const,
     employees: (params?: Record<string, unknown>) => [...hrKeys.all, 'employees', params] as const,
+    employeesDropdown: (params?: {
+        search?: string;
+        status?: 'ACTIVE' | 'ALL';
+        departmentId?: string;
+        locationId?: string;
+    }) => {
+        if (!params) return [...hrKeys.all, 'employees-dropdown'] as const;
+        const filtered: Record<string, string> = {};
+        if (params.search !== undefined) filtered.search = params.search;
+        if (params.status !== undefined) filtered.status = params.status;
+        if (params.departmentId !== undefined) filtered.departmentId = params.departmentId;
+        if (params.locationId !== undefined) filtered.locationId = params.locationId;
+        if (Object.keys(filtered).length === 0) return [...hrKeys.all, 'employees-dropdown'] as const;
+        return [...hrKeys.all, 'employees-dropdown', filtered] as const;
+    },
     employee: (id: string) => [...hrKeys.all, 'employee', id] as const,
     nominees: (employeeId: string) => [...hrKeys.all, 'employee', employeeId, 'nominees'] as const,
     education: (employeeId: string) => [...hrKeys.all, 'employee', employeeId, 'education'] as const,
@@ -138,6 +156,26 @@ export function useEmployeesInfinite(search: string, enabled = true) {
             if (!meta) return undefined;
             return meta.page < meta.totalPages ? meta.page + 1 : undefined;
         },
+        enabled,
+    });
+}
+
+/**
+ * Infinite paginated dropdown for the reusable EmployeePicker.
+ * Uses the lightweight `/hr/employees/dropdown` endpoint.
+ */
+export function useEmployeesDropdown(
+    params: { search?: string; status?: 'ACTIVE' | 'ALL'; departmentId?: string; locationId?: string } = {},
+    enabled: boolean = true,
+) {
+    return useInfiniteQuery({
+        queryKey: hrKeys.employeesDropdown(params),
+        queryFn: ({ pageParam = 1 }) =>
+            hrApi.listEmployeesDropdown({ ...params, page: pageParam as number, limit: EMPLOYEE_DROPDOWN_PAGE_SIZE }),
+        initialPageParam: 1,
+        getNextPageParam: (last) =>
+            last.meta.page < last.meta.totalPages ? last.meta.page + 1 : undefined,
+        staleTime: 60 * 1000,
         enabled,
     });
 }

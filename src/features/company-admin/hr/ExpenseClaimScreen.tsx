@@ -43,6 +43,7 @@ import {
 } from "@/features/company-admin/api/use-recruitment-mutations";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { EmployeePicker } from "@/components/ui/EmployeePicker";
 import { ImageViewer } from "@/components/ui/ImageViewer";
 import { showSuccess, showApiError } from "@/lib/toast";
 
@@ -186,6 +187,7 @@ export function ExpenseClaimScreen() {
     const [modalOpen, setModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [form, setForm] = useState({ ...EMPTY_CLAIM });
+    const [initialEmployee, setInitialEmployee] = useState<{ id: string; firstName: string; middleName?: string | null; lastName: string; employeeId?: string } | undefined>(undefined);
     const [lineItems, setLineItems] = useState<LineItem[]>([{ ...EMPTY_LINE_ITEM }]);
     const [receiptFiles, setReceiptFiles] = useState<ReceiptFile[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -270,6 +272,7 @@ export function ExpenseClaimScreen() {
     const openCreate = () => {
         setEditingId(null);
         setForm({ ...EMPTY_CLAIM });
+        setInitialEmployee(undefined);
         setLineItems([{ ...EMPTY_LINE_ITEM }]);
         setReceiptFiles([]);
         setModalOpen(true);
@@ -277,8 +280,21 @@ export function ExpenseClaimScreen() {
 
     const openEdit = (c: any) => {
         setEditingId(c.id);
+        const empId = c.employeeId ?? "";
+        const emp = empId ? employees.find((e: any) => e.id === empId) : null;
+        if (empId && emp) {
+            setInitialEmployee({
+                id: empId,
+                firstName: emp.firstName ?? "",
+                middleName: emp.middleName ?? null,
+                lastName: emp.lastName ?? "",
+                employeeId: emp.employeeId,
+            });
+        } else {
+            setInitialEmployee(undefined);
+        }
         setForm({
-            employeeId: c.employeeId ?? "",
+            employeeId: empId,
             title: c.title ?? "",
             category: c.category ?? "",
             fromDate: c.fromDate ? c.fromDate.slice(0, 10) : c.expenseDate ? c.expenseDate.slice(0, 10) : "",
@@ -744,13 +760,13 @@ export function ExpenseClaimScreen() {
                         </div>
                         <div className="p-6 overflow-y-auto flex-1 space-y-6">
                             {/* Section: Employee */}
-                            <div>
-                                <label className={labelCls}>Employee</label>
-                                <select value={form.employeeId} onChange={(e) => updateField("employeeId", e.target.value)} className={inputCls}>
-                                    <option value="">Select employee...</option>
-                                    {employees.map((e: any) => <option key={e.id} value={e.id}>{[e.firstName, e.lastName].filter(Boolean).join(" ") || e.email}</option>)}
-                                </select>
-                            </div>
+                            <EmployeePicker
+                                label="Employee"
+                                value={form.employeeId || null}
+                                onChange={(id) => updateField("employeeId", id ?? "")}
+                                placeholder="Select employee..."
+                                {...(initialEmployee ? { initialEmployee } : {})}
+                            />
 
                             {/* Section: Claim Details */}
                             <div>

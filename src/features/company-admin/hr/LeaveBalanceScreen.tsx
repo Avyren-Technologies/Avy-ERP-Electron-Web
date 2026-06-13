@@ -38,6 +38,7 @@ import {
 import { leaveApi } from "@/lib/api/leave";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { EmployeePicker } from "@/components/ui/EmployeePicker";
 import { showSuccess, showApiError } from "@/lib/toast";
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
 
@@ -393,16 +394,6 @@ export function LeaveBalanceScreen() {
     // small and the dropdown complete.
     const allEmployeesQuery = useEmployees({ limit: 1000 });
     const employees: any[] = allEmployeesQuery.data?.data ?? [];
-
-    const employeeOptions = useMemo(() =>
-        employees.map((e: any) => ({
-            value: e.id,
-            label: [e.firstName, e.lastName].filter(Boolean).join(" ") || e.fullName || e.email || e.id,
-            sublabel: [e.employeeId, e.department?.name].filter(Boolean).join(" · "),
-        })),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [employees]
-    );
 
     const leaveTypeOptions = useMemo(() =>
         leaveTypes.map((lt: any) => ({ value: lt.id, label: lt.name })),
@@ -926,11 +917,10 @@ export function LeaveBalanceScreen() {
                             </button>
                         </div>
                         <div className="p-6 overflow-y-auto flex-1 space-y-4">
-                            <SearchableSelect
+                            <EmployeePicker
                                 label="Employee"
-                                value={adjustForm.employeeId}
-                                onChange={(v) => updateAdjustField("employeeId", v)}
-                                options={employeeOptions}
+                                value={adjustForm.employeeId || null}
+                                onChange={(v) => updateAdjustField("employeeId", v ?? "")}
                                 placeholder="Select employee..."
                             />
                             <SearchableSelect
@@ -1013,11 +1003,10 @@ export function LeaveBalanceScreen() {
             {/* ── Initialize Balances Modal ── */}
             <ModalShell open={initializeModal} onClose={() => setInitializeModal(false)} title="Initialize Leave Balances">
                 <div className="p-6 overflow-y-auto flex-1 space-y-4">
-                    <SearchableSelect
+                    <EmployeePicker
                         label="Employee"
-                        value={initForm.employeeId}
-                        onChange={(v) => setInitForm((p) => ({ ...p, employeeId: v }))}
-                        options={employeeOptions}
+                        value={initForm.employeeId || null}
+                        onChange={(v) => setInitForm((p) => ({ ...p, employeeId: v ?? "" }))}
                         placeholder="Select employee..."
                     />
                     <NumberField label="Year" value={initForm.year} onChange={(v) => setInitForm((p) => ({ ...p, year: v }))} min={2020} max={2099} />

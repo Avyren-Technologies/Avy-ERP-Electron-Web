@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useITDeclarations } from "@/features/company-admin/api/use-ess-queries";
-import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
+import { EmployeePicker } from "@/components/ui/EmployeePicker";
 import {
     useCreateITDeclaration,
     useSubmitITDeclaration,
@@ -238,7 +238,6 @@ export function ITDeclarationScreen() {
         status: statusFilter === "All" ? undefined : statusFilter.toLowerCase(),
         fy: fyFilter || undefined,
     });
-    const employeesQuery = useEmployees();
 
     const createMutation = useCreateITDeclaration();
     const submitMutation = useSubmitITDeclaration();
@@ -257,7 +256,6 @@ export function ITDeclarationScreen() {
     });
 
     const rawDeclarations: any[] = data?.data ?? [];
-    const employees: any[] = employeesQuery.data?.data ?? [];
 
     const declarations = rawDeclarations.map((d: any) => ({
         ...d,
@@ -480,13 +478,12 @@ export function ITDeclarationScreen() {
                             {/* Top fields */}
                             <div className={`grid ${isHrAdmin ? 'grid-cols-3' : 'grid-cols-2'} gap-4`}>
                                 {isHrAdmin && (
-                                    <div>
-                                        <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Employee</label>
-                                        <select value={form.employeeId} onChange={(e) => setForm((p) => ({ ...p, employeeId: e.target.value }))} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
-                                            <option value="">Select employee...</option>
-                                            {employees.map((e: any) => (<option key={e.id} value={e.id}>{[e.firstName, e.lastName].filter(Boolean).join(" ") || e.fullName || e.email}</option>))}
-                                        </select>
-                                    </div>
+                                    <EmployeePicker
+                                        value={form.employeeId || null}
+                                        onChange={(id) => setForm((p) => ({ ...p, employeeId: id ?? "" }))}
+                                        label="Employee"
+                                        placeholder="Select employee..."
+                                    />
                                 )}
                                 <div>
                                     <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Financial Year</label>

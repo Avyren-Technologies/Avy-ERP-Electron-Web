@@ -18,7 +18,7 @@ import { useCreateRecurringPass, useUpdateRecurringPass, useRevokeRecurringPass,
 import { useCanPerform } from "@/hooks/useCanPerform";
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
-import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
+import { EmployeePicker, type EmployeePickerInitialEmployee } from "@/components/ui/EmployeePicker";
 import { useCompanyLocations } from "@/features/company-admin/api/use-company-admin-queries";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -65,8 +65,7 @@ export function RecurringPassScreen() {
     const [checkInGateId, setCheckInGateId] = useState("");
     const [qrTarget, setQrTarget] = useState<any>(null);
 
-    const employeesQuery = useEmployees({ limit: 500 });
-    const employees: any[] = employeesQuery.data?.data ?? [];
+    const [initialHost, setInitialHost] = useState<EmployeePickerInitialEmployee | undefined>(undefined);
     const locationsQuery = useCompanyLocations();
     const locations: any[] = (locationsQuery.data as any)?.data ?? [];
     const gatesQuery = useGates();
@@ -80,9 +79,21 @@ export function RecurringPassScreen() {
         return p.visitorName?.toLowerCase().includes(s) || p.visitorCompany?.toLowerCase().includes(s) || p.passNumber?.toLowerCase().includes(s);
     });
 
-    const openCreate = () => { setEditingId(null); setForm({ ...EMPTY_FORM }); setModalOpen(true); };
+    const openCreate = () => { setEditingId(null); setForm({ ...EMPTY_FORM }); setInitialHost(undefined); setModalOpen(true); };
     const openEdit = (p: any) => {
         setEditingId(p.id);
+        const host = p.hostEmployee ?? p.host;
+        if (p.hostEmployeeId && host?.firstName && host?.lastName) {
+            setInitialHost({
+                id: p.hostEmployeeId,
+                firstName: host.firstName,
+                middleName: host.middleName ?? null,
+                lastName: host.lastName,
+                employeeId: host.employeeId ?? host.employeeCode ?? undefined,
+            });
+        } else {
+            setInitialHost(undefined);
+        }
         setForm({
             visitorName: p.visitorName ?? "",
             visitorMobile: p.visitorMobile ?? "",
@@ -262,17 +273,14 @@ export function RecurringPassScreen() {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <SearchableSelect
+                                    <EmployeePicker
                                         label="Host Employee"
-                                        value={form.hostEmployeeId}
-                                        onChange={(v) => updateField("hostEmployeeId", v)}
-                                        options={employees.map((e: any) => ({
-                                            value: e.id,
-                                            label: `${e.firstName} ${e.lastName}`,
-                                            sublabel: e.designation?.name ?? e.department?.name ?? e.employeeCode ?? "",
-                                        }))}
+                                        value={form.hostEmployeeId || null}
+                                        onChange={(id) => updateField("hostEmployeeId", id ?? "")}
                                         placeholder="Search employee..."
                                         required
+                                        status="ACTIVE"
+                                        initialEmployee={initialHost}
                                     />
                                 </div>
                                 <div>

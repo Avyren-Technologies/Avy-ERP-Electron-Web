@@ -30,7 +30,7 @@ import { useFileUpload } from "@/hooks/useFileUpload";
 import { R2Link } from "@/components/R2Link";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { EmployeePicker } from "@/components/ui/EmployeePicker";
 import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Shared form atoms ── */
@@ -606,14 +606,10 @@ export function LeaveRequestScreen() {
                             </button>
                         </div>
                         <div className="p-6 overflow-y-auto flex-1 space-y-4">
-                            <SearchableSelect
+                            <EmployeePicker
                                 label="Employee"
-                                value={form.employeeId}
-                                onChange={(v) => updateField("employeeId", v)}
-                                options={employees.map((e: any) => ({
-                                    value: e.id,
-                                    label: [e.firstName, e.lastName].filter(Boolean).join(" ") || e.fullName || e.email,
-                                }))}
+                                value={form.employeeId || null}
+                                onChange={(id) => updateField("employeeId", id ?? "")}
                                 placeholder="Select employee..."
                             />
                             <SelectField

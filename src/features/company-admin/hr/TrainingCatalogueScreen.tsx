@@ -46,6 +46,7 @@ import {
     useTrainingMaterials,
 } from "@/features/company-admin/api/use-recruitment-queries";
 import { useEmployees, useDepartments } from "@/features/company-admin/api/use-hr-queries";
+import { EmployeePicker } from "@/components/ui/EmployeePicker";
 import {
     useCreateTrainingCatalogue,
     useUpdateTrainingCatalogue,
@@ -1180,13 +1181,12 @@ export function TrainingCatalogueScreen() {
                                     {courses.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                                 </select>
                             </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Employee</label>
-                                <select value={nomForm.employeeId} onChange={(e) => updateNomField("employeeId", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
-                                    <option value="">Select employee...</option>
-                                    {employees.map((e: any) => <option key={e.id} value={e.id}>{[e.firstName, e.lastName].filter(Boolean).join(" ") || e.email}</option>)}
-                                </select>
-                            </div>
+                            <EmployeePicker
+                                value={nomForm.employeeId || null}
+                                onChange={(id) => updateNomField("employeeId", id ?? "")}
+                                label="Employee"
+                                placeholder="Select employee..."
+                            />
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Batch Date</label>
@@ -1308,20 +1308,17 @@ export function TrainingCatalogueScreen() {
                                 </button>
                             </div>
                             {trainerForm.isInternal && (
-                                <div>
-                                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Employee</label>
-                                    <select value={trainerForm.employeeId} onChange={(e) => {
-                                        updateTrainerField("employeeId", e.target.value);
-                                        const emp = employees.find((emp: any) => emp.id === e.target.value);
+                                <EmployeePicker
+                                    value={trainerForm.employeeId || null}
+                                    onChange={(id, emp) => {
+                                        updateTrainerField("employeeId", id ?? "");
                                         if (emp) {
-                                            updateTrainerField("name", [emp.firstName, emp.lastName].filter(Boolean).join(" ") || emp.fullName || "");
-                                            updateTrainerField("email", emp.email || "");
+                                            updateTrainerField("name", [emp.firstName, emp.middleName, emp.lastName].filter(Boolean).join(" "));
                                         }
-                                    }} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
-                                        <option value="">Select employee...</option>
-                                        {employees.map((e: any) => <option key={e.id} value={e.id}>{[e.firstName, e.lastName].filter(Boolean).join(" ") || e.email}</option>)}
-                                    </select>
-                                </div>
+                                    }}
+                                    label="Employee"
+                                    placeholder="Select employee..."
+                                />
                             )}
                             <div>
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Name</label>
@@ -1375,15 +1372,29 @@ export function TrainingCatalogueScreen() {
                             {/* Register Employees */}
                             <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-4 border border-neutral-200 dark:border-neutral-700">
                                 <h3 className="text-sm font-bold text-primary-950 dark:text-white mb-3">Register Employees</h3>
-                                <div className="flex gap-2">
-                                    <select
-                                        multiple
-                                        value={registerEmployeeIds}
-                                        onChange={(e) => setRegisterEmployeeIds(Array.from(e.target.selectedOptions, o => o.value))}
-                                        className="flex-1 px-3 py-2.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all max-h-24"
-                                    >
-                                        {employees.map((e: any) => <option key={e.id} value={e.id}>{[e.firstName, e.lastName].filter(Boolean).join(" ") || e.email}</option>)}
-                                    </select>
+                                <EmployeePicker
+                                    value={null}
+                                    onChange={(id) => {
+                                        if (id && !registerEmployeeIds.includes(id)) {
+                                            setRegisterEmployeeIds([...registerEmployeeIds, id]);
+                                        }
+                                    }}
+                                    placeholder="Search and add employee..."
+                                    excludeIds={registerEmployeeIds}
+                                />
+                                {registerEmployeeIds.length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5 mt-2">
+                                        {registerEmployeeIds.map((id) => (
+                                            <span key={id} className="inline-flex items-center gap-1 text-xs bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 px-2 py-1 rounded-lg">
+                                                {employeeName(id)}
+                                                <button onClick={() => setRegisterEmployeeIds(registerEmployeeIds.filter((x) => x !== id))} className="text-primary-500 hover:text-primary-700">
+                                                    <X size={12} />
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                                <div className="flex justify-end mt-2">
                                     <button
                                         onClick={handleRegisterEmployees}
                                         disabled={registerAttendees.isPending || !registerEmployeeIds.length}
@@ -1806,16 +1817,30 @@ export function TrainingCatalogueScreen() {
                         </div>
                         <div className="p-6 overflow-y-auto flex-1 space-y-4">
                             <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Select Employees</label>
-                                <select
-                                    multiple
-                                    value={enrollEmployeeIds}
-                                    onChange={(e) => setEnrollEmployeeIds(Array.from(e.target.selectedOptions, o => o.value))}
-                                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all max-h-48"
-                                >
-                                    {employees.map((e: any) => <option key={e.id} value={e.id}>{[e.firstName, e.lastName].filter(Boolean).join(" ") || e.email}</option>)}
-                                </select>
-                                <p className="text-xs text-neutral-400 mt-1">Hold Ctrl/Cmd to select multiple employees.</p>
+                                <EmployeePicker
+                                    value={null}
+                                    onChange={(id) => {
+                                        if (id && !enrollEmployeeIds.includes(id)) {
+                                            setEnrollEmployeeIds([...enrollEmployeeIds, id]);
+                                        }
+                                    }}
+                                    label="Select Employees"
+                                    placeholder="Search and add employee..."
+                                    excludeIds={enrollEmployeeIds}
+                                />
+                                {enrollEmployeeIds.length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5 mt-2">
+                                        {enrollEmployeeIds.map((id) => (
+                                            <span key={id} className="inline-flex items-center gap-1 text-xs bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 px-2 py-1 rounded-lg">
+                                                {employeeName(id)}
+                                                <button onClick={() => setEnrollEmployeeIds(enrollEmployeeIds.filter((x) => x !== id))} className="text-primary-500 hover:text-primary-700">
+                                                    <X size={12} />
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                                <p className="text-xs text-neutral-400 mt-1">Search and select multiple employees to enroll.</p>
                             </div>
                         </div>
                         <div className="flex gap-3 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800">

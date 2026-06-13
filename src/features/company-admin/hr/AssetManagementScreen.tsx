@@ -22,7 +22,7 @@ import {
     useAssets,
     useAssetAssignments,
 } from "@/features/company-admin/api/use-recruitment-queries";
-import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
+import { EmployeePicker } from "@/components/ui/EmployeePicker";
 import {
     useCreateAssetCategory,
     useUpdateAssetCategory,
@@ -103,7 +103,6 @@ export function AssetManagementScreen() {
     const catQuery = useAssetCategories();
     const assetQuery = useAssets(statusFilter !== "All" ? { status: statusFilter.toLowerCase() } : undefined);
     const assignQuery = useAssetAssignments();
-    const employeesQuery = useEmployees();
 
     /* Mutations */
     const createCat = useCreateAssetCategory();
@@ -117,20 +116,19 @@ export function AssetManagementScreen() {
     const categories: any[] = catQuery.data?.data ?? [];
     const assets: any[] = assetQuery.data?.data ?? [];
     const assignments: any[] = assignQuery.data?.data ?? [];
-    const employees: any[] = employeesQuery.data?.data ?? [];
 
     const categoryName = (id: string) => categories.find((c: any) => c.id === id)?.name ?? id;
     const assetName = (id: string) => assets.find((a: any) => a.id === id)?.name ?? id;
-    const employeeName = (id: string) => {
-        const emp = employees.find((e: any) => e.id === id);
-        if (!emp) return id;
-        return [emp.firstName, emp.lastName].filter(Boolean).join(" ") || emp.fullName || emp.email || id;
+    const assignmentEmployeeName = (a: any) => {
+        const emp = a?.employee;
+        if (!emp) return a?.employeeId ?? "";
+        return [emp.firstName, emp.lastName].filter(Boolean).join(" ") || emp.fullName || emp.email || a?.employeeId || "";
     };
 
     /* Filtering */
     const filteredCats = categories.filter((c: any) => !search || c.name?.toLowerCase().includes(search.toLowerCase()));
     const filteredAssets = assets.filter((a: any) => !search || a.name?.toLowerCase().includes(search.toLowerCase()) || a.assetTag?.toLowerCase().includes(search.toLowerCase()));
-    const filteredAssigns = assignments.filter((a: any) => !search || employeeName(a.employeeId)?.toLowerCase().includes(search.toLowerCase()) || assetName(a.assetId)?.toLowerCase().includes(search.toLowerCase()));
+    const filteredAssigns = assignments.filter((a: any) => !search || assignmentEmployeeName(a)?.toLowerCase().includes(search.toLowerCase()) || assetName(a.assetId)?.toLowerCase().includes(search.toLowerCase()));
 
     /* Category handlers */
     const openCreateCat = () => { setCatEditingId(null); setCatForm({ ...EMPTY_CATEGORY }); setCatModalOpen(true); };
@@ -379,8 +377,8 @@ export function AssetManagementScreen() {
                                         <tr key={a.id} className="border-b border-neutral-100 dark:border-neutral-800/50 last:border-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors">
                                             <td className="py-4 px-6">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-lg bg-accent-100 dark:bg-accent-900/30 flex items-center justify-center shrink-0 text-xs font-bold text-accent-700 dark:text-accent-400">{employeeName(a.employeeId).charAt(0)}</div>
-                                                    <span className="font-bold text-primary-950 dark:text-white">{employeeName(a.employeeId)}</span>
+                                                    <div className="w-8 h-8 rounded-lg bg-accent-100 dark:bg-accent-900/30 flex items-center justify-center shrink-0 text-xs font-bold text-accent-700 dark:text-accent-400">{assignmentEmployeeName(a).charAt(0)}</div>
+                                                    <span className="font-bold text-primary-950 dark:text-white">{assignmentEmployeeName(a)}</span>
                                                 </div>
                                             </td>
                                             <td className="py-4 px-6 text-neutral-600 dark:text-neutral-400">{assetName(a.assetId)}</td>
@@ -547,13 +545,13 @@ export function AssetManagementScreen() {
                                     {assets.map((a: any) => <option key={a.id} value={a.id}>{a.name} ({a.assetTag || "no tag"})</option>)}
                                 </select>
                             </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Employee</label>
-                                <select value={assignForm.employeeId} onChange={(e) => updateAssignField("employeeId", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
-                                    <option value="">Select employee...</option>
-                                    {employees.map((e: any) => <option key={e.id} value={e.id}>{[e.firstName, e.lastName].filter(Boolean).join(" ") || e.email}</option>)}
-                                </select>
-                            </div>
+                            <EmployeePicker
+                                value={assignForm.employeeId || null}
+                                onChange={(id) => updateAssignField("employeeId", id ?? "")}
+                                label="Employee"
+                                placeholder="Select employee..."
+                                status="ALL"
+                            />
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Assigned Date</label>

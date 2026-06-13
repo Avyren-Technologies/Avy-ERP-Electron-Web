@@ -142,6 +142,29 @@ async function updateEmployeeSalary(
     return response.data;
 }
 
+// ── Statutory Config — Component Toggles ──
+
+export interface StatutoryToggles {
+    pfEnabled: boolean;
+    esiEnabled: boolean;
+    ptEnabled: boolean;
+    lwfEnabled: boolean;
+    gratuityEnabled: boolean;
+    bonusEnabled: boolean;
+}
+
+async function getStatutoryToggles(): Promise<ApiResponse<StatutoryToggles>> {
+    const response = await client.get('/hr/statutory-config/toggles');
+    return response.data;
+}
+
+async function updateStatutoryToggles(
+    data: Partial<StatutoryToggles>,
+): Promise<ApiResponse<StatutoryToggles>> {
+    const response = await client.patch('/hr/statutory-config/toggles', data);
+    return response.data;
+}
+
 // ── Statutory Config — PF ──
 
 async function getPFConfig(): Promise<ApiResponse<any>> {
@@ -339,6 +362,9 @@ async function settleTravelAdvance(id: string, data: { expenseClaimId: string })
 }
 
 export const payrollApi = {
+    // Statutory Toggles
+    getStatutoryToggles,
+    updateStatutoryToggles,
     // Salary Components
     listSalaryComponents,
     getSalaryComponent,

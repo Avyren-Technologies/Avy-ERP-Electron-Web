@@ -32,7 +32,7 @@ import {
     useInterviews,
     useOffers,
 } from "@/features/company-admin/api/use-recruitment-queries";
-import { useEmployees, useDepartments, useDesignations } from "@/features/company-admin/api/use-hr-queries";
+import { useDepartments, useDesignations } from "@/features/company-admin/api/use-hr-queries";
 import {
     useCreateRequisition,
     useUpdateRequisition,
@@ -52,6 +52,7 @@ import {
 } from "@/features/company-admin/api/use-recruitment-mutations";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { EmployeePicker } from "@/components/ui/EmployeePicker";
 import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Constants ── */
@@ -261,6 +262,7 @@ export function RequisitionScreen() {
     const [reqModalOpen, setReqModalOpen] = useState(false);
     const [reqEditingId, setReqEditingId] = useState<string | null>(null);
     const [reqForm, setReqForm] = useState({ ...EMPTY_REQ });
+    const [reqInitialHiringManager, setReqInitialHiringManager] = useState<{ id: string; firstName: string; middleName?: string | null; lastName: string; employeeId?: string } | undefined>(undefined);
     const [deleteTarget, setDeleteTarget] = useState<any>(null);
 
     const [candModalOpen, setCandModalOpen] = useState(false);
@@ -284,7 +286,6 @@ export function RequisitionScreen() {
     const candQuery = useCandidates(selectedReqId ? { requisitionId: selectedReqId } : undefined);
     const intQuery = useInterviews(selectedReqId ? { requisitionId: selectedReqId } : undefined);
     const offerQuery = useOffers(selectedReqId ? { requisitionId: selectedReqId } : undefined);
-    const employeesQuery = useEmployees();
     const departmentsQuery = useDepartments();
     const designationsQuery = useDesignations();
 
@@ -321,15 +322,8 @@ export function RequisitionScreen() {
     const candidates: any[] = candQuery.data?.data ?? [];
     const interviews: any[] = intQuery.data?.data ?? [];
     const offers: any[] = offerQuery.data?.data ?? [];
-    const employees: any[] = employeesQuery.data?.data ?? [];
     const departments: any[] = departmentsQuery.data?.data ?? [];
     const designations: any[] = designationsQuery.data?.data ?? [];
-
-    const employeeName = (id: string) => {
-        const emp = employees.find((e: any) => e.id === id);
-        if (!emp) return id;
-        return [emp.firstName, emp.lastName].filter(Boolean).join(" ") || emp.fullName || emp.email || id;
-    };
 
     const reqTitle = (id: string) => requisitions.find((r: any) => r.id === id)?.title ?? id;
     const candName = (id: string) => {
@@ -366,17 +360,30 @@ export function RequisitionScreen() {
     });
 
     /* ── Requisition Handlers ── */
-    const openCreateReq = () => { setReqEditingId(null); setReqForm({ ...EMPTY_REQ }); setReqModalOpen(true); };
+    const openCreateReq = () => { setReqEditingId(null); setReqForm({ ...EMPTY_REQ }); setReqInitialHiringManager(undefined); setReqModalOpen(true); };
     const openEditReq = (r: any) => {
         setReqEditingId(r.id);
+        const hiringManagerId = r.approvedBy ?? r.hiringManagerId ?? "";
         setReqForm({
             title: r.title ?? "", department: r.departmentId ?? r.department ?? "", positions: r.openings ?? r.positions ?? 1,
             employmentType: r.employmentType ?? "FULL_TIME", priority: r.priority ?? "MEDIUM",
             location: r.location ?? "", minSalary: r.budgetMin ?? r.minSalary ?? "", maxSalary: r.budgetMax ?? r.maxSalary ?? "",
             description: r.description ?? "", requirements: r.requirements ?? "",
-            hiringManagerId: r.approvedBy ?? r.hiringManagerId ?? "", deadline: r.targetDate ?? r.deadline ?? "",
+            hiringManagerId, deadline: r.targetDate ?? r.deadline ?? "",
             experienceMin: r.experienceMin ?? "", experienceMax: r.experienceMax ?? "",
         });
+        const mgr = r.hiringManager ?? r.approver ?? r.approvedByUser ?? null;
+        if (hiringManagerId && mgr && (mgr.firstName || mgr.lastName)) {
+            setReqInitialHiringManager({
+                id: hiringManagerId,
+                firstName: mgr.firstName ?? "",
+                middleName: mgr.middleName ?? null,
+                lastName: mgr.lastName ?? "",
+                employeeId: mgr.employeeId,
+            });
+        } else {
+            setReqInitialHiringManager(undefined);
+        }
         setReqModalOpen(true);
     };
     const handleSaveReq = async () => {
@@ -1133,13 +1140,13 @@ export function RequisitionScreen() {
                                     <input type="number" value={reqForm.experienceMax} onChange={(e) => updateReqField("experienceMax", e.target.value)} placeholder="e.g., 8" min={0} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all" />
                                 </div>
                             </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Hiring Manager</label>
-                                <select value={reqForm.hiringManagerId} onChange={(e) => updateReqField("hiringManagerId", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
-                                    <option value="">Select manager...</option>
-                                    {employees.map((e: any) => <option key={e.id} value={e.id}>{[e.firstName, e.lastName].filter(Boolean).join(" ") || e.email}</option>)}
-                                </select>
-                            </div>
+                            <EmployeePicker
+                                label="Hiring Manager"
+                                value={reqForm.hiringManagerId || null}
+                                onChange={(id) => updateReqField("hiringManagerId", id ?? "")}
+                                placeholder="Select manager..."
+                                {...(reqInitialHiringManager ? { initialEmployee: reqInitialHiringManager } : {})}
+                            />
                             <div>
                                 <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Description</label>
                                 <textarea value={reqForm.description} onChange={(e) => updateReqField("description", e.target.value)} placeholder="Job description..." rows={3} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all resize-none" />

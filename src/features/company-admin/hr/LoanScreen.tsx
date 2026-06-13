@@ -24,6 +24,7 @@ import {
 } from "@/features/company-admin/api/use-payroll-mutations";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { EmployeePicker } from "@/components/ui/EmployeePicker";
 import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Form atoms ── */
@@ -410,7 +411,7 @@ export function LoanScreen() {
                             <button onClick={() => setModalOpen(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"><X size={18} /></button>
                         </div>
                         <div className="p-6 overflow-y-auto flex-1 space-y-4">
-                            <SelectField label="Employee" value={form.employeeId} onChange={(v) => updateField("employeeId", v)} options={employees.map((e: any) => ({ value: e.id, label: `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim() || e.id }))} placeholder="Select employee..." />
+                            <EmployeePicker label="Employee" value={form.employeeId || null} onChange={(id) => updateField("employeeId", id ?? "")} placeholder="Select employee..." />
                             <SelectField label="Loan Policy" value={form.policyId} onChange={(v) => updateField("policyId", v)} options={policies.filter((p: any) => p.isActive !== false).map((p: any) => ({ value: p.id, label: p.name }))} placeholder="Select policy..." />
                             <div className="grid grid-cols-2 gap-4">
                                 <NumberField label="Loan Amount (₹)" value={form.amount} onChange={(v) => updateField("amount", v)} min={0} />

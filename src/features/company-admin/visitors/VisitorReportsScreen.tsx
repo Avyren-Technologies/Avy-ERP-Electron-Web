@@ -8,26 +8,63 @@ import { EmptyState } from "@/components/ui/EmptyState";
 
 type TabKey = "daily" | "summary" | "overstay" | "analytics";
 
-function exportToCSV(data: any[], filename: string) {
-    if (!data || data.length === 0) return;
-    const headers = Object.keys(data[0]);
-    const csvRows = [
-        headers.join(','),
-        ...data.map(row =>
-            headers.map(h => {
-                const val = row[h] ?? '';
-                const str = String(val).replace(/[\r\n]+/g, ' ').replace(/"/g, '""');
-                return `"${str}"`;
-            }).join(',')
-        ),
-    ];
-    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+interface CsvColumn {
+    header: string;
+    // Accessor returns the raw cell value; formatting/escaping is handled
+    // centrally inside writeCsv so each column stays declarative.
+    accessor: (row: any) => unknown;
+}
+
+// Excel/Sheets treat a leading =, +, -, @, TAB or CR as a formula. Prefix
+// with a single quote to neutralise CSV-injection payloads while keeping the
+// value visually identical when opened.
+const FORMULA_INJECTION_CHARS = /^[=+\-@\t\r]/;
+
+function escapeCsvCell(value: unknown): string {
+    if (value === null || value === undefined) return '';
+    let str: string;
+    if (value instanceof Date) {
+        str = value.toISOString();
+    } else if (typeof value === 'object') {
+        // Avoid the dreaded "[object Object]" by JSON-serialising. Most
+        // accessors will pre-flatten, this is just a safety net.
+        try { str = JSON.stringify(value); } catch { str = String(value); }
+    } else {
+        str = String(value);
+    }
+    if (FORMULA_INJECTION_CHARS.test(str)) str = `'${str}`;
+    // Per RFC 4180: wrap in quotes, double any embedded quotes. Preserve
+    // newlines (Excel handles them inside quoted fields).
+    return `"${str.replace(/"/g, '""')}"`;
+}
+
+function buildCsv(rows: any[], columns: CsvColumn[]): string {
+    const header = columns.map(c => escapeCsvCell(c.header)).join(',');
+    const body = rows.map(row =>
+        columns.map(c => escapeCsvCell(c.accessor(row))).join(',')
+    );
+    // RFC 4180 line endings → CRLF for max Excel compatibility.
+    return [header, ...body].join('\r\n');
+}
+
+function downloadCsv(csv: string, filename: string) {
+    // BOM ensures Excel auto-detects UTF-8 and renders accents/Unicode correctly.
+    const BOM = '﻿';
+    const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `${filename}.csv`;
+    document.body.appendChild(a);
     a.click();
+    a.remove();
     URL.revokeObjectURL(url);
+}
+
+function exportToCSV(rows: any[], filename: string, columns: CsvColumn[]) {
+    if (!rows || rows.length === 0 || !columns || columns.length === 0) return;
+    const csv = buildCsv(rows, columns);
+    downloadCsv(csv, filename);
 }
 
 export function VisitorReportsScreen() {
@@ -105,14 +142,80 @@ export function VisitorReportsScreen() {
                     <div className="ml-auto self-end">
                         <button
                             onClick={() => {
-                                const dataMap: Record<TabKey, { data: any; name: string }> = {
-                                    daily: { data: dailyQuery.data?.data, name: `visitor-daily-log-${selectedDate}` },
-                                    summary: { data: summaryQuery.data?.data, name: 'visitor-summary' },
-                                    overstay: { data: overstayQuery.data?.data, name: 'visitor-overstay' },
-                                    analytics: { data: analyticsQuery.data?.data ? [analyticsQuery.data.data] : [], name: 'visitor-analytics' },
+                                // Per-tab column definitions keep CSV output aligned with the
+                                // on-screen table — no nested objects, no surprise columns.
+                                const dailyColumns: CsvColumn[] = [
+                                    { header: 'Visitor', accessor: r => r.visitorName ?? '' },
+                                    { header: 'Company', accessor: r => r.visitorCompany ?? '' },
+                                    { header: 'Mobile', accessor: r => r.visitorMobile ?? '' },
+                                    { header: 'Visitor Type', accessor: r => r.visitorType?.name ?? '' },
+                                    { header: 'Host Employee', accessor: r => r.hostEmployeeId ?? '' },
+                                    { header: 'Check-In Time', accessor: r => r.checkInTime ? fmt.dateTime(r.checkInTime) : '' },
+                                    { header: 'Check-In Gate', accessor: r => r.checkInGate?.name ?? '' },
+                                    { header: 'Check-Out Time', accessor: r => r.checkOutTime ? fmt.dateTime(r.checkOutTime) : '' },
+                                    { header: 'Check-Out Gate', accessor: r => r.checkOutGate?.name ?? '' },
+                                    { header: 'Duration (min)', accessor: r => r.visitDurationMinutes ?? '' },
+                                    { header: 'Status', accessor: r => r.status ?? '' },
+                                    { header: 'Badge Number', accessor: r => r.badgeNumber ?? '' },
+                                ];
+                                const overstayColumns: CsvColumn[] = [
+                                    { header: 'Visitor', accessor: r => r.visitorName ?? '' },
+                                    { header: 'Company', accessor: r => r.visitorCompany ?? '' },
+                                    { header: 'Visitor Type', accessor: r => r.visitorType?.name ?? '' },
+                                    { header: 'Check-In Time', accessor: r => r.checkInTime ? fmt.dateTime(r.checkInTime) : '' },
+                                    { header: 'Check-Out Time', accessor: r => r.checkOutTime ? fmt.dateTime(r.checkOutTime) : '' },
+                                    { header: 'Expected (min)', accessor: r => r.expectedDurationMinutes ?? '' },
+                                    { header: 'Actual (min)', accessor: r => r.visitDurationMinutes ?? '' },
+                                    { header: 'Overstay (min)', accessor: r => (r.visitDurationMinutes ?? 0) - (r.expectedDurationMinutes ?? 0) },
+                                ];
+                                const summaryColumns: CsvColumn[] = [
+                                    { header: 'Metric', accessor: r => r.metric ?? '' },
+                                    { header: 'Value', accessor: r => r.value ?? '' },
+                                ];
+                                const analyticsColumns: CsvColumn[] = [
+                                    { header: 'Metric', accessor: r => r.metric ?? '' },
+                                    { header: 'Value', accessor: r => r.value ?? '' },
+                                ];
+
+                                // Flatten summary/analytics objects into Metric/Value rows for CSV.
+                                const flattenKeyValue = (obj: any): { metric: string; value: unknown }[] => {
+                                    if (!obj || typeof obj !== 'object') return [];
+                                    const rows: { metric: string; value: unknown }[] = [];
+                                    for (const [k, v] of Object.entries(obj)) {
+                                        if (v && typeof v === 'object' && !Array.isArray(v)) {
+                                            // groupBy results — emit one row per sub-entry
+                                            for (const [sk, sv] of Object.entries(v as Record<string, unknown>)) {
+                                                rows.push({ metric: `${k}.${sk}`, value: sv as unknown });
+                                            }
+                                        } else if (Array.isArray(v)) {
+                                            for (const item of v) {
+                                                if (item && typeof item === 'object') {
+                                                    const label = (item as any)._id ?? (item as any).id ?? JSON.stringify(item);
+                                                    rows.push({ metric: `${k}.${label}`, value: (item as any)._count ?? (item as any).count ?? '' });
+                                                } else {
+                                                    rows.push({ metric: k, value: item });
+                                                }
+                                            }
+                                        } else {
+                                            rows.push({ metric: k, value: v });
+                                        }
+                                    }
+                                    return rows;
                                 };
-                                const { data, name } = dataMap[tab];
-                                if (data) exportToCSV(Array.isArray(data) ? data : [data], name);
+
+                                if (tab === 'daily') {
+                                    const rows = dailyQuery.data?.data ?? [];
+                                    if (rows.length) exportToCSV(rows, `visitor-daily-log-${selectedDate}`, dailyColumns);
+                                } else if (tab === 'overstay') {
+                                    const rows = overstayQuery.data?.data ?? [];
+                                    if (rows.length) exportToCSV(rows, `visitor-overstay-${dateFrom || 'all'}-${dateTo || 'all'}`, overstayColumns);
+                                } else if (tab === 'summary') {
+                                    const rows = flattenKeyValue(summaryQuery.data?.data);
+                                    if (rows.length) exportToCSV(rows, `visitor-summary-${dateFrom || 'all'}-${dateTo || 'all'}`, summaryColumns);
+                                } else if (tab === 'analytics') {
+                                    const rows = flattenKeyValue(analyticsQuery.data?.data);
+                                    if (rows.length) exportToCSV(rows, `visitor-analytics-${dateFrom || 'all'}-${dateTo || 'all'}`, analyticsColumns);
+                                }
                             }}
                             className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 text-sm font-bold transition-all shadow-sm"
                         >

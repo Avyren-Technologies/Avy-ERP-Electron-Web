@@ -136,6 +136,12 @@ async function listRecords(params?: {
     dateTo?: string;
     status?: string;
     departmentId?: string;
+    locationId?: string;
+    designationId?: string;
+    employeeTypeId?: string;
+    shiftId?: string;
+    source?: string;
+    search?: string;
 }): Promise<ApiResponse<any>> {
     const response = await client.get('/hr/attendance', { params });
     return response.data;
@@ -160,6 +166,49 @@ async function updateRecord(id: string, data: any): Promise<ApiResponse<any>> {
 
 async function getSummary(): Promise<ApiResponse<any>> {
     const response = await client.get('/hr/attendance/summary');
+    return response.data;
+}
+
+// ── Range Summary (multi-day analytics) ──
+
+export interface RangeSummaryParams {
+    dateFrom: string;
+    dateTo: string;
+    departmentId?: string;
+    locationId?: string;
+    designationId?: string;
+    employeeTypeId?: string;
+    shiftId?: string;
+}
+
+async function getRangeSummary(params: RangeSummaryParams): Promise<ApiResponse<any>> {
+    const response = await client.get('/hr/attendance/range-summary', { params });
+    return response.data;
+}
+
+// ── Calendar (multi-employee × multi-day grid) ──
+
+export interface CalendarParams {
+    dateFrom: string;
+    dateTo: string;
+    page?: number;
+    limit?: number;
+    employeeIds?: string[]; // serialized as CSV
+    departmentId?: string;
+    locationId?: string;
+    designationId?: string;
+    employeeTypeId?: string;
+    shiftId?: string;
+    search?: string;
+}
+
+async function getCalendar(params: CalendarParams): Promise<ApiResponse<any>> {
+    const { employeeIds, ...rest } = params;
+    const queryParams: Record<string, unknown> = { ...rest };
+    if (employeeIds && employeeIds.length > 0) {
+        queryParams.employeeIds = employeeIds.join(',');
+    }
+    const response = await client.get('/hr/attendance/calendar', { params: queryParams });
     return response.data;
 }
 
@@ -310,6 +359,8 @@ export const attendanceApi = {
     updateRecord,
     // Summary
     getSummary,
+    getRangeSummary,
+    getCalendar,
     // Rules
     getRules,
     updateRules,

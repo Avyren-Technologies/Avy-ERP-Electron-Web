@@ -17,6 +17,7 @@ import {
 } from "@/features/company-admin/api/use-payroll-mutations";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { EmployeePicker } from "@/components/ui/EmployeePicker";
 import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Form atoms ── */
@@ -476,7 +477,25 @@ export function EmployeeSalaryScreen() {
                             <button onClick={() => setModalOpen(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"><X size={18} /></button>
                         </div>
                         <div className="p-6 overflow-y-auto flex-1 space-y-4">
-                            <SelectField label="Employee" value={form.employeeId} onChange={(v) => updateField("employeeId", v)} options={employees.map((e: any) => ({ value: e.id, label: `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim() || e.id }))} placeholder="Select employee..." />
+                            <EmployeePicker
+                                label="Employee"
+                                value={form.employeeId || null}
+                                onChange={(id) => updateField("employeeId", id ?? "")}
+                                placeholder="Select employee..."
+                                initialEmployee={(() => {
+                                    if (!editingId || !form.employeeId) return undefined;
+                                    const s = salaries.find((s: any) => s.id === editingId);
+                                    const emp = s?.employee;
+                                    if (!emp) return undefined;
+                                    return {
+                                        id: form.employeeId,
+                                        firstName: emp.firstName ?? "",
+                                        middleName: emp.middleName,
+                                        lastName: emp.lastName ?? "",
+                                        employeeId: emp.employeeId,
+                                    };
+                                })()}
+                            />
                             <SelectField label="Salary Structure" value={form.structureId} onChange={(v) => updateField("structureId", v)} options={structures.map((s: any) => ({ value: s.id, label: s.name }))} placeholder="Select structure..." />
                             <NumberField label={CTC_LABEL_BY_BASIS[selectedBasis] ?? "Annual CTC (₹)"} value={displayCtc} onChange={(v) => setDisplayCtc(v)} min={0} />
                             <FormField label="Effective From" value={form.effectiveFrom} onChange={(v) => updateField("effectiveFrom", v)} type="date" />

@@ -159,6 +159,41 @@ export interface Employee {
     updatedAt?: string;
 }
 
+// ── Employee Dropdown (lightweight picker endpoint) ──
+
+export interface EmployeeDropdownItem {
+    id: string;
+    employeeId: string;
+    firstName: string;
+    middleName: string | null;
+    lastName: string;
+    profilePhotoUrl: string | null;
+    status: EmployeeStatus;
+    department: { id: string; name: string; code: string } | null;
+    designation: { id: string; name: string; code: string } | null;
+}
+
+export interface ListEmployeesDropdownParams {
+    search?: string;
+    page?: number;
+    limit?: number;
+    status?: 'ACTIVE' | 'ALL';
+    departmentId?: string;
+    locationId?: string;
+}
+
+export interface EmployeeDropdownPageMeta {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+}
+
+export interface EmployeeDropdownPage {
+    data: EmployeeDropdownItem[];
+    meta: EmployeeDropdownPageMeta;
+}
+
 export interface CreateEmployeePayload {
     firstName: string;
     lastName: string;
@@ -445,6 +480,12 @@ async function updateEmployeeStatus(id: string, data: { status: EmployeeStatus; 
     return response.data;
 }
 
+/** Lightweight paginated employee dropdown for pickers (GET /hr/employees/dropdown). */
+async function listEmployeesDropdown(params: ListEmployeesDropdownParams): Promise<EmployeeDropdownPage> {
+    const response = await client.get('/hr/employees/dropdown', { params });
+    return response.data;
+}
+
 // ── Employee Sub-Resources ──
 
 // Nominees
@@ -626,6 +667,7 @@ export const hrApi = {
     updateEmployee,
     deleteEmployee,
     updateEmployeeStatus,
+    listEmployeesDropdown,
     // Nominees
     listNominees,
     createNominee,

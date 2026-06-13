@@ -17,8 +17,7 @@ import {
     useCreateTravelAdvance,
     useSettleTravelAdvance,
 } from "@/features/company-admin/api/use-payroll-mutations";
-import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
-import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { EmployeePicker } from "@/components/ui/EmployeePicker";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { showSuccess, showApiError } from "@/lib/toast";
@@ -128,16 +127,8 @@ export function TravelAdvanceScreen() {
     const { data, isLoading, isError } = useTravelAdvances();
     const createMutation = useCreateTravelAdvance();
     const settleMutation = useSettleTravelAdvance();
-    const { data: empData } = useEmployees();
 
-    const employees: any[] = (empData as any)?.data ?? empData ?? [];
     const advances: any[] = (data as any)?.data ?? [];
-
-    const employeeOptions = Array.isArray(employees) ? employees.map((e: any) => ({
-        value: e.id,
-        label: `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim() || e.id,
-        sublabel: e.employeeId ?? e.id,
-    })) : [];
 
     const filtered = advances.filter((a: any) => {
         if (!search) return true;
@@ -325,11 +316,10 @@ export function TravelAdvanceScreen() {
                             </button>
                         </div>
                         <div className="p-6 overflow-y-auto flex-1 space-y-4">
-                            <SearchableSelect
+                            <EmployeePicker
                                 label="Employee"
-                                value={form.employeeId}
-                                onChange={(v) => updateField("employeeId", v)}
-                                options={employeeOptions}
+                                value={form.employeeId || null}
+                                onChange={(id) => updateField("employeeId", id ?? "")}
                                 placeholder="Search employee..."
                                 required
                             />

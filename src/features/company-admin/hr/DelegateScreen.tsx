@@ -13,9 +13,9 @@ import {
 import { cn } from "@/lib/utils";
 import { useDelegates } from "@/features/company-admin/api/use-transfer-queries";
 import { useCreateDelegate, useRevokeDelegate } from "@/features/company-admin/api/use-transfer-mutations";
-import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { EmployeePicker } from "@/components/ui/EmployeePicker";
 import { showSuccess, showApiError } from "@/lib/toast";
 
 /* ── Helpers ── */
@@ -37,15 +37,13 @@ export function DelegateScreen() {
     const [revokeTarget, setRevokeTarget] = useState<any>(null);
 
     const delegatesQuery = useDelegates();
-    const employeesQuery = useEmployees();
     const createMutation = useCreateDelegate();
     const revokeMutation = useRevokeDelegate();
 
     const delegates: any[] = delegatesQuery.data?.data ?? [];
-    const employees: any[] = employeesQuery.data?.data ?? [];
 
     const getEmployeeName = (record: any, idField = 'employeeId', nestedField = 'employee') => {
-        const emp = record?.[nestedField] ?? employees.find((e: any) => e.id === record?.[idField]);
+        const emp = record?.[nestedField];
         if (!emp) return record?.[idField] ?? '';
         return `${emp.firstName ?? ''} ${emp.lastName ?? ''}`.trim() || emp.employeeCode || emp.email || record?.[idField] || '';
     };
@@ -175,20 +173,22 @@ export function DelegateScreen() {
                             <button onClick={() => setModalOpen(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"><X size={18} /></button>
                         </div>
                         <div className="p-6 overflow-y-auto flex-1 space-y-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Manager *</label>
-                                <select value={form.managerId} onChange={(e) => updateField("managerId", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
-                                    <option value="">Select manager...</option>
-                                    {employees.map((e: any) => <option key={e.id} value={e.id}>{`${e.firstName ?? ""} ${e.lastName ?? ""}`.trim() || e.id}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">Delegate *</label>
-                                <select value={form.delegateId} onChange={(e) => updateField("delegateId", e.target.value)} className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white transition-all">
-                                    <option value="">Select delegate...</option>
-                                    {employees.map((e: any) => <option key={e.id} value={e.id}>{`${e.firstName ?? ""} ${e.lastName ?? ""}`.trim() || e.id}</option>)}
-                                </select>
-                            </div>
+                            <EmployeePicker
+                                value={form.managerId || null}
+                                onChange={(id) => updateField("managerId", id ?? "")}
+                                label="Manager"
+                                placeholder="Select manager..."
+                                required
+                                excludeIds={form.delegateId ? [form.delegateId] : undefined}
+                            />
+                            <EmployeePicker
+                                value={form.delegateId || null}
+                                onChange={(id) => updateField("delegateId", id ?? "")}
+                                label="Delegate"
+                                placeholder="Select delegate..."
+                                required
+                                excludeIds={form.managerId ? [form.managerId] : undefined}
+                            />
                             {sameManager && (
                                 <p className="text-xs text-danger-600 dark:text-danger-400 font-medium">Manager and delegate must be different people.</p>
                             )}

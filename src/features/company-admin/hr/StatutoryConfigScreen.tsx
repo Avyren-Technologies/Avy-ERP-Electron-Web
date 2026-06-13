@@ -6,6 +6,10 @@ import {
     Trash2,
     AlertTriangle,
     Pencil,
+    Info,
+    ChevronDown,
+    ChevronRight,
+    Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -15,6 +19,7 @@ import {
     useGratuityConfig,
     useBonusConfig,
     useLWFConfigs,
+    useStatutoryToggles,
 } from "@/features/company-admin/api/use-payroll-queries";
 import {
     useUpdatePFConfig,
@@ -27,9 +32,38 @@ import {
     useCreateLWFConfig,
     useUpdateLWFConfig,
     useDeleteLWFConfig,
+    useUpdateStatutoryToggles,
 } from "@/features/company-admin/api/use-payroll-mutations";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { showSuccess, showApiError } from "@/lib/toast";
+import {
+    PT_SLAB_EXAMPLES,
+    PT_GENDER_OPTIONS,
+    type PTGender,
+} from "@/features/company-admin/hr/pt-slab-examples";
+
+type StatutoryToggleKey =
+    | "pfEnabled"
+    | "esiEnabled"
+    | "ptEnabled"
+    | "lwfEnabled"
+    | "gratuityEnabled"
+    | "bonusEnabled";
+
+interface StatutoryComponentMeta {
+    key: StatutoryToggleKey;
+    label: string;
+    sub: string;
+}
+
+const STATUTORY_COMPONENT_LIST: StatutoryComponentMeta[] = [
+    { key: "pfEnabled", label: "Provident Fund (PF)", sub: "EPF, EPS, EDLI, admin charges" },
+    { key: "esiEnabled", label: "Employees' State Insurance (ESI)", sub: "Employee + employer ESI contributions" },
+    { key: "ptEnabled", label: "Professional Tax (PT)", sub: "State-wise slab-based tax" },
+    { key: "lwfEnabled", label: "Labour Welfare Fund (LWF)", sub: "State-wise welfare fund contributions" },
+    { key: "gratuityEnabled", label: "Gratuity", sub: "Provisioning and final settlement payouts" },
+    { key: "bonusEnabled", label: "Bonus", sub: "Annual statutory bonus under Payment of Bonus Act" },
+];
 
 /* ── Shared atoms ── */
 
@@ -76,9 +110,9 @@ function SelectField({ label, value, onChange, options }: { label: string; value
     );
 }
 
-function SaveButton({ onClick, loading, label = "Save" }: { onClick: () => void; loading: boolean; label?: string }) {
+function SaveButton({ onClick, loading, label = "Save", disabled = false, disabledTitle }: { onClick: () => void; loading: boolean; label?: string; disabled?: boolean; disabledTitle?: string }) {
     return (
-        <button onClick={onClick} disabled={loading} className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2 rounded-xl font-bold text-sm transition-all disabled:opacity-50">
+        <button onClick={onClick} disabled={loading || disabled} title={disabled ? disabledTitle : undefined} className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2 rounded-xl font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed">
             {loading && <Loader2 size={14} className="animate-spin" />}
             {loading ? "Saving..." : label}
         </button>
@@ -144,6 +178,7 @@ export function StatutoryConfigScreen() {
     const gratuityQuery = useGratuityConfig();
     const bonusQuery = useBonusConfig();
     const lwfQuery = useLWFConfigs();
+    const togglesQuery = useStatutoryToggles();
 
     const updatePF = useUpdatePFConfig();
     const updateESI = useUpdateESIConfig();
@@ -155,6 +190,21 @@ export function StatutoryConfigScreen() {
     const createLWF = useCreateLWFConfig();
     const updateLWF = useUpdateLWFConfig();
     const deleteLWF = useDeleteLWFConfig();
+    const updateToggles = useUpdateStatutoryToggles();
+
+    const toggles = ((togglesQuery.data as any)?.data ?? {}) as Record<StatutoryToggleKey, boolean>;
+    const isToggleEnabled = (key: StatutoryToggleKey) => toggles[key] !== false;
+
+    const handleToggle = async (key: StatutoryToggleKey, next: boolean) => {
+        try {
+            await updateToggles.mutateAsync({ [key]: next } as any);
+            const meta = STATUTORY_COMPONENT_LIST.find((c) => c.key === key);
+            showSuccess(
+                next ? "Component Enabled" : "Component Disabled",
+                `${meta?.label ?? "Component"} is now ${next ? "active" : "inactive"} for new salary structures and future payroll runs.`,
+            );
+        } catch (err) { showApiError(err); }
+    };
 
     // PF state
     const [pf, setPF] = useState<Record<string, any>>({});
@@ -174,9 +224,10 @@ export function StatutoryConfigScreen() {
 
     // PT state (array)
     const ptConfigs: any[] = ptQuery.data?.data ?? [];
-    const [ptForm, setPTForm] = useState({ state: "", slabs: [{ fromAmount: 0, toAmount: 0, taxAmount: 0 }], financialYear: "", monthlyOverrides: {} as Record<string, number> });
+    const [ptForm, setPTForm] = useState({ state: "", slabs: [{ fromAmount: 0, toAmount: 0, gender: "ALL" as PTGender, taxAmount: 0 }], financialYear: "", monthlyOverrides: {} as Record<string, number> });
     const [ptModalOpen, setPTModalOpen] = useState(false);
     const [ptEditId, setPTEditId] = useState<string | null>(null);
+    const [ptExamplesOpen, setPTExamplesOpen] = useState(false);
 
     // LWF state (array)
     const lwfConfigs: any[] = lwfQuery.data?.data ?? [];
@@ -184,7 +235,7 @@ export function StatutoryConfigScreen() {
     const [lwfModalOpen, setLWFModalOpen] = useState(false);
     const [lwfEditId, setLWFEditId] = useState<string | null>(null);
 
-    const isLoading = pfQuery.isLoading || esiQuery.isLoading || ptQuery.isLoading || gratuityQuery.isLoading || bonusQuery.isLoading || lwfQuery.isLoading;
+    const isLoading = pfQuery.isLoading || esiQuery.isLoading || ptQuery.isLoading || gratuityQuery.isLoading || bonusQuery.isLoading || lwfQuery.isLoading || togglesQuery.isLoading;
     const isError = pfQuery.isError || esiQuery.isError;
 
     if (isLoading) {
@@ -210,8 +261,30 @@ export function StatutoryConfigScreen() {
     const saveGratuity = async () => { try { await updateGratuity.mutateAsync(gratuity); showSuccess("Gratuity Config Saved", "Gratuity settings updated."); } catch (err) { showApiError(err); } };
     const saveBonus = async () => { try { await updateBonus.mutateAsync(bonus); showSuccess("Bonus Config Saved", "Bonus settings updated."); } catch (err) { showApiError(err); } };
 
-    const openPTCreate = () => { setPTEditId(null); setPTForm({ state: "", slabs: [{ fromAmount: 0, toAmount: 0, taxAmount: 0 }], financialYear: "", monthlyOverrides: {} }); setPTModalOpen(true); };
-    const openPTEdit = (pt: any) => { setPTEditId(pt.id); setPTForm({ state: pt.state ?? "", slabs: pt.slabs ?? [{ fromAmount: 0, toAmount: 0, taxAmount: 0 }], financialYear: pt.financialYear ?? "", monthlyOverrides: pt.monthlyOverrides ?? {} }); setPTModalOpen(true); };
+    const openPTCreate = () => { setPTEditId(null); setPTForm({ state: "", slabs: [{ fromAmount: 0, toAmount: 0, gender: "ALL", taxAmount: 0 }], financialYear: "", monthlyOverrides: {} }); setPTExamplesOpen(false); setPTModalOpen(true); };
+    const openPTEdit = (pt: any) => {
+        setPTEditId(pt.id);
+        const normalizedSlabs = (pt.slabs ?? [{ fromAmount: 0, toAmount: 0, gender: "ALL", taxAmount: 0 }]).map((s: any) => ({
+            fromAmount: Number(s.fromAmount ?? 0),
+            toAmount: Number(s.toAmount ?? 0),
+            gender: ((s.gender as PTGender) ?? "ALL") as PTGender,
+            taxAmount: Number(s.taxAmount ?? 0),
+        }));
+        setPTForm({ state: pt.state ?? "", slabs: normalizedSlabs, financialYear: pt.financialYear ?? "", monthlyOverrides: pt.monthlyOverrides ?? {} });
+        setPTExamplesOpen(false);
+        setPTModalOpen(true);
+    };
+    const applyPTPreset = (key: string) => {
+        const preset = PT_SLAB_EXAMPLES[key];
+        if (!preset) return;
+        setPTForm((p) => ({
+            ...p,
+            state: preset.state,
+            slabs: preset.slabs.map((s) => ({ ...s })),
+            monthlyOverrides: preset.monthlyOverrides ? { ...preset.monthlyOverrides } : {},
+        }));
+        showSuccess("Preset Applied", `${preset.label} slabs loaded. Review before saving.`);
+    };
     const savePT = async () => {
         try {
             if (ptEditId) { await updatePT.mutateAsync({ id: ptEditId, data: ptForm }); showSuccess("PT Config Updated", `${ptForm.state} PT updated.`); }
@@ -232,6 +305,20 @@ export function StatutoryConfigScreen() {
     };
     const handleDeleteLWF = async (id: string) => { try { await deleteLWF.mutateAsync(id); showSuccess("LWF Config Deleted", "State LWF config removed."); } catch (err) { showApiError(err); } };
 
+    const pfEnabled = isToggleEnabled("pfEnabled");
+    const esiEnabled = isToggleEnabled("esiEnabled");
+    const ptEnabled = isToggleEnabled("ptEnabled");
+    const lwfEnabled = isToggleEnabled("lwfEnabled");
+    const gratuityEnabled = isToggleEnabled("gratuityEnabled");
+    const bonusEnabled = isToggleEnabled("bonusEnabled");
+
+    const DisabledBanner = ({ label }: { label: string }) => (
+        <div className="flex items-start gap-2 text-xs font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg px-3 py-2">
+            <Info size={14} className="mt-0.5 shrink-0" />
+            <span>This statutory is currently disabled. Enable <strong>{label}</strong> from Statutory Components above to make changes.</span>
+        </div>
+    );
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
@@ -240,9 +327,67 @@ export function StatutoryConfigScreen() {
                 <p className="text-neutral-500 dark:text-neutral-400 mt-1">Configure PF, ESI, PT, Gratuity, Bonus, and LWF settings</p>
             </div>
 
+            {/* Statutory Components — enable/disable toggles */}
+            <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm overflow-hidden">
+                <div className="p-6">
+                    <div className="flex items-center gap-3 mb-5">
+                        <div className="w-8 h-8 rounded-lg bg-accent-50 dark:bg-accent-900/30 flex items-center justify-center flex-shrink-0">
+                            <Sparkles size={16} className="text-accent-600 dark:text-accent-400" />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold text-primary-950 dark:text-white">Statutory Components</h3>
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Turn off components your organisation does not deduct or contribute.</p>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
+                        {STATUTORY_COMPONENT_LIST.map((c) => {
+                            const enabled = isToggleEnabled(c.key);
+                            return (
+                                <div key={c.key} className="flex items-center justify-between py-3 border-b last:border-0 md:nth-last-2:border-0 border-neutral-100 dark:border-neutral-800">
+                                    <div className="min-w-0 pr-3">
+                                        <p className="text-sm font-semibold text-primary-950 dark:text-white truncate">{c.label}</p>
+                                        <p className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate">{c.sub}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <span className={cn(
+                                            "text-[11px] font-bold uppercase tracking-wider",
+                                            enabled ? "text-emerald-600 dark:text-emerald-400" : "text-neutral-400 dark:text-neutral-500",
+                                        )}>{enabled ? "Enabled" : "Disabled"}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleToggle(c.key, !enabled)}
+                                            disabled={updateToggles.isPending}
+                                            className={cn(
+                                                "w-10 h-6 rounded-full transition-colors relative shrink-0 disabled:opacity-60",
+                                                enabled ? "bg-primary-600" : "bg-neutral-300 dark:bg-neutral-700",
+                                            )}
+                                            aria-label={`Toggle ${c.label}`}
+                                        >
+                                            <div className={cn(
+                                                "w-4 h-4 rounded-full bg-white absolute top-1 transition-all",
+                                                enabled ? "left-5" : "left-1",
+                                            )} />
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <div className="mt-4 flex items-start gap-2 text-[11px] text-neutral-500 dark:text-neutral-400 bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-100 dark:border-neutral-800 rounded-lg px-3 py-2.5">
+                        <Info size={13} className="mt-0.5 shrink-0 text-neutral-400" />
+                        <span>
+                            Disabling a component hides it from new salary structures and skips it in future payroll runs.
+                            Existing runs are unaffected. Existing config is preserved and remains read-only while disabled.
+                        </span>
+                    </div>
+                </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* PF Section */}
+                <div className={cn(!pfEnabled && "opacity-70")} title={!pfEnabled ? "Disabled in Statutory Components" : undefined}>
                 <SectionCard title="Provident Fund (PF)" icon={Shield}>
+                    {!pfEnabled && <DisabledBanner label="Provident Fund (PF)" />}
                     <NumRow label="Employee Contribution Rate" value={pf.employeeRate ?? 12} onChange={(v) => setPF((p) => ({ ...p, employeeRate: v }))} suffix="%" min={0} max={100} />
                     <NumRow label="Employer EPF Rate" value={pf.employerEpfRate ?? 3.67} onChange={(v) => setPF((p) => ({ ...p, employerEpfRate: v }))} suffix="%" min={0} max={100} />
                     <NumRow label="Employer EPS Rate" value={pf.employerEpsRate ?? 8.33} onChange={(v) => setPF((p) => ({ ...p, employerEpsRate: v }))} suffix="%" min={0} max={100} />
@@ -257,47 +402,57 @@ export function StatutoryConfigScreen() {
                         </div>
                     )}
                     <div className="pt-2 flex justify-end">
-                        <SaveButton onClick={savePF} loading={updatePF.isPending} />
+                        <SaveButton onClick={savePF} loading={updatePF.isPending} disabled={!pfEnabled} disabledTitle="Disabled in Statutory Components" />
                     </div>
                 </SectionCard>
+                </div>
 
                 {/* ESI Section */}
+                <div className={cn(!esiEnabled && "opacity-70")} title={!esiEnabled ? "Disabled in Statutory Components" : undefined}>
                 <SectionCard title="Employee State Insurance (ESI)" icon={Shield}>
+                    {!esiEnabled && <DisabledBanner label="Employees' State Insurance (ESI)" />}
                     <NumRow label="Employee Rate" value={esi.employeeRate ?? 0.75} onChange={(v) => setESI((p) => ({ ...p, employeeRate: v }))} suffix="%" min={0} max={100} />
                     <NumRow label="Employer Rate" value={esi.employerRate ?? 3.25} onChange={(v) => setESI((p) => ({ ...p, employerRate: v }))} suffix="%" min={0} max={100} />
                     <NumRow label="ESI Wage Ceiling (₹)" value={esi.wageCeiling ?? 21000} onChange={(v) => setESI((p) => ({ ...p, wageCeiling: v }))} suffix="₹" min={0} />
                     <div className="pt-2 flex justify-end">
-                        <SaveButton onClick={saveESI} loading={updateESI.isPending} />
+                        <SaveButton onClick={saveESI} loading={updateESI.isPending} disabled={!esiEnabled} disabledTitle="Disabled in Statutory Components" />
                     </div>
                 </SectionCard>
+                </div>
 
                 {/* Gratuity Section */}
+                <div className={cn(!gratuityEnabled && "opacity-70")} title={!gratuityEnabled ? "Disabled in Statutory Components" : undefined}>
                 <SectionCard title="Gratuity" icon={Shield}>
+                    {!gratuityEnabled && <DisabledBanner label="Gratuity" />}
                     <SelectField label="Formula" value={gratuity.formula ?? "(lastBasic * 15 * yearsOfService) / 26"} onChange={(v) => setGratuity((p) => ({ ...p, formula: v }))} options={[{ value: "(lastBasic * 15 * yearsOfService) / 26", label: "Standard (15/26 * Last Drawn * Years)" }, { value: "custom", label: "Custom" }]} />
                     <SelectField label="Basis" value={gratuity.baseSalary ?? "Basic"} onChange={(v) => setGratuity((p) => ({ ...p, baseSalary: v }))} options={[{ value: "Basic + DA", label: "Basic + DA" }, { value: "Basic", label: "Basic Only" }, { value: "Gross", label: "Gross" }]} />
                     <NumRow label="Max Gratuity (₹)" value={gratuity.maxAmount ?? 2000000} onChange={(v) => setGratuity((p) => ({ ...p, maxAmount: v }))} suffix="₹" min={0} />
                     <SelectField label="Provision Method" value={gratuity.provisionMethod ?? "MONTHLY"} onChange={(v) => setGratuity((p) => ({ ...p, provisionMethod: v }))} options={[{ value: "MONTHLY", label: "Monthly Provision" }, { value: "ACTUAL_AT_EXIT", label: "Actual at Exit" }]} />
                     <ToggleSwitch label="Gratuity Trust exists" checked={gratuity.trustExists ?? false} onChange={(v) => setGratuity((p) => ({ ...p, trustExists: v }))} />
                     <div className="pt-2 flex justify-end">
-                        <SaveButton onClick={saveGratuity} loading={updateGratuity.isPending} />
+                        <SaveButton onClick={saveGratuity} loading={updateGratuity.isPending} disabled={!gratuityEnabled} disabledTitle="Disabled in Statutory Components" />
                     </div>
                 </SectionCard>
+                </div>
 
                 {/* Bonus Section */}
+                <div className={cn(!bonusEnabled && "opacity-70")} title={!bonusEnabled ? "Disabled in Statutory Components" : undefined}>
                 <SectionCard title="Bonus" icon={Shield}>
+                    {!bonusEnabled && <DisabledBanner label="Bonus" />}
                     <NumRow label="Bonus Wage Ceiling (₹)" value={bonus.wageCeiling ?? 7000} onChange={(v) => setBonus((p) => ({ ...p, wageCeiling: v }))} suffix="₹" min={0} />
                     <NumRow label="Minimum Bonus (%)" value={bonus.minBonusPercent ?? 8.33} onChange={(v) => setBonus((p) => ({ ...p, minBonusPercent: v }))} suffix="%" min={0} max={100} />
                     <NumRow label="Maximum Bonus (%)" value={bonus.maxBonusPercent ?? 20} onChange={(v) => setBonus((p) => ({ ...p, maxBonusPercent: v }))} suffix="%" min={0} max={100} />
                     <NumRow label="Eligibility (days)" value={bonus.eligibilityDays ?? 30} onChange={(v) => setBonus((p) => ({ ...p, eligibilityDays: v }))} suffix="days" min={0} />
                     <SelectField label="Bonus Period" value={bonus.calculationPeriod ?? "APR_MAR"} onChange={(v) => setBonus((p) => ({ ...p, calculationPeriod: v }))} options={[{ value: "APR_MAR", label: "Financial Year (Apr-Mar)" }, { value: "JAN_DEC", label: "Calendar Year (Jan-Dec)" }]} />
                     <div className="pt-2 flex justify-end">
-                        <SaveButton onClick={saveBonus} loading={updateBonus.isPending} />
+                        <SaveButton onClick={saveBonus} loading={updateBonus.isPending} disabled={!bonusEnabled} disabledTitle="Disabled in Statutory Components" />
                     </div>
                 </SectionCard>
+                </div>
             </div>
 
             {/* PT Section — Inline DataTable */}
-            <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm overflow-hidden">
+            <div className={cn("bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm overflow-hidden", !ptEnabled && "opacity-70")} title={!ptEnabled ? "Disabled in Statutory Components" : undefined}>
                 <div className="p-6">
                     <div className="flex items-center justify-between mb-5">
                         <div className="flex items-center gap-3">
@@ -306,10 +461,18 @@ export function StatutoryConfigScreen() {
                             </div>
                             <h3 className="text-sm font-bold text-primary-950 dark:text-white">Professional Tax (PT) — By State</h3>
                         </div>
-                        <button onClick={openPTCreate} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 transition-colors">
+                        <button
+                            onClick={openPTCreate}
+                            disabled={!ptEnabled}
+                            title={!ptEnabled ? "Disabled in Statutory Components" : undefined}
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
                             <Plus size={14} /> Add State
                         </button>
                     </div>
+                    {!ptEnabled && (
+                        <div className="mb-4"><DisabledBanner label="Professional Tax (PT)" /></div>
+                    )}
                     {ptConfigs.length === 0 ? (
                         <p className="text-sm text-neutral-400 dark:text-neutral-500 text-center py-8">No PT configurations added yet.</p>
                     ) : (
@@ -333,8 +496,8 @@ export function StatutoryConfigScreen() {
                                             <td className="py-3 px-4 text-center text-neutral-600 dark:text-neutral-400">{Object.keys(pt.monthlyOverrides ?? {}).length || "—"}</td>
                                             <td className="py-3 px-4 text-right">
                                                 <div className="flex items-center justify-end gap-1">
-                                                     <button onClick={() => openPTEdit(pt)} className="p-1.5 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors"><Pencil size={14} /></button>
-                                                     <button onClick={() => handleDeletePT(pt.id)} className="p-1.5 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                                                     <button onClick={() => openPTEdit(pt)} disabled={!ptEnabled} title={!ptEnabled ? "Disabled in Statutory Components" : undefined} className="p-1.5 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><Pencil size={14} /></button>
+                                                     <button onClick={() => handleDeletePT(pt.id)} disabled={!ptEnabled} title={!ptEnabled ? "Disabled in Statutory Components" : undefined} className="p-1.5 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><Trash2 size={14} /></button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -347,7 +510,7 @@ export function StatutoryConfigScreen() {
             </div>
 
             {/* LWF Section — Inline DataTable */}
-            <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm overflow-hidden">
+            <div className={cn("bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm overflow-hidden", !lwfEnabled && "opacity-70")} title={!lwfEnabled ? "Disabled in Statutory Components" : undefined}>
                 <div className="p-6">
                     <div className="flex items-center justify-between mb-5">
                         <div className="flex items-center gap-3">
@@ -356,10 +519,18 @@ export function StatutoryConfigScreen() {
                             </div>
                             <h3 className="text-sm font-bold text-primary-950 dark:text-white">Labour Welfare Fund (LWF) — By State</h3>
                         </div>
-                        <button onClick={openLWFCreate} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 transition-colors">
+                        <button
+                            onClick={openLWFCreate}
+                            disabled={!lwfEnabled}
+                            title={!lwfEnabled ? "Disabled in Statutory Components" : undefined}
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
                             <Plus size={14} /> Add State
                         </button>
                     </div>
+                    {!lwfEnabled && (
+                        <div className="mb-4"><DisabledBanner label="Labour Welfare Fund (LWF)" /></div>
+                    )}
                     {lwfConfigs.length === 0 ? (
                         <p className="text-sm text-neutral-400 dark:text-neutral-500 text-center py-8">No LWF configurations added yet.</p>
                     ) : (
@@ -383,8 +554,8 @@ export function StatutoryConfigScreen() {
                                             <td className="py-3 px-4 text-xs capitalize text-neutral-600 dark:text-neutral-400">{lwf.frequency?.toLowerCase()?.replace(/_/g, " ")}</td>
                                             <td className="py-3 px-4 text-right">
                                                 <div className="flex items-center justify-end gap-1">
-                                                    <button onClick={() => openLWFEdit(lwf)} className="p-1.5 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors"><Pencil size={14} /></button>
-                                                    <button onClick={() => handleDeleteLWF(lwf.id)} className="p-1.5 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                                                    <button onClick={() => openLWFEdit(lwf)} disabled={!lwfEnabled} title={!lwfEnabled ? "Disabled in Statutory Components" : undefined} className="p-1.5 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><Pencil size={14} /></button>
+                                                    <button onClick={() => handleDeleteLWF(lwf.id)} disabled={!lwfEnabled} title={!lwfEnabled ? "Disabled in Statutory Components" : undefined} className="p-1.5 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><Trash2 size={14} /></button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -399,7 +570,7 @@ export function StatutoryConfigScreen() {
             {/* ── PT Modal ── */}
             {ptModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-lg animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                    <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-2xl animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 dark:border-neutral-800">
                             <h2 className="text-lg font-bold text-primary-950 dark:text-white">{ptEditId ? "Edit PT Config" : "Add PT Config"}</h2>
                             <button onClick={() => setPTModalOpen(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"><Loader2 size={18} className="hidden" /><span className="text-lg">&times;</span></button>
@@ -412,9 +583,56 @@ export function StatutoryConfigScreen() {
                                 onChange={(v) => setPTForm((p) => ({ ...p, financialYear: v }))}
                                 options={getFinancialYearOptions(ptForm.financialYear)}
                             />
+
+                            {/* Example Configurations (collapsible) */}
+                            <div className="border border-accent-200 dark:border-accent-800/50 bg-accent-50/50 dark:bg-accent-900/10 rounded-xl overflow-hidden">
+                                <button
+                                    type="button"
+                                    onClick={() => setPTExamplesOpen((v) => !v)}
+                                    className="w-full flex items-center justify-between px-4 py-3 text-left"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <Sparkles size={14} className="text-accent-600 dark:text-accent-400" />
+                                        <span className="text-xs font-bold text-accent-700 dark:text-accent-300 uppercase tracking-wider">Example Configurations</span>
+                                    </div>
+                                    {ptExamplesOpen
+                                        ? <ChevronDown size={16} className="text-accent-600 dark:text-accent-400" />
+                                        : <ChevronRight size={16} className="text-accent-600 dark:text-accent-400" />}
+                                </button>
+                                {ptExamplesOpen && (
+                                    <div className="px-4 pb-4 space-y-2 border-t border-accent-100 dark:border-accent-800/50 pt-3">
+                                        <p className="text-[11px] text-neutral-600 dark:text-neutral-400">
+                                            Pick a state preset to pre-fill slabs. You can edit before saving.
+                                        </p>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                            {Object.entries(PT_SLAB_EXAMPLES).map(([key, preset]) => (
+                                                <div key={key} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg p-3 flex items-start justify-between gap-3">
+                                                    <div className="min-w-0">
+                                                        <p className="text-xs font-bold text-primary-950 dark:text-white truncate">{preset.label}</p>
+                                                        {preset.note && (
+                                                            <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-snug">{preset.note}</p>
+                                                        )}
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => applyPTPreset(key)}
+                                                        className="text-[11px] font-bold text-accent-700 dark:text-accent-400 hover:text-accent-800 bg-accent-100 dark:bg-accent-900/30 hover:bg-accent-200 dark:hover:bg-accent-900/50 px-2.5 py-1 rounded-md shrink-0 transition-colors"
+                                                    >
+                                                        Apply
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <p className="text-[10px] italic text-neutral-400 dark:text-neutral-500 pt-1">
+                                            Examples are reference values. Verify with current state notifications before applying.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
                             <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Tax Slabs</label>
                             {ptForm.slabs.map((slab, i) => (
-                                <div key={i} className="grid grid-cols-4 gap-2 items-end">
+                                <div key={i} className="grid grid-cols-[1fr_1fr_1.2fr_1fr_auto] gap-2 items-end">
                                     <div>
                                         <label className="block text-[10px] text-neutral-400 mb-1">From (₹)</label>
                                         <input type="number" value={slab.fromAmount} onChange={(e) => { const s = [...ptForm.slabs]; s[i] = { ...s[i], fromAmount: Number(e.target.value) }; setPTForm((p) => ({ ...p, slabs: s })); }} className="w-full px-2 py-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm font-mono focus:outline-none dark:text-white" />
@@ -424,13 +642,29 @@ export function StatutoryConfigScreen() {
                                         <input type="number" value={slab.toAmount} onChange={(e) => { const s = [...ptForm.slabs]; s[i] = { ...s[i], toAmount: Number(e.target.value) }; setPTForm((p) => ({ ...p, slabs: s })); }} className="w-full px-2 py-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm font-mono focus:outline-none dark:text-white" />
                                     </div>
                                     <div>
+                                        <label className="block text-[10px] text-neutral-400 mb-1">Gender</label>
+                                        <select
+                                            value={slab.gender}
+                                            onChange={(e) => {
+                                                const s = [...ptForm.slabs];
+                                                s[i] = { ...s[i], gender: e.target.value as PTGender };
+                                                setPTForm((p) => ({ ...p, slabs: s }));
+                                            }}
+                                            className="w-full px-2 py-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm focus:outline-none dark:text-white"
+                                        >
+                                            {PT_GENDER_OPTIONS.map((o) => (
+                                                <option key={o.value} value={o.value}>{o.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
                                         <label className="block text-[10px] text-neutral-400 mb-1">Tax (₹)</label>
                                         <input type="number" value={slab.taxAmount} onChange={(e) => { const s = [...ptForm.slabs]; s[i] = { ...s[i], taxAmount: Number(e.target.value) }; setPTForm((p) => ({ ...p, slabs: s })); }} className="w-full px-2 py-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-sm font-mono focus:outline-none dark:text-white" />
                                     </div>
                                     <button onClick={() => setPTForm((p) => ({ ...p, slabs: p.slabs.filter((_, idx) => idx !== i) }))} className="p-1.5 text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded-lg transition-colors h-fit"><Trash2 size={14} /></button>
                                 </div>
                             ))}
-                            <button onClick={() => setPTForm((p) => ({ ...p, slabs: [...p.slabs, { fromAmount: 0, toAmount: 0, taxAmount: 0 }] }))} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 transition-colors">
+                            <button onClick={() => setPTForm((p) => ({ ...p, slabs: [...p.slabs, { fromAmount: 0, toAmount: 0, gender: "ALL", taxAmount: 0 }] }))} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 transition-colors">
                                 <Plus size={14} /> Add Slab
                             </button>
                             <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mt-2">Monthly Overrides</label>

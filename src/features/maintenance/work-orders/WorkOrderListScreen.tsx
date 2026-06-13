@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
     Search,
@@ -32,8 +32,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { PriorityBadge } from "@/features/maintenance/shared/PriorityBadge";
 import { WOStatusBadge, WOTypeBadge } from "@/features/maintenance/shared/WOStatusBadge";
 import { showSuccess, showApiError } from "@/lib/toast";
-import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
-import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { EmployeePicker } from "@/components/ui/EmployeePicker";
 import {
     MAINTENANCE_WO_PRIORITY_OPTIONS,
     MAINTENANCE_WO_TYPE_OPTIONS,
@@ -112,17 +111,6 @@ export function WorkOrderListScreen() {
     const completeMutation = useCompleteWO();
     const closeMutation = useCloseWO();
 
-    // Employee picker for assign modal
-    const empQuery = useEmployees({ limit: 500 });
-    const employeeOptions = useMemo(() => {
-        const employees: any[] = (empQuery.data as any)?.data ?? [];
-        return employees.map((emp: any) => ({
-            value: emp.id,
-            label: `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim() || emp.name || emp.employeeId,
-            sublabel: [emp.employeeId, emp.department?.name, emp.designation?.name].filter(Boolean).join(" · "),
-        }));
-    }, [empQuery.data]);
-
     // Helper: resolve technician display name from API data
     const techName = (wo: any): string => {
         if (wo.leadTechnician) {
@@ -131,11 +119,7 @@ export function WorkOrderListScreen() {
             if (full || t.name) return full || t.name;
         }
         if (wo.leadTechnicianName) return wo.leadTechnicianName;
-        if (wo.leadTechnicianId) {
-            const opt = employeeOptions.find(o => o.value === wo.leadTechnicianId);
-            if (opt) return opt.label;
-            return wo.leadTechnicianId;
-        }
+        if (wo.leadTechnicianId) return wo.leadTechnicianId;
         return "---";
     };
 
@@ -500,24 +484,27 @@ export function WorkOrderListScreen() {
                             </button>
                         </div>
                         <div className="px-6 py-4 space-y-4">
-                            <SearchableSelect
+                            <EmployeePicker
                                 label="Lead Technician"
                                 required
-                                value={assignTechId}
-                                onChange={(v) => {
-                                    setAssignTechId(v);
-                                    // Capture the display name so we can persist it
-                                    const opt = employeeOptions.find(o => o.value === v);
-                                    setAssignTechName(opt?.label ?? "");
+                                value={assignTechId || null}
+                                onChange={(id, emp) => {
+                                    setAssignTechId(id ?? "");
+                                    if (emp) {
+                                        const full = [emp.firstName, emp.middleName, emp.lastName]
+                                            .filter(Boolean)
+                                            .join(" ");
+                                        setAssignTechName(full);
+                                    } else {
+                                        setAssignTechName("");
+                                    }
                                 }}
-                                options={employeeOptions}
                                 placeholder="Search by name, ID or department..."
-                                isLoading={empQuery.isLoading}
+                                status="ACTIVE"
                             />
-                            {assignTechId && (() => {
-                                const sel = employeeOptions.find(o => o.value === assignTechId);
-                                return sel ? <p className="text-xs text-neutral-400">{sel.sublabel}</p> : null;
-                            })()}
+                            {assignTechId && assignTechName && (
+                                <p className="text-xs text-neutral-400">{assignTechName}</p>
+                            )}
                             <div className="flex justify-end gap-2">
                                 <button
                                     onClick={() => { setAssignModalId(null); setAssignTechId(""); setAssignTechName(""); }}

@@ -6,7 +6,7 @@ import { useCreateGroupVisit, useBatchCheckInGroupVisit, useBatchCheckOutGroupVi
 import { useCanPerform } from "@/hooks/useCanPerform";
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
-import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
+import { EmployeePicker } from "@/components/ui/EmployeePicker";
 import { useCompanyLocations } from "@/features/company-admin/api/use-company-admin-queries";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -32,8 +32,6 @@ export function GroupVisitScreen() {
     const [form, setForm] = useState({ ...EMPTY_FORM, members: [{ ...EMPTY_MEMBER }, { ...EMPTY_MEMBER }] });
     const [actionId, setActionId] = useState<string | null>(null);
 
-    const employeesQuery = useEmployees({ limit: 500 });
-    const employees: any[] = employeesQuery.data?.data ?? [];
     const locationsQuery = useCompanyLocations();
     const locations: any[] = (locationsQuery.data as any)?.data ?? [];
     const gatesQuery = useGates();
@@ -73,7 +71,29 @@ export function GroupVisitScreen() {
     };
 
     const handleBatchCheckIn = async (id: string) => {
-        try { setActionId(id); await batchCheckInMutation.mutateAsync({ id }); showSuccess("Batch Check-In", "All group visitors checked in."); } catch (err) { showApiError(err); } finally { setActionId(null); }
+        // Grp12 fix — backend validator requires `memberIds` (>=1) and
+        // `checkInGateId`. Sending `{ id }` alone produced a 400 "Required" Zod
+        // error and the tester saw the check-in flow silently fail. Pull the
+        // group's gate + still-EXPECTED members from the already-loaded list
+        // and dispatch a fully-formed payload.
+        const group = groups.find((g: any) => g.id === id);
+        const gateId: string | undefined = group?.gateId ?? undefined;
+        if (!gateId) {
+            showApiError(new Error(`"${group?.groupName ?? 'This group'}" has no entry gate assigned. Edit the group and set an entry gate before batch check-in.`));
+            return;
+        }
+        const memberIds: string[] = (group?.members ?? [])
+            .filter((m: any) => m.status === 'EXPECTED')
+            .map((m: any) => m.id);
+        if (memberIds.length === 0) {
+            showSuccess("Batch Check-In", "No members are pending check-in.");
+            return;
+        }
+        try {
+            setActionId(id);
+            await batchCheckInMutation.mutateAsync({ id, data: { memberIds, checkInGateId: gateId } });
+            showSuccess("Batch Check-In", "All group visitors checked in.");
+        } catch (err) { showApiError(err); } finally { setActionId(null); }
     };
 
     const handleBatchCheckOut = async (id: string) => {
@@ -206,16 +226,12 @@ export function GroupVisitScreen() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div><label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">Group Name *</label><input type="text" value={form.groupName} onChange={(e) => updateField("groupName", e.target.value)} placeholder="e.g. Client Delegation" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm dark:text-white placeholder:text-neutral-400 transition-all" /></div>
                                 <div>
-                                    <SearchableSelect
+                                    <EmployeePicker
                                         label="Host Employee"
-                                        value={form.hostEmployeeId}
-                                        onChange={(v) => updateField("hostEmployeeId", v)}
-                                        options={employees.map((e: any) => ({
-                                            value: e.id,
-                                            label: `${e.firstName} ${e.lastName}`,
-                                            sublabel: e.designation?.name ?? e.department?.name ?? e.employeeCode ?? "",
-                                        }))}
+                                        value={form.hostEmployeeId || null}
+                                        onChange={(id) => updateField("hostEmployeeId", id ?? "")}
                                         placeholder="Search employee..."
+                                        status="ACTIVE"
                                     />
                                 </div>
                             </div>

@@ -25,8 +25,7 @@ import { PriorityBadge } from "@/features/maintenance/shared/PriorityBadge";
 import { HelpDrawer } from "@/components/ui/HelpDrawer";
 import { showSuccess, showApiError } from "@/lib/toast";
 import { breakdownListHelp } from "@/features/maintenance/help";
-import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
-import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { EmployeePicker } from "@/components/ui/EmployeePicker";
 
 /* ── Status badge ── */
 
@@ -208,16 +207,6 @@ export function BreakdownListScreen() {
     const acknowledgeMutation = useAcknowledgeWO();
     const startMutation = useStartWO();
 
-    const empQuery = useEmployees({ limit: 500 });
-    const employeeOptions = useMemo(() => {
-        const employees: any[] = (empQuery.data as any)?.data ?? [];
-        return employees.map((emp: any) => ({
-            value: emp.id,
-            label: `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim() || emp.name || emp.employeeId,
-            sublabel: [emp.employeeId, emp.department?.name, emp.designation?.name].filter(Boolean).join(" · "),
-        }));
-    }, [empQuery.data]);
-
     const resolveTechName = (bd: any): string => {
         const leadTech = bd.leadTechnician ?? bd.workOrder?.leadTechnician;
         if (leadTech) {
@@ -227,11 +216,7 @@ export function BreakdownListScreen() {
         const name = bd.leadTechnicianName ?? bd.workOrder?.leadTechnicianName ?? bd.assignedTechnicianName;
         if (name) return name;
         const id = bd.leadTechnicianId ?? bd.workOrder?.leadTechnicianId;
-        if (id) {
-            const opt = employeeOptions.find(o => o.value === id);
-            if (opt) return opt.label;
-            return id;
-        }
+        if (id) return id;
         return "---";
     };
 
@@ -702,23 +687,27 @@ export function BreakdownListScreen() {
                             </button>
                         </div>
                         <div className="px-6 py-4 space-y-4">
-                            <SearchableSelect
+                            <EmployeePicker
                                 label="Lead Technician"
                                 required
-                                value={assignTechId}
-                                onChange={(v) => {
-                                    setAssignTechId(v);
-                                    const opt = employeeOptions.find(o => o.value === v);
-                                    setAssignTechName(opt?.label ?? "");
+                                value={assignTechId || null}
+                                onChange={(id, emp) => {
+                                    setAssignTechId(id ?? "");
+                                    if (emp) {
+                                        const full = [emp.firstName, emp.middleName, emp.lastName]
+                                            .filter(Boolean)
+                                            .join(" ");
+                                        setAssignTechName(full);
+                                    } else {
+                                        setAssignTechName("");
+                                    }
                                 }}
-                                options={employeeOptions}
                                 placeholder="Search by name, ID or department..."
-                                isLoading={empQuery.isLoading}
+                                status="ACTIVE"
                             />
-                            {assignTechId && (() => {
-                                const sel = employeeOptions.find(o => o.value === assignTechId);
-                                return sel ? <p className="text-xs text-neutral-400">{sel.sublabel}</p> : null;
-                            })()}
+                            {assignTechId && assignTechName && (
+                                <p className="text-xs text-neutral-400">{assignTechName}</p>
+                            )}
                             <div className="flex justify-end gap-2">
                                 <button onClick={() => { setAssignModalId(null); setAssignTechId(""); setAssignTechName(""); }} className="px-4 py-2 text-sm font-medium rounded-xl border border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">Cancel</button>
                                 <button

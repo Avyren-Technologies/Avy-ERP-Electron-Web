@@ -6,7 +6,7 @@ import { useCreateMaterialPass, useReturnMaterialPass } from "@/features/company
 import { useCanPerform } from "@/hooks/useCanPerform";
 import { useCompanyFormatter } from "@/hooks/useCompanyFormatter";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
-import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
+import { EmployeePicker } from "@/components/ui/EmployeePicker";
 import { useCompanyLocations } from "@/features/company-admin/api/use-company-admin-queries";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -32,8 +32,6 @@ export function MaterialPassScreen() {
     const [viewTarget, setViewTarget] = useState<any>(null);
     const [qrTarget, setQrTarget] = useState<any>(null);
 
-    const employeesQuery = useEmployees({ limit: 500 });
-    const employees: any[] = employeesQuery.data?.data ?? [];
     const locationsQuery = useCompanyLocations();
     const locations: any[] = (locationsQuery.data as any)?.data ?? [];
     const gatesQuery = useGates();
@@ -281,17 +279,13 @@ export function MaterialPassScreen() {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <SearchableSelect
+                                    <EmployeePicker
                                         label="Authorized By"
-                                        value={form.authorizedBy}
-                                        onChange={(v) => updateField("authorizedBy", v)}
-                                        options={employees.map((e: any) => ({
-                                            value: e.id,
-                                            label: `${e.firstName} ${e.lastName}`,
-                                            sublabel: e.designation?.name ?? e.department?.name ?? e.employeeCode ?? "",
-                                        }))}
+                                        value={form.authorizedBy || null}
+                                        onChange={(id) => updateField("authorizedBy", id ?? "")}
                                         placeholder="Search employee..."
                                         required
+                                        status="ACTIVE"
                                     />
                                 </div>
                                 <div><label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">Purpose *</label><input type="text" value={form.purpose} onChange={(e) => updateField("purpose", e.target.value)} placeholder="Purpose" className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm dark:text-white placeholder:text-neutral-400 transition-all" /></div>

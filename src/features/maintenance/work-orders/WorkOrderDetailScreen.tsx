@@ -55,9 +55,8 @@ import { HelpDrawer } from "@/components/ui/HelpDrawer";
 import { InfoTooltip } from "@/components/ui/InfoTooltip";
 import { workOrderDetailHelp } from "@/features/maintenance/help";
 import { showSuccess, showApiError } from "@/lib/toast";
-import { useEmployees } from "@/features/company-admin/api/use-hr-queries";
 import { useCompanySettings } from "@/features/company-admin/api/use-company-admin-queries";
-import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { EmployeePicker } from "@/components/ui/EmployeePicker";
 import { DEFAULT_FORMAT_SETTINGS } from "@/lib/format/company-formatter";
 import {
     buildAddPartsPayload,
@@ -139,20 +138,35 @@ export function WorkOrderDetailScreen() {
     const actionCodesQuery = useActionCodes({ limit: 500 });
     const actionCodes: any[] = (actionCodesQuery.data as any)?.data ?? [];
 
-    // Employee picker for technician assignment
-    const empQuery = useEmployees({ limit: 500 });
-    const employeeOptions = useMemo(() => {
-        const employees: any[] = (empQuery.data as any)?.data ?? [];
-        return employees.map((emp: any) => ({
-            value: emp.id,
-            label: `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim() || emp.name || emp.employeeId,
-            sublabel: [
-                emp.employeeId,
-                emp.department?.name,
-                emp.designation?.name,
-            ].filter(Boolean).join(" · "),
-        }));
-    }, [empQuery.data]);
+    // Session cache of employees the user has selected via the EmployeePicker.
+    // Used to render display names in the labour-log table for technicians chosen
+    // during the current view (server-driven picker pagination replaces the old
+    // `useEmployees({ limit: 500 })` workaround).
+    const [employeeCache, setEmployeeCache] = useState<
+        { value: string; label: string; sublabel?: string }[]
+    >([]);
+    const cacheEmployee = (emp?: {
+        id: string;
+        firstName?: string | null;
+        middleName?: string | null;
+        lastName?: string | null;
+        employeeId?: string;
+        department?: { name?: string | null } | null;
+        designation?: { name?: string | null } | null;
+    } | null) => {
+        if (!emp) return;
+        const full = [emp.firstName, emp.middleName, emp.lastName]
+            .filter(Boolean)
+            .join(" ");
+        const label = full || emp.employeeId || emp.id;
+        const sublabel = [emp.employeeId, emp.department?.name, emp.designation?.name]
+            .filter(Boolean)
+            .join(" · ");
+        setEmployeeCache((prev) => {
+            if (prev.some((p) => p.value === emp.id)) return prev;
+            return [...prev, { value: emp.id, label, sublabel }];
+        });
+    };
 
     const resolvedTechName = useMemo(() => {
         if (wo?.leadTechnician) {
@@ -162,15 +176,28 @@ export function WorkOrderDetailScreen() {
         }
         if (wo?.leadTechnicianName) return wo.leadTechnicianName;
         if (wo?.leadTechnicianId) {
-            const employees: any[] = (empQuery.data as any)?.data ?? [];
-            const emp = employees.find((e: any) => e.id === wo.leadTechnicianId);
-            if (emp) {
-                return `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim() || emp.name || emp.employeeId;
-            }
+            const cached = employeeCache.find((e) => e.value === wo.leadTechnicianId);
+            if (cached) return cached.label;
             return wo.leadTechnicianId;
         }
         return "---";
-    }, [wo, empQuery.data]);
+    }, [wo, employeeCache]);
+
+    // Pre-known employee for the assign modal so the label persists on edit
+    const initialLeadTech = useMemo(() => {
+        if (!wo?.leadTechnicianId) return undefined;
+        const t = wo.leadTechnician;
+        if (t) {
+            return {
+                id: wo.leadTechnicianId,
+                firstName: t.firstName ?? "",
+                middleName: t.middleName ?? null,
+                lastName: t.lastName ?? "",
+                employeeId: t.employeeId,
+            };
+        }
+        return undefined;
+    }, [wo]);
 
 
     // Mutations
@@ -452,9 +479,11 @@ export function WorkOrderDetailScreen() {
                             canEdit={canUpdateWO}
                             status={status}
                             fmt={fmt}
-                            employeeOptions={employeeOptions}
+                            employeeOptions={employeeCache}
+                            onSelectEmployee={cacheEmployee}
                             companyTimezone={companyTimezone}
                             defaultTechnicianId={wo?.leadTechnicianId ?? ""}
+                            defaultTechnician={initialLeadTech}
                         />
                     )}
                     {activeTab === "evidence" && (
@@ -476,18 +505,21 @@ export function WorkOrderDetailScreen() {
             {modal === "assign" && (
                 <ActionModal title="Assign Work Order" onClose={closeModal}>
                     <div>
-                        <SearchableSelect
+                        <EmployeePicker
                             label="Lead Technician"
                             required
-                            value={modalData.techId || ""}
-                            onChange={(v) => setMD("techId", v)}
-                            options={employeeOptions}
+                            value={modalData.techId || null}
+                            onChange={(v, emp) => {
+                                setMD("techId", v ?? "");
+                                cacheEmployee(emp);
+                            }}
                             placeholder="Search by name, ID or department..."
-                            isLoading={empQuery.isLoading}
+                            status="ACTIVE"
+                            initialEmployee={initialLeadTech}
                         />
                         {modalData.techId && (() => {
-                            const sel = employeeOptions.find(o => o.value === modalData.techId);
-                            return sel ? (
+                            const sel = employeeCache.find(o => o.value === modalData.techId);
+                            return sel?.sublabel ? (
                                 <p className="mt-2 text-xs text-neutral-400 dark:text-neutral-500">
                                     {sel.sublabel}
                                 </p>
@@ -1498,8 +1530,10 @@ function LabourTab({
     status,
     fmt,
     employeeOptions,
+    onSelectEmployee,
     companyTimezone,
     defaultTechnicianId,
+    defaultTechnician,
 }: {
     labourLogs: any[];
     woId: string;
@@ -1508,8 +1542,24 @@ function LabourTab({
     status: string;
     fmt: ReturnType<typeof useCompanyFormatter>;
     employeeOptions: { value: string; label: string; sublabel?: string }[];
+    onSelectEmployee: (emp?: {
+        id: string;
+        firstName?: string | null;
+        middleName?: string | null;
+        lastName?: string | null;
+        employeeId?: string;
+        department?: { name?: string | null } | null;
+        designation?: { name?: string | null } | null;
+    } | null) => void;
     companyTimezone: string;
     defaultTechnicianId: string;
+    defaultTechnician?: {
+        id: string;
+        firstName: string;
+        middleName?: string | null;
+        lastName: string;
+        employeeId?: string;
+    };
 }) {
     const [showAdd, setShowAdd] = useState(false);
     const [logForm, setLogForm] = useState<LogLabourFormState>(() => {
@@ -1577,14 +1627,20 @@ function LabourTab({
                 >
                     <WOFormSection title="Technician">
                         <WOFormField label="Technician" required error={formErrors.technicianId}>
-                            <SearchableSelect
-                                value={logForm.technicianId}
-                                onChange={(v) => {
-                                    setLogForm((p) => ({ ...p, technicianId: v }));
+                            <EmployeePicker
+                                value={logForm.technicianId || null}
+                                onChange={(v, emp) => {
+                                    setLogForm((p) => ({ ...p, technicianId: v ?? "" }));
                                     if (formErrors.technicianId) setFormErrors((prev) => ({ ...prev, technicianId: "" }));
+                                    onSelectEmployee(emp);
                                 }}
-                                options={employeeOptions}
                                 placeholder="Search and select technician..."
+                                status="ACTIVE"
+                                initialEmployee={
+                                    defaultTechnician && defaultTechnician.id === logForm.technicianId
+                                        ? defaultTechnician
+                                        : undefined
+                                }
                             />
                         </WOFormField>
                     </WOFormSection>

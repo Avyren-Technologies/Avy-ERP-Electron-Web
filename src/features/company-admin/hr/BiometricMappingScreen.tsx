@@ -17,10 +17,10 @@ import {
   useUnmappedPunches,
   useCreateBiometricMapping,
   useDeleteBiometricMapping,
-  useEmployees,
 } from '@/features/company-admin/api';
 import { SkeletonTable } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { EmployeePicker } from '@/components/ui/EmployeePicker';
 // Toast errors handled by mutation onError callbacks
 
 /* ── Types ── */
@@ -57,13 +57,6 @@ interface BiometricDevice {
   deviceName: string;
   locationId: string | null;
   location: { id: string; name: string } | null;
-}
-
-interface Employee {
-  id: string;
-  firstName: string;
-  lastName: string;
-  employeeId: string;
 }
 
 /* ── Avatar ── */
@@ -384,28 +377,9 @@ function CreateMappingModal({
   const hasPrefill = !!(prefill?.deviceSerialNumber && prefill?.deviceUserId);
 
   // Form state
-  const [employeeId, setEmployeeId] = useState('');
+  const [employeeId, setEmployeeId] = useState<string | null>(null);
   const [deviceSerial, setDeviceSerial] = useState(prefill?.deviceSerialNumber ?? '');
   const [deviceUserId, setDeviceUserId] = useState(prefill?.deviceUserId ?? '');
-  const [employeeSearch, setEmployeeSearch] = useState('');
-  const [showDropdown, setShowDropdown] = useState(false);
-
-  // Employee search query
-  const { data: employeesData } = useEmployees(
-    employeeSearch.length >= 2 ? { search: employeeSearch, limit: 10 } : undefined,
-  );
-  const employees: Employee[] = employeeSearch.length >= 2
-    ? ((employeesData as unknown as Record<string, unknown>)?.data as Employee[] ?? [])
-    : [];
-
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-
-  const handleSelectEmployee = (emp: Employee) => {
-    setSelectedEmployee(emp);
-    setEmployeeId(emp.id);
-    setEmployeeSearch(`${emp.firstName} ${emp.lastName} (${emp.employeeId})`);
-    setShowDropdown(false);
-  };
 
   const handleSubmit = async () => {
     if (!employeeId || !deviceSerial || !deviceUserId) return;
@@ -434,44 +408,14 @@ function CreateMappingModal({
           </button>
         </div>
         <div className="p-6 space-y-4">
-          {/* Employee Search */}
-          <div className="relative">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Employee <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={employeeSearch}
-              onChange={(e) => {
-                setEmployeeSearch(e.target.value);
-                setSelectedEmployee(null);
-                setEmployeeId('');
-                setShowDropdown(true);
-              }}
-              onFocus={() => { if (employees.length > 0 && !selectedEmployee) setShowDropdown(true); }}
-              placeholder="Search employee by name..."
-              className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-white placeholder:text-gray-400"
-            />
-            {showDropdown && employees.length > 0 && !selectedEmployee && (
-              <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                {employees.map((emp) => (
-                  <button
-                    key={emp.id}
-                    onClick={() => handleSelectEmployee(emp)}
-                    className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm transition-colors"
-                  >
-                    <span className="font-medium text-gray-900 dark:text-white">{emp.firstName} {emp.lastName}</span>
-                    <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">{emp.employeeId}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-            {employeeSearch.length >= 2 && employees.length === 0 && !selectedEmployee && (
-              <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
-                <p className="text-sm text-gray-500 dark:text-gray-400 text-center">No employees found</p>
-              </div>
-            )}
-          </div>
+          {/* Employee Picker */}
+          <EmployeePicker
+            value={employeeId}
+            onChange={(id) => setEmployeeId(id)}
+            label="Employee"
+            placeholder="Search employee by name..."
+            required
+          />
 
           {/* Device Serial */}
           <div>
