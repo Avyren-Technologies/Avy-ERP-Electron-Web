@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { EmployeePicker } from '@/components/ui/EmployeePicker';
 import { ManageModal } from '@/components/ui/ManageModal';
 import { usePipConfig, usePipSlabConfigs, usePipDailyEntries, useDowntimeReasons } from '@/features/production/pip/api/use-pip-queries';
 import { useSavePipDailyEntries, useCreateDowntimeReason, useUpdateDowntimeReason, useDeleteDowntimeReason } from '@/features/production/pip/api/use-pip-mutations';
@@ -27,10 +28,8 @@ import { useMachines } from '@/features/masters/api/use-masters-queries';
 import { SkeletonTable } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { showSuccess, showApiError } from '@/lib/toast';
-import { hrApi } from '@/lib/api/hr';
 import type { PipIncentiveConfig, PipSlabConfig, SlabTier, CalculationResult, DowntimeReason } from '@/lib/api/pip';
 import type { CompanyShift } from '@/lib/api/company-admin';
-import type { Employee } from '@/lib/api/hr';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Types
@@ -730,28 +729,12 @@ export function PipDailyEntryScreen() {
 
   const selectedShift = shifts.find((s) => s.id === selectedShiftId);
 
-  /* ── Operator search ── */
-  const [operatorSearchResults, setOperatorSearchResults] = useState<Employee[]>([]);
-  const [operatorLoading, setOperatorLoading] = useState(false);
+  /* ── Operator selection (powered by EmployeePicker) ── */
   const [selectedOperator, setSelectedOperator] = useState<SelectedOperator | null>(null);
 
   const operatorInputRef = useRef<HTMLInputElement>(null);
   const machineInputRef = useRef<HTMLInputElement>(null);
   const firstQtyRef = useRef<HTMLInputElement>(null);
-
-  const searchOperators = useCallback(async (q: string) => {
-    setOperatorLoading(true);
-    try {
-      const params: Record<string, unknown> = { limit: 100 };
-      if (q.trim()) params.search = q;
-      const res = await hrApi.listEmployees(params as any);
-      setOperatorSearchResults(res.data ?? []);
-    } catch {
-      setOperatorSearchResults([]);
-    } finally {
-      setOperatorLoading(false);
-    }
-  }, []);
 
   /* ── Machine selection ── */
   const [selectedMachine, setSelectedMachine] = useState<SelectedMachine | null>(null);
@@ -912,21 +895,6 @@ export function PipDailyEntryScreen() {
   const saveButtonRef = useRef<HTMLButtonElement>(null);
 
   /* ── Handlers ── */
-
-  const handleOperatorSelect = (item: AutocompleteItem) => {
-    const emp = operatorSearchResults.find((e) => e.id === item.id);
-    if (!emp) return;
-    setSelectedOperator({
-      id: emp.id,
-      name: emp.fullName ?? `${emp.firstName} ${emp.lastName}`,
-      employeeId: emp.employeeId,
-    });
-    setSession([]);
-    setSelectedMachine(null);
-    setPartEntries([]);
-    setPlaceholderMsg(null);
-    setTimeout(() => machineInputRef.current?.focus(), 50);
-  };
 
   const handleOperatorClear = () => {
     setSelectedOperator(null);
@@ -1163,19 +1131,6 @@ export function PipDailyEntryScreen() {
     }
   };
 
-  /* ── Operator autocomplete items ── */
-  const operatorItems: AutocompleteItem[] = operatorSearchResults.map((emp) => {
-    const name = emp.fullName ?? `${emp.firstName} ${emp.lastName}`;
-    const isSaved = savedOperators.some((so) => so.operatorId === emp.id);
-    return {
-      id: emp.id,
-      primary: name,
-      secondary: `${emp.employeeId}${emp.designationName ? ' - ' + emp.designationName : ''}`,
-      avatarColor: 'bg-primary-500',
-      badge: isSaved ? 'saved' as const : null,
-    };
-  });
-
   /* ── Machine autocomplete items ── */
   const machineItems: AutocompleteItem[] = machinesWithSlabs.map((m) => {
     const suffix = m.assetCode.replace(/\D/g, '').slice(-2) || '00';
@@ -1280,19 +1235,40 @@ export function PipDailyEntryScreen() {
           <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-sm border border-neutral-100 dark:border-neutral-800 p-5 space-y-4">
             <div className="flex flex-col sm:flex-row gap-4">
               {/* Operator */}
-              <AutocompleteSearch
-                label="Operator"
-                stepNumber={1}
-                stepColor="bg-primary-600"
-                placeholder="Name or EMP ID..."
-                items={operatorItems}
-                selectedId={selectedOperator?.id ?? null}
-                onSelect={handleOperatorSelect}
-                onClear={handleOperatorClear}
-                onSearch={searchOperators}
-                loading={operatorLoading}
-                inputRef={operatorInputRef}
-              />
+              <div className="flex-1">
+                <label className="flex items-center gap-2 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
+                  <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black text-white bg-primary-600">
+                    1
+                  </span>
+                  Operator
+                </label>
+                <EmployeePicker
+                  value={selectedOperator?.id ?? null}
+                  onChange={(id, emp) => {
+                    if (!id) {
+                      handleOperatorClear();
+                      return;
+                    }
+                    if (emp) {
+                      const full = [emp.firstName, emp.middleName, emp.lastName]
+                        .filter(Boolean)
+                        .join(' ');
+                      setSelectedOperator({
+                        id,
+                        name: full || emp.employeeId || id,
+                        employeeId: emp.employeeId ?? '',
+                      });
+                      setSession([]);
+                      setSelectedMachine(null);
+                      setPartEntries([]);
+                      setPlaceholderMsg(null);
+                      setTimeout(() => machineInputRef.current?.focus(), 50);
+                    }
+                  }}
+                  placeholder="Name or EMP ID..."
+                  status="ACTIVE"
+                />
+              </div>
 
               {/* Machine */}
               <AutocompleteSearch
