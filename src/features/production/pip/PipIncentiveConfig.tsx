@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Loader2, ArrowRight, AlertTriangle, Zap, Target } from 'lucide-react';
+import { Save, Loader2, ArrowRight, AlertTriangle, Zap, Target, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePipConfig } from '@/features/production/pip/api/use-pip-queries';
 import { useUpdatePipConfig } from '@/features/production/pip/api/use-pip-mutations';
@@ -163,6 +163,13 @@ export function PipIncentiveConfig() {
   const [method1Name, setMethod1Name] = useState('Excess Ratio Incentive');
   const [method2Name, setMethod2Name] = useState('Milestone Rounding Incentive');
 
+  // Advanced Setting — Extra Hours Production
+  const [differentiateExtraHours, setDifferentiateExtraHours] = useState(false);
+  const [defaultShiftHours, setDefaultShiftHours] = useState(8);
+  const [extraHoursWarnThreshold, setExtraHoursWarnThreshold] = useState(0);
+  const [splitExtraHoursEarning, setSplitExtraHoursEarning] = useState(false);
+  const [extraHoursEarningCode, setExtraHoursEarningCode] = useState('PIP_EXTRA_HOURS');
+
   // Sync from server
   useEffect(() => {
     if (config) {
@@ -170,6 +177,11 @@ export function PipIncentiveConfig() {
       setMethod2Enabled(config.method2Enabled);
       setMethod1Name(config.method1Name || 'Excess Ratio Incentive');
       setMethod2Name(config.method2Name || 'Milestone Rounding Incentive');
+      setDifferentiateExtraHours(config.differentiateExtraHours);
+      setDefaultShiftHours(config.defaultShiftHours || 8);
+      setExtraHoursWarnThreshold(config.extraHoursWarnThreshold ?? 0);
+      setSplitExtraHoursEarning(config.splitExtraHoursEarning);
+      setExtraHoursEarningCode(config.extraHoursEarningCode || 'PIP_EXTRA_HOURS');
     }
   }, [config]);
 
@@ -212,23 +224,56 @@ export function PipIncentiveConfig() {
     }
   };
 
-  /* ── Save names only ── */
+  /* ── Differentiate Extra Hours — immediate toggle ── */
+
+  const handleToggleDifferentiateExtraHours = async () => {
+    const newVal = !differentiateExtraHours;
+    setDifferentiateExtraHours(newVal);
+
+    try {
+      await updateMutation.mutateAsync({ differentiateExtraHours: newVal });
+      showSuccess(
+        'Extra Hours Updated',
+        newVal ? 'Extra-hours differentiation enabled' : 'Extra-hours differentiation disabled',
+      );
+    } catch (err) {
+      // Revert on failure
+      setDifferentiateExtraHours(!newVal);
+      showApiError(err);
+    }
+  };
+
+  /* ── Save names + advanced settings ── */
 
   const handleSaveNames = async () => {
     if (!method1Name.trim() || !method2Name.trim()) {
       showApiError({ message: 'Both method names are required' });
       return;
     }
+    if (differentiateExtraHours && (defaultShiftHours < 1 || defaultShiftHours > 24)) {
+      showApiError({ message: 'Default Shift Hours must be between 1 and 24' });
+      return;
+    }
     try {
       await updateMutation.mutateAsync({
         method1Name: method1Name.trim(),
         method2Name: method2Name.trim(),
+        defaultShiftHours,
+        extraHoursWarnThreshold,
+        splitExtraHoursEarning,
+        extraHoursEarningCode: extraHoursEarningCode.trim() || 'PIP_EXTRA_HOURS',
       });
       showSuccess('Configuration Saved', 'Custom method names have been updated.');
     } catch (err) {
       showApiError(err);
     }
   };
+
+  // Live example math (guard divide-by-zero)
+  const exampleTarget = 800;
+  const safeShiftHours = defaultShiftHours > 0 ? defaultShiftHours : 1;
+  const examplePerHour = (exampleTarget / safeShiftHours).toFixed(1);
+  const exampleExtraTarget = Math.ceil((exampleTarget / safeShiftHours) * 2);
 
   const saving = updateMutation.isPending;
   const bothOff = !method1Enabled && !method2Enabled;
@@ -311,6 +356,147 @@ export function PipIncentiveConfig() {
           example={METHOD_2_EXAMPLE}
           saving={saving}
         />
+      </div>
+
+      {/* ── Advanced Setting ── */}
+      <div className="space-y-4">
+        {/* Section heading / separator */}
+        <div className="flex items-center gap-3 pt-2">
+          <span className="text-xs font-extrabold uppercase tracking-widest text-neutral-500 dark:text-neutral-400">
+            Advanced Setting
+          </span>
+          <div className="flex-1 h-px bg-neutral-200 dark:bg-neutral-800" />
+        </div>
+
+        <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200/60 dark:border-neutral-800 shadow-sm p-6 space-y-5">
+          {/* Differentiate Extra Hours — pill toggle (immediate) */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-primary-50 dark:bg-primary-900/20">
+                <Clock className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-primary-950 dark:text-white">
+                  Differentiate Extra Hours Production
+                </p>
+                <p className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mt-0.5">
+                  Track production worked beyond shift hours separately.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold',
+                  differentiateExtraHours
+                    ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                    : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400',
+                )}
+              >
+                <Clock className="w-3 h-3" />
+                Extra Hrs
+                <span className="font-extrabold">{differentiateExtraHours ? 'On' : 'Off'}</span>
+              </span>
+              <ToggleSwitch
+                checked={differentiateExtraHours}
+                onChange={handleToggleDifferentiateExtraHours}
+                disabled={saving}
+              />
+            </div>
+          </div>
+
+          {/* Expanded controls */}
+          {differentiateExtraHours && (
+            <div className="space-y-5 pt-5 border-t border-neutral-100 dark:border-neutral-800 animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                {/* Default Shift Hours */}
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
+                    Default Shift Hours
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={24}
+                    value={defaultShiftHours}
+                    onChange={(e) => setDefaultShiftHours(Number(e.target.value))}
+                    className="w-full px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
+                  />
+                  <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1.5 leading-relaxed">
+                    Fallback used when a shift has no defined start/end times.
+                  </p>
+                </div>
+
+                {/* Hourly Target Rate (read-only) */}
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
+                    Hourly Target Rate
+                  </label>
+                  <div className="w-full px-3 py-2.5 bg-neutral-100 dark:bg-neutral-800/60 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm text-neutral-600 dark:text-neutral-300">
+                    Auto-calculated per part = Shift Target &divide; Shift Hours
+                  </div>
+                </div>
+              </div>
+
+              {/* Live example callout */}
+              <div className="flex items-start gap-3 bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-800/50 rounded-xl p-4">
+                <Target className="w-4 h-4 text-primary-600 dark:text-primary-400 mt-0.5 shrink-0" />
+                <p className="text-xs text-primary-800 dark:text-primary-300 leading-relaxed font-mono">
+                  Example: {exampleTarget} pcs target &divide; {defaultShiftHours} hrs = {examplePerHour} pcs/hr.
+                  For 2 extra hours, target = {exampleExtraTarget} pcs.
+                </p>
+              </div>
+
+              {/* Extra Hours Warning Threshold */}
+              <div>
+                <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
+                  Warn when extra hours exceed (hrs)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  value={extraHoursWarnThreshold}
+                  onChange={(e) => setExtraHoursWarnThreshold(Number(e.target.value))}
+                  className="w-full sm:w-1/2 px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all"
+                />
+              </div>
+
+              {/* Split Extra Hours Earning toggle */}
+              <div className="pt-1">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-bold text-primary-950 dark:text-white">
+                      Split Extra Hours Earning
+                    </p>
+                    <p className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mt-0.5 leading-relaxed">
+                      Post extra-hours incentive as a separate payroll earning line (PIP_EXTRA_HOURS) instead of combining into PIP_INCENTIVE.
+                    </p>
+                  </div>
+                  <ToggleSwitch
+                    checked={splitExtraHoursEarning}
+                    onChange={setSplitExtraHoursEarning}
+                    disabled={saving}
+                  />
+                </div>
+
+                {splitExtraHoursEarning && (
+                  <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
+                      Extra Hours Earning Code
+                    </label>
+                    <input
+                      type="text"
+                      value={extraHoursEarningCode}
+                      onChange={(e) => setExtraHoursEarningCode(e.target.value)}
+                      className="w-full sm:w-1/2 px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:text-white placeholder:text-neutral-400 transition-all font-mono"
+                      placeholder="PIP_EXTRA_HOURS"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Both-off Warning */}
