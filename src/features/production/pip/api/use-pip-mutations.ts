@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { pipApi } from '@/lib/api/pip';
+import type { SaveExtraHoursEntriesPayload } from '@/lib/api/pip';
 import { pipKeys } from '@/features/production/pip/api/use-pip-queries';
 
 // ── Config ──
@@ -74,6 +75,28 @@ export function useDeletePipDailyEntries() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (sessionRef: string) => pipApi.deleteDailyEntries(sessionRef),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pipKeys.all });
+    },
+  });
+}
+
+// ── Extra Hours Entries ──
+
+export function useSaveExtraHoursEntries() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: SaveExtraHoursEntriesPayload) => pipApi.saveExtraHoursEntries(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pipKeys.all });
+    },
+  });
+}
+
+export function useDeleteExtraHoursEntries() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (sessionRef: string) => pipApi.deleteExtraHoursEntries(sessionRef),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pipKeys.all });
     },

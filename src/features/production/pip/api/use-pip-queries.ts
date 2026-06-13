@@ -23,6 +23,8 @@ export const pipKeys = {
   processCategories: () => [...pipKeys.all, 'process-categories'] as const,
   downtimeReasons: (params?: Record<string, unknown>) =>
     params ? ([...pipKeys.all, 'downtime-reasons', params] as const) : ([...pipKeys.all, 'downtime-reasons'] as const),
+  extraHoursEntries: (params?: Record<string, unknown>) =>
+    params ? ([...pipKeys.all, 'extra-hours-entries', params] as const) : ([...pipKeys.all, 'extra-hours-entries'] as const),
 };
 
 export function usePipConfig() {
@@ -117,5 +119,12 @@ export function useDowntimeReasons(params?: Record<string, unknown>) {
   return useQuery({
     queryKey: pipKeys.downtimeReasons(params),
     queryFn: () => pipApi.listDowntimeReasons(params),
+  });
+}
+
+export function usePipExtraHoursEntries(params?: Record<string, unknown>) {
+  return useQuery({
+    queryKey: pipKeys.extraHoursEntries(params),
+    queryFn: () => pipApi.listExtraHoursEntries(params),
   });
 }
