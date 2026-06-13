@@ -16,19 +16,21 @@ import {
   Cpu,
   IndianRupee,
   ArrowRight,
+  Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { EmployeePicker } from '@/components/ui/EmployeePicker';
 import { ManageModal } from '@/components/ui/ManageModal';
-import { usePipConfig, usePipSlabConfigs, usePipDailyEntries, useDowntimeReasons } from '@/features/production/pip/api/use-pip-queries';
-import { useSavePipDailyEntries, useCreateDowntimeReason, useUpdateDowntimeReason, useDeleteDowntimeReason } from '@/features/production/pip/api/use-pip-mutations';
+import { usePipConfig, usePipSlabConfigs, usePipDailyEntries, useDowntimeReasons, usePipExtraHoursEntries } from '@/features/production/pip/api/use-pip-queries';
+import { useSavePipDailyEntries, useCreateDowntimeReason, useUpdateDowntimeReason, useDeleteDowntimeReason, useUpdatePipConfig, useSaveExtraHoursEntries } from '@/features/production/pip/api/use-pip-mutations';
 import { useCompanyShifts } from '@/features/company-admin/api/use-company-admin-queries';
 import { useMachines } from '@/features/masters/api/use-masters-queries';
+import { calculateExtraHoursIncentive, computeShiftWorkingHours } from '@/features/production/pip/lib/extra-hours';
 import { SkeletonTable } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { showSuccess, showApiError } from '@/lib/toast';
-import type { PipIncentiveConfig, PipSlabConfig, SlabTier, CalculationResult, DowntimeReason } from '@/lib/api/pip';
+import type { PipIncentiveConfig, PipSlabConfig, SlabTier, CalculationResult, DowntimeReason, PipDailyEntry } from '@/lib/api/pip';
 import type { CompanyShift } from '@/lib/api/company-admin';
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -82,6 +84,7 @@ interface SavedOperatorSummary {
   employeeId: string;
   machineCount: number;
   totalIncentive: number;
+  extraHoursIncentive?: number;
   isEligible: boolean;
 }
 
@@ -100,6 +103,25 @@ interface SavedEntry {
   method: string;
   incentive: number;
   status: string;
+}
+
+/** A pending Extra Hours entry added in-component, awaiting save on shift commit. */
+interface PendingExtraHoursEntry {
+  machineId: string;
+  machineCode: string;
+  machineName: string;
+  partId: string;
+  partNumber: string;
+  partName: string;
+  slabConfigId: string;
+  operationId: string | null;
+  shiftTargetQty: number;
+  slab1Rate: number;
+  qtyProduced: number;
+  hourlyRate: number;
+  extraHoursTarget: number;
+  incentiveQty: number;
+  incentiveAmount: number;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -664,6 +686,8 @@ export function PipDailyEntryScreen() {
   const { data: shiftsData } = useCompanyShifts();
   const { data: allMachinesData } = useMachines({ limit: 500 });
   const saveMutation = useSavePipDailyEntries();
+  const updateConfigMutation = useUpdatePipConfig();
+  const saveExtraHoursMutation = useSaveExtraHoursEntries();
 
   const config: PipIncentiveConfig | undefined = configData?.data;
   const slabConfigs: PipSlabConfig[] = slabData?.data ?? [];
@@ -853,6 +877,97 @@ export function PipDailyEntryScreen() {
   /* ── Part filter ── */
   const [partFilter, setPartFilter] = useState('');
 
+  /* ── Extra Hours state ── */
+  const [extraHoursWorked, setExtraHoursWorked] = useState<number>(0);
+  const [extraHoursPartId, setExtraHoursPartId] = useState<string | null>(null);
+  const [extraHoursQty, setExtraHoursQty] = useState<number>(0);
+  const [pendingExtraHours, setPendingExtraHours] = useState<PendingExtraHoursEntry[]>([]);
+
+  const differentiateExtraHours = config?.differentiateExtraHours ?? false;
+
+  /* ── Resolve shift hours: derive from selected shift times/breaks, else config default ── */
+  const shiftHours = useMemo(() => {
+    if (selectedShift?.startTime && selectedShift?.endTime) {
+      const computed = computeShiftWorkingHours(
+        {
+          startTime: selectedShift.startTime,
+          endTime: selectedShift.endTime,
+          isCrossDay: selectedShift.isCrossDay,
+        },
+        (selectedShift.breaks ?? []).map((b) => ({ duration: b.duration, isPaid: b.isPaid })),
+      );
+      if (computed != null && computed > 0) return computed;
+    }
+    return config?.defaultShiftHours ?? 8;
+  }, [selectedShift, config?.defaultShiftHours]);
+
+  /* ── Slab-configured parts for the selected machine (for the extra-hours picker) ── */
+  const extraHoursMachineParts = useMemo(() => {
+    if (!selectedMachine) return [] as Array<{ partId: string; partNumber: string; partName: string; slabConfigId: string; operationId: string | null; shiftTargetQty: number; slab1Rate: number }>;
+    const seen = new Set<string>();
+    const result: Array<{ partId: string; partNumber: string; partName: string; slabConfigId: string; operationId: string | null; shiftTargetQty: number; slab1Rate: number }> = [];
+    for (const sc of slabConfigs) {
+      if (sc.machineId !== selectedMachine.id || !sc.isActive) continue;
+      if (selectedOperationId && sc.operationId && sc.operationId !== selectedOperationId) continue;
+      if (seen.has(sc.partId)) continue;
+      seen.add(sc.partId);
+      result.push({
+        partId: sc.partId,
+        partNumber: sc.part?.partNumber ?? '',
+        partName: sc.part?.name ?? '',
+        slabConfigId: sc.id,
+        operationId: sc.operationId ?? null,
+        shiftTargetQty: sc.shiftTargetQty,
+        slab1Rate: sc.slabTiers.length > 0 ? sc.slabTiers[0].ratePerPiece : 0,
+      });
+    }
+    return result;
+  }, [selectedMachine, selectedOperationId, slabConfigs]);
+
+  const selectedExtraHoursPart = extraHoursMachineParts.find((p) => p.partId === extraHoursPartId) ?? null;
+
+  /* ── Whether ≥1 shift part has been added for this machine (session or current entries with qty) ── */
+  const hasShiftPartForMachine = useMemo(() => {
+    if (!selectedMachine) return false;
+    const inSession = session.some((sm) => sm.machineId === selectedMachine.id && sm.entries.length > 0);
+    const inCurrent = partEntries.length > 0;
+    return inSession || inCurrent;
+  }, [selectedMachine, session, partEntries]);
+
+  /* ── Show the Extra Hours block? ── */
+  const showExtraHoursBlock =
+    differentiateExtraHours && !!selectedOperator && !!selectedMachine && hasShiftPartForMachine;
+
+  /* ── Live preview for the part currently being entered ── */
+  const extraHoursLivePreview = useMemo(() => {
+    if (!selectedExtraHoursPart || !selectedMachine || extraHoursWorked <= 0 || extraHoursQty <= 0) return null;
+    return calculateExtraHoursIncentive(
+      [{
+        partId: selectedExtraHoursPart.partId,
+        partNumber: selectedExtraHoursPart.partNumber,
+        partName: selectedExtraHoursPart.partName,
+        machineId: selectedMachine.id,
+        machineCode: selectedMachine.assetCode,
+        qtyProduced: extraHoursQty,
+        shiftTargetQty: selectedExtraHoursPart.shiftTargetQty,
+        slab1Rate: selectedExtraHoursPart.slab1Rate,
+      }],
+      extraHoursWorked,
+      shiftHours,
+    );
+  }, [selectedExtraHoursPart, selectedMachine, extraHoursWorked, extraHoursQty, shiftHours]);
+
+  /* ── Computed target for the selected part (display even before qty entered) ── */
+  const selectedPartHourlyRate = selectedExtraHoursPart && shiftHours > 0 ? selectedExtraHoursPart.shiftTargetQty / shiftHours : 0;
+  const selectedPartExtraTarget = Math.ceil(selectedPartHourlyRate * (extraHoursWorked || 0));
+
+  /* ── Running total of extra-hours incentive (pending + current preview) ── */
+  const pendingExtraHoursTotal = pendingExtraHours.reduce((sum, e) => sum + e.incentiveAmount, 0);
+  const extraHoursCardTotal = pendingExtraHoursTotal + (extraHoursLivePreview?.totalIncentive ?? 0);
+  const maxExtraHours = Math.max(0, 24 - shiftHours);
+  const extraHoursOverThreshold =
+    config?.extraHoursWarnThreshold != null && extraHoursWorked > config.extraHoursWarnThreshold;
+
   /* ── Placeholder message ── */
   const [placeholderMsg, setPlaceholderMsg] = useState<string | null>(null);
 
@@ -1031,6 +1146,76 @@ export function PipDailyEntryScreen() {
     setTimeout(() => operatorInputRef.current?.focus(), 50);
   };
 
+  /* ── Extra Hours handlers ── */
+
+  const handleToggleExtraHours = () => {
+    if (!config) return;
+    const next = !differentiateExtraHours;
+    updateConfigMutation.mutate(
+      { differentiateExtraHours: next },
+      {
+        onSuccess: () => {
+          showSuccess(next ? 'Extra Hours differentiation enabled' : 'Extra Hours differentiation disabled');
+          if (!next) {
+            // Clear any in-progress extra-hours work when turning off
+            setExtraHoursWorked(0);
+            setExtraHoursPartId(null);
+            setExtraHoursQty(0);
+            setPendingExtraHours([]);
+          }
+        },
+        onError: (err) => showApiError(err),
+      },
+    );
+  };
+
+  const handleAddExtraHoursPart = () => {
+    if (!selectedMachine || !selectedExtraHoursPart) return;
+    if (extraHoursWorked <= 0 || extraHoursWorked > maxExtraHours) return;
+    if (extraHoursQty <= 0) return;
+    const preview = calculateExtraHoursIncentive(
+      [{
+        partId: selectedExtraHoursPart.partId,
+        partNumber: selectedExtraHoursPart.partNumber,
+        partName: selectedExtraHoursPart.partName,
+        machineId: selectedMachine.id,
+        machineCode: selectedMachine.assetCode,
+        qtyProduced: extraHoursQty,
+        shiftTargetQty: selectedExtraHoursPart.shiftTargetQty,
+        slab1Rate: selectedExtraHoursPart.slab1Rate,
+      }],
+      extraHoursWorked,
+      shiftHours,
+    );
+    const part = preview.parts[0];
+    setPendingExtraHours((prev) => [
+      ...prev.filter((e) => !(e.partId === selectedExtraHoursPart.partId && e.machineId === selectedMachine.id)),
+      {
+        machineId: selectedMachine.id,
+        machineCode: selectedMachine.assetCode,
+        machineName: selectedMachine.assetName,
+        partId: selectedExtraHoursPart.partId,
+        partNumber: selectedExtraHoursPart.partNumber,
+        partName: selectedExtraHoursPart.partName,
+        slabConfigId: selectedExtraHoursPart.slabConfigId,
+        operationId: selectedExtraHoursPart.operationId,
+        shiftTargetQty: selectedExtraHoursPart.shiftTargetQty,
+        slab1Rate: selectedExtraHoursPart.slab1Rate,
+        qtyProduced: extraHoursQty,
+        hourlyRate: part.hourlyRate,
+        extraHoursTarget: part.extraHoursTarget,
+        incentiveQty: part.incentiveQty,
+        incentiveAmount: part.incentiveAmount,
+      },
+    ]);
+    setExtraHoursPartId(null);
+    setExtraHoursQty(0);
+  };
+
+  const handleRemovePendingExtraHours = (machineId: string, partId: string) => {
+    setPendingExtraHours((prev) => prev.filter((e) => !(e.machineId === machineId && e.partId === partId)));
+  };
+
   const handleSaveEntries = async () => {
     if (!selectedOperator || !selectedShiftId || session.length === 0) return;
 
@@ -1049,12 +1234,41 @@ export function PipDailyEntryScreen() {
     );
 
     try {
-      await saveMutation.mutateAsync({
+      const saveResult = await saveMutation.mutateAsync({
         entryDate,
         shiftId: selectedShiftId,
         operatorId: selectedOperator.id,
         entries,
       });
+
+      /* ── Auto-commit pending Extra Hours entries (cascade via shared sessionRef) ── */
+      let extraHoursIncentiveForOperator = 0;
+      const pendingForOperator = pendingExtraHours.filter((e) =>
+        session.some((sm) => sm.machineId === e.machineId),
+      );
+      if (differentiateExtraHours && pendingForOperator.length > 0) {
+        const savedRows = (saveResult?.data ?? []) as PipDailyEntry[];
+        const sessionRef = savedRows.find((r) => r.sessionRef)?.sessionRef;
+        try {
+          const ehResult = await saveExtraHoursMutation.mutateAsync({
+            entryDate,
+            shiftId: selectedShiftId,
+            operatorId: selectedOperator.id,
+            ...(sessionRef ? { sessionRef } : {}),
+            extraHoursWorked,
+            entries: pendingForOperator.map((e) => ({
+              machineId: e.machineId,
+              partId: e.partId,
+              slabConfigId: e.slabConfigId,
+              ...(e.operationId ? { operationId: e.operationId } : {}),
+              qtyProduced: e.qtyProduced,
+            })),
+          });
+          extraHoursIncentiveForOperator = Number(ehResult?.data?.calculation?.totalIncentive ?? 0);
+        } catch (ehErr) {
+          showApiError(ehErr);
+        }
+      }
 
       // Add to saved operators summary
       setSavedOperators((prev) => [
@@ -1065,6 +1279,7 @@ export function PipDailyEntryScreen() {
           employeeId: selectedOperator.employeeId,
           machineCount: session.length,
           totalIncentive: liveCalcResult.totalIncentive,
+          extraHoursIncentive: extraHoursIncentiveForOperator,
           isEligible: liveCalcResult.isEligible,
         },
       ]);
@@ -1110,6 +1325,10 @@ export function PipDailyEntryScreen() {
       setPartEntries([]);
       setSession([]);
       setEditingSessionIndex(null);
+      setExtraHoursWorked(0);
+      setExtraHoursPartId(null);
+      setExtraHoursQty(0);
+      setPendingExtraHours([]);
       setTimeout(() => operatorInputRef.current?.focus(), 50);
     } catch (err) {
       showApiError(err);
@@ -1153,6 +1372,14 @@ export function PipDailyEntryScreen() {
   });
 
   const todaySaved = todaySavedData?.data ?? [];
+
+  /* ── Extra Hours saved entries query for today/shift ── */
+  const { data: extraHoursSavedData } = usePipExtraHoursEntries(
+    differentiateExtraHours
+      ? { entryDate, ...(selectedShiftId ? { shiftId: selectedShiftId } : {}), limit: 200 }
+      : undefined,
+  );
+  const extraHoursSaved = (differentiateExtraHours ? extraHoursSavedData?.data : undefined) ?? [];
 
   /* ── Loading state ── */
   if (configLoading || slabsLoading) {
@@ -1212,6 +1439,35 @@ export function PipDailyEntryScreen() {
               </option>
             ))}
           </select>
+          {/* Extra Hours toggle (two-way sync with config screen) */}
+          <button
+            type="button"
+            onClick={handleToggleExtraHours}
+            disabled={updateConfigMutation.isPending || !config}
+            title="Differentiate Extra Hours production"
+            className={cn(
+              'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-colors disabled:opacity-50',
+              differentiateExtraHours
+                ? 'bg-success-50 dark:bg-success-900/30 text-success-700 dark:text-success-300 border-success-200 dark:border-success-800'
+                : 'bg-neutral-50 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-700',
+            )}
+          >
+            <Clock size={12} />
+            Extra Hrs
+            <span
+              className={cn(
+                'ml-0.5 inline-flex h-3.5 w-6 items-center rounded-full transition-colors',
+                differentiateExtraHours ? 'bg-success-500' : 'bg-neutral-300 dark:bg-neutral-600',
+              )}
+            >
+              <span
+                className={cn(
+                  'h-3 w-3 rounded-full bg-white transition-transform',
+                  differentiateExtraHours ? 'translate-x-2.5' : 'translate-x-0.5',
+                )}
+              />
+            </span>
+          </button>
           {/* Active method badge */}
           {activeMethod ? (
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-xs font-bold border border-primary-100 dark:border-primary-800">
@@ -1580,6 +1836,199 @@ export function PipDailyEntryScreen() {
             </div>
             );
           })()}
+
+          {/* ── Extra Hours Production Block ── */}
+          {showExtraHoursBlock && (
+            <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-sm border-2 border-success-200 dark:border-success-800/60 overflow-hidden">
+              {/* Header */}
+              <div className="px-5 py-3.5 bg-success-50 dark:bg-success-900/20 border-b border-success-100 dark:border-success-800/50 flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-success-100 dark:bg-success-900/40 flex items-center justify-center">
+                  <Clock size={16} className="text-success-600 dark:text-success-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-success-800 dark:text-success-300">Extra Hours Production</h3>
+                  <p className="text-[11px] text-success-600/80 dark:text-success-400/80">
+                    Independent Slab-1 incentive on output beyond the extra-hours target.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-5 space-y-4">
+                {/* Total Extra Hours Worked */}
+                <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+                  <div className="flex-1">
+                    <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
+                      Total Extra Hours Worked Today
+                    </label>
+                    <div className="relative max-w-[180px]">
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.25"
+                        max={maxExtraHours}
+                        value={extraHoursWorked || ''}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          setExtraHoursWorked(isNaN(v) ? 0 : Math.max(0, v));
+                        }}
+                        placeholder="0"
+                        className="w-full pr-10 pl-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-base font-bold focus:outline-none focus:ring-2 focus:ring-success-500/20 focus:border-success-500 dark:text-white"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-400">hrs</span>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-neutral-400 dark:text-neutral-500 pb-2">
+                    Shift hours: <span className="font-semibold text-neutral-600 dark:text-neutral-300">{Number(shiftHours).toFixed(2)}h</span>
+                    {' · '}max extra: <span className="font-semibold text-neutral-600 dark:text-neutral-300">{maxExtraHours.toFixed(2)}h</span>
+                  </p>
+                </div>
+                {extraHoursOverThreshold && (
+                  <p className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1.5 -mt-2">
+                    <AlertTriangle size={12} />
+                    {extraHoursWorked}h exceeds the {config?.extraHoursWarnThreshold}h warning threshold — please verify.
+                  </p>
+                )}
+                {extraHoursWorked > maxExtraHours && (
+                  <p className="text-[11px] text-danger-600 dark:text-danger-400 flex items-center gap-1.5 -mt-2">
+                    <AlertTriangle size={12} />
+                    Extra hours cannot exceed {maxExtraHours.toFixed(2)}h (24 − shift hours).
+                  </p>
+                )}
+
+                {/* Part picker */}
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
+                    Select Part ({selectedMachine?.assetCode})
+                  </label>
+                  {extraHoursMachineParts.length === 0 ? (
+                    <p className="text-xs text-neutral-400">No slab-configured parts for this machine.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {extraHoursMachineParts.map((p) => {
+                        const added = pendingExtraHours.some((e) => e.partId === p.partId && e.machineId === selectedMachine!.id);
+                        const hrRate = shiftHours > 0 ? p.shiftTargetQty / shiftHours : 0;
+                        return (
+                          <button
+                            key={p.partId}
+                            type="button"
+                            onClick={() => { setExtraHoursPartId(p.partId); setExtraHoursQty(0); }}
+                            className={cn(
+                              'px-3 py-2 rounded-xl border text-left transition-colors',
+                              extraHoursPartId === p.partId
+                                ? 'border-success-500 bg-success-50 dark:bg-success-900/30'
+                                : 'border-neutral-200 dark:border-neutral-700 hover:border-success-300 dark:hover:border-success-700',
+                            )}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-primary-700 dark:text-primary-300">{p.partNumber}</span>
+                              {added && <span className="text-[10px] font-bold text-success-600 dark:text-success-400">{'✓'} added</span>}
+                            </div>
+                            <div className="text-[10px] text-neutral-500 dark:text-neutral-400">
+                              Target {p.shiftTargetQty} {'·'} {Number(hrRate).toFixed(2)}/hr
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Per-part entry row */}
+                {selectedExtraHoursPart && (
+                  <div className="rounded-xl border border-success-200 dark:border-success-800/60 bg-success-50/40 dark:bg-success-900/10 p-4 space-y-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                      <div>
+                        <p className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Shift Target</p>
+                        <p className="text-sm font-bold text-neutral-800 dark:text-neutral-200">{selectedExtraHoursPart.shiftTargetQty}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Hourly Rate</p>
+                        <p className="text-sm font-bold text-neutral-800 dark:text-neutral-200">{Number(selectedPartHourlyRate).toFixed(2)}/hr</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Extra Hrs Target</p>
+                        <p className="text-sm font-bold text-neutral-800 dark:text-neutral-200">{selectedPartExtraTarget}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Extra Hrs Qty</p>
+                        <input
+                          type="number"
+                          min={0}
+                          value={extraHoursQty || ''}
+                          onChange={(e) => {
+                            const v = parseInt(e.target.value, 10);
+                            setExtraHoursQty(isNaN(v) ? 0 : Math.max(0, v));
+                          }}
+                          placeholder="0"
+                          className="w-full text-center px-2 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-base font-bold focus:outline-none focus:ring-2 focus:ring-success-500/20 focus:border-success-500 dark:text-white"
+                        />
+                      </div>
+                    </div>
+                    {/* Live preview */}
+                    <div className="flex items-center justify-between gap-3 pt-1">
+                      <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                        {extraHoursLivePreview && extraHoursLivePreview.parts[0]
+                          ? extraHoursLivePreview.parts[0].breakdown
+                          : 'Enter extra hours and qty to preview incentive.'}
+                      </p>
+                      <span className={cn('text-sm font-bold whitespace-nowrap', (extraHoursLivePreview?.totalIncentive ?? 0) > 0 ? 'text-success-600 dark:text-success-400' : 'text-neutral-400')}>
+                        {formatCurrency(Number(extraHoursLivePreview?.totalIncentive ?? 0))}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddExtraHoursPart}
+                      disabled={extraHoursWorked <= 0 || extraHoursWorked > maxExtraHours || extraHoursQty <= 0}
+                      className="w-full py-2.5 rounded-xl bg-success-600 hover:bg-success-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      <Plus size={14} />
+                      Add This Part's Extra Hours Entry
+                    </button>
+                  </div>
+                )}
+
+                {/* Extra Hours Entries Added */}
+                {pendingExtraHours.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                        Extra Hours Entries Added ({pendingExtraHours.length})
+                      </h4>
+                      <span className="text-sm font-bold text-success-600 dark:text-success-400">
+                        {formatCurrency(Number(pendingExtraHoursTotal))}
+                      </span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {pendingExtraHours.map((e) => (
+                        <div key={`${e.machineId}-${e.partId}`} className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-100 dark:border-neutral-800">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="px-1.5 py-0.5 rounded bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-[10px] font-bold">{e.partNumber}</span>
+                            <span className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate">
+                              {e.machineCode} {'·'} {e.qtyProduced} pcs {'−'} {e.extraHoursTarget} = {e.incentiveQty} @ {'₹'}{Number(e.slab1Rate).toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className="text-xs font-bold text-success-600 dark:text-success-400">{formatCurrency(Number(e.incentiveAmount))}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemovePendingExtraHours(e.machineId, e.partId)}
+                              className="p-1 rounded hover:bg-danger-50 dark:hover:bg-danger-900/20 transition-colors"
+                              title="Remove"
+                            >
+                              <X size={13} className="text-danger-500" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-neutral-400 dark:text-neutral-500 italic">
+                      These save automatically when you save the operator's shift entries.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* ── Placeholder Area ── */}
           {selectedOperator && !selectedMachine && partEntries.length === 0 && (
@@ -1979,6 +2428,35 @@ export function PipDailyEntryScreen() {
             </div>
           </div>
 
+          {/* ── Extra Hours + Combined Total cards (toggle ON only) ── */}
+          {differentiateExtraHours && (
+            <>
+              <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-sm border border-success-200 dark:border-success-800/60 overflow-hidden">
+                <div className="bg-success-600 text-white p-4 flex items-center gap-2">
+                  <Clock size={16} />
+                  <div>
+                    <p className="text-xs font-medium text-white/70 uppercase tracking-wider">Extra Hours Incentive</p>
+                    <p className="text-2xl font-bold mt-0.5">{formatCurrency(Number(extraHoursCardTotal))}</p>
+                  </div>
+                </div>
+                <div className="px-4 py-2.5 text-[11px] text-neutral-500 dark:text-neutral-400">
+                  {pendingExtraHours.length} added {'·'} {extraHoursLivePreview ? '1 in preview' : '0 in preview'} {'·'} {Number(extraHoursWorked).toFixed(2)}h extra
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-r from-primary-600 to-accent-500 text-white rounded-2xl shadow-lg shadow-primary-500/20 p-4">
+                <p className="text-xs font-medium text-white/70 uppercase tracking-wider">Combined Total</p>
+                <p className="text-3xl font-bold mt-1">
+                  {formatCurrency(Number(liveCalcResult.totalIncentive) + Number(extraHoursCardTotal))}
+                </p>
+                <div className="mt-2 flex items-center gap-4 text-[11px] text-white/80">
+                  <span>Shift: {formatCurrency(Number(liveCalcResult.totalIncentive))}</span>
+                  <span>Extra: {formatCurrency(Number(extraHoursCardTotal))}</span>
+                </div>
+              </div>
+            </>
+          )}
+
           {/* ── Saved This Shift Panel ── */}
           <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-sm border border-neutral-100 dark:border-neutral-800 overflow-hidden">
             <div className="px-4 py-3 border-b border-neutral-100 dark:border-neutral-800">
@@ -1998,6 +2476,11 @@ export function PipDailyEntryScreen() {
                       <p className={cn('text-sm font-bold', so.totalIncentive > 0 ? 'text-success-600 dark:text-success-400' : 'text-neutral-500')}>
                         {formatCurrency(so.totalIncentive)}
                       </p>
+                      {differentiateExtraHours && (so.extraHoursIncentive ?? 0) > 0 && (
+                        <p className="text-[10px] font-bold text-success-500 dark:text-success-400">
+                          +{formatCurrency(Number(so.extraHoursIncentive))} extra hrs
+                        </p>
+                      )}
                       <span
                         className={cn(
                           'text-[10px] px-1.5 py-0.5 rounded-full font-bold',
@@ -2201,6 +2684,92 @@ export function PipDailyEntryScreen() {
           </div>
         )}
       </div>
+
+      {/* ═══════ EXTRA HOURS SAVED ENTRIES TABLE (Full Width, toggle ON only) ═══════ */}
+      {differentiateExtraHours && (
+        <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-sm border border-success-200 dark:border-success-800/60 overflow-hidden">
+          <div className="px-5 py-4 border-b border-success-100 dark:border-success-800/50 bg-success-50/40 dark:bg-success-900/10 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock size={16} className="text-success-600 dark:text-success-400" />
+              <h3 className="text-base font-bold text-neutral-900 dark:text-white">Extra Hours Saved Entries</h3>
+              {extraHoursSaved.length > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-success-100 dark:bg-success-900/40 text-success-700 dark:text-success-300 text-xs font-bold">
+                  {extraHoursSaved.length}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {extraHoursSaved.length === 0 ? (
+            <div className="p-8 text-center">
+              <EmptyState
+                title="No extra hours entries yet"
+                message="Saved extra-hours production entries for today will appear here."
+              />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Operator</th>
+                    <th className="text-left px-3 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Machine</th>
+                    <th className="text-left px-3 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Part</th>
+                    <th className="text-center px-3 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Extra Hrs</th>
+                    <th className="text-center px-3 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Hourly Rate</th>
+                    <th className="text-center px-3 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Shift Target</th>
+                    <th className="text-center px-3 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Extra Hrs Target</th>
+                    <th className="text-center px-3 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Extra Hrs Qty</th>
+                    <th className="text-center px-3 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Incentive Qty</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Incentive</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {extraHoursSaved.map((entry) => (
+                    <tr key={entry.id} className="border-b border-neutral-50 dark:border-neutral-800/50 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
+                      <td className="px-4 py-3">
+                        <p className="font-bold text-neutral-900 dark:text-white text-sm">
+                          {entry.operator ? `${entry.operator.firstName ?? ''} ${entry.operator.lastName ?? ''}`.trim() : entry.operatorId}
+                        </p>
+                        {entry.operator?.employeeId && (
+                          <p className="text-[10px] text-neutral-400">{entry.operator.employeeId}</p>
+                        )}
+                      </td>
+                      <td className="px-3 py-3">
+                        <p className="font-medium text-neutral-900 dark:text-white text-sm">
+                          {entry.slabConfig?.machine?.assetName ?? entry.machineId}
+                        </p>
+                        {entry.slabConfig?.machine?.assetCode && (
+                          <p className="text-[10px] text-neutral-400">{entry.slabConfig.machine.assetCode}</p>
+                        )}
+                      </td>
+                      <td className="px-3 py-3">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-xs font-bold">
+                          {entry.slabConfig?.part?.partNumber ?? entry.partId}
+                        </span>
+                        {entry.slabConfig?.part?.name && (
+                          <p className="text-[10px] text-neutral-400 mt-0.5">{entry.slabConfig.part.name}</p>
+                        )}
+                      </td>
+                      <td className="text-center px-3 py-3 text-neutral-600 dark:text-neutral-400">{Number(entry.extraHoursWorked).toFixed(2)}</td>
+                      <td className="text-center px-3 py-3 text-neutral-600 dark:text-neutral-400">{Number(entry.hourlyRate).toFixed(2)}</td>
+                      <td className="text-center px-3 py-3 text-neutral-500">{entry.shiftTargetQty}</td>
+                      <td className="text-center px-3 py-3 text-neutral-500">{entry.extraHoursTarget}</td>
+                      <td className="text-center px-3 py-3 font-semibold text-neutral-700 dark:text-neutral-300">{entry.qtyProduced}</td>
+                      <td className="text-center px-3 py-3 font-semibold text-neutral-700 dark:text-neutral-300">{entry.incentiveQty}</td>
+                      <td className="text-right px-4 py-3">
+                        <span className={cn('font-bold', Number(entry.incentiveAmount) > 0 ? 'text-success-600 dark:text-success-400' : 'text-neutral-400')}>
+                          {formatCurrency(Number(entry.incentiveAmount ?? 0))}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
