@@ -8,7 +8,6 @@ import {
   ChevronRight,
   Trash2,
   Edit3,
-  Download,
   CheckCircle2,
   AlertTriangle,
   Settings2,
@@ -29,6 +28,7 @@ import { useMachines } from '@/features/masters/api/use-masters-queries';
 import { calculateExtraHoursIncentive, computeShiftWorkingHours } from '@/features/production/pip/lib/extra-hours';
 import { SkeletonTable } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ExportMenu } from '@/components/analytics/ExportMenu';
 import { showSuccess, showApiError } from '@/lib/toast';
 import type { PipIncentiveConfig, PipSlabConfig, SlabTier, CalculationResult, DowntimeReason, PipDailyEntry } from '@/lib/api/pip';
 import type { CompanyShift } from '@/lib/api/company-admin';
@@ -2538,10 +2538,14 @@ export function PipDailyEntryScreen() {
               </span>
             )}
           </div>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 text-xs font-bold text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">
-            <Download size={12} />
-            Export
-          </button>
+          <ExportMenu
+            reportType="pip-daily-production"
+            filters={{
+              dateFrom: entryDate,
+              dateTo: entryDate,
+              ...(selectedShiftId ? { shiftId: selectedShiftId } : {}),
+            }}
+          />
         </div>
 
         {savedEntries.length === 0 && todaySaved.length === 0 ? (
@@ -2698,6 +2702,14 @@ export function PipDailyEntryScreen() {
                 </span>
               )}
             </div>
+            <ExportMenu
+              reportType="pip-extra-hours-entries"
+              filters={{
+                dateFrom: entryDate,
+                dateTo: entryDate,
+                ...(selectedShiftId ? { shiftId: selectedShiftId } : {}),
+              }}
+            />
           </div>
 
           {extraHoursSaved.length === 0 ? (
